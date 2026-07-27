@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/security/console-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Security Console Login */
+        post: operations["_security_console_login_pallas_api_security_console_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/acl/rules": {
         parameters: {
             query?: never;
@@ -1154,6 +1171,40 @@ export interface paths {
         };
         /** Ingress Dispatch Metrics */
         get: operations["_ingress_dispatch_metrics_pallas_api_ingress_dispatch_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/bots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bots */
+        get: operations["_bots_pallas_api_bots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/plugin-config-hint": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plugin Config Hint */
+        get: operations["_plugin_config_hint_pallas_api_plugin_config_hint_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2479,6 +2530,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/history/behavior/annotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm History Behavior Annotate */
+        post: operations["_llm_history_behavior_annotate_pallas_api_common_config_llm_history_behavior_annotate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/behavior/patterns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Behavior Patterns Get */
+        get: operations["_llm_behavior_patterns_get_pallas_api_common_config_llm_behavior_patterns_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/behavior/patterns/upsert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Behavior Patterns Upsert */
+        post: operations["_llm_behavior_patterns_upsert_pallas_api_common_config_llm_behavior_patterns_upsert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/behavior/patterns/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Behavior Patterns Delete */
+        post: operations["_llm_behavior_patterns_delete_pallas_api_common_config_llm_behavior_patterns_delete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/behavior/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Behavior Runs Get */
+        get: operations["_llm_behavior_runs_get_pallas_api_common_config_llm_behavior_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/runtime-debug/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Runtime Debug Get */
+        get: operations["_llm_runtime_debug_get_pallas_api_common_config_llm_runtime_debug__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/runtime-debug/{request_id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Runtime Replay Get */
+        get: operations["_llm_runtime_replay_get_pallas_api_common_config_llm_runtime_debug__request_id__replay_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/runtime-debug/{request_id}/replay/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Runtime Replay Run Post */
+        post: operations["_llm_runtime_replay_run_post_pallas_api_common_config_llm_runtime_debug__request_id__replay_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/persona-observe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Persona Observe Get */
+        get: operations["_llm_persona_observe_get_pallas_api_common_config_llm_persona_observe_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/llm/repeater-feedback": {
         parameters: {
             query?: never;
@@ -2837,176 +3041,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/pallas/api/common-config/llm/history/behavior/annotate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Llm History Behavior Annotate */
-        post: operations["_llm_history_behavior_annotate_pallas_api_common_config_llm_history_behavior_annotate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/common-config/llm/behavior/patterns": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Llm Behavior Patterns Get */
-        get: operations["_llm_behavior_patterns_get_pallas_api_common_config_llm_behavior_patterns_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/common-config/llm/behavior/patterns/upsert": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Llm Behavior Patterns Upsert */
-        post: operations["_llm_behavior_patterns_upsert_pallas_api_common_config_llm_behavior_patterns_upsert_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/common-config/llm/behavior/patterns/delete": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Llm Behavior Patterns Delete */
-        post: operations["_llm_behavior_patterns_delete_pallas_api_common_config_llm_behavior_patterns_delete_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/common-config/llm/behavior/runs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Llm Behavior Runs Get */
-        get: operations["_llm_behavior_runs_get_pallas_api_common_config_llm_behavior_runs_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/common-config/llm/runtime-debug/{request_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Llm Runtime Debug Get */
-        get: operations["_llm_runtime_debug_get_pallas_api_common_config_llm_runtime_debug__request_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/common-config/llm/runtime-debug/{request_id}/replay": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Llm Runtime Replay Get */
-        get: operations["_llm_runtime_replay_get_pallas_api_common_config_llm_runtime_debug__request_id__replay_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/common-config/llm/runtime-debug/{request_id}/replay/run": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Llm Runtime Replay Run Post */
-        post: operations["_llm_runtime_replay_run_post_pallas_api_common_config_llm_runtime_debug__request_id__replay_run_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/common-config/llm/persona-observe": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Llm Persona Observe Get */
-        get: operations["_llm_persona_observe_get_pallas_api_common_config_llm_persona_observe_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/bots": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Bots */
-        get: operations["_bots_pallas_api_bots_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/pallas/api/logs": {
         parameters: {
             query?: never;
@@ -3033,23 +3067,6 @@ export interface paths {
         };
         /** Logs Stream */
         get: operations["_logs_stream_pallas_api_logs_stream_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/plugin-config-hint": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Plugin Config Hint */
-        get: operations["_plugin_config_hint_pallas_api_plugin_config_hint_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4078,23 +4095,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/pallas/api/security/console-login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Security Console Login */
-        post: operations["_security_console_login_pallas_api_security_console_login_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/pallas/api/help/preview": {
         parameters: {
             query?: never;
@@ -4147,6 +4147,26 @@ export interface components {
             keywords: string;
             /** Image */
             image?: string | null;
+        };
+        /** ChangeConsoleLoginBody */
+        ChangeConsoleLoginBody: {
+            /** New Password */
+            new_password: string;
+        };
+        /** CommunityConnectivityCheckData */
+        CommunityConnectivityCheckData: {
+            /** Probes */
+            probes?: {
+                [key: string]: unknown;
+            }[];
+            /** Summary */
+            summary?: {
+                [key: string]: unknown;
+            };
+            /** Reporting */
+            reporting?: {
+                [key: string]: unknown;
+            };
         };
         /** GitMirrorApplyPluginBody */
         GitMirrorApplyPluginBody: {
@@ -4525,12 +4545,24 @@ export interface components {
             tried_urls?: string[];
             /** Error */
             error?: string | null;
-            media_tasks?: components["schemas"]["_LlmMediaTasksHealthData"] | null;
+            /** Media Tasks */
+            media_tasks?: {
+                [key: string]: unknown;
+            } | null;
             /** Llm Detail */
             llm_detail?: string | null;
-            image_circuit?: components["schemas"]["_LlmImageHealthData"] | null;
-            llm_health?: components["schemas"]["_LlmHealthSummaryData"] | null;
-            tts_health?: components["schemas"]["_LlmTtsHealthData"] | null;
+            /** Image Circuit */
+            image_circuit?: {
+                [key: string]: unknown;
+            } | null;
+            /** Llm Health */
+            llm_health?: {
+                [key: string]: unknown;
+            } | null;
+            /** Tts Health */
+            tts_health?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** _AiInstallBody */
         _AiInstallBody: {
@@ -4611,6 +4643,18 @@ export interface components {
              */
             error: string;
         };
+        /** _ApiOkResponse[CommunityConnectivityCheckData] */
+        _ApiOkResponse_CommunityConnectivityCheckData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["CommunityConnectivityCheckData"];
+            /** Error */
+            error?: null;
+        };
         /** _ApiOkResponse[IngressDispatchData] */
         _ApiOkResponse_IngressDispatchData_: {
             /**
@@ -4620,6 +4664,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["IngressDispatchData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[LogsData] */
         _ApiOkResponse_LogsData_: {
@@ -4630,6 +4676,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["LogsData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[PluginConfigData] */
         _ApiOkResponse_PluginConfigData_: {
@@ -4640,6 +4688,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["PluginConfigData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[PluginConfigRawData] */
         _ApiOkResponse_PluginConfigRawData_: {
@@ -4650,6 +4700,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["PluginConfigRawData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[PluginGovernanceData] */
         _ApiOkResponse_PluginGovernanceData_: {
@@ -4660,6 +4712,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["PluginGovernanceData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[ShardObservabilityData] */
         _ApiOkResponse_ShardObservabilityData_: {
@@ -4670,6 +4724,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["ShardObservabilityData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[_AiExtensionTestData] */
         _ApiOkResponse__AiExtensionTestData_: {
@@ -4680,16 +4736,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_AiExtensionTestData"];
-        };
-        /** _ApiOkResponse[_CommunityConnectivityCheckData] */
-        _ApiOkResponse__CommunityConnectivityCheckData_: {
-            /**
-             * Ok
-             * @default true
-             * @constant
-             */
-            ok: true;
-            data: components["schemas"]["_CommunityConnectivityCheckData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[_ConsoleLoginChangeData] */
         _ApiOkResponse__ConsoleLoginChangeData_: {
@@ -4700,6 +4748,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_ConsoleLoginChangeData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[_ConsoleSetupStatusData] */
         _ApiOkResponse__ConsoleSetupStatusData_: {
@@ -4710,6 +4760,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_ConsoleSetupStatusData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[_LlmProviderTestData] */
         _ApiOkResponse__LlmProviderTestData_: {
@@ -4720,6 +4772,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_LlmProviderTestData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[_LlmProvidersConfigData] */
         _ApiOkResponse__LlmProvidersConfigData_: {
@@ -4730,6 +4784,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_LlmProvidersConfigData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[_LlmRuntimeOverviewData] */
         _ApiOkResponse__LlmRuntimeOverviewData_: {
@@ -4740,6 +4796,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_LlmRuntimeOverviewData"];
+            /** Error */
+            error?: null;
         };
         /** _ApiOkResponse[_ServiceGatewaysConnectivityCheckData] */
         _ApiOkResponse__ServiceGatewaysConnectivityCheckData_: {
@@ -4750,6 +4808,8 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_ServiceGatewaysConnectivityCheckData"];
+            /** Error */
+            error?: null;
         };
         /** _BotConfigPatch */
         _BotConfigPatch: {
@@ -4772,64 +4832,12 @@ export interface components {
             /** Group Style Enabled */
             group_style_enabled?: boolean | null;
         };
-        /** _ChangeConsoleLoginBody */
-        _ChangeConsoleLoginBody: {
-            /** New Password */
-            new_password: string;
-        };
-        /** _CommunityConnectivityCheckData */
-        _CommunityConnectivityCheckData: {
-            /** Probes */
-            probes: components["schemas"]["_CommunityConnectivityProbeRow"][];
-            reporting: components["schemas"]["_CommunityConnectivityReporting"];
-            summary: components["schemas"]["_CommunityConnectivitySummary"];
-        };
-        /** _CommunityConnectivityProbeRow */
-        _CommunityConnectivityProbeRow: {
-            /** Url */
-            url: string;
-            /** Ok */
-            ok: boolean;
-            /** Latency Ms */
-            latency_ms?: number | null;
-            /** Http Status */
-            http_status?: number | null;
-            /** Error */
-            error?: string | null;
-        };
-        /** _CommunityConnectivityReporting */
-        _CommunityConnectivityReporting: {
-            /**
-             * Enabled
-             * @default true
-             */
-            enabled: boolean;
-            /**
-             * Endpoint
-             * @default
-             */
-            endpoint: string;
-            /** Active Heartbeat Endpoint */
-            active_heartbeat_endpoint?: string | null;
-            /** Deployment Id */
-            deployment_id?: string | null;
-            /** Last Heartbeat Ok Unix */
-            last_heartbeat_ok_unix?: number | null;
-            /** Last Primary Probe Unix */
-            last_primary_probe_unix?: number | null;
-        };
-        /** _CommunityConnectivitySummary */
-        _CommunityConnectivitySummary: {
-            /**
-             * Any Ok
-             * @default false
-             */
-            any_ok: boolean;
-            /**
-             * Hint
-             * @default
-             */
-            hint: string;
+        /** _CommonConfigSectionPatchBody */
+        _CommonConfigSectionPatchBody: {
+            /** Values */
+            values?: {
+                [key: string]: unknown;
+            };
         };
         /** _CommunityPluginActionBody */
         _CommunityPluginActionBody: {
@@ -5859,6 +5867,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["_ApiOkResponse__ConsoleSetupStatusData_"];
+                };
+            };
+        };
+    };
+    _security_console_login_pallas_api_security_console_login_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeConsoleLoginBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__ConsoleLoginChangeData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -8774,6 +8819,72 @@ export interface operations {
             };
         };
     };
+    _bots_pallas_api_bots_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _plugin_config_hint_pallas_api_plugin_config_hint_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     _message_stats_pallas_api_message_stats_get: {
         parameters: {
             query?: {
@@ -8860,7 +8971,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["_ApiOkResponse__CommunityConnectivityCheckData_"];
+                    "application/json": components["schemas"]["_ApiOkResponse_CommunityConnectivityCheckData_"];
                 };
             };
             /** @description Validation Error */
@@ -10866,7 +10977,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["_PluginConfigUpdateBody"];
+                "application/json": components["schemas"]["_CommonConfigSectionPatchBody"];
             };
         };
         responses: {
@@ -10977,7 +11088,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["_PluginConfigUpdateBody"];
+                "application/json": components["schemas"]["_CommonConfigSectionPatchBody"];
             };
         };
         responses: {
@@ -12075,6 +12186,351 @@ export interface operations {
             };
         };
     };
+    _llm_history_behavior_annotate_pallas_api_common_config_llm_history_behavior_annotate_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_behavior_patterns_get_pallas_api_common_config_llm_behavior_patterns_get: {
+        parameters: {
+            query?: {
+                /** @description 群号；省略则查看全部 pattern */
+                group_id?: number | null;
+                /** @description scene 过滤 */
+                scene?: string | null;
+                /** @description 是否包含 disabled pattern */
+                include_disabled?: boolean;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_behavior_patterns_upsert_pallas_api_common_config_llm_behavior_patterns_upsert_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_behavior_patterns_delete_pallas_api_common_config_llm_behavior_patterns_delete_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_behavior_runs_get_pallas_api_common_config_llm_behavior_runs_get: {
+        parameters: {
+            query?: {
+                /** @description 群号 */
+                group_id?: number | null;
+                /** @description scene 过滤 */
+                scene?: string | null;
+                /** @description outcome 过滤 */
+                final_outcome?: string | null;
+                /** @description 是否包含 disabled run */
+                include_disabled?: boolean;
+                limit?: number;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_runtime_debug_get_pallas_api_common_config_llm_runtime_debug__request_id__get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_runtime_replay_get_pallas_api_common_config_llm_runtime_debug__request_id__replay_get: {
+        parameters: {
+            query?: {
+                mode?: string;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_runtime_replay_run_post_pallas_api_common_config_llm_runtime_debug__request_id__replay_run_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LlmReplayRunBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_observe_get_pallas_api_common_config_llm_persona_observe_get: {
+        parameters: {
+            query?: {
+                /** @description 群号；省略则仅展示 bot 基线 */
+                group_id?: number | null;
+                /** @description 逗号分隔 bot account，省略则全部 */
+                accounts?: string | null;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     _llm_repeater_feedback_get_pallas_api_llm_repeater_feedback_get: {
         parameters: {
             query: {
@@ -12904,384 +13360,6 @@ export interface operations {
             };
         };
     };
-    _llm_history_behavior_annotate_pallas_api_common_config_llm_history_behavior_annotate_post: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_behavior_patterns_get_pallas_api_common_config_llm_behavior_patterns_get: {
-        parameters: {
-            query?: {
-                /** @description 群号；省略则查看全部 pattern */
-                group_id?: number | null;
-                /** @description scene 过滤 */
-                scene?: string | null;
-                /** @description 是否包含 disabled pattern */
-                include_disabled?: boolean;
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_behavior_patterns_upsert_pallas_api_common_config_llm_behavior_patterns_upsert_post: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_behavior_patterns_delete_pallas_api_common_config_llm_behavior_patterns_delete_post: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_behavior_runs_get_pallas_api_common_config_llm_behavior_runs_get: {
-        parameters: {
-            query?: {
-                /** @description 群号 */
-                group_id?: number | null;
-                /** @description scene 过滤 */
-                scene?: string | null;
-                /** @description outcome 过滤 */
-                final_outcome?: string | null;
-                /** @description 是否包含 disabled run */
-                include_disabled?: boolean;
-                limit?: number;
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_runtime_debug_get_pallas_api_common_config_llm_runtime_debug__request_id__get: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path: {
-                request_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_runtime_replay_get_pallas_api_common_config_llm_runtime_debug__request_id__replay_get: {
-        parameters: {
-            query?: {
-                mode?: string;
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path: {
-                request_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_runtime_replay_run_post_pallas_api_common_config_llm_runtime_debug__request_id__replay_run_post: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path: {
-                request_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LlmReplayRunBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_persona_observe_get_pallas_api_common_config_llm_persona_observe_get: {
-        parameters: {
-            query?: {
-                /** @description 群号；省略则仅展示 bot 基线 */
-                group_id?: number | null;
-                /** @description 逗号分隔 bot account，省略则全部 */
-                accounts?: string | null;
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _bots_pallas_api_bots_get: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     _logs_pallas_api_logs_get: {
         parameters: {
             query?: {
@@ -13333,39 +13411,6 @@ export interface operations {
             };
             header?: {
                 "Last-Event-ID"?: number | null;
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _plugin_config_hint_pallas_api_plugin_config_hint_get: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
                 "X-Pallas-Token"?: string | null;
             };
             path?: never;
@@ -15664,43 +15709,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _security_console_login_pallas_api_security_console_login_post: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["_ChangeConsoleLoginBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["_ApiOkResponse__ConsoleLoginChangeData_"];
                 };
             };
             /** @description Validation Error */
