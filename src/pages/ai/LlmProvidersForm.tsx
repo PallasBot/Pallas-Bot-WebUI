@@ -65,7 +65,6 @@ import {
   foldLocalTiers,
   foldTaskRoutes,
   foldTaskTiers,
-  hasTaskRouteAuthority,
   TASK_ROUTE_META,
   type LocalTierState,
   type RoutableTask,
@@ -249,7 +248,6 @@ export default function LlmProvidersForm() {
 
   const taskTiers = useMemo(() => foldTaskTiers(doc), [doc]);
   const taskRoutes = useMemo(() => foldTaskRoutes(doc), [doc]);
-  const taskRouteAuthoritative = useMemo(() => hasTaskRouteAuthority(doc), [doc]);
   const localTiers = useMemo(() => foldLocalTiers(localDoc), [localDoc]);
 
   async function load(opts?: { quiet?: boolean }) {
@@ -1231,6 +1229,8 @@ export default function LlmProvidersForm() {
                           <TagsInput
                             ref={apiKeysInputRef}
                             variant="embedded"
+                            sortable
+                            showPrimaryBadge
                             value={draftApiKeys}
                             onChange={(keys) => {
                               setDraftApiKeys(keys);
@@ -1242,9 +1242,11 @@ export default function LlmProvidersForm() {
                                 : "输入 API 密钥后回车添加"
                             }
                           />
-                          {keepStoredApiKey ? (
-                            <p className="text-xs text-muted-foreground">已保存密钥，留空保存不会清空。</p>
-                          ) : null}
+                          <p className="text-xs text-muted-foreground">
+                            {keepStoredApiKey
+                              ? "已保存密钥，留空保存不会清空。"
+                              : "可添加多把密钥并拖拽排序；第一位为主用，调用失败时可按序换下一把。"}
+                          </p>
                         </div>
                       ) : null}
                       <div className="flex items-center justify-between gap-3">
@@ -1508,9 +1510,7 @@ export default function LlmProvidersForm() {
             title={activeTabMeta.label}
             lead={
               tab === "tasks"
-                ? taskRouteAuthoritative
-                  ? "当前以全任务配置为准；高低档仅更新档位兜底，不覆盖各任务主备。"
-                  : "高低两档主备模型；失败时自动切备用。也可用全任务逐项细调。"
+                ? "高低两档即对应任务组；改档会同步全任务列表。运行时若同任务既有全任务备用又有档位备用，优先全任务。"
                 : tab === "runtime"
                   ? "切换本机 Ollama 模型与 GPU 层数。"
                   : activeTabMeta.lead

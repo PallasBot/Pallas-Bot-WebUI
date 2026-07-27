@@ -108,8 +108,8 @@ type ProvidersDocLike<P extends ProviderLike = ProviderLike> = {
     /** 全任务编排：按任务覆盖备用模型 */
     task_backup_models?: Record<string, string>;
     /**
-     * 最近一次权威写入来源。
-     * 为 tasks 时，高低档只更新 tier_* 兜底，不覆盖 tasks / task_backups。
+     * 最近一次编排写入来源（UI 提示用）。
+     * 运行时主路由始终读 tasks；备用先 task_backups，再退回 tier_backups。
      */
     route_source?: "tiers" | "tasks";
   };
@@ -188,7 +188,7 @@ function uniquePreserve(ids: string[]): string[] {
   return out;
 }
 
-/** 是否已有全任务权威配置（与高低档并存时以它为准） */
+/** 是否曾用全任务视图细调过（仅 UI 提示；不影响高低档写回） */
 export function hasTaskRouteAuthority(doc: {
   routing?: {
     route_source?: string;
@@ -197,20 +197,7 @@ export function hasTaskRouteAuthority(doc: {
   };
 }): boolean {
   const routing = doc.routing || {};
-  if (String(routing.route_source || "").trim() === "tasks") return true;
-  const backups = routing.task_backups;
-  if (backups && typeof backups === "object") {
-    for (const value of Object.values(backups)) {
-      if (String(value || "").trim()) return true;
-    }
-  }
-  const backupModels = routing.task_backup_models;
-  if (backupModels && typeof backupModels === "object") {
-    for (const value of Object.values(backupModels)) {
-      if (String(value || "").trim()) return true;
-    }
-  }
-  return false;
+  return String(routing.route_source || "").trim() === "tasks";
 }
 
 /** 从现有 routing / providers 折叠为高低主备 */
@@ -308,7 +295,7 @@ function setProviderTaskModels<P extends ProviderLike>(
   return next;
 }
 
-/** 将高低主备展开写回 tasks / chain_fallback / provider.task_models */
+/** 将高低主备展开写回 tasks / task_backups / chain_fallback / provider.task_models */
 export function applyTaskTiers<P extends ProviderLike, D extends ProvidersDocLike<P>>(
   doc: D,
   tiers: TaskTierState,
@@ -317,50 +304,38 @@ export function applyTaskTiers<P extends ProviderLike, D extends ProvidersDocLik
   const lowBackupId = tiers.low.backup.providerId.trim();
   const highPrimaryId = tiers.high.primary.providerId.trim();
   const lowPrimaryId = tiers.low.primary.providerId.trim();
+  const highBackupModel = tiers.high.backup.model.trim();
+  const lowBackupModel = tiers.low.backup.model.trim();
 
   const tier_backups: { high?: string; low?: string } = {};
   const tier_backup_models: { high?: string; low?: string } = {};
   if (highBackupId) {
     tier_backups.high = highBackupId;
-    const model = tiers.high.backup.model.trim();
-    if (model) tier_backup_models.high = model;
+    if (highBackupModel) tier_backup_models.high = highBackupModel;
   }
   if (lowBackupId) {
     tier_backups.low = lowBackupId;
-    const model = tiers.low.backup.model.trim();
-    if (model) tier_backup_models.low = model;
-  }
-
-  // 已有全任务配置时：高低档只更新档位兜底，不覆盖 tasks / task_backups / 模型
-  if (hasTaskRouteAuthority(doc)) {
-    const chain_fallback = uniquePreserve([
-      ...Object.values(doc.routing.tasks || {}),
-      ...Object.values(doc.routing.task_backups || {}),
-      highPrimaryId,
-      highBackupId,
-      lowPrimaryId,
-      lowBackupId,
-    ]);
-    return {
-      ...doc,
-      routing: {
-        ...doc.routing,
-        chain_fallback,
-        tier_backups,
-        tier_backup_models,
-        route_source: "tasks",
-      },
-    };
+    if (lowBackupModel) tier_backup_models.low = lowBackupModel;
   }
 
   const tasks: Record<string, string> = { ...(doc.routing.tasks || {}) };
+  const task_backups: Record<string, string> = {};
+  const task_backup_models: Record<string, string> = {};
   for (const task of HIGH_TIER_TASKS) {
     if (highPrimaryId) tasks[task] = highPrimaryId;
     else delete tasks[task];
+    if (highBackupId) {
+      task_backups[task] = highBackupId;
+      if (highBackupModel) task_backup_models[task] = highBackupModel;
+    }
   }
   for (const task of LOW_TIER_TASKS) {
     if (lowPrimaryId) tasks[task] = lowPrimaryId;
     else delete tasks[task];
+    if (lowBackupId) {
+      task_backups[task] = lowBackupId;
+      if (lowBackupModel) task_backup_models[task] = lowBackupModel;
+    }
   }
 
   let providers = doc.providers.map((p) => ({
@@ -414,8 +389,8 @@ export function applyTaskTiers<P extends ProviderLike, D extends ProvidersDocLik
       chain_fallback,
       tier_backups,
       tier_backup_models,
-      task_backups: {},
-      task_backup_models: {},
+      task_backups,
+      task_backup_models,
       route_source: "tiers",
     },
   };

@@ -51,7 +51,16 @@ describe("llmTierRouting task tiers", () => {
       "gpt-mini",
     );
     expect(next.routing.route_source).toBe("tiers");
-    expect(next.routing.task_backups).toEqual({});
+    expect(next.routing.task_backups).toEqual({
+      llm_chat: "local",
+      drunk: "local",
+      repeater_polish: "local",
+      repeater_select: "cloud",
+      repeater_polish_lite: "cloud",
+      repeater_fallback: "cloud",
+      affect_refine: "cloud",
+      turn_decision: "cloud",
+    });
     expect(next.routing.tier_backups).toEqual({ high: "local", low: "cloud" });
   });
 
@@ -306,7 +315,7 @@ describe("llmTierRouting per-task routes", () => {
     expect(folded.affect_refine.backup).toEqual({ providerId: "cloud", model: "gpt-mini" });
   });
 
-  it("keeps per-task routes when tiers are saved after full-task config", () => {
+  it("overwrites per-task routes when tiers are saved after full-task config", () => {
     const base = {
       providers: [
         { id: "cloud", default_model: "gpt-4o", task_models: {} },
@@ -334,13 +343,18 @@ describe("llmTierRouting per-task routes", () => {
         backup: { providerId: "local", model: "qwen05" },
       },
     });
-    expect(afterTiers.routing.route_source).toBe("tasks");
-    expect(afterTiers.routing.tasks.affect_refine).toBe("local");
-    expect(afterTiers.routing.tasks.llm_chat).toBe("cloud");
-    expect(afterTiers.routing.task_backups?.affect_refine).toBe("cloud");
-    expect(afterTiers.providers.find((p) => p.id === "local")?.task_models.affect_refine).toBe(
-      "qwen05",
+    expect(afterTiers.routing.route_source).toBe("tiers");
+    expect(afterTiers.routing.tasks.affect_refine).toBe("cloud");
+    expect(afterTiers.routing.tasks.llm_chat).toBe("local");
+    expect(afterTiers.routing.task_backups?.affect_refine).toBe("local");
+    expect(afterTiers.routing.task_backups?.llm_chat).toBe("cloud");
+    expect(afterTiers.providers.find((p) => p.id === "local")?.task_models.llm_chat).toBe("qwen14");
+    expect(afterTiers.providers.find((p) => p.id === "cloud")?.task_models.affect_refine).toBe(
+      "gpt-mini",
     );
     expect(afterTiers.routing.tier_backups).toEqual({ high: "cloud", low: "local" });
+    const folded = foldTaskTiers(afterTiers);
+    expect(folded.high.primary.providerId).toBe("local");
+    expect(folded.low.primary.providerId).toBe("cloud");
   });
 });

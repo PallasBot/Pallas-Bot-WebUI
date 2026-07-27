@@ -474,7 +474,7 @@ export type LlmProvidersConfig = {
     tier_backup_models?: { high?: string; low?: string };
     task_backups?: Record<string, string>;
     task_backup_models?: Record<string, string>;
-    /** 任务编排权威来源：tasks=全任务优先，tiers=高低档 */
+    /** 最近一次编排写入来源（UI）；运行时主路由读 tasks，备用先 task 再 tier */
     route_source?: "tiers" | "tasks";
     /** 与画画统计共用语义：费用币种（如 CNY） */
     cost_currency?: string;
