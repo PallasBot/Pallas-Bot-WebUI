@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent }
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { GripVertical, ImageIcon, Plus, X } from "lucide-react";
-import { fetchLlmProvidersConfig } from "@/api/consoleApi";
+import { fetchLlmProviderModels, fetchLlmProvidersConfig } from "@/api/consoleApi";
 import type { LlmProviderConfigRow } from "@/api/pallasTypes";
-import AiConfigField from "@/components/ai/AiConfigField";
+import AiConfigField, { AiModelSelect } from "@/components/ai/AiConfigField";
 import AiOptionSelect from "@/components/ai/AiOptionSelect";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import { Badge } from "@/components/ui/badge";
@@ -117,6 +117,8 @@ export default function ProviderGatewayPanel({
   const [error, setError] = useState("");
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [modelsBusy, setModelsBusy] = useState(false);
   const didDragRef = useRef(false);
   const providersQ = useQuery({
     queryKey: ["llm-providers-config"],
@@ -148,6 +150,46 @@ export default function ProviderGatewayPanel({
   );
 
   const mode = allowManual ? draftMode(draft) : "inherit";
+
+  const modelPresets = useMemo(() => {
+    const values = new Set<string>();
+    const def = String(selectedProvider?.default_model || "").trim();
+    if (def) values.add(def);
+    const current = draft.model.trim();
+    if (current) values.add(current);
+    return [...values];
+  }, [selectedProvider?.default_model, draft.model]);
+
+  useEffect(() => {
+    setModelOptions([]);
+  }, [draft.provider_id, draft.base_url, mode]);
+
+  async function discoverModels() {
+    const providerId = draft.provider_id.trim();
+    const baseUrl = draft.base_url.trim();
+    setModelsBusy(true);
+    try {
+      if (mode === "inherit" && providerId) {
+        const result = await fetchLlmProviderModels(providerId);
+        setModelOptions(result.models || []);
+        return;
+      }
+      if (mode === "manual" && baseUrl) {
+        const result = await fetchLlmProviderModels("_gateway_draft", {
+          base_url: baseUrl,
+          api_key: draft.api_key.trim() || draftKeepApiKey,
+        });
+        setModelOptions(result.models || []);
+        return;
+      }
+      setModelOptions([]);
+    } catch {
+      setModelOptions([]);
+    } finally {
+      setModelsBusy(false);
+    }
+  }
+
   const isAdd = editingId === null;
   const popoverTitle = isAdd
     ? draft.role === "primary"
@@ -645,18 +687,30 @@ export default function ProviderGatewayPanel({
                 label="模型（可选）"
                 description={
                   draft.role === "primary"
-                    ? "主线默认模型；留空则用 Provider 默认。"
-                    : "留空则使用主线默认模型。"
+                    ? "可搜索选择或手输；留空则用 Provider 默认。"
+                    : "可搜索选择或手输；留空则使用主线默认模型。"
                 }
               >
-                <Input
-                  className="h-9 font-mono text-sm"
+                <AiModelSelect
                   value={draft.model}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, model: e.target.value }))}
+                  onValueChange={(value) => setDraft((prev) => ({ ...prev, model: value }))}
+                  options={modelOptions}
+                  presetOptions={modelPresets}
+                  isFetching={modelsBusy}
+                  onDiscover={
+                    (mode === "inherit" && draft.provider_id.trim()) ||
+                    (mode === "manual" && draft.base_url.trim())
+                      ? () => void discoverModels()
+                      : undefined
+                  }
                   placeholder={
                     selectedProvider?.default_model
                     || (draft.role === "primary" ? "留空用 Provider 默认" : "沿用主线")
                   }
+                  inputPlaceholder="输入模型名，Enter 确认"
+                  allowEmpty
+                  emptyLabel="（留空）"
+                  disabled={busy}
                 />
               </AiConfigField>
 
