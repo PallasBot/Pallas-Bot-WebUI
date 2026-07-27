@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import "@/styles/protocol-account-workspace.css";
 import type { NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import {
@@ -37,6 +38,7 @@ import {
 } from "@/api/protocol";
 import CopyIconButton from "@/components/CopyIconButton";
 import ProtocolDockerImageSelect from "@/components/protocol/ProtocolDockerImageSelect";
+import SnowlumaRuntimeCombobox from "@/components/protocol/SnowlumaRuntimeCombobox";
 import FormSectionDivider from "@/components/config/FormSectionDivider";
 import SettingsFormField from "@/components/config/SettingsFormField";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
@@ -167,6 +169,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     const [runtimeMode, setRuntimeMode] = useState<"new" | "existing">("new");
     const [runtimeId, setRuntimeId] = useState("");
     const [snowlumaRuntimes, setSnowlumaRuntimes] = useState<SnowlumaRuntimeRow[]>([]);
+    const [runtimesLoading, setRuntimesLoading] = useState(false);
     const [savedRuntimeSettings, setSavedRuntimeSettings] = useState("");
     const [savedBypassEnabled, setSavedBypassEnabled] = useState(false);
     const [savedConnectionSettings, setSavedConnectionSettings] = useState("");
@@ -425,58 +428,65 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         if (!row) throw new Error("账号不存在");
         setAccount(row);
         onAccountLoaded?.(row);
+
+        const nextDisplayName = String(row.display_name ?? "");
+        const nextWebuiPort = row.webui_port != null ? String(row.webui_port) : "";
+        const nextWsUrl = String(row.ws_url ?? "");
+        const nextWsName = String(row.ws_name ?? "");
+        const nextWsToken = String(row.ws_token ?? "");
+        setDisplayName(nextDisplayName);
+        setWebuiPort(nextWebuiPort);
+        setWsUrl(nextWsUrl);
+        setWsName(nextWsName);
+        setWsToken(nextWsToken);
+        setSavedConnectionSettings(
+          JSON.stringify({
+            display_name: nextDisplayName.trim(),
+            webui_port: nextWebuiPort.trim(),
+            ws_url: nextWsUrl.trim(),
+            ws_name: nextWsName.trim(),
+            ws_token: nextWsToken,
+          }),
+        );
+        const nextBackend =
+          String(row.protocol_backend ?? "").trim().toLowerCase() === "snowluma"
+            ? "snowluma"
+            : "napcat";
+        const nextDockerImage = String(row.docker_image ?? "");
+        const nextSnowlumaDockerImage = String(row.snowluma_docker_image ?? "");
+        const nextRuntimeId = String(row.snowluma_runtime_id ?? "");
+        const nextRuntimeMode: "new" | "existing" = nextRuntimeId ? "existing" : "new";
+        setTargetBackend(nextBackend);
+        setNapcatDockerImage(nextDockerImage);
+        setSnowlumaDockerImage(nextSnowlumaDockerImage);
+        setRuntimeId(nextRuntimeId);
+        setRuntimeMode(nextRuntimeMode);
+        setSavedRuntimeSettings(
+          JSON.stringify({
+            protocol_backend: nextBackend,
+            docker_image: nextDockerImage.trim(),
+            ...(nextBackend === "snowluma" && nextRuntimeMode === "new"
+              ? { snowluma_docker_image: nextSnowlumaDockerImage.trim() }
+              : {}),
+            runtime_mode: nextRuntimeMode,
+            runtime_id: nextRuntimeId.trim(),
+          }),
+        );
+
         if (!brief) {
-          const nextDisplayName = String(row.display_name ?? "");
-          const nextWebuiPort = row.webui_port != null ? String(row.webui_port) : "";
-          const nextWsUrl = String(row.ws_url ?? "");
-          const nextWsName = String(row.ws_name ?? "");
-          const nextWsToken = String(row.ws_token ?? "");
-          setDisplayName(nextDisplayName);
-          setWebuiPort(nextWebuiPort);
-          setWsUrl(nextWsUrl);
-          setWsName(nextWsName);
-          setWsToken(nextWsToken);
-          setSavedConnectionSettings(
-            JSON.stringify({
-              display_name: nextDisplayName.trim(),
-              webui_port: nextWebuiPort.trim(),
-              ws_url: nextWsUrl.trim(),
-              ws_name: nextWsName.trim(),
-              ws_token: nextWsToken,
-            }),
-          );
-          const nextBackend =
-            String(row.protocol_backend ?? "").trim().toLowerCase() === "snowluma"
-              ? "snowluma"
-              : "napcat";
-          const nextDockerImage = String(row.docker_image ?? "");
-          const nextSnowlumaDockerImage = String(row.snowluma_docker_image ?? "");
-          const nextRuntimeId = String(row.snowluma_runtime_id ?? "");
-          const nextRuntimeMode: "new" | "existing" = nextRuntimeId ? "existing" : "new";
-          setTargetBackend(nextBackend);
-          setNapcatDockerImage(nextDockerImage);
-          setSnowlumaDockerImage(nextSnowlumaDockerImage);
-          setRuntimeId(nextRuntimeId);
-          setRuntimeMode(nextRuntimeMode);
-          setSavedRuntimeSettings(
-            JSON.stringify({
-              protocol_backend: nextBackend,
-              docker_image: nextDockerImage.trim(),
-              ...(nextBackend === "snowluma" && nextRuntimeMode === "new"
-                ? { snowluma_docker_image: nextSnowlumaDockerImage.trim() }
-                : {}),
-              runtime_mode: nextRuntimeMode,
-              runtime_id: nextRuntimeId.trim(),
-            }),
-          );
-          const [configs, runtimes] = await Promise.all([
-            protocolFetchAccountConfigs(mountUrl, accountId),
-            protocolListSnowlumaRuntimes(mountUrl),
-          ]);
-          const nextBypass = configs.napcat?.bypass_enabled === true;
-          setBypassEnabled(nextBypass);
-          setSavedBypassEnabled(nextBypass);
-          setSnowlumaRuntimes(runtimes);
+          setRuntimesLoading(true);
+          try {
+            const [configs, runtimes] = await Promise.all([
+              protocolFetchAccountConfigs(mountUrl, accountId),
+              protocolListSnowlumaRuntimes(mountUrl, { lite: true }),
+            ]);
+            const nextBypass = configs.napcat?.bypass_enabled === true;
+            setBypassEnabled(nextBypass);
+            setSavedBypassEnabled(nextBypass);
+            setSnowlumaRuntimes(runtimes);
+          } finally {
+            setRuntimesLoading(false);
+          }
         }
       } catch (e) {
         notify(protocolApiErrorMessage(e, "加载账号失败"), "err");
@@ -715,10 +725,14 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       setAccount(null);
       setLogs([]);
       setFollowLogTail(true);
+      setSnowlumaRuntimes([]);
+      setRuntimesLoading(false);
       if (!accountId || !mountUrl) return;
 
+      setLoadBusy(true);
       void (async () => {
         await loadAccount(true);
+        setLoadBusy(false);
         void loadAccount(false);
         void refreshQrcode(false);
         void loadLogs();
@@ -1299,28 +1313,21 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                           </SettingsFormField>
                         ) : (
                           <SettingsFormField className="field--full" label="Runtime">
-                            <Select
-                              value={runtimeId || "__empty__"}
-                              onValueChange={(v) => {
-                                const nextId = v === "__empty__" ? "" : v;
+                            <SnowlumaRuntimeCombobox
+                              runtimes={snowlumaRuntimes}
+                              value={runtimeId}
+                              allowEmpty
+                              loading={runtimesLoading}
+                              placeholder="选择 Runtime"
+                              ariaLabel="Runtime"
+                              onValueChange={(nextId, picked) => {
                                 setRuntimeId(nextId);
-                                const picked = snowlumaRuntimes.find((runtime) => runtime.id === nextId);
-                                const fromRuntime = String(picked?.snowluma_docker_image ?? "").trim();
+                                const fromRuntime = String(
+                                  picked?.snowluma_docker_image ?? "",
+                                ).trim();
                                 if (fromRuntime) setSnowlumaDockerImage(fromRuntime);
                               }}
-                            >
-                              <SelectTrigger className="w-full" aria-label="Runtime">
-                                <SelectValue placeholder="选择 Runtime" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="__empty__">选择 Runtime</SelectItem>
-                                {snowlumaRuntimes.map((runtime) => (
-                                  <SelectItem key={runtime.id} value={runtime.id}>
-                                    {runtime.display_name?.trim() || runtime.id}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            />
                           </SettingsFormField>
                         )}
                       </>
@@ -1483,28 +1490,21 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                           </SettingsFormField>
                         ) : (
                           <SettingsFormField className="field--full" label="Runtime">
-                            <Select
-                              value={runtimeId || "__empty__"}
-                              onValueChange={(v) => {
-                                const nextId = v === "__empty__" ? "" : v;
+                            <SnowlumaRuntimeCombobox
+                              runtimes={snowlumaRuntimes}
+                              value={runtimeId}
+                              allowEmpty
+                              loading={runtimesLoading}
+                              placeholder="选择 Runtime"
+                              ariaLabel="Runtime"
+                              onValueChange={(nextId, picked) => {
                                 setRuntimeId(nextId);
-                                const picked = snowlumaRuntimes.find((runtime) => runtime.id === nextId);
-                                const fromRuntime = String(picked?.snowluma_docker_image ?? "").trim();
+                                const fromRuntime = String(
+                                  picked?.snowluma_docker_image ?? "",
+                                ).trim();
                                 if (fromRuntime) setSnowlumaDockerImage(fromRuntime);
                               }}
-                            >
-                              <SelectTrigger className="w-full" aria-label="Runtime">
-                                <SelectValue placeholder="选择 Runtime" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="__empty__">选择 Runtime</SelectItem>
-                                {snowlumaRuntimes.map((runtime) => (
-                                  <SelectItem key={runtime.id} value={runtime.id}>
-                                    {runtime.display_name?.trim() || runtime.id}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            />
                           </SettingsFormField>
                         )}
                       </>

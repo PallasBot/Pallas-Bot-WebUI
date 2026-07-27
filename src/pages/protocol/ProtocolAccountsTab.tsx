@@ -182,8 +182,8 @@ export default function ProtocolAccountsTab() {
   });
 
   const runtimesQ = useQuery({
-    queryKey: ["protocol-snowluma-runtimes", mountUrl],
-    queryFn: () => protocolListSnowlumaRuntimes(mountUrl!),
+    queryKey: ["protocol-snowluma-runtimes", mountUrl, "lite"],
+    queryFn: () => protocolListSnowlumaRuntimes(mountUrl!, { lite: true }),
     enabled: Boolean(mountUrl),
     refetchInterval: 8000,
   });
