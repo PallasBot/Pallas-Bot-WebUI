@@ -1266,7 +1266,7 @@ html[data-theme="dark"] .ui-dialog__panel {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+  border: 1px solid var(--surface-edge, var(--border));
   border-radius: calc(var(--radius-control, 10px) + 2px);
   background: var(--bg-card);
   color: var(--text);
@@ -1279,10 +1279,18 @@ html[data-theme="dark"] .ui-dialog__panel {
 }
 
 .ui-card--glass {
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+  background: var(--surface-glass-fill);
   backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
   -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
-  border-color: color-mix(in srgb, var(--border) 40%, transparent);
+  border-color: var(--surface-edge-glass, var(--border));
+  box-shadow: var(--glass-elev-shadow, none), var(--glass-inset-highlight, none);
+}
+
+html[data-surface="glass"] .ui-card {
+  background: var(--surface-glass-fill);
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  border-color: var(--surface-edge-glass, var(--border));
   box-shadow: var(--glass-elev-shadow, none), var(--glass-inset-highlight, none);
 }
 
