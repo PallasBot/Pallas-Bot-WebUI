@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -22,7 +22,7 @@ export type ComboboxOption = {
   label: React.ReactNode;
   /** 触发器单独展示（可选；默认用 label） */
   triggerLabel?: React.ReactNode;
-  /** cmdk 过滤用纯文本；默认同 value */
+  /** 过滤用纯文本；默认同 value */
   keywords?: string;
   disabled?: boolean;
 };
@@ -40,6 +40,9 @@ export type ComboboxProps = {
   searchCount?: number;
   /** 允许在搜索框 Enter 提交不在列表中的值（群号等） */
   allowCustom?: boolean;
+  /** 列表加载中（打开后显示转圈，与镜像选择一致） */
+  loading?: boolean;
+  loadingText?: string;
   triggerClassName?: string;
   contentClassName?: string;
   ariaLabel?: string;
@@ -48,6 +51,14 @@ export type ComboboxProps = {
   id?: string;
 };
 
+function optionSearchText(opt: ComboboxOption): string {
+  const labelText = typeof opt.label === "string" ? opt.label : "";
+  return `${opt.value} ${opt.keywords?.trim() || ""} ${labelText}`.toLowerCase();
+}
+
+/**
+ * 可搜索下拉。关闭时不挂载列表；过滤用简单 includes，避免 cmdk 默认模糊匹配卡顿。
+ */
 export function Combobox({
   value,
   onValueChange,
@@ -58,6 +69,8 @@ export function Combobox({
   searchThreshold = 8,
   searchCount,
   allowCustom = false,
+  loading = false,
+  loadingText = "正在加载…",
   triggerClassName,
   contentClassName,
   ariaLabel,
@@ -79,6 +92,12 @@ export function Combobox({
     if (!open) setQuery("");
   }, [open]);
 
+  const filtered = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((opt) => optionSearchText(opt).includes(q));
+  }, [options, query]);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -87,6 +106,7 @@ export function Combobox({
           id={id}
           role="combobox"
           aria-expanded={open}
+          aria-busy={loading || undefined}
           aria-label={ariaLabel}
           title={title}
           disabled={disabled}
@@ -100,7 +120,11 @@ export function Combobox({
           >
             {triggerBody ?? placeholder}
           </span>
-          <ChevronDown className="h-4 w-4 shrink-0 self-center opacity-50" />
+          {loading ? (
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin opacity-70" aria-hidden />
+          ) : (
+            <ChevronDown className="h-4 w-4 shrink-0 self-center opacity-50" />
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -110,8 +134,8 @@ export function Combobox({
           contentClassName,
         )}
       >
-        <Command>
-          {showSearch ? (
+        <Command shouldFilter={false}>
+          {showSearch && !loading ? (
             <CommandInput
               placeholder={searchPlaceholder}
               value={query}
@@ -127,35 +151,44 @@ export function Combobox({
             />
           ) : null}
           <CommandList>
-            <CommandEmpty>
-              {allowCustom && query.trim()
-                ? "无匹配；按 Enter 使用输入值"
-                : emptyText}
-            </CommandEmpty>
-            <CommandGroup>
-              {options.map((opt) => {
-                const selectedNow = opt.value === value;
-                return (
-                  <CommandItem
-                    key={opt.value}
-                    value={`${opt.value} ${opt.keywords?.trim() || ""}`.trim()}
-                    disabled={opt.disabled}
-                    onSelect={() => {
-                      onValueChange(opt.value);
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "h-4 w-4 shrink-0 text-[var(--accent)]",
-                        selectedNow ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    <span className="min-w-0 flex-1 truncate">{opt.label}</span>
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
+            {loading ? (
+              <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+                <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+                {loadingText}
+              </div>
+            ) : (
+              <>
+                <CommandEmpty>
+                  {allowCustom && query.trim()
+                    ? "无匹配；按 Enter 使用输入值"
+                    : emptyText}
+                </CommandEmpty>
+                <CommandGroup>
+                  {filtered.map((opt) => {
+                    const selectedNow = opt.value === value;
+                    return (
+                      <CommandItem
+                        key={opt.value}
+                        value={opt.value}
+                        disabled={opt.disabled}
+                        onSelect={() => {
+                          onValueChange(opt.value);
+                          setOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "h-4 w-4 shrink-0 text-[var(--accent)]",
+                            selectedNow ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                        <span className="min-w-0 flex-1 truncate">{opt.label}</span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

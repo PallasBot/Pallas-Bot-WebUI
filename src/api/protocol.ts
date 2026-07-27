@@ -344,9 +344,13 @@ export async function protocolListAccounts(mountUrl: string): Promise<NapcatAcco
   return Array.isArray(data?.accounts) ? data.accounts : [];
 }
 
-export async function protocolListSnowlumaRuntimes(mountUrl: string): Promise<SnowlumaRuntimeRow[]> {
+export async function protocolListSnowlumaRuntimes(
+  mountUrl: string,
+  opts?: { lite?: boolean },
+): Promise<SnowlumaRuntimeRow[]> {
   const { data } = await protocolHttp(mountUrl).get<{ runtimes?: SnowlumaRuntimeRow[] }>(
     "/api/snowluma/runtimes",
+    opts?.lite ? { params: { lite: 1 } } : undefined,
   );
   return Array.isArray(data?.runtimes) ? data.runtimes : [];
 }
