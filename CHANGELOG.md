@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.5] - 2026-07-27
 
 相对 **0.8.4** 至本版的控制台更新。
 
@@ -32,6 +32,23 @@
 - 提供方网关模型选择改用 AiModelSelect
 
 ---
+
+### 提交明细
+
+### Added
+
+* feat(protocol): Runtime 配置对话框与账号卡片启停体验 ([d492e8c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d492e8ce71ac6bfaf31dc177525f2e6cf9e4e266))
+* feat(protocol): Runtime 卡片悬停文案与成员启停 QQ ([6faac34](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6faac348eb84bd0fad1751641deca77c001ad72a))
+* feat(protocol): SnowLuma Runtime 支持删除与多选清理 ([5b0f372](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5b0f37254359a51d18eb1eea8f5d33b0af14ecf8))
+
+### Fixed
+
+* fix(protocol): Runtime 多选框与已连接账号样式对齐 ([f12fbf7](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f12fbf7dcd3b2ed3ad8d3068b35cf40480749e55))
+* fix(protocol): Runtime 多选操作迁入页面工具条 ([4853a4e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4853a4eb2f5319211434279f777625b9707e4b29))
+* fix(provider): 网关模型选择改用 AiModelSelect ([a8d647c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a8d647c8fe28875c7a39610cb8b196a318086e38))
+
+**完整变更**: [`v0.8.4...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.4...HEAD)
+
 
 ## [0.8.4] - 2026-07-27
 
@@ -95,7 +112,6 @@
 * style(console): hub 主题与商店进度条同行百分比 ([af2fb96](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/af2fb9606db181619e870a5a3a7a583c54e58187))
 
 **完整变更**: [`v0.8.3...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.3...HEAD)
-
 
 ## [0.8.3] - 2026-07-27
 
