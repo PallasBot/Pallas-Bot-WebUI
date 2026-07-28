@@ -1,5 +1,8 @@
 import type { LogEntry, LogEntryLevel } from "@/api/pallasTypes";
 
+const LOG_LEVELS_STORAGE_KEY = "pallas_logs_enabled_levels_v2";
+const LOG_LEVELS_DEFAULT: readonly LogEntryLevel[] = ["info", "success", "warn", "error"];
+
 /** 结构化日志与级别筛选 UI 共用的等级列表（与后端 LEVEL_TO_BUCKET 一致） */
 export const LOG_ENTRY_LEVELS: readonly LogEntryLevel[] = [
   "debug",
@@ -8,8 +11,6 @@ export const LOG_ENTRY_LEVELS: readonly LogEntryLevel[] = [
   "warn",
   "error",
 ] as const;
-
-const LOG_LEVELS_STORAGE_KEY = "pallas_logs_enabled_levels_v1";
 
 const _embeddedShardPrefixRe = /^\[(?<tag>[^\]]+)\]\s+(?<rest>.+)$/;
 const _embeddedScopeTagRe = /^\[(?<tag>[^\]]+)\]\s*(?<mod>.*)$/;
@@ -155,19 +156,19 @@ export function parseLogLineLevel(line: string): LogEntryLevel {
 }
 
 export function loadLogsEnabledLevels(): Set<LogEntryLevel> {
-  if (typeof localStorage === "undefined") return new Set(LOG_ENTRY_LEVELS);
+  if (typeof localStorage === "undefined") return new Set(LOG_LEVELS_DEFAULT);
   try {
     const raw = localStorage.getItem(LOG_LEVELS_STORAGE_KEY);
-    if (!raw) return new Set(LOG_ENTRY_LEVELS);
+    if (!raw) return new Set(LOG_LEVELS_DEFAULT);
     const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return new Set(LOG_ENTRY_LEVELS);
+    if (!Array.isArray(parsed)) return new Set(LOG_LEVELS_DEFAULT);
     const valid = parsed.filter(
       (x): x is LogEntryLevel =>
         typeof x === "string" && (LOG_ENTRY_LEVELS as readonly string[]).includes(x),
     );
-    return valid.length ? new Set(valid) : new Set(LOG_ENTRY_LEVELS);
+    return valid.length ? new Set(valid) : new Set(LOG_LEVELS_DEFAULT);
   } catch {
-    return new Set(LOG_ENTRY_LEVELS);
+    return new Set(LOG_LEVELS_DEFAULT);
   }
 }
 
