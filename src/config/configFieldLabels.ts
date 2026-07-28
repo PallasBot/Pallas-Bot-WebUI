@@ -36,6 +36,8 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_tools_max_rounds: "工具调用最多轮数",
   llm_tools_blacklist: "工具黑名单",
   llm_tools_desc_max_len: "工具描述最大长度",
+  mcp_servers: "MCP 服务器",
+  llm_mcp_http_allowlist: "MCP HTTP 允许前缀",
   web_search_api_url: "搜索接口完整地址",
   tavily_api_key: "搜索接口密钥",
   llm_governance_enabled: "限制 LLM 对话频率与字数",
@@ -262,6 +264,8 @@ export const HIDDEN_LLM_STRATEGY_FIELDS = new Set([
   "llm_memory_hiergraph_max_layers",
   "llm_relationship_notes_enabled",
   "llm_current_turn_decision_model",
+  "mcp_servers",
+  "llm_mcp_http_allowlist",
 ]);
 
 export function llmBotFieldGroupsForMode(isSimpleMode: boolean): ReadonlyArray<LlmBotFieldGroupDef> {

@@ -86,12 +86,15 @@ function SourceBadge({ source }: { source?: string }) {
 
 function PolicySummary({ policy }: { policy?: LlmToolCatalogPolicy | null }) {
   if (!policy) return null;
+  const mcpRegistered = Number(policy.mcp?.registered_count || 0);
+  const mcpErrors = policy.mcp?.errors?.length || 0;
   const bits = [
     policy.tools_enabled ? "工具已启用" : "工具已关闭",
     policy.selective_enabled ? "按意图筛选" : "全量暴露",
     `最多 ${policy.max_rounds ?? "—"} 轮`,
     policy.arknights_kb_enabled ? "方舟知识库开" : "方舟知识库关",
-  ];
+    mcpRegistered || mcpErrors ? `MCP 工具 ${mcpRegistered}${mcpErrors ? `（失败 ${mcpErrors}）` : ""}` : null,
+  ].filter(Boolean);
   if ((policy.blacklist || []).length) {
     bits.push(`黑名单 ${policy.blacklist!.length} 项`);
   }
@@ -99,7 +102,7 @@ function PolicySummary({ policy }: { policy?: LlmToolCatalogPolicy | null }) {
     <p className="text-xs leading-relaxed text-muted-foreground">
       {bits.join(" · ")}
       <span className="mt-1 block">
-        策略开关在「对话 · 策略」修改。下方可预览口语会带上哪些工具，也可覆盖单工具的触发说法。
+        策略开关在「对话 · 策略」修改；MCP 服务器在本页上方配置。下方可预览口语会带上哪些工具，也可覆盖单工具的触发说法。
       </span>
       <span className="mt-1 block">
         「相关即带」：话题沾边就把工具交给模型；「触发才带」：平时不带，只有说到触发说法（或模型主动找工具）后才出现，更省上下文。
