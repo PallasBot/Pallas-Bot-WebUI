@@ -1489,6 +1489,12 @@ export interface LlmMcpRegistrationStatus {
   registered_tool_names?: string[];
   registered_count?: number;
   errors?: Array<{ server_id?: string; error?: string }>;
+  sessions?: Array<{
+    id?: string;
+    transport?: string;
+    alive?: boolean;
+    calls?: number;
+  }>;
 }
 
 export interface LlmToolCatalogPolicy {

@@ -81,6 +81,8 @@ function McpStatusNote({ policy }: { policy?: LlmToolCatalogPolicy | null }) {
   if (!mcp) return null;
   const registered = Number(mcp.registered_count || 0);
   const errors = Array.isArray(mcp.errors) ? mcp.errors : [];
+  const sessions = Array.isArray(mcp.sessions) ? mcp.sessions : [];
+  const live = sessions.filter((s) => s?.alive).length;
   return (
     <div className="space-y-1 text-xs leading-relaxed text-muted-foreground">
       <p>
@@ -89,6 +91,11 @@ function McpStatusNote({ policy }: { policy?: LlmToolCatalogPolicy | null }) {
         {Array.isArray(mcp.servers) ? (
           <>
             ；配置服务器 <span className="tabular-nums text-foreground">{mcp.servers.length}</span> 个
+          </>
+        ) : null}
+        {sessions.length ? (
+          <>
+            ；常驻连接 <span className="tabular-nums text-foreground">{live}</span>/{sessions.length}
           </>
         ) : null}
       </p>
