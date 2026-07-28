@@ -502,6 +502,7 @@ export type LlmProviderTestResult = {
   reachable?: boolean;
   latency_ms?: number | null;
   error?: string;
+  status?: number | null;
 };
 
 export type LlmProviderModelsResult = {
@@ -652,10 +653,25 @@ export async function putLlmProvider(row: LlmProviderRow): Promise<LlmProvidersS
   return envelopeData<LlmProvidersSaveResult>(res) || {};
 }
 
-export async function postLlmProviderTest(providerId: string): Promise<LlmProviderTestResult> {
+export async function postLlmProviderTest(
+  providerId: string,
+  opts?: {
+    base_url?: string;
+    api_key?: string;
+    api_key_env?: string;
+    kind?: string;
+    request_method?: string;
+  },
+): Promise<LlmProviderTestResult> {
   const { data: body } = await http.post(
     `/common-config/llm/providers/${encodeURIComponent(providerId)}/test`,
-    {},
+    {
+      base_url: opts?.base_url ?? "",
+      api_key: opts?.api_key ?? "",
+      api_key_env: opts?.api_key_env ?? "",
+      kind: opts?.kind ?? "",
+      request_method: opts?.request_method ?? "",
+    },
     { timeout: 60_000 },
   );
   return envelopeData<LlmProviderTestResult>(body) || {};

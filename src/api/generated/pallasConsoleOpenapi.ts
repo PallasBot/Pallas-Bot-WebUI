@@ -3143,6 +3143,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/logs/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Logs Export
+         * @description 导出当前筛选范围的日志为 text/plain 附件（便于 Docker / curl 拉到宿主机）。
+         */
+        get: operations["_logs_export_pallas_api_logs_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/logs/stream": {
         parameters: {
             query?: never;
@@ -5574,6 +5594,8 @@ export interface components {
             latency_ms?: number | null;
             /** Error */
             error?: string | null;
+            /** Status */
+            status?: number | null;
         };
         /** _LlmProvidersConfigData */
         _LlmProvidersConfigData: {
@@ -11893,7 +11915,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["_LlmProviderModelsDiscoverBody"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -13653,6 +13679,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["_ApiOkResponse_LogsData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _logs_export_pallas_api_logs_export_get: {
+        parameters: {
+            query?: {
+                n?: number;
+                /** @description all=全部；webui=pallas_webui；protocol=pallas_protocol（与 GET /logs 一致） */
+                scope?: "all" | "webui" | "protocol";
+                /** @description 分片来源：all|hub|worker-N（默认 all） */
+                source?: string | null;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

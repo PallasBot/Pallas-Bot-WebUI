@@ -125,6 +125,8 @@ export function applyPresetToDraft(
   }
   return {
     ...base,
+    // 空 ID 时用预设 id（如 siliconflow），便于未保存草稿直接探测
+    id: String(base.id || "").trim() || preset.id,
     kind: preset.kind === "local" ? "local" : "remote",
     base_url: preset.base_url || base.base_url,
     request_method: preset.request_method || "chat_completions",

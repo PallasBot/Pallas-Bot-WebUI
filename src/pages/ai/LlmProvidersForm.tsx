@@ -289,7 +289,7 @@ export default function LlmProvidersForm() {
       void fetchLlmProviderModels(provider.id, {
         base_url: provider.base_url,
         api_key_env: provider.api_key_env,
-        kind: provider.kind === "local" || provider.id === "local" ? "local" : "openai-compatible",
+        kind: provider.kind === "local" || provider.id === "local" ? "local" : "remote",
         request_method: provider.request_method || "",
       })
         .then((result) => {
@@ -602,32 +602,78 @@ export default function LlmProvidersForm() {
     }
   }
 
-  async function testProvider(id: string, opts?: { quiet?: boolean }) {
+  async function testProvider(
+    id: string,
+    opts?: {
+      quiet?: boolean;
+      base_url?: string;
+      api_key?: string;
+      api_key_env?: string;
+      kind?: string;
+      request_method?: string;
+    },
+  ) {
     const quiet = Boolean(opts?.quiet);
-    if (!quiet) setTestBusy(id);
-    setTestHint((h) => ({ ...h, [id]: "测试中…" }));
+    const pid = id.trim();
+    if (!pid) {
+      if (!quiet) pushConsoleToast("请先填写提供方 ID", "warn");
+      return false;
+    }
+    if (!quiet) setTestBusy(pid);
+    setTestHint((h) => ({ ...h, [pid]: "测试中…" }));
     try {
-      const r = await postLlmProviderTest(id);
+      const r = await postLlmProviderTest(pid, {
+        base_url: opts?.base_url ?? "",
+        api_key: opts?.api_key ?? "",
+        api_key_env: opts?.api_key_env ?? "",
+        kind: opts?.kind ?? "",
+        request_method: opts?.request_method ?? "",
+      });
       if (r.reachable) {
         const latency =
           r.latency_ms != null ? `，延迟 ${Math.round(r.latency_ms)}ms` : "";
         const hint = `可达${r.latency_ms != null ? ` ${Math.round(r.latency_ms)}ms` : ""}`;
-        setTestHint((h) => ({ ...h, [id]: hint }));
-        if (!quiet) pushConsoleToast(`「${id}」连通正常${latency}`, "ok");
+        setTestHint((h) => ({ ...h, [pid]: hint }));
+        if (!quiet) pushConsoleToast(`「${pid}」连通正常${latency}`, "ok");
         return true;
       }
-      const detail = r.error || "不可达";
-      setTestHint((h) => ({ ...h, [id]: detail }));
-      if (!quiet) pushConsoleToast(`「${id}」连通失败：${detail}`, "err");
+      const detail = String(r.error || "").trim() || "不可达";
+      setTestHint((h) => ({ ...h, [pid]: detail }));
+      if (!quiet) pushConsoleToast(`「${pid}」连通失败：${detail}`, "err");
       return false;
     } catch (e) {
       const detail = axiosErrorDetail(e);
-      setTestHint((h) => ({ ...h, [id]: detail }));
-      if (!quiet) pushConsoleToast(`「${id}」测试失败：${detail}`, "err");
+      setTestHint((h) => ({ ...h, [pid]: detail }));
+      if (!quiet) pushConsoleToast(`「${pid}」测试失败：${detail}`, "err");
       return false;
     } finally {
       if (!quiet) setTestBusy("");
     }
+  }
+
+  function draftDiscoverOpts() {
+    return {
+      base_url: draft.base_url,
+      api_key: draftApiKeys.map((k) => k.trim()).find(Boolean) || "",
+      api_key_env: useEnvVar ? draft.api_key_env : "",
+      kind: draft.kind === "local" ? "local" : "remote",
+      request_method: draft.request_method || "",
+    };
+  }
+
+  async function testDraftProvider() {
+    const id = draft.id.trim();
+    if (!id) {
+      setEditErr("请先填写提供方 ID");
+      pushConsoleToast("请先填写提供方 ID", "warn");
+      return;
+    }
+    if (draft.kind !== "local" && !draft.base_url.trim()) {
+      setEditErr("远程提供方需要填写 Base URL");
+      pushConsoleToast("远程提供方需要填写 Base URL", "warn");
+      return;
+    }
+    await testProvider(id, draftDiscoverOpts());
   }
 
   async function testAllProviders() {
@@ -681,7 +727,7 @@ export default function LlmProvidersForm() {
         base_url: draft.base_url,
         api_key: draftApiKeys.map((k) => k.trim()).find(Boolean) || "",
         api_key_env: useEnvVar ? draft.api_key_env : "",
-        kind: draft.kind === "local" ? "local" : "openai-compatible",
+        kind: draft.kind === "local" ? "local" : "remote",
         request_method: draft.request_method || "",
       });
       if (!r.ok) {
@@ -712,7 +758,7 @@ export default function LlmProvidersForm() {
     void fetchLlmProviderModels(provider.id, {
       base_url: provider.base_url,
       api_key_env: provider.api_key_env,
-      kind: provider.kind === "local" ? "local" : "openai-compatible",
+      kind: provider.kind === "local" ? "local" : "remote",
       request_method: provider.request_method || "",
     }).then((result) => {
       if (result.ok) setProviderModels((prev) => ({ ...prev, [provider.id]: result.models || [] }));
@@ -1452,20 +1498,22 @@ export default function LlmProvidersForm() {
                   ) : null}
 
                   <div className="flex flex-wrap justify-end gap-2 border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] pt-3">
-                    {editIndex !== null ? (
+                    {editing ? (
                       <>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           disabled={Boolean(testBusy)}
-                          onClick={() => void testProvider(draft.id)}
+                          onClick={() => void testDraftProvider()}
                         >
                           {testBusy ? "测试中…" : "测试"}
                         </Button>
-                        <Button type="button" variant="destructive" size="sm" onClick={() => removeProvider(editIndex)}>
-                          删除
-                        </Button>
+                        {editIndex !== null ? (
+                          <Button type="button" variant="destructive" size="sm" onClick={() => removeProvider(editIndex)}>
+                            删除
+                          </Button>
+                        ) : null}
                       </>
                     ) : null}
                     <Button
