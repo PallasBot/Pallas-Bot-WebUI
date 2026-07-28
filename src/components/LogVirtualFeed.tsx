@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { LogEntry } from "@/api/pallasTypes";
 import { formatLogDisplayTime, splitLogScope } from "@/utils/logDisplay";
 import { cn } from "@/lib/utils";
@@ -19,20 +20,15 @@ export type LogVirtualFeedHandle = {
 type Props = {
   rows: LogEntry[];
   followTail?: boolean;
-  rowHeight?: number;
   overscan?: number;
   onScrollState?: (nearBottom: boolean) => void;
 };
 
-function stableRowKey(row: LogEntry): string {
+function stableRowKey(row: LogEntry, index: number): string {
   const id = row.id;
   if (typeof id === "number" && Number.isFinite(id) && id > 0) return `id:${id}`;
   const msg = String(row.message ?? "");
-  return `c:${row.time}|${row.scope}|${row.level}|${msg.length}:${msg.slice(0, 64)}:${msg.slice(-32)}`;
-}
-
-function previewMessage(message: string): string {
-  return message.replace(/\s+/g, " ").trim();
+  return `c:${row.time}|${row.scope}|${row.level}|${index}|${msg.length}:${msg.slice(0, 48)}`;
 }
 
 function LogScopeChips({ scope }: { scope: string }) {
@@ -46,41 +42,36 @@ function LogScopeChips({ scope }: { scope: string }) {
   );
 }
 
+const ESTIMATE_ROW_PX = 36;
+
 const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtualFeed(
-  { rows, followTail = true, rowHeight = 34, overscan = 10, onScrollState },
+  { rows, followTail = true, overscan = 12, onScrollState },
   ref,
 ) {
   const scrollElRef = useRef<HTMLDivElement | null>(null);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [viewportHeight, setViewportHeight] = useState(480);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [expandedSnapshot, setExpandedSnapshot] = useState<LogEntry | null>(null);
   const suppressScrollStateRef = useRef(0);
   const scrollBottomTokenRef = useRef(0);
-  const roRef = useRef<ResizeObserver | null>(null);
+  const rowKeys = useMemo(
+    () => rows.map((row, index) => stableRowKey(row, index)),
+    [rows],
+  );
 
-  const totalHeight = Math.max(0, rows.length * rowHeight);
-  const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
-  const endIndex = Math.min(
-    rows.length,
-    Math.ceil((scrollTop + viewportHeight) / rowHeight) + overscan,
-  );
-  const visibleRows = useMemo(
-    () =>
-      rows.slice(startIndex, endIndex).map((row, i) => {
-        const index = startIndex + i;
-        const stableKey = stableRowKey(row);
-        return { row, index, stableKey, domKey: `${stableKey}#${index}` };
-      }),
-    [rows, startIndex, endIndex],
-  );
-  const offsetY = startIndex * rowHeight;
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollElRef.current,
+    estimateSize: () => ESTIMATE_ROW_PX,
+    overscan,
+    getItemKey: (index) => rowKeys[index] ?? index,
+  });
 
   const expandedRow = useMemo(() => {
     if (!expandedKey) return null;
-    const live = rows.find((row) => stableRowKey(row) === expandedKey);
-    return live ?? expandedSnapshot;
-  }, [rows, expandedKey, expandedSnapshot]);
+    const liveIdx = rowKeys.indexOf(expandedKey);
+    if (liveIdx >= 0) return rows[liveIdx] ?? null;
+    return expandedSnapshot;
+  }, [rows, rowKeys, expandedKey, expandedSnapshot]);
 
   const scrollThreshold = useCallback((el: HTMLElement) => {
     const h = el.clientHeight;
@@ -91,10 +82,10 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
     (el: HTMLElement) => {
       if (el.clientHeight < 8) return false;
       const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
-      const slack = Math.max(scrollThreshold(el), rowHeight * 3);
+      const slack = Math.max(scrollThreshold(el), ESTIMATE_ROW_PX * 3);
       return gap <= slack;
     },
-    [rowHeight, scrollThreshold],
+    [scrollThreshold],
   );
 
   const scrollToBottom = useCallback(
@@ -102,14 +93,13 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
       if (!force && !followTail) return;
       await Promise.resolve();
       const el = scrollElRef.current;
-      if (!el) return;
+      if (!el || rows.length === 0) return;
       const token = ++scrollBottomTokenRef.current;
       suppressScrollStateRef.current += 1;
+      const last = rows.length - 1;
       const apply = () => {
         if (token !== scrollBottomTokenRef.current) return;
-        const estimated = Math.max(el.scrollHeight, rows.length * rowHeight);
-        el.scrollTop = Math.max(0, estimated - el.clientHeight);
-        setScrollTop(el.scrollTop);
+        rowVirtualizer.scrollToIndex(last, { align: "end" });
       };
       apply();
       let frames = 0;
@@ -131,49 +121,31 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
       };
       window.requestAnimationFrame(tick);
     },
-    [followTail, isNearBottom, onScrollState, rowHeight, rows.length],
+    [followTail, isNearBottom, onScrollState, rowVirtualizer, rows.length],
   );
 
   useImperativeHandle(ref, () => ({ scrollToBottom }), [scrollToBottom]);
 
-  // 挂载时强制贴底一次（；后续跟尾由 followTail 相关 effect 负责
   useEffect(() => {
     void scrollToBottom(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- enter once
   }, []);
 
   useEffect(() => {
-    const el = scrollElRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    roRef.current?.disconnect();
-    roRef.current = new ResizeObserver(() => {
-      setViewportHeight(el.clientHeight || 480);
-      if (followTail) void scrollToBottom(true);
-    });
-    roRef.current.observe(el);
-    setViewportHeight(el.clientHeight || 480);
-    return () => roRef.current?.disconnect();
-  }, [followTail, scrollToBottom]);
-
-  useEffect(() => {
     if (followTail) void scrollToBottom(true);
   }, [rows.length, followTail, scrollToBottom]);
 
   useEffect(() => {
-    const last = rows[rows.length - 1];
-    const token = last ? `${stableRowKey(last)}|${last.message.length}` : "";
-    void token;
     if (followTail) void scrollToBottom(true);
   }, [rows, followTail, scrollToBottom]);
 
   useEffect(() => {
-    if (followTail) void scrollToBottom(true);
-  }, [followTail, scrollToBottom]);
+    rowVirtualizer.measure();
+  }, [rows.length, rowVirtualizer]);
 
   function onScroll() {
     const el = scrollElRef.current;
     if (!el) return;
-    setScrollTop(el.scrollTop);
     if (suppressScrollStateRef.current > 0) return;
     onScrollState?.(isNearBottom(el));
   }
@@ -188,30 +160,48 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
     setExpandedSnapshot({ ...row });
   }
 
+  const virtualItems = rowVirtualizer.getVirtualItems();
+
   return (
     <div className="log-virtual-feed-wrap">
       <div ref={scrollElRef} className="log-feed log-virtual-feed" onScroll={onScroll}>
-        <div className="log-virtual-feed__spacer" style={{ height: `${totalHeight}px` }}>
-          <div className="log-virtual-feed__window" style={{ transform: `translateY(${offsetY}px)` }}>
-            {visibleRows.map(({ row, stableKey, domKey }) => (
+        <div
+          className="log-virtual-feed__spacer"
+          style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}
+        >
+          {virtualItems.map((vRow) => {
+            const row = rows[vRow.index];
+            if (!row) return null;
+            const stableKey = rowKeys[vRow.index] ?? String(vRow.index);
+            const isError = row.level === "error";
+            return (
               <button
-                key={domKey}
+                key={stableKey}
                 type="button"
+                data-index={vRow.index}
+                ref={rowVirtualizer.measureElement}
                 className={cn(
                   "log-line log-line--virtual",
+                  isError && "log-line--virtual-error",
                   expandedKey === stableKey && "log-line--virtual-active",
                 )}
-                style={{ minHeight: `${rowHeight}px`, height: `${rowHeight}px` }}
-                title={previewMessage(row.message)}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${vRow.start}px)`,
+                }}
+                title={row.message}
                 onClick={() => toggleRow(stableKey, row)}
               >
                 <span className="log-line__time">{formatLogDisplayTime(row.time)}</span>
                 <span className={cn("log-line__lv-tag", `log-line__lv-tag--${row.level}`)}>{row.level}</span>
                 <LogScopeChips scope={row.scope} />
-                <span className="log-line__msg log-line__msg--clip">{previewMessage(row.message)}</span>
+                <span className="log-line__msg log-line__msg--wrap">{row.message}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
       {expandedRow ? (
