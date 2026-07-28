@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.6] - 2026-07-28
 
 相对 **0.8.5** 至本版的控制台更新。
 
@@ -31,6 +31,31 @@
 - 日志范围：消息 / 控制台 / 其它（对齐 Bot facet）
 - 默认启用级别改为 info+（v2 存储键）
 - 级别标签收成色点；行首时间仅时分秒
+
+### 提交明细
+
+### Added
+
+* feat(logs): 范围改为消息/控制台/其它并稳住实时流 ([e7d8bd6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e7d8bd6630357510030805a44a4f27582555670d))
+* feat(logs): 级别标签收成色点 ([91b9baf](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/91b9baf6bc3cb0487b51316f3168025b49da7238))
+* feat(logs): 虚拟列表改用 react-virtual 可变行高 ([186d662](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/186d662f25ade6065f410fe307656875f8511f26))
+* feat(logs): 运行日志页支持导出当前视图 ([23ff565](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/23ff5652f9505346c2e940943dc51ad12caa9e2a))
+
+### Fixed
+
+* fix(logs): 行首仅时分秒，并按来源键过滤条目 ([349a206](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/349a206dd3e86a18bbbfd4da8620edefe15ff65c))
+* fix(logs): 默认级别改为 info+（v2 存储键） ([7945564](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7945564b0e93868c1a7727d7d05359893e6eb886))
+* fix(llm): 连通测试 flush 密钥并跳过已禁用提供方 ([23e3aef](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/23e3aef34e5307e2177fa00bea4bb3c5506e4769))
+* fix(llm): 草稿可测连通并原样展示提供方错误 ([5461606](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/546160650253c97432c748daf3b43f04d0a85215))
+* fix(logs): 日志流行内取消 scope 定宽空隙 ([c154e21](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c154e21b56d563dc91c8d0689911b44f0f384ba7))
+* fix(git-mirror): 改写 Bot remote 改为只调 apply-bot ([8eca3b0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8eca3b027fd3f9ea4627b3fa38a3903a6c3b0e73))
+
+### Changed
+
+* perf(logs): 运行日志 SSE 约 90ms 批刷 ([a111251](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a1112510b0289e9398c6d6220e622b137204e354))
+
+**完整变更**: [`v0.8.5...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.5...HEAD)
+
 
 ## [0.8.5] - 2026-07-27
 
@@ -76,7 +101,6 @@
 * fix(provider): 网关模型选择改用 AiModelSelect ([a8d647c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a8d647c8fe28875c7a39610cb8b196a318086e38))
 
 **完整变更**: [`v0.8.4...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.4...HEAD)
-
 
 ## [0.8.4] - 2026-07-27
 
