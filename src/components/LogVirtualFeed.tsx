@@ -196,7 +196,11 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
                 onClick={() => toggleRow(stableKey, row)}
               >
                 <span className="log-line__time">{formatLogDisplayTime(row.time)}</span>
-                <span className={cn("log-line__lv-tag", `log-line__lv-tag--${row.level}`)}>{row.level}</span>
+                <span
+                  className={cn("log-line__lv-tag", "log-line__lv-tag--dot", `log-line__lv-tag--${row.level}`)}
+                  title={row.level}
+                  aria-label={row.level}
+                />
                 <LogScopeChips scope={row.scope} />
                 <span className="log-line__msg log-line__msg--wrap">{row.message}</span>
               </button>

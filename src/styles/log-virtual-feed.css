@@ -48,6 +48,38 @@
 .log-line--virtual .log-line__lv-tag {
   flex: 0 0 auto;
 }
+.log-line--virtual .log-line__lv-tag--dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  padding: 0;
+  margin-top: 5px;
+  border-radius: 999px;
+  border: none;
+  font-size: 0;
+  line-height: 0;
+  letter-spacing: 0;
+  text-indent: -9999px;
+  overflow: hidden;
+  vertical-align: middle;
+  box-shadow: none;
+}
+.log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--debug {
+  background: var(--text-muted);
+}
+.log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--info {
+  background: var(--accent);
+}
+.log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--success {
+  background: var(--success);
+}
+.log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--warn {
+  background: var(--warn);
+}
+.log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--error {
+  background: var(--danger);
+}
 .log-line--virtual .log-line__scope-group {
   display: inline-flex;
   align-items: center;
@@ -99,7 +131,6 @@
   color: color-mix(in srgb, var(--danger) 88%, var(--text));
 }
 .log-line--virtual .log-line__time,
-.log-line--virtual .log-line__lv-tag,
 .log-line--virtual .log-line__scope-group {
   margin-top: 1px;
 }
