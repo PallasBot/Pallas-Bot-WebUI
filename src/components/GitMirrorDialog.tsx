@@ -3,7 +3,6 @@ import "@/styles/git-mirror-dialog.css";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchGitMirrorInfo,
-  postGitMirrorApplyAll,
   postGitMirrorApplyBot,
   postGitMirrorApplyCommunity,
   postGitMirrorApplyOfficial,
@@ -228,10 +227,13 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
     if (!(await ensureSavedIfDirty())) return;
     setApplyAllBusy(true);
     try {
-      const summary = await postGitMirrorApplyAll({ preferred_id: preferredId });
-      const { total, success_count, fail_count } = summary.summary;
-      const level = fail_count === 0 ? "ok" : success_count === 0 ? "err" : "warn";
-      pushConsoleToast(`已改写 Bot remote：${success_count}/${total} 成功`, level);
+      const result = await postGitMirrorApplyBot({
+        preferred_id: effectiveMirrorId(scopeBot),
+      });
+      pushConsoleToast(
+        result.success ? `Bot：${result.message}` : `Bot 失败：${result.message}`,
+        result.success ? "ok" : "err",
+      );
       await loadInfo();
     } catch (e) {
       pushConsoleToast(axiosErrorDetail(e) || "改写 Bot remote 失败", "err");
