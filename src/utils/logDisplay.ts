@@ -1,5 +1,8 @@
 import type { LogEntry, LogEntryLevel } from "@/api/pallasTypes";
 
+const LOG_LEVELS_STORAGE_KEY = "pallas_logs_enabled_levels_v2";
+const LOG_LEVELS_DEFAULT: readonly LogEntryLevel[] = ["info", "success", "warn", "error"];
+
 /** 结构化日志与级别筛选 UI 共用的等级列表（与后端 LEVEL_TO_BUCKET 一致） */
 export const LOG_ENTRY_LEVELS: readonly LogEntryLevel[] = [
   "debug",
@@ -9,16 +12,58 @@ export const LOG_ENTRY_LEVELS: readonly LogEntryLevel[] = [
   "error",
 ] as const;
 
-const LOG_LEVELS_STORAGE_KEY = "pallas_logs_enabled_levels_v1";
-
 const _embeddedShardPrefixRe = /^\[(?<tag>[^\]]+)\]\s+(?<rest>.+)$/;
+const _embeddedScopeTagRe = /^\[(?<tag>[^\]]+)\]\s*(?<mod>.*)$/;
 const _nonebotBracketBodyRe =
   /^(?<dt>\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\[(?<lev>[A-Z]+)\]\s+(?<scope>[^|]+?)\s*\|\s*(?<msg>.*)$/;
 const _loguruBodyRe =
   /^(?<dt>\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\|\s+(?<lev>\S+)\s+\|\s+(?<scope>[^:]+):(?<lineno>\d+)\s+-\s+(?<msg>.*)$/;
 
-/** 与 loguru 行首一致：`MM-DD HH:mm:ss`（不含年份） */
+/** 分片 scope：``worker-N/module`` 或历史 ``[worker-N] module`` */
+export function splitLogScope(scope: string): { source: string; module: string } {
+  const raw = String(scope ?? "").trim();
+  if (!raw) return { source: "", module: "" };
+  const embedded = _embeddedScopeTagRe.exec(raw);
+  if (embedded?.groups?.tag) {
+    return {
+      source: String(embedded.groups.tag).trim(),
+      module: String(embedded.groups.mod ?? "").trim(),
+    };
+  }
+  const slash = raw.indexOf("/");
+  if (slash > 0) {
+    const head = raw.slice(0, slash);
+    if (head.startsWith("worker-") || head === "hub" || head === "hub-file") {
+      return { source: head === "hub-file" ? "hub" : head, module: raw.slice(slash + 1).trim() };
+    }
+  }
+  return { source: "", module: raw };
+}
+
+/** 归一成 ``source/module``（无来源时仅 module） */
+export function normalizeLogScope(scope: string): string {
+  const { source, module } = splitLogScope(scope);
+  if (source && module) return `${source}/${module}`;
+  if (source) return source;
+  return module;
+}
+/** 运行日志 feed 行首：仅 `HH:mm:ss`，缩短前置标签 */
 export function formatLogDisplayTime(raw: string | number): string {
+  if (typeof raw === "number") {
+    if (!Number.isFinite(raw) || raw <= 0) return "—";
+    const d = new Date(raw * 1000);
+    if (Number.isNaN(d.getTime())) return String(raw);
+    return formatClock(d);
+  }
+  const s = String(raw ?? "").trim();
+  if (!s) return "—";
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) return formatClock(d);
+  return stripToClock(s);
+}
+
+/** 错误列表等需跨日对照：`MM-DD HH:mm:ss`（不含年份） */
+export function formatLogDisplayDateTime(raw: string | number): string {
   if (typeof raw === "number") {
     if (!Number.isFinite(raw) || raw <= 0) return "—";
     const d = new Date(raw * 1000);
@@ -32,13 +77,25 @@ export function formatLogDisplayTime(raw: string | number): string {
   return stripYearFromLogText(s);
 }
 
-function formatDateNoYear(d: Date): string {
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+function formatClock(d: Date): string {
   const h = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
   const sec = String(d.getSeconds()).padStart(2, "0");
-  return `${mo}-${day} ${h}:${mi}:${sec}`;
+  return `${h}:${mi}:${sec}`;
+}
+
+function formatDateNoYear(d: Date): string {
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${mo}-${day} ${formatClock(d)}`;
+}
+
+/** 从已格式化文本抽出时分秒；抽不出则退回去年份文本 */
+function stripToClock(text: string): string {
+  const bare = stripYearFromLogText(text).trim();
+  const m = /(?:^|\s)(\d{2}:\d{2}:\d{2})\b/.exec(bare);
+  if (m?.[1]) return m[1];
+  return bare;
 }
 
 /** 原始日志行 / 已格式化文本：去掉常见四位数年份前缀 */
@@ -80,10 +137,25 @@ function peelShardPrefixes(raw: string): { sourceTag: string; body: string } {
   let body = String(raw ?? "").replace(/\n$/, "");
   const tags: string[] = [];
   for (let i = 0; i < 3; i += 1) {
-    const m = _embeddedShardPrefixRe.exec(body);
+    const firstNl = body.indexOf("\n");
+    const first = firstNl >= 0 ? body.slice(0, firstNl) : body;
+    const rest = firstNl >= 0 ? body.slice(firstNl + 1) : "";
+    const m = _embeddedShardPrefixRe.exec(first);
     if (!m?.groups?.rest) break;
     tags.push(String(m.groups.tag));
-    body = String(m.groups.rest);
+    body = rest ? `${m.groups.rest}\n${rest}` : String(m.groups.rest);
+  }
+  if (tags.length && body.includes("\n")) {
+    const tagSet = new Set(tags);
+    body = body
+      .split("\n")
+      .map((ln, idx) => {
+        if (idx === 0) return ln;
+        const m = _embeddedShardPrefixRe.exec(ln);
+        if (m?.groups?.tag && tagSet.has(String(m.groups.tag))) return String(m.groups.rest);
+        return ln;
+      })
+      .join("\n");
   }
   return { sourceTag: tags.join("/"), body };
 }
@@ -111,19 +183,19 @@ export function parseLogLineLevel(line: string): LogEntryLevel {
 }
 
 export function loadLogsEnabledLevels(): Set<LogEntryLevel> {
-  if (typeof localStorage === "undefined") return new Set(LOG_ENTRY_LEVELS);
+  if (typeof localStorage === "undefined") return new Set(LOG_LEVELS_DEFAULT);
   try {
     const raw = localStorage.getItem(LOG_LEVELS_STORAGE_KEY);
-    if (!raw) return new Set(LOG_ENTRY_LEVELS);
+    if (!raw) return new Set(LOG_LEVELS_DEFAULT);
     const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return new Set(LOG_ENTRY_LEVELS);
+    if (!Array.isArray(parsed)) return new Set(LOG_LEVELS_DEFAULT);
     const valid = parsed.filter(
       (x): x is LogEntryLevel =>
         typeof x === "string" && (LOG_ENTRY_LEVELS as readonly string[]).includes(x),
     );
-    return valid.length ? new Set(valid) : new Set(LOG_ENTRY_LEVELS);
+    return valid.length ? new Set(valid) : new Set(LOG_LEVELS_DEFAULT);
   } catch {
-    return new Set(LOG_ENTRY_LEVELS);
+    return new Set(LOG_LEVELS_DEFAULT);
   }
 }
 
@@ -139,6 +211,16 @@ export function persistLogsEnabledLevels(levels: ReadonlySet<LogEntryLevel>): vo
   }
 }
 
+function joinSourceAndModule(sourceTag: string, mod: string, fallback: string): string {
+  const normalizedMod = normalizeLogScope(mod);
+  const { source: modSource, module } = splitLogScope(normalizedMod);
+  const tag = (sourceTag || modSource || "").trim();
+  if (tag && module) return `${tag}/${module}`;
+  if (tag) return tag;
+  if (module) return module;
+  return fallback;
+}
+
 /** 结构化视图：从 [raw] 正文里拆出时间/级别/来源，给消息留足横向空间 */
 export function normalizeLogEntryDisplay(row: LogEntry): LogEntry {
   const scope = String(row.scope ?? "").trim();
@@ -152,25 +234,23 @@ export function normalizeLogEntryDisplay(row: LogEntry): LogEntry {
     const remainder = body.includes("\n") ? body.slice(body.indexOf("\n") + 1) : "";
     const nb = _nonebotBracketBodyRe.exec(head);
     if (nb?.groups) {
-      const mod = String(nb.groups.scope ?? "").trim();
       const msg = remainder ? `${nb.groups.msg ?? ""}\n${remainder}` : String(nb.groups.msg ?? "");
       normalized = {
         ...row,
         time: row.time || String(nb.groups.dt),
         level: normalizeLogEntryLevel(String(nb.groups.lev)),
-        scope: sourceTag ? (mod ? `${sourceTag}/${mod}` : sourceTag) : mod || scope,
+        scope: joinSourceAndModule(sourceTag, String(nb.groups.scope ?? ""), scope),
         message: msg,
       };
     } else {
       const lg = _loguruBodyRe.exec(head);
       if (lg?.groups) {
-        const mod = String(lg.groups.scope ?? "").trim();
         const msg = remainder ? `${lg.groups.msg ?? ""}\n${remainder}` : String(lg.groups.msg ?? "");
         normalized = {
           ...row,
           time: row.time || String(lg.groups.dt),
           level: normalizeLogEntryLevel(String(lg.groups.lev)),
-          scope: sourceTag ? (mod ? `${sourceTag}/${mod}` : sourceTag) : mod || scope,
+          scope: joinSourceAndModule(sourceTag, String(lg.groups.scope ?? ""), scope),
           message: msg,
         };
       } else if (isTracebackBody(head)) {
@@ -184,6 +264,10 @@ export function normalizeLogEntryDisplay(row: LogEntry): LogEntry {
         normalized = { ...row, scope: sourceTag, message: body };
       }
     }
+  }
+  const fixedScope = normalizeLogScope(String(normalized.scope ?? "").trim());
+  if (fixedScope && fixedScope !== String(normalized.scope ?? "").trim()) {
+    normalized = { ...normalized, scope: fixedScope };
   }
   return promoteErrorLevel(normalized);
 }
@@ -217,6 +301,9 @@ function stripShardPrefixBody(message: string): string {
 
 /** 分片来源键：worker-N / hub；无标签为空串 */
 export function logEntrySourceKey(row: Pick<LogEntry, "scope" | "message">): string {
+  const { source } = splitLogScope(String(row.scope ?? ""));
+  if (source.startsWith("worker-")) return source;
+  if (source === "hub") return "hub";
   const primary = String(row.scope ?? "")
     .trim()
     .split("/")[0] ?? "";
@@ -226,6 +313,20 @@ export function logEntrySourceKey(row: Pick<LogEntry, "scope" | "message">): str
   if (tag.startsWith("worker-")) return tag;
   if (tag === "hub" || tag === "hub-file") return "hub";
   return "";
+}
+
+/** 与后端 ``_entry_matches_log_source`` 对齐：筛选来源时保留对应条目 */
+export function logEntryMatchesSource(
+  row: Pick<LogEntry, "scope" | "message">,
+  source: string | null | undefined,
+): boolean {
+  const want = (source || "all").trim() || "all";
+  if (want === "all") return true;
+  const key = logEntrySourceKey(row);
+  if (want === "hub" || want === "hub-file") {
+    return key === "" || key === "hub";
+  }
+  return key === want;
 }
 
 function entryAcceptsTracebackContinuation(row: LogEntry): boolean {

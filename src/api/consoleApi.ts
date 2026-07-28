@@ -1034,15 +1034,30 @@ export async function fetchLlmProviderModels(
   return data.data;
 }
 
-/** 实时测试指定 Provider 的连通性（Bot 直连上游，不经 AI Runtime）。 */
+/** 实时测试指定 Provider 的连通性（Bot 直连上游，不经 AI Runtime；可传草稿凭证）。 */
 export async function postLlmProviderTest(
   providerId: string,
+  opts?: {
+    base_url?: string;
+    api_key?: string;
+    api_key_env?: string;
+    kind?: string;
+    request_method?: string;
+  },
 ): Promise<LlmProviderTestResult> {
   const path = `/common-config/llm/providers/${encodeURIComponent(providerId)}/test`;
-  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers/{provider_id}/test"]["post"]>(
-    path,
-    {},
-  );
+  const body = {
+    base_url: opts?.base_url ?? "",
+    api_key: opts?.api_key ?? "",
+    api_key_env: opts?.api_key_env ?? "",
+    kind: opts?.kind ?? "",
+    request_method: opts?.request_method ?? "",
+  };
+  const { data } = await http.post<{ ok: boolean; data: LlmProviderTestResult }>(path, body);
+  if (!data?.ok || !data.data) {
+    throw new Error(`${path}: 响应异常`);
+  }
+  return data.data;
 }
 
 export async function fetchLlmTaskStats(params?: {

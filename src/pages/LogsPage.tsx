@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, Radio, Hash } from "lucide-react";
+import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, MessageSquare, Ellipsis, Radio, Hash, Download } from "lucide-react";
 import { fetchLogs, openLogsEventSource } from "@/api/fullConsole";
 import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@/api/pallasTypes";
 import PageMasthead from "@/components/PageMasthead";
@@ -33,6 +33,7 @@ import {
 import {
   LOG_ENTRY_LEVELS,
   loadLogsEnabledLevels,
+  logEntryMatchesSource,
   mergeLogEntryContinuations,
   normalizeLogEntryDisplay,
   parseLogLineLevel,
@@ -43,6 +44,7 @@ import {
   loadLogsLastEventId,
   persistLogsLastEventId,
 } from "@/utils/logStreamResume";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 type LogsSnapshot = {
   scope: LogScope;
@@ -63,6 +65,29 @@ function onNInput(raw: string, setN: (n: number) => void) {
   setN(Math.min(2000, Math.max(20, Math.trunc(next))));
 }
 
+function formatLogEntryLine(e: LogEntry): string {
+  return `[${e.time || ""}] [${e.level || "info"}] [${e.scope || ""}] ${e.message || ""}`;
+}
+
+function logsExportFilename(scope: string, source: string): string {
+  const now = new Date();
+  const pad = (v: number) => String(v).padStart(2, "0");
+  const stamp =
+    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`
+    + `-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  return `pallas-logs_${scope || "all"}_${source || "all"}_${stamp}.txt`;
+}
+
+function downloadTextFile(filename: string, text: string) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function LogsPage() {
   const [err, setErr] = useState("");
   const [pageReady, setPageReady] = useState(false);
@@ -78,7 +103,6 @@ export default function LogsPage() {
   const [liveEntries, setLiveEntries] = useState<LogEntry[]>([]);
   const [streamReconnectCount, setStreamReconnectCount] = useState(0);
   const [streamReconnecting, setStreamReconnecting] = useState(false);
-  const [lastStreamEventId, setLastStreamEventId] = useState(0);
   const [followLogTail, setFollowLogTail] = useState(true);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [streamLive, setStreamLive] = useState(false);
@@ -87,12 +111,16 @@ export default function LogsPage() {
   const logPollTimerRef = useRef<number | null>(null);
   const logEsRef = useRef<EventSource | null>(null);
   const streamReconnectTimerRef = useRef<number | null>(null);
+  /** resume id 只放 ref，避免每条 SSE setState 拖垮整页并重建 EventSource */
+  const lastStreamEventIdRef = useRef(0);
   const rawScrollElRef = useRef<HTMLPreElement | null>(null);
   const logFeedRef = useRef<LogVirtualFeedHandle | null>(null);
   const suppressRawFollowUpdateRef = useRef(0);
   const logScrollBottomRafRef = useRef(0);
   const logScrollBottomForceRef = useRef(false);
   const logScrollBottomRetryTimersRef = useRef<number[]>([]);
+  const livePendingRef = useRef<LogEntry[]>([]);
+  const liveFlushTimerRef = useRef<number | null>(null);
   const viewRef = useRef(view);
   const followLogTailRef = useRef(followLogTail);
   viewRef.current = view;
@@ -170,29 +198,44 @@ export default function LogsPage() {
     }
   }, [cancelScrollActiveLogRetries, scheduleScrollActiveLogToBottom]);
 
+  const flushLivePending = useCallback(() => {
+    liveFlushTimerRef.current = null;
+    const pending = livePendingRef.current;
+    if (!pending.length) return;
+    livePendingRef.current = [];
+    setLiveEntries((buf) => {
+      let next = [...buf];
+      for (const row of pending) {
+        const key = `${row.scope}|${row.time}`;
+        if (row.message.includes("\n") || row.message.startsWith("  File ")) {
+          const prev = next[next.length - 1];
+          if (prev && `${prev.scope}|${prev.time}` === key) {
+            prev.message = prev.message ? `${prev.message}\n${row.message}` : row.message;
+            continue;
+          }
+        }
+        next.push(row);
+      }
+      if (next.length > 1200) next = next.slice(-1200);
+      return next;
+    });
+    bumpLiveTick();
+  }, [bumpLiveTick]);
+
   const pushLiveEntry = useCallback(
     (raw: LogEntry) => {
       const row = normalizeLogEntryDisplay({
         ...raw,
         id: raw.id ?? Date.now() + Math.floor(Math.random() * 1000),
       });
-      setLiveEntries((buf) => {
-        const next = [...buf];
-        const key = `${row.scope}|${row.time}`;
-        if (row.message.includes("\n") || row.message.startsWith("  File ")) {
-          const prev = next[next.length - 1];
-          if (prev && `${prev.scope}|${prev.time}` === key) {
-            prev.message = prev.message ? `${prev.message}\n${row.message}` : row.message;
-            return next.length > 1200 ? next.slice(-1200) : next;
-          }
-        }
-        next.push(row);
-        return next.length > 1200 ? next.slice(-1200) : next;
-      });
-      bumpLiveTick();
+      livePendingRef.current.push(row);
+      if (liveFlushTimerRef.current != null) return;
+      liveFlushTimerRef.current = window.setTimeout(flushLivePending, 90);
     },
-    [bumpLiveTick],
+    [flushLivePending],
   );
+  const pushLiveEntryRef = useRef(pushLiveEntry);
+  pushLiveEntryRef.current = pushLiveEntry;
 
   const load = useCallback(
     async (opts?: { silent?: boolean; bypassCache?: boolean }) => {
@@ -244,6 +287,11 @@ export default function LogsPage() {
 
   const closeLogStream = useCallback(() => {
     stopLogStreamConnection();
+    if (liveFlushTimerRef.current != null) {
+      window.clearTimeout(liveFlushTimerRef.current);
+      liveFlushTimerRef.current = null;
+    }
+    livePendingRef.current = [];
     setStreamLive(false);
     setLiveEntries([]);
     bumpLiveTick();
@@ -251,10 +299,10 @@ export default function LogsPage() {
 
   const startLogStream = useCallback(() => {
     stopLogStreamConnection();
-    setStreamLive(false);
+    // 故意重连时保持「实时」外观，仅在 onerror 时降为重连中，避免徽章闪烁
     setStreamReconnecting(false);
     try {
-      const resumeId = lastStreamEventId > 0 ? lastStreamEventId : undefined;
+      const resumeId = lastStreamEventIdRef.current > 0 ? lastStreamEventIdRef.current : undefined;
       const es = openLogsEventSource(scope, logSource, resumeId);
       logEsRef.current = es;
       es.onopen = () => {
@@ -268,16 +316,16 @@ export default function LogsPage() {
           if (row?.type === "ready") return;
           if (row.message != null) {
             if (typeof row.id === "number" && row.id > 0) {
-              setLastStreamEventId(row.id);
+              lastStreamEventIdRef.current = row.id;
               persistLogsLastEventId(scope, logSource, row.id);
             } else if (ev.lastEventId) {
               const parsed = Number(ev.lastEventId);
               if (Number.isFinite(parsed) && parsed > 0) {
-                setLastStreamEventId(parsed);
+                lastStreamEventIdRef.current = parsed;
                 persistLogsLastEventId(scope, logSource, parsed);
               }
             }
-            pushLiveEntry(row);
+            pushLiveEntryRef.current(row);
           }
         } catch {
           /* ignore malformed */
@@ -296,7 +344,7 @@ export default function LogsPage() {
     } catch {
       stopLogStreamConnection();
     }
-  }, [lastStreamEventId, logSource, pushLiveEntry, scope, stopLogStreamConnection]);
+  }, [logSource, scope, stopLogStreamConnection]);
 
   const bootLogsPage = useCallback(async () => {
     if (document.visibilityState === "hidden") return;
@@ -304,8 +352,8 @@ export default function LogsPage() {
     // silent 刷新不会在 load.finally 里滚底；数据落地后再强制一次
     scheduleEnterLogScroll();
     startLogPolling();
-    startLogStream();
-  }, [load, pageReady, scheduleEnterLogScroll, startLogPolling, startLogStream]);
+    // SSE 由下方 scope/source 专用 effect 拉起，避免 boot 回调身份变化反复拆线
+  }, [load, pageReady, scheduleEnterLogScroll, startLogPolling]);
 
   useEffect(() => {
     if (logsSnapshotCache) {
@@ -331,15 +379,28 @@ export default function LogsPage() {
       stopLogPolling();
       closeLogStream();
     };
-  }, [bootLogsPage, cancelScrollActiveLogRetries, closeLogStream, scheduleEnterLogScroll, stopLogPolling]);
+    // mount-only：scope/n/source 变更由独立 effect 处理；勿依赖 bootLogsPage 身份
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- page boot once
+  }, []);
 
   useEffect(() => {
     void load();
   }, [scope, n, logSource, load]);
 
   useEffect(() => {
-    setLastStreamEventId(loadLogsLastEventId(scope, logSource));
+    lastStreamEventIdRef.current = loadLogsLastEventId(scope, logSource);
   }, [scope, logSource]);
+
+  // 切换范围/来源时丢掉上一通道的实时缓冲，避免「选了 worker-N 仍混着全部实时行」
+  useEffect(() => {
+    if (liveFlushTimerRef.current != null) {
+      window.clearTimeout(liveFlushTimerRef.current);
+      liveFlushTimerRef.current = null;
+    }
+    livePendingRef.current = [];
+    setLiveEntries([]);
+    bumpLiveTick();
+  }, [bumpLiveTick, logSource, scope]);
 
   useEffect(() => {
     startLogStream();
@@ -348,14 +409,23 @@ export default function LogsPage() {
   const baseEntries = payload?.entries ?? [];
   const entries = useMemo(() => {
     void liveTick;
-    if (!liveEntries.length) return baseEntries;
-    const seen = new Set(baseEntries.map((e) => `${e.time}|${e.scope}|${e.message}`));
-    const extra = liveEntries.filter((e) => !seen.has(`${e.time}|${e.scope}|${e.message}`));
-    return [...baseEntries, ...extra];
-  }, [baseEntries, liveEntries, liveTick]);
+    const base = baseEntries.filter((e) => logEntryMatchesSource(e, logSource));
+    if (!liveEntries.length) return base;
+    const seen = new Set(base.map((e) => `${e.time}|${e.scope}|${e.message}`));
+    const extra = liveEntries.filter(
+      (e) => logEntryMatchesSource(e, logSource) && !seen.has(`${e.time}|${e.scope}|${e.message}`),
+    );
+    return [...base, ...extra];
+  }, [baseEntries, liveEntries, liveTick, logSource]);
 
   const lines = payload?.lines ?? [];
-  const displayLines = useMemo(() => lines.map(stripYearFromLogLine), [lines]);
+  const displayLines = useMemo(() => {
+    const stripped = lines.map(stripYearFromLogLine);
+    if (!logSource || logSource === "all") return stripped;
+    // 原始行以 ``[worker-N]`` / ``[hub]`` 前缀区分来源
+    const needle = logSource === "hub" ? ["[hub]", "[hub-file]"] : [`[${logSource}]`];
+    return stripped.filter((ln) => needle.some((p) => ln.includes(p)));
+  }, [lines, logSource]);
 
   const sourceOptions = useMemo(() => {
     const opts = logSources.length ? logSources : ["hub"];
@@ -387,20 +457,44 @@ export default function LogsPage() {
   }, [levelFilteredEntries, q]);
 
   const filteredRawLines = useMemo(() => {
-    const rows = displayLines;
-    if (enabledLevels.size >= LOG_ENTRY_LEVELS.length) return rows;
-    return rows.filter((line) => enabledLevels.has(parseLogLineLevel(line)));
-  }, [displayLines, enabledLevels]);
+    let rows = displayLines;
+    if (enabledLevels.size < LOG_ENTRY_LEVELS.length) {
+      rows = rows.filter((line) => enabledLevels.has(parseLogLineLevel(line)));
+    }
+    const needle = q.trim().toLowerCase();
+    if (!needle) return rows;
+    return rows.filter((line) => line.toLowerCase().includes(needle));
+  }, [displayLines, enabledLevels, q]);
 
-  const historyEntryCount = baseEntries.length;
+  const historyEntryCount = useMemo(
+    () => baseEntries.filter((e) => logEntryMatchesSource(e, logSource)).length,
+    [baseEntries, logSource],
+  );
   const liveExtraCount = useMemo(() => {
     void liveTick;
     if (!liveEntries.length) return 0;
-    const seen = new Set(baseEntries.map((e) => `${e.time}|${e.scope}|${e.message}`));
-    return liveEntries.filter((e) => !seen.has(`${e.time}|${e.scope}|${e.message}`)).length;
-  }, [baseEntries, liveEntries, liveTick]);
+    const base = baseEntries.filter((e) => logEntryMatchesSource(e, logSource));
+    const seen = new Set(base.map((e) => `${e.time}|${e.scope}|${e.message}`));
+    return liveEntries.filter(
+      (e) => logEntryMatchesSource(e, logSource) && !seen.has(`${e.time}|${e.scope}|${e.message}`),
+    ).length;
+  }, [baseEntries, liveEntries, liveTick, logSource]);
 
   const visibleCount = view === "feed" ? filtered.length : filteredRawLines.length;
+
+  function exportCurrentView() {
+    const text =
+      view === "feed"
+        ? filtered.map(formatLogEntryLine).join("\n")
+        : filteredRawLines.join("\n");
+    if (!text.trim()) {
+      pushConsoleToast("当前视图无可导出日志", "warn");
+      return;
+    }
+    const filename = logsExportFilename(scope, logSource);
+    downloadTextFile(filename, `${text}\n`);
+    pushConsoleToast(`已导出 ${view === "feed" ? filtered.length : filteredRawLines.length} 行`, "ok");
+  }
 
   useEffect(() => {
     scheduleScrollActiveLogToBottom();
@@ -487,11 +581,14 @@ export default function LogsPage() {
                       <SelectItem value="all">
                         <ChromeOptionLabel icon={Globe}>全部</ChromeOptionLabel>
                       </SelectItem>
-                      <SelectItem value="webui">
-                        <ChromeOptionLabel icon={Monitor}>WebUI</ChromeOptionLabel>
+                      <SelectItem value="message">
+                        <ChromeOptionLabel icon={MessageSquare}>消息</ChromeOptionLabel>
                       </SelectItem>
-                      <SelectItem value="protocol">
-                        <ChromeOptionLabel icon={Radio}>协议</ChromeOptionLabel>
+                      <SelectItem value="console">
+                        <ChromeOptionLabel icon={Monitor}>控制台</ChromeOptionLabel>
+                      </SelectItem>
+                      <SelectItem value="other">
+                        <ChromeOptionLabel icon={Ellipsis}>其它</ChromeOptionLabel>
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -563,6 +660,16 @@ export default function LogsPage() {
               </SelectContent>
             </Select>
           </ChromeField>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
+            onClick={exportCurrentView}
+          >
+            <Download className="size-3.5" strokeWidth={1.75} aria-hidden />
+            导出
+          </Button>
           <Button
             type="button"
             variant={advancedOpen || activeFilterCount > 0 ? "default" : "secondary"}

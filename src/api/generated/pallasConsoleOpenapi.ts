@@ -3143,6 +3143,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/logs/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Logs Export
+         * @description 导出当前筛选范围的日志为 text/plain 附件（便于 Docker / curl 拉到宿主机）。
+         */
+        get: operations["_logs_export_pallas_api_logs_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/logs/stream": {
         parameters: {
             query?: never;
@@ -4333,6 +4353,8 @@ export interface components {
              * @default
              */
             message: string;
+            /** Facet */
+            facet?: string | null;
         };
         /** LogsData */
         LogsData: {
@@ -5574,6 +5596,10 @@ export interface components {
             latency_ms?: number | null;
             /** Error */
             error?: string | null;
+            /** Status */
+            status?: number | null;
+            /** Enabled */
+            enabled?: boolean | null;
         };
         /** _LlmProvidersConfigData */
         _LlmProvidersConfigData: {
@@ -11893,7 +11919,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["_LlmProviderModelsDiscoverBody"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -13632,8 +13662,8 @@ export interface operations {
         parameters: {
             query?: {
                 n?: number;
-                /** @description all=全部（分片 hub 时合并 hub 环与各 worker 落盘日志）；webui=pallas_webui 或 [pallas-webui]；protocol=pallas_protocol 或 [pallas-protocol] */
-                scope?: "all" | "webui" | "protocol";
+                /** @description all=全部（分片 hub 时合并 hub 环与各 worker 落盘日志）；message=消息面（OneBot 消息事件 / 复读发送等）；console=控制台（pb_webui / [pallas-webui] / /pallas/ access）；other=其它（含无 facet 的旧日志） */
+                scope?: "all" | "message" | "console" | "other";
                 /** @description 分片来源：all|hub|worker-0|worker-1…（默认 all，不含 bootstrap） */
                 source?: string | null;
                 token?: string | null;
@@ -13666,11 +13696,49 @@ export interface operations {
             };
         };
     };
+    _logs_export_pallas_api_logs_export_get: {
+        parameters: {
+            query?: {
+                n?: number;
+                /** @description all=全部；message=消息面；console=控制台；other=其它（与 GET /logs 一致） */
+                scope?: "all" | "message" | "console" | "other";
+                /** @description 分片来源：all|hub|worker-N（默认 all） */
+                source?: string | null;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     _logs_stream_pallas_api_logs_stream_get: {
         parameters: {
             query?: {
-                /** @description all=全部；webui=仅 pallas_webui 相关；protocol=仅 pallas_protocol 相关 */
-                scope?: "all" | "webui" | "protocol";
+                /** @description all=全部；message=仅消息面；console=仅控制台；other=仅其它 */
+                scope?: "all" | "message" | "console" | "other";
                 /** @description 分片来源：all|hub|worker-N（与 GET /logs 一致） */
                 source?: string | null;
                 /** @description 断点续传：仅发送 id 大于该值的日志条目 */
