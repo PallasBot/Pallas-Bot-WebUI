@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, Radio, Hash } from "lucide-react";
+import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, Radio, Hash, Download } from "lucide-react";
 import { fetchLogs, openLogsEventSource } from "@/api/fullConsole";
 import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@/api/pallasTypes";
 import PageMasthead from "@/components/PageMasthead";
@@ -43,6 +43,7 @@ import {
   loadLogsLastEventId,
   persistLogsLastEventId,
 } from "@/utils/logStreamResume";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 type LogsSnapshot = {
   scope: LogScope;
@@ -61,6 +62,29 @@ function onNInput(raw: string, setN: (n: number) => void) {
     return;
   }
   setN(Math.min(2000, Math.max(20, Math.trunc(next))));
+}
+
+function formatLogEntryLine(e: LogEntry): string {
+  return `[${e.time || ""}] [${e.level || "info"}] [${e.scope || ""}] ${e.message || ""}`;
+}
+
+function logsExportFilename(scope: string, source: string): string {
+  const now = new Date();
+  const pad = (v: number) => String(v).padStart(2, "0");
+  const stamp =
+    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`
+    + `-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  return `pallas-logs_${scope || "all"}_${source || "all"}_${stamp}.txt`;
+}
+
+function downloadTextFile(filename: string, text: string) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function LogsPage() {
@@ -387,10 +411,14 @@ export default function LogsPage() {
   }, [levelFilteredEntries, q]);
 
   const filteredRawLines = useMemo(() => {
-    const rows = displayLines;
-    if (enabledLevels.size >= LOG_ENTRY_LEVELS.length) return rows;
-    return rows.filter((line) => enabledLevels.has(parseLogLineLevel(line)));
-  }, [displayLines, enabledLevels]);
+    let rows = displayLines;
+    if (enabledLevels.size < LOG_ENTRY_LEVELS.length) {
+      rows = rows.filter((line) => enabledLevels.has(parseLogLineLevel(line)));
+    }
+    const needle = q.trim().toLowerCase();
+    if (!needle) return rows;
+    return rows.filter((line) => line.toLowerCase().includes(needle));
+  }, [displayLines, enabledLevels, q]);
 
   const historyEntryCount = baseEntries.length;
   const liveExtraCount = useMemo(() => {
@@ -401,6 +429,20 @@ export default function LogsPage() {
   }, [baseEntries, liveEntries, liveTick]);
 
   const visibleCount = view === "feed" ? filtered.length : filteredRawLines.length;
+
+  function exportCurrentView() {
+    const text =
+      view === "feed"
+        ? filtered.map(formatLogEntryLine).join("\n")
+        : filteredRawLines.join("\n");
+    if (!text.trim()) {
+      pushConsoleToast("当前视图无可导出日志", "warn");
+      return;
+    }
+    const filename = logsExportFilename(scope, logSource);
+    downloadTextFile(filename, `${text}\n`);
+    pushConsoleToast(`已导出 ${view === "feed" ? filtered.length : filteredRawLines.length} 行`, "ok");
+  }
 
   useEffect(() => {
     scheduleScrollActiveLogToBottom();
@@ -563,6 +605,16 @@ export default function LogsPage() {
               </SelectContent>
             </Select>
           </ChromeField>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
+            onClick={exportCurrentView}
+          >
+            <Download className="size-3.5" strokeWidth={1.75} aria-hidden />
+            导出
+          </Button>
           <Button
             type="button"
             variant={advancedOpen || activeFilterCount > 0 ? "default" : "secondary"}
