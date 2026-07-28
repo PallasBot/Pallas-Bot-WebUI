@@ -1625,9 +1625,11 @@ export interface BotRow {
 }
 
 /** GET /logs?scope= 与后端一致 */
-export type LogScope = "all" | "webui" | "protocol";
+export type LogScope = "all" | "message" | "console" | "other";
 
 export type LogEntryLevel = "debug" | "info" | "success" | "warn" | "error";
+
+export type LogFacet = "message" | "console" | "other";
 
 export interface LogEntry {
   id: number;
@@ -1635,6 +1637,8 @@ export interface LogEntry {
   level: LogEntryLevel;
   scope: string;
   message: string;
+  /** sink 写入的切面；缺失时后端按 other 过滤 */
+  facet?: LogFacet | null;
 }
 
 export interface LogsData {
