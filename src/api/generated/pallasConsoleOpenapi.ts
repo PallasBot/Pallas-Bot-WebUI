@@ -5596,6 +5596,8 @@ export interface components {
             error?: string | null;
             /** Status */
             status?: number | null;
+            /** Enabled */
+            enabled?: boolean | null;
         };
         /** _LlmProvidersConfigData */
         _LlmProvidersConfigData: {

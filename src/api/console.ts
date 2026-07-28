@@ -503,6 +503,7 @@ export type LlmProviderTestResult = {
   latency_ms?: number | null;
   error?: string;
   status?: number | null;
+  enabled?: boolean | null;
 };
 
 export type LlmProviderModelsResult = {

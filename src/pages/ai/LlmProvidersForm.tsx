@@ -632,9 +632,10 @@ export default function LlmProvidersForm() {
       if (r.reachable) {
         const latency =
           r.latency_ms != null ? `，延迟 ${Math.round(r.latency_ms)}ms` : "";
-        const hint = `可达${r.latency_ms != null ? ` ${Math.round(r.latency_ms)}ms` : ""}`;
+        const disabledNote = r.enabled === false ? "（当前已禁用，仅探测）" : "";
+        const hint = `可达${r.latency_ms != null ? ` ${Math.round(r.latency_ms)}ms` : ""}${disabledNote}`;
         setTestHint((h) => ({ ...h, [pid]: hint }));
-        if (!quiet) pushConsoleToast(`「${pid}」连通正常${latency}`, "ok");
+        if (!quiet) pushConsoleToast(`「${pid}」连通正常${latency}${disabledNote}`, "ok");
         return true;
       }
       const detail = String(r.error || "").trim() || "不可达";
@@ -652,9 +653,13 @@ export default function LlmProvidersForm() {
   }
 
   function draftDiscoverOpts() {
+    const flushedKeys = (apiKeysInputRef.current?.flush() ?? draftApiKeys)
+      .map((k) => k.trim())
+      .filter(Boolean);
+    if (flushedKeys.length) setDraftApiKeys(flushedKeys);
     return {
       base_url: draft.base_url,
-      api_key: draftApiKeys.map((k) => k.trim()).find(Boolean) || "",
+      api_key: flushedKeys[0] || "",
       api_key_env: useEnvVar ? draft.api_key_env : "",
       kind: draft.kind === "local" ? "local" : "remote",
       request_method: draft.request_method || "",
@@ -680,18 +685,25 @@ export default function LlmProvidersForm() {
     const targets = doc.providers.filter((p) => {
       const id = p.id.trim();
       if (!id) return false;
+      if (p.enabled === false) return false;
       if (p.kind === "local") return true;
       return Boolean(p.base_url.trim());
     });
     if (!targets.length) {
-      pushConsoleToast("暂无已配置的提供方可测", "warn");
+      pushConsoleToast("暂无已启用的提供方可测", "warn");
       return;
     }
     setTestBusy("__all__");
     let okCount = 0;
     try {
       for (const provider of targets) {
-        const ok = await testProvider(provider.id, { quiet: true });
+        const ok = await testProvider(provider.id, {
+          quiet: true,
+          base_url: provider.base_url,
+          api_key_env: provider.api_key_env,
+          kind: provider.kind === "local" ? "local" : "remote",
+          request_method: provider.request_method || "",
+        });
         if (ok) okCount += 1;
       }
     } finally {
@@ -723,13 +735,8 @@ export default function LlmProvidersForm() {
     setModelsBusy(true);
     setEditErr("");
     try {
-      const r = await fetchLlmProviderModels(id, {
-        base_url: draft.base_url,
-        api_key: draftApiKeys.map((k) => k.trim()).find(Boolean) || "",
-        api_key_env: useEnvVar ? draft.api_key_env : "",
-        kind: draft.kind === "local" ? "local" : "remote",
-        request_method: draft.request_method || "",
-      });
+      const discover = draftDiscoverOpts();
+      const r = await fetchLlmProviderModels(id, discover);
       if (!r.ok) {
         const detail = r.error || "模型发现失败";
         setEditErr(detail);
