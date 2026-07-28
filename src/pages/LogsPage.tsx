@@ -117,6 +117,8 @@ export default function LogsPage() {
   const logScrollBottomRafRef = useRef(0);
   const logScrollBottomForceRef = useRef(false);
   const logScrollBottomRetryTimersRef = useRef<number[]>([]);
+  const livePendingRef = useRef<LogEntry[]>([]);
+  const liveFlushTimerRef = useRef<number | null>(null);
   const viewRef = useRef(view);
   const followLogTailRef = useRef(followLogTail);
   viewRef.current = view;
@@ -194,28 +196,41 @@ export default function LogsPage() {
     }
   }, [cancelScrollActiveLogRetries, scheduleScrollActiveLogToBottom]);
 
+  const flushLivePending = useCallback(() => {
+    liveFlushTimerRef.current = null;
+    const pending = livePendingRef.current;
+    if (!pending.length) return;
+    livePendingRef.current = [];
+    setLiveEntries((buf) => {
+      let next = [...buf];
+      for (const row of pending) {
+        const key = `${row.scope}|${row.time}`;
+        if (row.message.includes("\n") || row.message.startsWith("  File ")) {
+          const prev = next[next.length - 1];
+          if (prev && `${prev.scope}|${prev.time}` === key) {
+            prev.message = prev.message ? `${prev.message}\n${row.message}` : row.message;
+            continue;
+          }
+        }
+        next.push(row);
+      }
+      if (next.length > 1200) next = next.slice(-1200);
+      return next;
+    });
+    bumpLiveTick();
+  }, [bumpLiveTick]);
+
   const pushLiveEntry = useCallback(
     (raw: LogEntry) => {
       const row = normalizeLogEntryDisplay({
         ...raw,
         id: raw.id ?? Date.now() + Math.floor(Math.random() * 1000),
       });
-      setLiveEntries((buf) => {
-        const next = [...buf];
-        const key = `${row.scope}|${row.time}`;
-        if (row.message.includes("\n") || row.message.startsWith("  File ")) {
-          const prev = next[next.length - 1];
-          if (prev && `${prev.scope}|${prev.time}` === key) {
-            prev.message = prev.message ? `${prev.message}\n${row.message}` : row.message;
-            return next.length > 1200 ? next.slice(-1200) : next;
-          }
-        }
-        next.push(row);
-        return next.length > 1200 ? next.slice(-1200) : next;
-      });
-      bumpLiveTick();
+      livePendingRef.current.push(row);
+      if (liveFlushTimerRef.current != null) return;
+      liveFlushTimerRef.current = window.setTimeout(flushLivePending, 90);
     },
-    [bumpLiveTick],
+    [flushLivePending],
   );
 
   const load = useCallback(
@@ -268,6 +283,11 @@ export default function LogsPage() {
 
   const closeLogStream = useCallback(() => {
     stopLogStreamConnection();
+    if (liveFlushTimerRef.current != null) {
+      window.clearTimeout(liveFlushTimerRef.current);
+      liveFlushTimerRef.current = null;
+    }
+    livePendingRef.current = [];
     setStreamLive(false);
     setLiveEntries([]);
     bumpLiveTick();
