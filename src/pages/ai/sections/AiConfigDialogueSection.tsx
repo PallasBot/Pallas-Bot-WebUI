@@ -16,6 +16,7 @@ import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import SegTabs from "@/components/SegTabs";
 import KnowledgeSourcesTable from "@/components/ai/KnowledgeSourcesTable";
 import LlmToolsTable from "@/components/ai/LlmToolsTable";
+import McpServersCard from "@/components/ai/McpServersCard";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import {
@@ -271,14 +272,17 @@ export default function AiConfigDialogueSection() {
         </StateBlock>
       ) : null}
       {contentPanel === "tools" ? (
-        <StateBlock
-          loading={toolsQ.isLoading}
-          error={toolsQ.error}
-          empty={!toolsQ.data?.items?.length}
-          emptyText="暂无已注册的 LLM 工具。"
-        >
-          <LlmToolsTable items={toolsQ.data?.items || []} policy={toolsQ.data?.policy} />
-        </StateBlock>
+        <div className="space-y-4">
+          <McpServersCard policy={toolsQ.data?.policy} />
+          <StateBlock
+            loading={toolsQ.isLoading}
+            error={toolsQ.error}
+            empty={!toolsQ.data?.items?.length}
+            emptyText="暂无已注册的 LLM 工具。"
+          >
+            <LlmToolsTable items={toolsQ.data?.items || []} policy={toolsQ.data?.policy} />
+          </StateBlock>
+        </div>
       ) : null}
     </AiConfigSectionCard>
   );

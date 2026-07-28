@@ -1478,6 +1478,25 @@ export interface KnowledgeSourceRetrieveData {
   enabled?: boolean;
 }
 
+export interface LlmMcpRegistrationStatus {
+  servers?: Array<{
+    id?: string;
+    transport?: string;
+    command?: string[];
+    url?: string;
+    enabled_tools?: string[];
+  }>;
+  registered_tool_names?: string[];
+  registered_count?: number;
+  errors?: Array<{ server_id?: string; error?: string }>;
+  sessions?: Array<{
+    id?: string;
+    transport?: string;
+    alive?: boolean;
+    calls?: number;
+  }>;
+}
+
 export interface LlmToolCatalogPolicy {
   tools_enabled?: boolean;
   selective_enabled?: boolean;
@@ -1485,6 +1504,7 @@ export interface LlmToolCatalogPolicy {
   blacklist?: string[];
   arknights_kb_enabled?: boolean;
   desc_max_len?: number;
+  mcp?: LlmMcpRegistrationStatus;
 }
 
 export interface LlmToolCatalogItem {
