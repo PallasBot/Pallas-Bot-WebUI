@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.7] - 2026-07-28
 
 相对 **0.8.6** 至本版的控制台更新。
 
@@ -21,6 +21,16 @@
 ### Changed
 
 - MCP 状态摘要展示常驻连接数
+
+### 提交明细
+
+### Added
+
+* feat(ai): MCP 状态展示常驻连接数 ([a7cc24c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a7cc24c4eb089aafa087aa81b447f46daa7b8666))
+* feat(ai): 对话工具页增加 MCP 服务器配置入口 ([92a99f3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/92a99f35146db2f80c3ac235f629d3e26ffce468))
+
+**完整变更**: [`v0.8.6...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.6...HEAD)
+
 
 ## [0.8.6] - 2026-07-28
 
@@ -73,7 +83,6 @@
 * perf(logs): 运行日志 SSE 约 90ms 批刷 ([a111251](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a1112510b0289e9398c6d6220e622b137204e354))
 
 **完整变更**: [`v0.8.5...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.5...HEAD)
-
 
 ## [0.8.5] - 2026-07-27
 
