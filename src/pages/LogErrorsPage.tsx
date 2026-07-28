@@ -12,7 +12,7 @@ import {
   isTracebackTruncated,
   parseLogErrorPlugin,
 } from "@/utils/logErrorDisplay";
-import { formatLogDisplayTime } from "@/utils/logDisplay";
+import { formatLogDisplayDateTime } from "@/utils/logDisplay";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import PageMasthead from "@/components/PageMasthead";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
@@ -95,7 +95,7 @@ export default function LogErrorsPage() {
   }
 
   async function copySummary(it: ErrorRow) {
-    const timeLabel = formatLogDisplayTime(it.at);
+    const timeLabel = formatLogDisplayDateTime(it.at);
     await runCopy("摘要", formatLogErrorSummary(it, timeLabel));
   }
 
@@ -109,7 +109,7 @@ export default function LogErrorsPage() {
   }
 
   async function copyFull(it: ErrorRow) {
-    const timeLabel = formatLogDisplayTime(it.at);
+    const timeLabel = formatLogDisplayDateTime(it.at);
     await runCopy("全部", formatLogErrorFull(it, timeLabel));
   }
 
@@ -223,7 +223,7 @@ export default function LogErrorsPage() {
                   return (
                     <article key={key} className="log-error-card">
                       <header className="log-error-card__hd">
-                        <time className="log-error-card__time">{formatLogDisplayTime(it.at)}</time>
+                        <time className="log-error-card__time">{formatLogDisplayDateTime(it.at)}</time>
                         <Badge
                           variant="destructive"
                           className="log-error-card__type"

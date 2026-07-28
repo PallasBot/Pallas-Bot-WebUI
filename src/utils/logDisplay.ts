@@ -47,8 +47,23 @@ export function normalizeLogScope(scope: string): string {
   if (source) return source;
   return module;
 }
-/** 与 loguru 行首一致：`MM-DD HH:mm:ss`（不含年份） */
+/** 运行日志 feed 行首：仅 `HH:mm:ss`，缩短前置标签 */
 export function formatLogDisplayTime(raw: string | number): string {
+  if (typeof raw === "number") {
+    if (!Number.isFinite(raw) || raw <= 0) return "—";
+    const d = new Date(raw * 1000);
+    if (Number.isNaN(d.getTime())) return String(raw);
+    return formatClock(d);
+  }
+  const s = String(raw ?? "").trim();
+  if (!s) return "—";
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) return formatClock(d);
+  return stripToClock(s);
+}
+
+/** 错误列表等需跨日对照：`MM-DD HH:mm:ss`（不含年份） */
+export function formatLogDisplayDateTime(raw: string | number): string {
   if (typeof raw === "number") {
     if (!Number.isFinite(raw) || raw <= 0) return "—";
     const d = new Date(raw * 1000);
@@ -62,13 +77,25 @@ export function formatLogDisplayTime(raw: string | number): string {
   return stripYearFromLogText(s);
 }
 
-function formatDateNoYear(d: Date): string {
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+function formatClock(d: Date): string {
   const h = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
   const sec = String(d.getSeconds()).padStart(2, "0");
-  return `${mo}-${day} ${h}:${mi}:${sec}`;
+  return `${h}:${mi}:${sec}`;
+}
+
+function formatDateNoYear(d: Date): string {
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${mo}-${day} ${formatClock(d)}`;
+}
+
+/** 从已格式化文本抽出时分秒；抽不出则退回去年份文本 */
+function stripToClock(text: string): string {
+  const bare = stripYearFromLogText(text).trim();
+  const m = /(?:^|\s)(\d{2}:\d{2}:\d{2})\b/.exec(bare);
+  if (m?.[1]) return m[1];
+  return bare;
 }
 
 /** 原始日志行 / 已格式化文本：去掉常见四位数年份前缀 */
@@ -286,6 +313,20 @@ export function logEntrySourceKey(row: Pick<LogEntry, "scope" | "message">): str
   if (tag.startsWith("worker-")) return tag;
   if (tag === "hub" || tag === "hub-file") return "hub";
   return "";
+}
+
+/** 与后端 ``_entry_matches_log_source`` 对齐：筛选来源时保留对应条目 */
+export function logEntryMatchesSource(
+  row: Pick<LogEntry, "scope" | "message">,
+  source: string | null | undefined,
+): boolean {
+  const want = (source || "all").trim() || "all";
+  if (want === "all") return true;
+  const key = logEntrySourceKey(row);
+  if (want === "hub" || want === "hub-file") {
+    return key === "" || key === "hub";
+  }
+  return key === want;
 }
 
 function entryAcceptsTracebackContinuation(row: LogEntry): boolean {
