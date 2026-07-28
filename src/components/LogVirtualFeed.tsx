@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import type { LogEntry } from "@/api/pallasTypes";
-import { formatLogDisplayTime } from "@/utils/logDisplay";
+import { formatLogDisplayTime, splitLogScope } from "@/utils/logDisplay";
 import { cn } from "@/lib/utils";
 import "@/styles/log-virtual-feed.css";
 
@@ -33,6 +33,17 @@ function stableRowKey(row: LogEntry): string {
 
 function previewMessage(message: string): string {
   return message.replace(/\s+/g, " ").trim();
+}
+
+function LogScopeChips({ scope }: { scope: string }) {
+  const { source, module } = splitLogScope(scope);
+  if (!source && !module) return null;
+  return (
+    <span className="log-line__scope-group">
+      {source ? <span className="log-line__source">{source}</span> : null}
+      {module ? <span className="log-line__scope">[{module}]</span> : null}
+    </span>
+  );
 }
 
 const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtualFeed(
@@ -196,7 +207,7 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
               >
                 <span className="log-line__time">{formatLogDisplayTime(row.time)}</span>
                 <span className={cn("log-line__lv-tag", `log-line__lv-tag--${row.level}`)}>{row.level}</span>
-                {row.scope ? <span className="log-line__scope">[{row.scope}]</span> : null}
+                <LogScopeChips scope={row.scope} />
                 <span className="log-line__msg log-line__msg--clip">{previewMessage(row.message)}</span>
               </button>
             ))}
@@ -210,7 +221,7 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
             <span className={cn("log-line__lv-tag", `log-line__lv-tag--${expandedRow.level}`)}>
               {expandedRow.level}
             </span>
-            {expandedRow.scope ? <span className="log-line__scope">[{expandedRow.scope}]</span> : null}
+            <LogScopeChips scope={expandedRow.scope} />
             <button
               type="button"
               className="ui-btn ui-btn--ghost ui-btn--sm log-virtual-feed__detail-close"

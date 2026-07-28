@@ -10434,8 +10434,9 @@ table.data.console-data-table .link-quiet {
 }
 
 .log-line__scope {
-  flex: 1 1 4rem;
-  max-width: 9rem;
+  flex: 0 1 auto;
+  flex-grow: 0;
+  max-width: 12rem;
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
