@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import "@/styles/console/ai-hub.css";
 import {
   AudioLines, Cloud, HardDrive, Layers, Music2, Palette, Server, type LucideIcon,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
+import ConsoleHint from "@/components/ConsoleHint";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import PluginConfigWorkspace, {
@@ -44,6 +46,51 @@ function notifyErr(message: string) {
   pushConsoleToast(message || "操作失败", "err");
 }
 
+function AiInstallProgressBlock({
+  label,
+  percent,
+  lines,
+  failedTail,
+  failed = false,
+}: {
+  label: string;
+  percent: number;
+  lines: string[];
+  failedTail?: string;
+  failed?: boolean;
+}) {
+  const pct = Math.max(0, Math.min(100, Math.round(percent)));
+  const logText = (failedTail || "").trim() || lines.join("\n");
+  return (
+    <div
+      className={`ai-install-progress${failed ? " ai-install-progress--failed" : ""}`}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="ai-install-progress__head">
+        <span className="ai-install-progress__label truncate" title={label || undefined}>
+          {label || "安装中…"}
+        </span>
+        <span className="ai-install-progress__pct">{pct}%</span>
+      </div>
+      <div
+        className="ai-install-progress__bar"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        aria-label={label || "安装进度"}
+      >
+        <span
+          className={`ai-install-progress__fill${pct >= 100 ? " ai-install-progress__fill--done" : ""}`}
+          style={{ width: `${Math.max(pct, pct > 0 ? 4 : 0)}%` }}
+        />
+      </div>
+      {logText ? <pre className="ai-install-progress__log">{logText}</pre> : null}
+    </div>
+  );
+}
+
 /** URL / 内部 panel；connection、runtime 为旧深链别名，归一到 service；draw-raw → draw。 */
 type Panel = "service" | "connection" | "runtime" | "assets" | "sing" | "tts" | "draw" | "ncm";
 type SelectPanel = "service" | "assets" | "sing" | "tts" | "draw" | "ncm";
@@ -51,8 +98,8 @@ type SelectPanel = "service" | "assets" | "sing" | "tts" | "draw" | "ncm";
 const SELECT_OPTIONS: Array<{ value: SelectPanel; label: string; icon: LucideIcon; lead: string }> = [
   { value: "service", label: "媒体服务", icon: Server, lead: "安装、启停与连接。" },
   { value: "assets", label: "媒体资产", icon: HardDrive, lead: "唱歌 / TTS 权重与素材下载。" },
-  { value: "sing", label: "唱歌", icon: Music2, lead: "默认音色与推理后端。" },
-  { value: "tts", label: "TTS", icon: AudioLines, lead: "参考音频与语种默认值。" },
+  { value: "sing", label: "唱歌", icon: Music2, lead: "侧车默认与唱歌插件配置。" },
+  { value: "tts", label: "TTS", icon: AudioLines, lead: "侧车默认与牛牛说插件配置。" },
   { value: "draw", label: "画画", icon: Palette, lead: "画画插件配置（与插件页同源）。" },
   { value: "ncm", label: "网易云", icon: Cloud, lead: "短信登录与会话状态。" },
 ];
@@ -110,7 +157,11 @@ export default function AiConfigMediaSection() {
 
   const [baseUrl, setBaseUrl] = useState("");
   const [timeoutSec, setTimeoutSec] = useState("30");
+  const [bearerToken, setBearerToken] = useState("");
   const [installProgress, setInstallProgress] = useState("");
+  const [installPercent, setInstallPercent] = useState(0);
+  const [installLogLines, setInstallLogLines] = useState<string[]>([]);
+  const [installFailTail, setInstallFailTail] = useState("");
   const [useGpu, setUseGpu] = useState(false);
   const [noStart, setNoStart] = useState(false);
   const [jobLines, setJobLines] = useState<string[]>([]);
@@ -134,6 +185,7 @@ export default function AiConfigMediaSection() {
     if (aiCfgQ.data) {
       setBaseUrl(aiCfgQ.data.base_url || "");
       setTimeoutSec(String(aiCfgQ.data.timeout_sec ?? 30));
+      setBearerToken(aiCfgQ.data.token || "");
     }
   }, [aiCfgQ.data]);
   useEffect(() => {
@@ -167,6 +219,11 @@ export default function AiConfigMediaSection() {
     mutationFn: () => putAiExtensionConfig({
       base_url: baseUrl.trim(),
       api_prefix: (aiCfgQ.data?.api_prefix || "/api").trim() || "/api",
+      token: bearerToken.trim(),
+      health_paths: aiCfgQ.data?.health_paths?.length ? aiCfgQ.data.health_paths : ["/health"],
+      uvicorn_log_file: aiCfgQ.data?.uvicorn_log_file || "",
+      celery_log_file: aiCfgQ.data?.celery_log_file || "",
+      celery_media_log_file: aiCfgQ.data?.celery_media_log_file || "",
       timeout_sec: Number(timeoutSec) || 30,
     }),
     onSuccess: async () => { notifyOk("AI 扩展连接已保存"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
@@ -192,15 +249,45 @@ export default function AiConfigMediaSection() {
   });
   const installMut = useMutation({
     mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap") => {
+      setInstallProgress("已排队…");
+      setInstallPercent(0);
+      setInstallLogLines([]);
+      setInstallFailTail("");
       const job = await postAiInstall({
         action,
         no_start: noStart,
         use_gpu: useGpu,
       });
-      return waitForInstallJob(job.job_id, openAiInstallJobEventSource, setInstallProgress);
+      return waitForInstallJob(job.job_id, openAiInstallJobEventSource, (p) => {
+        setInstallPercent(p.percent);
+        if (p.message) setInstallProgress(p.message);
+        if (p.line != null && p.line !== "") {
+          setInstallLogLines((prev) => {
+            const next = [...prev, p.line as string];
+            return next.length > 400 ? next.slice(-320) : next;
+          });
+        }
+      });
     },
-    onSuccess: async () => { notifyOk("安装任务完成"); setInstallProgress(""); await invalidate(); },
-    onError: (e) => { setInstallProgress(""); notifyErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e)); },
+    onSuccess: async () => {
+      notifyOk("安装任务完成");
+      setInstallProgress("");
+      setInstallPercent(0);
+      setInstallLogLines([]);
+      setInstallFailTail("");
+      await invalidate();
+    },
+    onError: (e) => {
+      if (e instanceof InstallJobFailedError) {
+        const tail = String(e.result?.output_tail || "").trim();
+        if (tail) setInstallFailTail(tail);
+        else if (e.logLines.length) setInstallFailTail(e.logLines.join("\n"));
+        notifyErr(e.message);
+      } else {
+        notifyErr(axiosErrorDetail(e));
+      }
+      setInstallProgress("");
+    },
   });
   const pollJob = (jobId: string) => {
     if (pollRef.current != null) window.clearInterval(pollRef.current);
@@ -303,25 +390,30 @@ export default function AiConfigMediaSection() {
   );
   const contentPanel: SelectPanel = panel as SelectPanel;
   const drawWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
-  const [drawStatus, setDrawStatus] = useState<
-    Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">
-  >({
+  const singWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
+  const ttsWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
+  const emptyPluginStatus = {
     saving: false,
     checking: false,
     loading: true,
     hasData: false,
     supportsConfigCheck: false,
-  });
+  };
+  const [drawStatus, setDrawStatus] = useState(emptyPluginStatus);
+  const [singPluginStatus, setSingPluginStatus] = useState(emptyPluginStatus);
+  const [ttsPluginStatus, setTtsPluginStatus] = useState(emptyPluginStatus);
 
-  const onDrawStatusChange = useCallback(
-    (next: Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">) => {
-      setDrawStatus((prev) => {
+  const onPluginStatusChange = useCallback(
+    (
+      setter: typeof setDrawStatus,
+    ) => (next: Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">) => {
+      setter((prev) => {
         if (
-          prev.saving === next.saving &&
-          prev.checking === next.checking &&
-          prev.loading === next.loading &&
-          prev.hasData === next.hasData &&
-          prev.supportsConfigCheck === next.supportsConfigCheck
+          prev.saving === next.saving
+          && prev.checking === next.checking
+          && prev.loading === next.loading
+          && prev.hasData === next.hasData
+          && prev.supportsConfigCheck === next.supportsConfigCheck
         ) {
           return prev;
         }
@@ -329,6 +421,15 @@ export default function AiConfigMediaSection() {
       });
     },
     [],
+  );
+  const onDrawStatusChange = useMemo(() => onPluginStatusChange(setDrawStatus), [onPluginStatusChange]);
+  const onSingPluginStatusChange = useMemo(
+    () => onPluginStatusChange(setSingPluginStatus),
+    [onPluginStatusChange],
+  );
+  const onTtsPluginStatusChange = useMemo(
+    () => onPluginStatusChange(setTtsPluginStatus),
+    [onPluginStatusChange],
   );
 
   const chromeMiddle = useMemo(() => (
@@ -354,12 +455,21 @@ export default function AiConfigMediaSection() {
           type="button"
           size="sm"
           className="shrink-0"
-          disabled={busy || singQ.isLoading || singMut.isPending}
+          disabled={
+            busy
+            || singQ.isLoading
+            || singMut.isPending
+            || singPluginStatus.saving
+            || singPluginStatus.loading
+          }
           onClick={() => {
-            void singSaveRef.current();
+            void (async () => {
+              await singSaveRef.current();
+              if (singPluginStatus.hasData) await singWorkspaceRef.current?.save();
+            })();
           }}
         >
-          {singMut.isPending ? "保存中…" : "保存"}
+          {singMut.isPending || singPluginStatus.saving ? "保存中…" : "保存"}
         </Button>
       );
     }
@@ -369,12 +479,21 @@ export default function AiConfigMediaSection() {
           type="button"
           size="sm"
           className="shrink-0"
-          disabled={busy || ttsQ.isLoading || ttsMut.isPending}
+          disabled={
+            busy
+            || ttsQ.isLoading
+            || ttsMut.isPending
+            || ttsPluginStatus.saving
+            || ttsPluginStatus.loading
+          }
           onClick={() => {
-            void ttsSaveRef.current();
+            void (async () => {
+              await ttsSaveRef.current();
+              if (ttsPluginStatus.hasData) await ttsWorkspaceRef.current?.save();
+            })();
           }}
         >
-          {ttsMut.isPending ? "保存中…" : "保存"}
+          {ttsMut.isPending || ttsPluginStatus.saving ? "保存中…" : "保存"}
         </Button>
       );
     }
@@ -417,6 +536,8 @@ export default function AiConfigMediaSection() {
   }, [
     contentPanel,
     drawStatus,
+    singPluginStatus,
+    ttsPluginStatus,
     busy,
     singQ.isLoading,
     ttsQ.isLoading,
@@ -454,7 +575,15 @@ export default function AiConfigMediaSection() {
 
   return <AiConfigSectionCard contentClassName="space-y-4">
     <AiSectionHeader icon={panelMeta.icon} title={panelMeta.label} lead={panelMeta.lead} />
-    {installProgress ? <p className="text-xs text-muted-foreground">{installProgress}</p> : null}
+    {installMut.isPending || installFailTail ? (
+      <AiInstallProgressBlock
+        label={installMut.isPending ? (installProgress || "安装中…") : "安装失败"}
+        percent={installPercent}
+        lines={installLogLines}
+        failedTail={installMut.isPending ? undefined : installFailTail}
+        failed={!installMut.isPending && Boolean(installFailTail)}
+      />
+    ) : null}
     {panel === "service" ? (
       <StateBlock loading={serviceLoading} error={serviceError}>
         <div className="space-y-4">
@@ -555,6 +684,19 @@ export default function AiConfigMediaSection() {
               </AiConfigField>
               <AiConfigField label="超时（秒）" description="请求超时上限">
                 <Input type="number" value={timeoutSec} onChange={(e) => setTimeoutSec(e.target.value)} />
+              </AiConfigField>
+              <AiConfigField
+                label="Bearer Token"
+                description="须与 AI 侧 PALLAS_AI_API_TOKEN 一致；供 /v1 与日志回退鉴权。"
+                className="md:col-span-2"
+              >
+                <Input
+                  type="password"
+                  autoComplete="off"
+                  value={bearerToken}
+                  onChange={(e) => setBearerToken(e.target.value)}
+                  placeholder="可留空（AI 未强制鉴权时）"
+                />
               </AiConfigField>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -658,104 +800,157 @@ export default function AiConfigMediaSection() {
       </StateBlock>
     ) : null}
     {panel === "sing" ? (
-      <StateBlock loading={singQ.isLoading} error={singQ.error}>
-        <div className="space-y-4">
-          <PluginConfigFormSection
-            title="运行概况"
-            subtitle="已登记的推理后端与 Speaker。"
-            bodyClassName="!grid-cols-1 gap-3"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline">
-                Speaker {singQ.data?.speakers.speakers?.length ?? 0} 个
-              </Badge>
-              <Badge variant="outline">
-                后端 {singQ.data?.backends.backends?.length ?? 0} 个
-              </Badge>
-            </div>
-            <p className="break-all font-mono text-[11px] text-muted-foreground">
-              {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "暂无后端"}
-            </p>
-          </PluginConfigFormSection>
+      <div className="space-y-4">
+        <ConsoleHint>
+          <span>
+            需安装官方扩展「牛牛唱歌」（
+            <Link to="/plugin-store">插件商店</Link>
+            中的 pallas-plugin-ai-media）。自备音色放到 AI 仓
+            {" "}
+            <code className="font-mono text-[11px]">resource/sing/models/&lt;音色名&gt;/</code>
+            。
+          </span>
+        </ConsoleHint>
+        <StateBlock loading={singQ.isLoading} error={singQ.error}>
+          <div className="space-y-4">
+            <PluginConfigFormSection
+              title="运行概况"
+              subtitle="已登记的推理后端与 Speaker。"
+              bodyClassName="!grid-cols-1 gap-3"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">
+                  Speaker {singQ.data?.speakers.speakers?.length ?? 0} 个
+                </Badge>
+                <Badge variant="outline">
+                  后端 {singQ.data?.backends.backends?.length ?? 0} 个
+                </Badge>
+              </div>
+              <p className="break-all font-mono text-[11px] text-muted-foreground">
+                {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "暂无后端"}
+              </p>
+            </PluginConfigFormSection>
 
-          <PluginConfigFormSection
-            title="默认参数"
-            subtitle="未在命令中指定时使用。"
-            bodyClassName="!grid-cols-1 gap-3"
-          >
-            <div className="grid grid-cols-2 gap-3">
-              <AiConfigField label="默认 Speaker" description="未指定时使用的唱歌音色。">
-                <AiOptionSelect
-                  value={defaultSpeaker}
-                  options={speakerOptions}
-                  placeholder="选择 Speaker"
-                  emptyLabel="（未指定）"
-                  onValueChange={setDefaultSpeaker}
-                />
-              </AiConfigField>
-              <AiConfigField label="优先后端" description="首选推理后端。">
-                <AiOptionSelect
-                  value={preferredBackend}
-                  options={backendOptions}
-                  placeholder="选择后端"
-                  emptyLabel="（未指定）"
-                  onValueChange={setPreferredBackend}
-                />
-              </AiConfigField>
-            </div>
-          </PluginConfigFormSection>
-        </div>
-      </StateBlock>
+            <PluginConfigFormSection
+              title="侧车默认"
+              subtitle="未在命令中指定时使用的 Speaker / 后端。"
+              bodyClassName="!grid-cols-1 gap-3"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <AiConfigField label="默认 Speaker" description="未指定时使用的唱歌音色。">
+                  <AiOptionSelect
+                    value={defaultSpeaker}
+                    options={speakerOptions}
+                    placeholder="选择 Speaker"
+                    emptyLabel="（未指定）"
+                    onValueChange={setDefaultSpeaker}
+                  />
+                </AiConfigField>
+                <AiConfigField label="优先后端" description="首选推理后端。">
+                  <AiOptionSelect
+                    value={preferredBackend}
+                    options={backendOptions}
+                    placeholder="选择后端"
+                    emptyLabel="（未指定）"
+                    onValueChange={setPreferredBackend}
+                  />
+                </AiConfigField>
+              </div>
+            </PluginConfigFormSection>
+          </div>
+        </StateBlock>
+        <PluginConfigFormSection
+          title="插件配置"
+          subtitle="与插件页同源：启停、音色映射、默认合成时长等。"
+          bodyClassName="!grid-cols-1 gap-3"
+          defaultOpen
+        >
+          <PluginConfigWorkspace
+            ref={singWorkspaceRef}
+            pluginName="sing"
+            presentation="dialog"
+            onStatusChange={onSingPluginStatusChange}
+          />
+        </PluginConfigFormSection>
+      </div>
     ) : null}
 
     {panel === "tts" ? (
-      <StateBlock loading={ttsQ.isLoading} error={ttsQ.error}>
-        <div className="space-y-4">
-          <PluginConfigFormSection
-            title="音色概况"
-            subtitle="可用的参考音频路径。"
-            bodyClassName="!grid-cols-1 gap-3"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline">音色 {ttsQ.data?.voices?.length ?? 0} 个</Badge>
-            </div>
-          </PluginConfigFormSection>
+      <div className="space-y-4">
+        <ConsoleHint>
+          <span>
+            需安装官方扩展「牛牛说」（
+            <Link to="/plugin-store">插件商店</Link>
+            中的 pallas-plugin-ai-media）。Bearer 在「媒体服务」连接里配置。
+          </span>
+        </ConsoleHint>
+        <StateBlock loading={ttsQ.isLoading} error={ttsQ.error}>
+          <div className="space-y-4">
+            <PluginConfigFormSection
+              title="音色概况"
+              subtitle="可用的参考音频路径。"
+              bodyClassName="!grid-cols-1 gap-3"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">音色 {ttsQ.data?.voices?.length ?? 0} 个</Badge>
+              </div>
+            </PluginConfigFormSection>
 
-          <PluginConfigFormSection
-            title="合成默认"
-            subtitle="参考音频、提示文本与语种默认值。"
-            bodyClassName="!grid-cols-1 gap-3"
-          >
-            <div className="grid grid-cols-2 gap-3">
-              <AiConfigField label="参考音频" description="参考音频路径" className="md:col-span-2">
-                <AiOptionSelect
-                  value={ttsRef}
-                  options={voicePathOptions}
-                  placeholder="选择参考音频"
-                  emptyLabel="（未指定）"
-                  onValueChange={setTtsRef}
-                />
-              </AiConfigField>
-              <AiConfigField label="提示文本" className="md:col-span-2">
-                <Input value={ttsPrompt} onChange={(e) => setTtsPrompt(e.target.value)} />
-              </AiConfigField>
-              <AiConfigField label="提示语种" description="参考音频对应语种，如 zh / en。">
-                <Input value={ttsPromptLang} onChange={(e) => setTtsPromptLang(e.target.value)} />
-              </AiConfigField>
-              <AiConfigField label="合成语种" description="待合成文本语种。">
-                <Input value={ttsTextLang} onChange={(e) => setTtsTextLang(e.target.value)} />
-              </AiConfigField>
-            </div>
-          </PluginConfigFormSection>
-        </div>
-      </StateBlock>
+            <PluginConfigFormSection
+              title="侧车默认"
+              subtitle="参考音频、提示文本与语种默认值。"
+              bodyClassName="!grid-cols-1 gap-3"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <AiConfigField label="参考音频" description="参考音频路径" className="md:col-span-2">
+                  <AiOptionSelect
+                    value={ttsRef}
+                    options={voicePathOptions}
+                    placeholder="选择参考音频"
+                    emptyLabel="（未指定）"
+                    onValueChange={setTtsRef}
+                  />
+                </AiConfigField>
+                <AiConfigField label="提示文本" className="md:col-span-2">
+                  <Input value={ttsPrompt} onChange={(e) => setTtsPrompt(e.target.value)} />
+                </AiConfigField>
+                <AiConfigField label="提示语种" description="参考音频对应语种，如 zh / en。">
+                  <Input value={ttsPromptLang} onChange={(e) => setTtsPromptLang(e.target.value)} />
+                </AiConfigField>
+                <AiConfigField label="合成语种" description="待合成文本语种。">
+                  <Input value={ttsTextLang} onChange={(e) => setTtsTextLang(e.target.value)} />
+                </AiConfigField>
+              </div>
+            </PluginConfigFormSection>
+          </div>
+        </StateBlock>
+        <PluginConfigFormSection
+          title="插件配置"
+          subtitle="与插件页同源：启停、通路、超时与字数上限等。"
+          bodyClassName="!grid-cols-1 gap-3"
+          defaultOpen
+        >
+          <PluginConfigWorkspace
+            ref={ttsWorkspaceRef}
+            pluginName="tts"
+            presentation="dialog"
+            onStatusChange={onTtsPluginStatusChange}
+          />
+        </PluginConfigFormSection>
+      </div>
     ) : null}
 
     {panel === "draw" ? (
       <div className="space-y-3">
-        <p className="text-xs text-muted-foreground">
-          与插件页共享 draw 配置；未装画画插件时会加载失败。
-        </p>
+        <ConsoleHint>
+          <span>
+            与插件页共享画画配置；未安装画画插件时请先到
+            {" "}
+            <Link to="/plugin-store">插件商店</Link>
+            {" "}
+            安装。
+          </span>
+        </ConsoleHint>
         <PluginConfigWorkspace
           ref={drawWorkspaceRef}
           pluginName="draw"

@@ -118,7 +118,9 @@ export default function AiConfigConnectionSection() {
         with_media: withMedia,
         use_gpu: useGpu,
       });
-      return waitForInstallJob(job.job_id, openAiInstallJobEventSource, setInstallProgress);
+      return waitForInstallJob(job.job_id, openAiInstallJobEventSource, (p) => {
+        setInstallProgress(p.message || `${p.percent}%`);
+      });
     },
     onSuccess: async () => {
       notifyOk("安装任务已完成");

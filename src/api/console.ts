@@ -270,7 +270,12 @@ export type AiRuntimeStatus = {
 export type AiExtensionConfig = {
   base_url?: string;
   api_prefix?: string;
+  token?: string;
   timeout_sec?: number;
+  health_paths?: string[];
+  uvicorn_log_file?: string;
+  celery_log_file?: string;
+  celery_media_log_file?: string;
 };
 
 export type AuthSetupStatus = {
