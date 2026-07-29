@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
+import ConfigFieldHelp from "@/components/config/ConfigFieldHelp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-/** AI 配置字段：Label + 可选说明 + 控件。 */
+/** AI 配置字段：Label + 可选「?」说明 + 控件。 */
 export default function AiConfigField({
   label,
   htmlFor,
@@ -20,12 +21,18 @@ export default function AiConfigField({
   children: ReactNode;
   className?: string;
 }) {
+  const helpTitle = typeof label === "string" ? label : "说明";
+  const stringDesc = typeof description === "string" ? description.trim() : "";
+
   return (
     <div className={cn("space-y-1.5", className)}>
-      <div className="space-y-0.5">
+      <div className="flex items-center gap-1.5">
         <Label htmlFor={htmlFor}>{label}</Label>
-        {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+        {stringDesc ? <ConfigFieldHelp title={helpTitle} description={stringDesc} /> : null}
       </div>
+      {description && !stringDesc ? (
+        <div className="text-xs text-muted-foreground">{description}</div>
+      ) : null}
       {children}
     </div>
   );

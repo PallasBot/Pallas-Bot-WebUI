@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,25 +52,28 @@ function popoverPositionStyle(anchor: HTMLElement): CSSProperties {
   };
 }
 
-function HelpBody({ title, description }: { title: string; description: string }) {
+function HelpBody({ title, description }: { title: string; description: ReactNode }) {
   return (
     <div className="plugin-config-field-popover__section">
       <div className="plugin-config-field-popover__eyebrow">配置说明</div>
       <h4 className="plugin-config-field-popover__title">{title}</h4>
-      <p className="plugin-config-field-popover__desc">{description}</p>
+      <div className="plugin-config-field-popover__desc">{description}</div>
     </div>
   );
 }
 
-/** 字段标题旁「?」：桌面 hover/点击浮层，窄屏 Dialog。 */
+/** 字段/段头标题旁「?」：桌面 hover/点击浮层，窄屏 Dialog。 */
 export default function ConfigFieldHelp({
   title,
   description,
 }: {
   title: string;
-  description: string;
+  description: ReactNode;
 }) {
-  const desc = description.trim();
+  const empty =
+    description == null
+    || description === false
+    || (typeof description === "string" && !description.trim());
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<CSSProperties>({});
@@ -162,7 +165,7 @@ export default function ConfigFieldHelp({
 
   useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
 
-  if (!desc) return null;
+  if (empty) return null;
 
   const helpExpanded = popoverOpen || dialogOpen;
 
@@ -195,7 +198,9 @@ export default function ConfigFieldHelp({
               onMouseEnter={clearCloseTimer}
               onMouseLeave={onHelpHoverLeave}
             >
-              <HelpBody title={title} description={desc} />
+              <div className="plugin-config-field-popover__scroll">
+                <HelpBody title={title} description={description} />
+              </div>
             </div>,
             document.body,
           )
@@ -205,10 +210,10 @@ export default function ConfigFieldHelp({
         <DialogContent className="plugin-config-field-dialog max-w-[min(760px,calc(100vw-32px))]">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>查看字段说明。</DialogDescription>
+            <DialogDescription>查看说明。</DialogDescription>
           </DialogHeader>
           <div className="plugin-config-field-popover plugin-config-field-popover--dialog">
-            <HelpBody title={title} description={desc} />
+            <HelpBody title={title} description={description} />
           </div>
           <div className="flex justify-end">
             <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>

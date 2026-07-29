@@ -76,10 +76,19 @@ export default function PluginsPage() {
 
   const sortedPlugins = useMemo(() => {
     const rows = [...((pluginsQ.data || []) as PluginRow[])];
+    const pinAfterFavorites = (row: PluginRow) => {
+      const id = (row.name || "").trim().toLowerCase();
+      return id === "pb_core" ? 1 : 2;
+    };
     rows.sort((a, b) => {
-      const fa = favorites.has(a.name) ? 1 : 0;
-      const fb = favorites.has(b.name) ? 1 : 0;
-      if (fa !== fb) return fb - fa;
+      const fa = favorites.has(a.name) ? 0 : 1;
+      const fb = favorites.has(b.name) ? 0 : 1;
+      if (fa !== fb) return fa - fb;
+      if (fa === 1) {
+        const pa = pinAfterFavorites(a);
+        const pb = pinAfterFavorites(b);
+        if (pa !== pb) return pa - pb;
+      }
       const na = (a.metadata?.name || a.name).toLowerCase();
       const nb = (b.metadata?.name || b.name).toLowerCase();
       return na.localeCompare(nb, "zh-CN");

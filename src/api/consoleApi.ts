@@ -3076,6 +3076,7 @@ export type MediaAssetsDownloadJob = {
   assets?: string[];
   lines?: string[];
   error?: string;
+  progress_percent?: number;
 };
 
 export type SingSpeakerRow = {

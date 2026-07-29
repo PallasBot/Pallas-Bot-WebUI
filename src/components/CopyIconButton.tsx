@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type CopyIconButtonProps = {
-  /** 用于 title / aria-label，如「复制托管口令」 */
+  /** 用于 title / aria-label，如「复制托管密钥」 */
   label: string;
   /** 返回 `false` 表示复制失败，不切换为打勾；`void` / `true` 视为成功 */
   onClick: () => void | boolean | Promise<void | boolean>;

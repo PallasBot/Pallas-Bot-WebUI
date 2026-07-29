@@ -91,7 +91,7 @@ http.interceptors.response.use(
     const status = err?.response?.status;
     const url = String(err?.config?.url ?? "");
     if (status === 401 && !url.includes("/auth/login")) {
-      redirectToLoginPage("控制台登录已失效或口令不正确，请重新登录。");
+      redirectToLoginPage("控制台登录已失效或密钥不正确，请重新登录。");
     }
     return Promise.reject(err);
   },

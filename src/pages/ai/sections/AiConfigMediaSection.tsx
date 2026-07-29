@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import "@/styles/console/ai-hub.css";
@@ -16,6 +16,7 @@ import {
 } from "@/api/console";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField from "@/components/ai/AiConfigField";
+import AiJobProgressBlock from "@/components/ai/AiJobProgressBlock";
 import AiOptionSelect from "@/components/ai/AiOptionSelect";
 import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
@@ -44,51 +45,6 @@ function notifyOk(message: string) {
 
 function notifyErr(message: string) {
   pushConsoleToast(message || "操作失败", "err");
-}
-
-function AiInstallProgressBlock({
-  label,
-  percent,
-  lines,
-  failedTail,
-  failed = false,
-}: {
-  label: string;
-  percent: number;
-  lines: string[];
-  failedTail?: string;
-  failed?: boolean;
-}) {
-  const pct = Math.max(0, Math.min(100, Math.round(percent)));
-  const logText = (failedTail || "").trim() || lines.join("\n");
-  return (
-    <div
-      className={`ai-install-progress${failed ? " ai-install-progress--failed" : ""}`}
-      role="status"
-      aria-live="polite"
-    >
-      <div className="ai-install-progress__head">
-        <span className="ai-install-progress__label truncate" title={label || undefined}>
-          {label || "安装中…"}
-        </span>
-        <span className="ai-install-progress__pct">{pct}%</span>
-      </div>
-      <div
-        className="ai-install-progress__bar"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={pct}
-        aria-label={label || "安装进度"}
-      >
-        <span
-          className={`ai-install-progress__fill${pct >= 100 ? " ai-install-progress__fill--done" : ""}`}
-          style={{ width: `${Math.max(pct, pct > 0 ? 4 : 0)}%` }}
-        />
-      </div>
-      {logText ? <pre className="ai-install-progress__log">{logText}</pre> : null}
-    </div>
-  );
 }
 
 function AiRuntimeNotReadyBlock({
@@ -213,6 +169,10 @@ export default function AiConfigMediaSection() {
   const [useGpu, setUseGpu] = useState(false);
   const [noStart, setNoStart] = useState(false);
   const [jobLines, setJobLines] = useState<string[]>([]);
+  const [assetDlPercent, setAssetDlPercent] = useState(0);
+  const [assetDlLabel, setAssetDlLabel] = useState("");
+  const [assetDlActive, setAssetDlActive] = useState(false);
+  const [assetDlFailed, setAssetDlFailed] = useState(false);
   const pollRef = useRef<number | null>(null);
   const [defaultSpeaker, setDefaultSpeaker] = useState("");
   const [preferredBackend, setPreferredBackend] = useState("");
@@ -344,18 +304,77 @@ export default function AiConfigMediaSection() {
   });
   const pollJob = (jobId: string) => {
     if (pollRef.current != null) window.clearInterval(pollRef.current);
-    pollRef.current = window.setInterval(() => void fetchMediaAssetsDownloadJob(jobId).then((job) => {
-      if (job.lines?.length) setJobLines(job.lines);
-      if (job.state === "done" || job.state === "failed" || job.state === "error") {
-        if (pollRef.current != null) window.clearInterval(pollRef.current); pollRef.current = null;
-        void qc.invalidateQueries({ queryKey: ["media-assets"] });
-      }
-    }), 1500);
+    setAssetDlActive(true);
+    setAssetDlFailed(false);
+    const tick = () => {
+      void fetchMediaAssetsDownloadJob(jobId)
+        .then((job) => {
+          if (job.lines?.length) setJobLines(job.lines);
+          if (job.message) setAssetDlLabel(job.message);
+          if (job.progress_percent != null) {
+            setAssetDlPercent(Math.max(0, Math.min(100, Number(job.progress_percent) || 0)));
+          }
+          const state = String(job.state || "");
+          if (state === "done" || state === "failed" || state === "error") {
+            if (pollRef.current != null) window.clearInterval(pollRef.current);
+            pollRef.current = null;
+            setAssetDlActive(false);
+            if (state === "done") {
+              setAssetDlPercent(100);
+              setAssetDlLabel(job.message || "媒体权重下载完成");
+              notifyOk(job.message || "媒体权重下载完成");
+            } else {
+              setAssetDlFailed(true);
+              notifyErr(job.error || job.message || "媒体权重下载失败");
+            }
+            void qc.invalidateQueries({ queryKey: ["media-assets"] });
+          }
+        })
+        .catch((e) => {
+          if (pollRef.current != null) window.clearInterval(pollRef.current);
+          pollRef.current = null;
+          setAssetDlActive(false);
+          setAssetDlFailed(true);
+          notifyErr(axiosErrorDetail(e));
+        });
+    };
+    tick();
+    pollRef.current = window.setInterval(tick, 1000);
   };
   const downloadMut = useMutation({
-    mutationFn: (assets?: string[]) => postMediaAssetsDownload(assets),
-    onSuccess: (job) => { notifyOk(`下载任务 ${job.job_id || "—"} · ${job.state || "queued"}`); if (job.job_id) pollJob(job.job_id); },
-    onError: (e) => notifyErr(axiosErrorDetail(e)),
+    mutationFn: (assets?: string[]) => {
+      setAssetDlPercent(0);
+      setAssetDlLabel("已排队…");
+      setJobLines([]);
+      setAssetDlFailed(false);
+      setAssetDlActive(true);
+      return postMediaAssetsDownload(assets);
+    },
+    onSuccess: (job) => {
+      if (job.progress_percent != null) {
+        setAssetDlPercent(Math.max(0, Math.min(100, Number(job.progress_percent) || 0)));
+      }
+      if (job.message) setAssetDlLabel(job.message);
+      if (job.lines?.length) setJobLines(job.lines);
+      const state = String(job.state || "");
+      if (state === "done") {
+        setAssetDlActive(false);
+        setAssetDlPercent(100);
+        notifyOk(job.message || "媒体权重已就绪");
+        void qc.invalidateQueries({ queryKey: ["media-assets"] });
+        return;
+      }
+      if (job.job_id) pollJob(job.job_id);
+      else {
+        setAssetDlActive(false);
+        notifyErr("下载任务未返回 job_id");
+      }
+    },
+    onError: (e) => {
+      setAssetDlActive(false);
+      setAssetDlFailed(true);
+      notifyErr(axiosErrorDetail(e));
+    },
   });
   const deleteMut = useMutation({
     mutationFn: (assets: string[]) => postMediaAssetsDelete(assets),
@@ -403,7 +422,7 @@ export default function AiConfigMediaSection() {
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const busy = saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || installMut.isPending ||
-    downloadMut.isPending || deleteMut.isPending || singMut.isPending || ttsMut.isPending ||
+    downloadMut.isPending || assetDlActive || deleteMut.isPending || singMut.isPending || ttsMut.isPending ||
     sendMut.isPending || verifyMut.isPending || logoutMut.isPending;
   const assetKeys = Object.keys(mediaQ.data?.assets || {});
   const speakerOptions = useMemo(
@@ -631,10 +650,98 @@ export default function AiConfigMediaSection() {
     ? `${aiRootPath.replace(/[/\\]+$/, "")}/resource/sing/models/<音色名>/`
     : "";
 
+  const panelHelp = useMemo((): ReactNode => {
+    if (contentPanel === "assets") {
+      return (
+        <>
+          <span>下方清单是官方打包权重（可一键下载）。</span>
+          <span>
+            自备唱歌音色请放到 AI 仓
+            {" "}
+            <code className="font-mono">{singModelsRel}</code>
+            （目录名即 Speaker id，勿用
+            {" "}
+            <code className="font-mono">pretrain</code>
+            ），放入
+            {" "}
+            <code className="font-mono">.pt</code>
+            /
+            <code className="font-mono">.pth</code>
+            后到「唱歌」页刷新。
+          </span>
+          {singModelsAbs ? (
+            <span className="break-all font-mono text-[11px]">{singModelsAbs}</span>
+          ) : null}
+        </>
+      );
+    }
+    if (contentPanel === "sing") {
+      return (
+        <>
+          <span>
+            需安装官方扩展「牛牛唱歌」（
+            <Link to="/plugin-store">插件商店</Link>
+            中的 pallas-plugin-ai-media）。
+          </span>
+          <span>
+            自备音色：在 AI Runtime 仓库下新建
+            {" "}
+            <code className="font-mono">{singModelsRel}</code>
+            ，目录名即 Speaker id（勿占用
+            {" "}
+            <code className="font-mono">pretrain</code>
+            ）。放入
+            {" "}
+            <code className="font-mono">.pt</code>
+            /
+            <code className="font-mono">.pth</code>
+            后刷新本页，再在「音色映射」指到该 id。
+          </span>
+          {singModelsAbs ? (
+            <span>
+              当前完整路径：
+              <br />
+              <code className="break-all font-mono text-[11px]">{singModelsAbs}</code>
+            </span>
+          ) : (
+            <span>尚未探测到 AI 仓根时请按相对路径放置；就绪后会显示绝对路径。</span>
+          )}
+        </>
+      );
+    }
+    if (contentPanel === "tts") {
+      return (
+        <span>
+          需安装官方扩展「牛牛说」（
+          <Link to="/plugin-store">插件商店</Link>
+          中的 pallas-plugin-ai-media）。Bearer 在「媒体服务」连接里配置。
+        </span>
+      );
+    }
+    if (contentPanel === "draw") {
+      return (
+        <span>
+          与插件页共享画画配置；未安装时请先到
+          {" "}
+          <Link to="/plugin-store">插件商店</Link>
+          {" "}
+          安装。
+        </span>
+      );
+    }
+    return null;
+  }, [contentPanel, singModelsAbs, singModelsRel]);
+
   return <AiConfigSectionCard contentClassName="space-y-4">
-    <AiSectionHeader icon={panelMeta.icon} title={panelMeta.label} lead={panelMeta.lead} />
+    <AiSectionHeader
+      icon={panelMeta.icon}
+      title={panelMeta.label}
+      lead={panelMeta.lead}
+      help={panelHelp}
+      helpTitle={panelMeta.label}
+    />
     {installMut.isPending || installFailTail ? (
-      <AiInstallProgressBlock
+      <AiJobProgressBlock
         label={installMut.isPending ? (installProgress || "安装中…") : "安装失败"}
         percent={installPercent}
         lines={installLogLines}
@@ -778,26 +885,6 @@ export default function AiConfigMediaSection() {
       ) : (
       <StateBlock loading={mediaQ.isLoading} error={mediaQ.error}>
         <div className="space-y-4">
-          <ConsoleHint className="mb-0 flex-col items-stretch gap-1">
-            <span>下方清单是官方打包权重（可一键下载）。</span>
-            <span>
-              自备唱歌音色请放到 AI 仓
-              {" "}
-              <code className="font-mono text-[11px]">{singModelsRel}</code>
-              （目录名即 Speaker id，勿用
-              {" "}
-              <code className="font-mono text-[11px]">pretrain</code>
-              ），放入
-              {" "}
-              <code className="font-mono text-[11px]">.pt</code>
-              /
-              <code className="font-mono text-[11px]">.pth</code>
-              后到「唱歌」页刷新；详情见该页提示。
-            </span>
-            {singModelsAbs ? (
-              <span className="break-all font-mono text-[11px]">{singModelsAbs}</span>
-            ) : null}
-          </ConsoleHint>
           <PluginConfigFormSection
             title="就绪状态"
             subtitle="权重与素材是否齐备。"
@@ -874,16 +961,25 @@ export default function AiConfigMediaSection() {
             </div>
           </PluginConfigFormSection>
 
-          {jobLines.length ? (
+          {assetDlActive || assetDlFailed || jobLines.length ? (
             <PluginConfigFormSection
-              title="任务日志"
-              subtitle="最近一次下载任务输出。"
+              title="下载进度"
+              subtitle="按资产项与下载字节估算；完成后可刷新清单。"
               bodyClassName="!grid-cols-1"
               defaultOpen
             >
-              <pre className="max-h-40 overflow-auto rounded-[var(--radius-control,8px)] border bg-muted/30 p-2 text-xs">
-                {jobLines.join("\n")}
-              </pre>
+              <AiJobProgressBlock
+                label={
+                  assetDlActive
+                    ? assetDlLabel || "下载中…"
+                    : assetDlFailed
+                      ? assetDlLabel || "下载失败"
+                      : assetDlLabel || "最近一次下载"
+                }
+                percent={assetDlPercent}
+                lines={jobLines}
+                failed={assetDlFailed}
+              />
             </PluginConfigFormSection>
           ) : null}
         </div>
@@ -902,41 +998,6 @@ export default function AiConfigMediaSection() {
         />
       ) : (
       <div className="space-y-4">
-        <ConsoleHint className="mb-0 flex-col items-stretch gap-1.5">
-          <span>
-            需安装官方扩展「牛牛唱歌」（
-            <Link to="/plugin-store">插件商店</Link>
-            中的 pallas-plugin-ai-media）。
-          </span>
-          <span>
-            自备音色：在 AI Runtime 仓库下新建目录
-            {" "}
-            <code className="font-mono text-[11px]">{singModelsRel}</code>
-            ，目录名即 Speaker id（例如
-            {" "}
-            <code className="font-mono text-[11px]">pallas</code>
-            ；勿占用
-            {" "}
-            <code className="font-mono text-[11px]">pretrain</code>
-            ）。放入对应后端的
-            {" "}
-            <code className="font-mono text-[11px]">.pt</code>
-            /
-            <code className="font-mono text-[11px]">.pth</code>
-            后刷新本页；再在下方「音色映射」把口令前缀指到该 id。
-          </span>
-          {singModelsAbs ? (
-            <span>
-              当前 AI 仓根已探测，完整路径：
-              <br />
-              <code className="break-all font-mono text-[11px]">{singModelsAbs}</code>
-            </span>
-          ) : (
-            <span>
-              尚未探测到本机 AI 仓根目录时，请按相对路径放置；本机安装/侧车布局就绪后会在此显示绝对路径。
-            </span>
-          )}
-        </ConsoleHint>
         <StateBlock loading={singQ.isLoading} error={singQ.error}>
           <div className="space-y-4">
             <PluginConfigFormSection
@@ -975,7 +1036,7 @@ export default function AiConfigMediaSection() {
                   {" "}
                   <code className="font-mono text-[11px]">sing_pallas</code>
                   {" "}
-                  资产，或按上方路径放入自备模型。
+                  资产，或按标题旁说明放入自备模型。
                 </p>
               )}
             </PluginConfigFormSection>
@@ -1037,13 +1098,6 @@ export default function AiConfigMediaSection() {
         />
       ) : (
       <div className="space-y-4">
-        <ConsoleHint>
-          <span>
-            需安装官方扩展「牛牛说」（
-            <Link to="/plugin-store">插件商店</Link>
-            中的 pallas-plugin-ai-media）。Bearer 在「媒体服务」连接里配置。
-          </span>
-        </ConsoleHint>
         <StateBlock loading={ttsQ.isLoading} error={ttsQ.error}>
           <div className="space-y-4">
             <PluginConfigFormSection
@@ -1071,8 +1125,16 @@ export default function AiConfigMediaSection() {
                     onValueChange={setTtsRef}
                   />
                 </AiConfigField>
-                <AiConfigField label="提示文本" className="md:col-span-2">
-                  <Input value={ttsPrompt} onChange={(e) => setTtsPrompt(e.target.value)} />
+                <AiConfigField
+                  label="提示文本"
+                  description="参考音频对应原文，供克隆对齐。"
+                  className="md:col-span-2"
+                >
+                  <Input
+                    value={ttsPrompt}
+                    onChange={(e) => setTtsPrompt(e.target.value)}
+                    placeholder="与参考音频一致的原文"
+                  />
                 </AiConfigField>
                 <AiConfigField label="提示语种" description="参考音频对应语种，如 zh / en。">
                   <Input value={ttsPromptLang} onChange={(e) => setTtsPromptLang(e.target.value)} />
@@ -1103,15 +1165,6 @@ export default function AiConfigMediaSection() {
 
     {panel === "draw" ? (
       <div className="space-y-3">
-        <ConsoleHint>
-          <span>
-            与插件页共享画画配置；未安装画画插件时请先到
-            {" "}
-            <Link to="/plugin-store">插件商店</Link>
-            {" "}
-            安装。
-          </span>
-        </ConsoleHint>
         <PluginConfigWorkspace
           ref={drawWorkspaceRef}
           pluginName="draw"

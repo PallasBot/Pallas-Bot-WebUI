@@ -262,7 +262,9 @@ export default function PluginConfigFieldShell({
               onMouseEnter={onPopoverEnter}
               onMouseLeave={onHelpHoverLeave}
             >
-              <FieldHelpBody field={field} title={title} />
+              <div className="plugin-config-field-popover__scroll">
+                <FieldHelpBody field={field} title={title} />
+              </div>
             </div>,
             document.body,
           )

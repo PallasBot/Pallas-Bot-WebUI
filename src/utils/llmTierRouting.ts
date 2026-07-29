@@ -41,7 +41,7 @@ export const TASK_ROUTE_META: Record<
 > = {
   llm_chat: {
     title: "@ LLM 对话",
-    description: "群里 @ 牛牛、口令聊天等主对话，建议用更强模型",
+    description: "群里 @ 牛牛、命令聊天等主对话，建议用更强模型",
     kind: "high",
   },
   drunk: {
