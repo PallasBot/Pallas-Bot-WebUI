@@ -91,6 +91,34 @@ function AiInstallProgressBlock({
   );
 }
 
+function AiRuntimeNotReadyBlock({
+  canManage,
+  busy,
+  onGoService,
+  onStart,
+}: {
+  canManage: boolean;
+  busy: boolean;
+  onGoService: () => void;
+  onStart: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <ConsoleHint>
+        媒体服务未就绪。请先在「服务」用安装与启动拉起 Runtime，健康正常后再操作本页。
+      </ConsoleHint>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={onGoService}>前往服务</Button>
+        {canManage ? (
+          <Button size="sm" variant="outline" disabled={busy} onClick={onStart}>
+            启动媒体服务
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 /** URL / 内部 panel；connection、runtime 为旧深链别名，归一到 service；draw-raw → draw。 */
 type Panel = "service" | "connection" | "runtime" | "assets" | "sing" | "tts" | "draw" | "ncm";
 type SelectPanel = "service" | "assets" | "sing" | "tts" | "draw" | "ncm";
@@ -147,13 +175,33 @@ export default function AiConfigMediaSection() {
   const aiCfgQ = useQuery({ queryKey: ["ai-extension-config"], queryFn: fetchAiExtensionConfig });
   const runtimeQ = useQuery({ queryKey: ["ai-runtime"], queryFn: fetchAiRuntimeStatus });
   const installQ = useQuery({ queryKey: ["ai-install"], queryFn: fetchAiInstallStatus });
-  const mediaQ = useQuery({ queryKey: ["media-assets"], queryFn: fetchMediaAssetsStatus });
+  /** 权重 / 唱歌 / TTS / 网易云都代理到 AI Runtime；未健康时不要打 :9099，避免与「安装与启动」脱节。 */
+  const runtimeProbeDone = !runtimeQ.isLoading;
+  const runtimeReady = runtimeQ.data?.health?.ok === true;
+  const mediaQ = useQuery({
+    queryKey: ["media-assets"],
+    queryFn: fetchMediaAssetsStatus,
+    enabled: panel === "assets" && runtimeProbeDone && runtimeReady,
+    retry: false,
+  });
   const singQ = useQuery({
     queryKey: ["sing-models"],
     queryFn: async () => ({ speakers: await fetchSingSpeakers(), backends: await fetchSingBackends() }),
+    enabled: panel === "sing" && runtimeProbeDone && runtimeReady,
+    retry: false,
   });
-  const ttsQ = useQuery({ queryKey: ["tts-voices"], queryFn: fetchTtsVoices });
-  const statusQ = useQuery({ queryKey: ["ai-ncm"], queryFn: fetchAiNcmStatus });
+  const ttsQ = useQuery({
+    queryKey: ["tts-voices"],
+    queryFn: fetchTtsVoices,
+    enabled: panel === "tts" && runtimeProbeDone && runtimeReady,
+    retry: false,
+  });
+  const statusQ = useQuery({
+    queryKey: ["ai-ncm"],
+    queryFn: fetchAiNcmStatus,
+    enabled: panel === "ncm" && runtimeProbeDone && runtimeReady,
+    retry: false,
+  });
 
   const [baseUrl, setBaseUrl] = useState("");
   const [timeoutSec, setTimeoutSec] = useState("30");
@@ -212,8 +260,13 @@ export default function AiConfigMediaSection() {
   }, [rawPanel, setParams]);
 
   const invalidate = async () => Promise.all([
-    qc.invalidateQueries({ queryKey: ["ai-extension-config"] }), qc.invalidateQueries({ queryKey: ["ai-runtime"] }),
+    qc.invalidateQueries({ queryKey: ["ai-extension-config"] }),
+    qc.invalidateQueries({ queryKey: ["ai-runtime"] }),
     qc.invalidateQueries({ queryKey: ["ai-install"] }),
+    qc.invalidateQueries({ queryKey: ["media-assets"] }),
+    qc.invalidateQueries({ queryKey: ["sing-models"] }),
+    qc.invalidateQueries({ queryKey: ["tts-voices"] }),
+    qc.invalidateQueries({ queryKey: ["ai-ncm"] }),
   ]);
   const saveMut = useMutation({
     mutationFn: () => putAiExtensionConfig({
@@ -572,6 +625,11 @@ export default function AiConfigMediaSection() {
     || (inDocker || runtimeLayout === "docker" || runtimeLayout === "remote"
       ? "当前环境无法在此页安装或启停媒体服务，请在宿主机用 compose / 源码管理，本页只负责连接与测通。"
       : "");
+  const aiRootPath = String(runtimeQ.data?.ai_root || installQ.data?.ai_root || "").trim();
+  const singModelsRel = "resource/sing/models/<音色名>/";
+  const singModelsAbs = aiRootPath
+    ? `${aiRootPath.replace(/[/\\]+$/, "")}/resource/sing/models/<音色名>/`
+    : "";
 
   return <AiConfigSectionCard contentClassName="space-y-4">
     <AiSectionHeader icon={panelMeta.icon} title={panelMeta.label} lead={panelMeta.lead} />
@@ -708,8 +766,38 @@ export default function AiConfigMediaSection() {
       </StateBlock>
     ) : null}
     {panel === "assets" ? (
+      !runtimeProbeDone ? (
+        <StateBlock loading error={null}><span /></StateBlock>
+      ) : !runtimeReady ? (
+        <AiRuntimeNotReadyBlock
+          canManage={canManageRuntime}
+          busy={busy}
+          onGoService={() => setPanel("service")}
+          onStart={() => { void startMut.mutateAsync(); }}
+        />
+      ) : (
       <StateBlock loading={mediaQ.isLoading} error={mediaQ.error}>
         <div className="space-y-4">
+          <ConsoleHint className="mb-0 flex-col items-stretch gap-1">
+            <span>下方清单是官方打包权重（可一键下载）。</span>
+            <span>
+              自备唱歌音色请放到 AI 仓
+              {" "}
+              <code className="font-mono text-[11px]">{singModelsRel}</code>
+              （目录名即 Speaker id，勿用
+              {" "}
+              <code className="font-mono text-[11px]">pretrain</code>
+              ），放入
+              {" "}
+              <code className="font-mono text-[11px]">.pt</code>
+              /
+              <code className="font-mono text-[11px]">.pth</code>
+              后到「唱歌」页刷新；详情见该页提示。
+            </span>
+            {singModelsAbs ? (
+              <span className="break-all font-mono text-[11px]">{singModelsAbs}</span>
+            ) : null}
+          </ConsoleHint>
           <PluginConfigFormSection
             title="就绪状态"
             subtitle="权重与素材是否齐备。"
@@ -720,7 +808,9 @@ export default function AiConfigMediaSection() {
                 {mediaQ.data?.all_media_assets_ready ? "全部就绪" : "未就绪"}
               </Badge>
               <Badge variant="outline">{mediaQ.data?.deploy_mode || "—"}</Badge>
-              {!mediaQ.data?.download_allowed ? (
+              {mediaQ.data?.hints?.includes("ai_unreachable") ? (
+                <Badge variant="warn">媒体服务不可达，请先启动</Badge>
+              ) : !mediaQ.data?.download_allowed ? (
                 <Badge variant="secondary">当前环境不可下载</Badge>
               ) : null}
               {mediaQ.data?.delete_allowed === false ? (
@@ -798,24 +888,60 @@ export default function AiConfigMediaSection() {
           ) : null}
         </div>
       </StateBlock>
+      )
     ) : null}
     {panel === "sing" ? (
+      !runtimeProbeDone ? (
+        <StateBlock loading error={null}><span /></StateBlock>
+      ) : !runtimeReady ? (
+        <AiRuntimeNotReadyBlock
+          canManage={canManageRuntime}
+          busy={busy}
+          onGoService={() => setPanel("service")}
+          onStart={() => { void startMut.mutateAsync(); }}
+        />
+      ) : (
       <div className="space-y-4">
-        <ConsoleHint>
+        <ConsoleHint className="mb-0 flex-col items-stretch gap-1.5">
           <span>
             需安装官方扩展「牛牛唱歌」（
             <Link to="/plugin-store">插件商店</Link>
-            中的 pallas-plugin-ai-media）。自备音色放到 AI 仓
-            {" "}
-            <code className="font-mono text-[11px]">resource/sing/models/&lt;音色名&gt;/</code>
-            。
+            中的 pallas-plugin-ai-media）。
           </span>
+          <span>
+            自备音色：在 AI Runtime 仓库下新建目录
+            {" "}
+            <code className="font-mono text-[11px]">{singModelsRel}</code>
+            ，目录名即 Speaker id（例如
+            {" "}
+            <code className="font-mono text-[11px]">pallas</code>
+            ；勿占用
+            {" "}
+            <code className="font-mono text-[11px]">pretrain</code>
+            ）。放入对应后端的
+            {" "}
+            <code className="font-mono text-[11px]">.pt</code>
+            /
+            <code className="font-mono text-[11px]">.pth</code>
+            后刷新本页；再在下方「音色映射」把口令前缀指到该 id。
+          </span>
+          {singModelsAbs ? (
+            <span>
+              当前 AI 仓根已探测，完整路径：
+              <br />
+              <code className="break-all font-mono text-[11px]">{singModelsAbs}</code>
+            </span>
+          ) : (
+            <span>
+              尚未探测到本机 AI 仓根目录时，请按相对路径放置；本机安装/侧车布局就绪后会在此显示绝对路径。
+            </span>
+          )}
         </ConsoleHint>
         <StateBlock loading={singQ.isLoading} error={singQ.error}>
           <div className="space-y-4">
             <PluginConfigFormSection
               title="运行概况"
-              subtitle="已登记的推理后端与 Speaker。"
+              subtitle="已探测到的 Speaker 目录与推理后端。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="flex flex-wrap items-center gap-2">
@@ -829,6 +955,29 @@ export default function AiConfigMediaSection() {
               <p className="break-all font-mono text-[11px] text-muted-foreground">
                 {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "暂无后端"}
               </p>
+              {(singQ.data?.speakers.speakers || []).length ? (
+                <ul className="space-y-1 rounded-[var(--radius-control,8px)] border bg-muted/20 px-3 py-2 text-[11px]">
+                  {(singQ.data?.speakers.speakers || []).map((row) => (
+                    <li key={row.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span className="font-mono font-medium">{row.id}</span>
+                      <Badge variant={row.ready ? "success" : "secondary"} className="text-[10px]">
+                        {row.ready ? "就绪" : "未就绪"}
+                      </Badge>
+                      {row.path ? (
+                        <span className="break-all font-mono text-muted-foreground">{row.path}</span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  尚未探测到 Speaker。请确认已下载官方
+                  {" "}
+                  <code className="font-mono text-[11px]">sing_pallas</code>
+                  {" "}
+                  资产，或按上方路径放入自备模型。
+                </p>
+              )}
             </PluginConfigFormSection>
 
             <PluginConfigFormSection
@@ -873,9 +1022,20 @@ export default function AiConfigMediaSection() {
           />
         </PluginConfigFormSection>
       </div>
+      )
     ) : null}
 
     {panel === "tts" ? (
+      !runtimeProbeDone ? (
+        <StateBlock loading error={null}><span /></StateBlock>
+      ) : !runtimeReady ? (
+        <AiRuntimeNotReadyBlock
+          canManage={canManageRuntime}
+          busy={busy}
+          onGoService={() => setPanel("service")}
+          onStart={() => { void startMut.mutateAsync(); }}
+        />
+      ) : (
       <div className="space-y-4">
         <ConsoleHint>
           <span>
@@ -938,6 +1098,7 @@ export default function AiConfigMediaSection() {
           />
         </PluginConfigFormSection>
       </div>
+      )
     ) : null}
 
     {panel === "draw" ? (
@@ -961,6 +1122,16 @@ export default function AiConfigMediaSection() {
     ) : null}
 
     {panel === "ncm" ? (
+      !runtimeProbeDone ? (
+        <StateBlock loading error={null}><span /></StateBlock>
+      ) : !runtimeReady ? (
+        <AiRuntimeNotReadyBlock
+          canManage={canManageRuntime}
+          busy={busy}
+          onGoService={() => setPanel("service")}
+          onStart={() => { void startMut.mutateAsync(); }}
+        />
+      ) : (
       <div className="space-y-4">
         <PluginConfigFormSection
           title="登录状态"
@@ -1050,6 +1221,7 @@ export default function AiConfigMediaSection() {
           </div>
         </PluginConfigFormSection>
       </div>
+      )
     ) : null}
   </AiConfigSectionCard>;
 }
