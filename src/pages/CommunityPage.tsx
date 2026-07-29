@@ -651,7 +651,12 @@ export default function CommunityPage() {
               <p className="community-page__federation-summary">{federationOnboarding.summary}</p>
             ) : federationOnboardingUnavailable ? (
               <p className="muted community-page__federation-summary">
-                社区中心暂未提供入池说明；你仍可在「多机协同」配置中手动填写密钥与相关项。
+                社区中心暂未提供入池说明；多机协同默认开启时，较新版本会在启动时自动写入密钥并拉取配置，也可在「多机协同」里手动填写。
+              </p>
+            ) : null}
+            {federationOnboarding ? (
+              <p className="muted community-page__federation-summary">
+                较新版本 Bot：多机协同开启且密钥为空时，启动会从中心自动写入入池密钥并拉取池编号 / 去重地址；下方步骤仍适用于手动核对或旧版本。
               </p>
             ) : null}
             {federationOnboarding?.ingress_note ? (
@@ -729,7 +734,7 @@ export default function CommunityPage() {
                   <span className="community-page__corpus-meta-item">
                     <span className="community-page__corpus-meta-k">入池密钥</span>
                     <span className={`community-page__corpus-meta-v ${controlPlane.instance_secret_configured ? "is-ok" : "is-off"}`}>
-                      {controlPlane.instance_secret_configured ? "已填写" : "未填写"}
+                      {controlPlane.instance_secret_configured ? "已配置" : "未配置（可自动写入）"}
                     </span>
                   </span>
                   <span className="community-page__corpus-meta-item">
