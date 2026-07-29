@@ -258,8 +258,15 @@ export default function AiConfigCapabilitiesSection() {
                   onValueChange={setTtsRef}
                 />
               </AiConfigField>
-              <AiConfigField label="提示文本">
-                <Input value={ttsPrompt} onChange={(e) => setTtsPrompt(e.target.value)} />
+              <AiConfigField
+                label="提示文本"
+                description="参考音频对应原文，供克隆对齐。"
+              >
+                <Input
+                  value={ttsPrompt}
+                  onChange={(e) => setTtsPrompt(e.target.value)}
+                  placeholder="与参考音频一致的原文"
+                />
               </AiConfigField>
               <AiConfigField label="提示语种">
                 <Input value={ttsPromptLang} onChange={(e) => setTtsPromptLang(e.target.value)} />

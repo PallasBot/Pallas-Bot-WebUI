@@ -392,22 +392,35 @@ html[data-layout="hub"] .ui-btn--sm {
 /* 弹层定位（Teleport 到 body） */
 .plugin-config-field-popover {
   z-index: 400;
-  display: grid;
-  gap: 12px;
-  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  min-height: 0;
+  padding: 0;
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--border, rgba(120, 120, 140, 0.28)) 90%, transparent);
   background: var(--popover, var(--bg-card, #1b1d27));
   color: var(--popover-foreground, var(--text, inherit));
   box-shadow: 0 16px 40px color-mix(in srgb, var(--shadow, rgba(0, 0, 0, 0.35)) 60%, transparent);
   backdrop-filter: blur(14px);
+  /* 圆角由外层裁切背景；正文滚动放内层，避免字形被圆角吃掉 */
+  overflow: hidden;
+}
+
+.plugin-config-field-popover__scroll {
+  display: grid;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px;
   overflow: auto;
-  min-width: 240px;
 }
 
 .plugin-config-field-popover--dialog {
   position: static;
   z-index: auto;
+  display: grid;
+  gap: 12px;
   box-shadow: none;
   backdrop-filter: none;
   min-width: 0;
@@ -415,35 +428,58 @@ html[data-layout="hub"] .ui-btn--sm {
   padding: 0;
   border: none;
   background: transparent;
+  overflow: visible;
+}
+
+.plugin-config-field-popover--dialog .plugin-config-field-popover__scroll {
+  padding: 0;
+  overflow: visible;
 }
 
 .plugin-config-field-popover__section {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .plugin-config-field-popover__eyebrow {
   font-size: 10px;
-  line-height: 1.35;
+  line-height: 1.45;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--text-muted, rgba(255, 255, 255, 0.62));
-  /* 避免 line-height 偏紧时汉字顶角被 overflow 裁切 */
-  padding-top: 1px;
 }
 
 .plugin-config-field-popover__title {
   margin: 0;
   font-size: 13px;
-  line-height: 1.35;
+  line-height: 1.45;
   font-weight: 700;
 }
 
 .plugin-config-field-popover__desc {
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.65;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.plugin-config-field-popover__desc a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.plugin-config-field-popover__desc a:hover {
+  color: var(--text, inherit);
+}
+
+.plugin-config-field-popover__desc code {
+  font-size: 11px;
 }
 
 .plugin-config-field-popover__desc--muted {
@@ -479,9 +515,12 @@ html[data-layout="hub"] .ui-btn--sm {
 
 @media (max-width: 560px) {
   .plugin-config-field-popover:not(.plugin-config-field-popover--dialog) {
-    gap: 10px;
-    padding: 12px;
     border-radius: 18px;
+  }
+
+  .plugin-config-field-popover:not(.plugin-config-field-popover--dialog) .plugin-config-field-popover__scroll {
+    gap: 10px;
+    padding: 14px;
   }
 
   .plugin-config-field-popover__meta > div {

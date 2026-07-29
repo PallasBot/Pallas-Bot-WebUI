@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
-import ConsoleHint from "@/components/ConsoleHint";
+import ConfigFieldHelp from "@/components/config/ConfigFieldHelp";
 import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
 } from "@/components/PluginConfigWorkspace";
@@ -48,18 +48,26 @@ export default function AiConfigDrawSection() {
   return (
     <Card>
       <CardContent className="space-y-3 pt-5">
-        <ConsoleHint>
-          <span>
-            画画配置已并入{" "}
-            <Link to={aiConfigSectionPath("media", "draw")}>
-              AI 配置 · 媒体 · 画画
-            </Link>
-            ；此处与插件配置共享。未安装时请先到{" "}
-            <Link to="/plugin-store">插件商店</Link>
-            {" "}
-            安装画画插件。
-          </span>
-        </ConsoleHint>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-base font-semibold leading-tight">画画</h3>
+          <ConfigFieldHelp
+            title="画画"
+            description={(
+              <span>
+                画画配置已并入
+                {" "}
+                <Link to={aiConfigSectionPath("media", "draw")}>
+                  AI 配置 · 媒体 · 画画
+                </Link>
+                ；此处与插件配置共享。未安装时请先到
+                {" "}
+                <Link to="/plugin-store">插件商店</Link>
+                {" "}
+                安装。
+              </span>
+            )}
+          />
+        </div>
         <PluginConfigWorkspace
           ref={workspaceRef}
           pluginName="draw"
@@ -69,6 +77,7 @@ export default function AiConfigDrawSection() {
         <div className="flex flex-wrap gap-2">
           {status.supportsConfigCheck ? (
             <Button
+              type="button"
               size="sm"
               variant="outline"
               disabled={!canSave}
@@ -78,6 +87,7 @@ export default function AiConfigDrawSection() {
             </Button>
           ) : null}
           <Button
+            type="button"
             size="sm"
             disabled={!canSave}
             onClick={() => void workspaceRef.current?.save()}
