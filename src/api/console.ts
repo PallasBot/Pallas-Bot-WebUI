@@ -1054,6 +1054,7 @@ export type MediaAssetsDownloadJob = {
   assets?: string[];
   lines?: string[];
   error?: string;
+  progress_percent?: number;
 };
 
 export type SingSpeakerRow = { id: string; path?: string; ready?: boolean; backends?: string[] };

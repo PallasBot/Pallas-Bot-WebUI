@@ -16,6 +16,7 @@ import {
 } from "@/api/console";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField from "@/components/ai/AiConfigField";
+import AiJobProgressBlock from "@/components/ai/AiJobProgressBlock";
 import AiOptionSelect from "@/components/ai/AiOptionSelect";
 import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
@@ -44,51 +45,6 @@ function notifyOk(message: string) {
 
 function notifyErr(message: string) {
   pushConsoleToast(message || "操作失败", "err");
-}
-
-function AiInstallProgressBlock({
-  label,
-  percent,
-  lines,
-  failedTail,
-  failed = false,
-}: {
-  label: string;
-  percent: number;
-  lines: string[];
-  failedTail?: string;
-  failed?: boolean;
-}) {
-  const pct = Math.max(0, Math.min(100, Math.round(percent)));
-  const logText = (failedTail || "").trim() || lines.join("\n");
-  return (
-    <div
-      className={`ai-install-progress${failed ? " ai-install-progress--failed" : ""}`}
-      role="status"
-      aria-live="polite"
-    >
-      <div className="ai-install-progress__head">
-        <span className="ai-install-progress__label truncate" title={label || undefined}>
-          {label || "安装中…"}
-        </span>
-        <span className="ai-install-progress__pct">{pct}%</span>
-      </div>
-      <div
-        className="ai-install-progress__bar"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={pct}
-        aria-label={label || "安装进度"}
-      >
-        <span
-          className={`ai-install-progress__fill${pct >= 100 ? " ai-install-progress__fill--done" : ""}`}
-          style={{ width: `${Math.max(pct, pct > 0 ? 4 : 0)}%` }}
-        />
-      </div>
-      {logText ? <pre className="ai-install-progress__log">{logText}</pre> : null}
-    </div>
-  );
 }
 
 function AiRuntimeNotReadyBlock({
@@ -213,6 +169,10 @@ export default function AiConfigMediaSection() {
   const [useGpu, setUseGpu] = useState(false);
   const [noStart, setNoStart] = useState(false);
   const [jobLines, setJobLines] = useState<string[]>([]);
+  const [assetDlPercent, setAssetDlPercent] = useState(0);
+  const [assetDlLabel, setAssetDlLabel] = useState("");
+  const [assetDlActive, setAssetDlActive] = useState(false);
+  const [assetDlFailed, setAssetDlFailed] = useState(false);
   const pollRef = useRef<number | null>(null);
   const [defaultSpeaker, setDefaultSpeaker] = useState("");
   const [preferredBackend, setPreferredBackend] = useState("");
@@ -344,18 +304,77 @@ export default function AiConfigMediaSection() {
   });
   const pollJob = (jobId: string) => {
     if (pollRef.current != null) window.clearInterval(pollRef.current);
-    pollRef.current = window.setInterval(() => void fetchMediaAssetsDownloadJob(jobId).then((job) => {
-      if (job.lines?.length) setJobLines(job.lines);
-      if (job.state === "done" || job.state === "failed" || job.state === "error") {
-        if (pollRef.current != null) window.clearInterval(pollRef.current); pollRef.current = null;
-        void qc.invalidateQueries({ queryKey: ["media-assets"] });
-      }
-    }), 1500);
+    setAssetDlActive(true);
+    setAssetDlFailed(false);
+    const tick = () => {
+      void fetchMediaAssetsDownloadJob(jobId)
+        .then((job) => {
+          if (job.lines?.length) setJobLines(job.lines);
+          if (job.message) setAssetDlLabel(job.message);
+          if (job.progress_percent != null) {
+            setAssetDlPercent(Math.max(0, Math.min(100, Number(job.progress_percent) || 0)));
+          }
+          const state = String(job.state || "");
+          if (state === "done" || state === "failed" || state === "error") {
+            if (pollRef.current != null) window.clearInterval(pollRef.current);
+            pollRef.current = null;
+            setAssetDlActive(false);
+            if (state === "done") {
+              setAssetDlPercent(100);
+              setAssetDlLabel(job.message || "媒体权重下载完成");
+              notifyOk(job.message || "媒体权重下载完成");
+            } else {
+              setAssetDlFailed(true);
+              notifyErr(job.error || job.message || "媒体权重下载失败");
+            }
+            void qc.invalidateQueries({ queryKey: ["media-assets"] });
+          }
+        })
+        .catch((e) => {
+          if (pollRef.current != null) window.clearInterval(pollRef.current);
+          pollRef.current = null;
+          setAssetDlActive(false);
+          setAssetDlFailed(true);
+          notifyErr(axiosErrorDetail(e));
+        });
+    };
+    tick();
+    pollRef.current = window.setInterval(tick, 1000);
   };
   const downloadMut = useMutation({
-    mutationFn: (assets?: string[]) => postMediaAssetsDownload(assets),
-    onSuccess: (job) => { notifyOk(`下载任务 ${job.job_id || "—"} · ${job.state || "queued"}`); if (job.job_id) pollJob(job.job_id); },
-    onError: (e) => notifyErr(axiosErrorDetail(e)),
+    mutationFn: (assets?: string[]) => {
+      setAssetDlPercent(0);
+      setAssetDlLabel("已排队…");
+      setJobLines([]);
+      setAssetDlFailed(false);
+      setAssetDlActive(true);
+      return postMediaAssetsDownload(assets);
+    },
+    onSuccess: (job) => {
+      if (job.progress_percent != null) {
+        setAssetDlPercent(Math.max(0, Math.min(100, Number(job.progress_percent) || 0)));
+      }
+      if (job.message) setAssetDlLabel(job.message);
+      if (job.lines?.length) setJobLines(job.lines);
+      const state = String(job.state || "");
+      if (state === "done") {
+        setAssetDlActive(false);
+        setAssetDlPercent(100);
+        notifyOk(job.message || "媒体权重已就绪");
+        void qc.invalidateQueries({ queryKey: ["media-assets"] });
+        return;
+      }
+      if (job.job_id) pollJob(job.job_id);
+      else {
+        setAssetDlActive(false);
+        notifyErr("下载任务未返回 job_id");
+      }
+    },
+    onError: (e) => {
+      setAssetDlActive(false);
+      setAssetDlFailed(true);
+      notifyErr(axiosErrorDetail(e));
+    },
   });
   const deleteMut = useMutation({
     mutationFn: (assets: string[]) => postMediaAssetsDelete(assets),
@@ -403,7 +422,7 @@ export default function AiConfigMediaSection() {
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const busy = saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || installMut.isPending ||
-    downloadMut.isPending || deleteMut.isPending || singMut.isPending || ttsMut.isPending ||
+    downloadMut.isPending || assetDlActive || deleteMut.isPending || singMut.isPending || ttsMut.isPending ||
     sendMut.isPending || verifyMut.isPending || logoutMut.isPending;
   const assetKeys = Object.keys(mediaQ.data?.assets || {});
   const speakerOptions = useMemo(
@@ -722,7 +741,7 @@ export default function AiConfigMediaSection() {
       helpTitle={panelMeta.label}
     />
     {installMut.isPending || installFailTail ? (
-      <AiInstallProgressBlock
+      <AiJobProgressBlock
         label={installMut.isPending ? (installProgress || "安装中…") : "安装失败"}
         percent={installPercent}
         lines={installLogLines}
@@ -942,16 +961,25 @@ export default function AiConfigMediaSection() {
             </div>
           </PluginConfigFormSection>
 
-          {jobLines.length ? (
+          {assetDlActive || assetDlFailed || jobLines.length ? (
             <PluginConfigFormSection
-              title="任务日志"
-              subtitle="最近一次下载任务输出。"
+              title="下载进度"
+              subtitle="按资产项与下载字节估算；完成后可刷新清单。"
               bodyClassName="!grid-cols-1"
               defaultOpen
             >
-              <pre className="max-h-40 overflow-auto rounded-[var(--radius-control,8px)] border bg-muted/30 p-2 text-xs">
-                {jobLines.join("\n")}
-              </pre>
+              <AiJobProgressBlock
+                label={
+                  assetDlActive
+                    ? assetDlLabel || "下载中…"
+                    : assetDlFailed
+                      ? assetDlLabel || "下载失败"
+                      : assetDlLabel || "最近一次下载"
+                }
+                percent={assetDlPercent}
+                lines={jobLines}
+                failed={assetDlFailed}
+              />
             </PluginConfigFormSection>
           ) : null}
         </div>

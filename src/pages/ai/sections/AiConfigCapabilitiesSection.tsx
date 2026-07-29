@@ -14,6 +14,7 @@ import {
 } from "@/api/console";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField, { AiModelSelect } from "@/components/ai/AiConfigField";
+import AiJobProgressBlock from "@/components/ai/AiJobProgressBlock";
 import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,10 @@ export default function AiConfigCapabilitiesSection() {
   const qc = useQueryClient();
   const [panel, setPanel] = useState<Panel>("media");
   const [jobLines, setJobLines] = useState<string[]>([]);
+  const [assetDlPercent, setAssetDlPercent] = useState(0);
+  const [assetDlLabel, setAssetDlLabel] = useState("");
+  const [assetDlActive, setAssetDlActive] = useState(false);
+  const [assetDlFailed, setAssetDlFailed] = useState(false);
   const pollRef = useRef<number | null>(null);
 
   const mediaQ = useQuery({ queryKey: ["media-assets"], queryFn: fetchMediaAssetsStatus });
@@ -94,25 +99,78 @@ export default function AiConfigCapabilitiesSection() {
 
   const pollJob = (jobId: string) => {
     if (pollRef.current != null) window.clearInterval(pollRef.current);
-    pollRef.current = window.setInterval(() => {
-      void fetchMediaAssetsDownloadJob(jobId).then((job) => {
-        if (job.lines?.length) setJobLines(job.lines);
-        if (job.state === "done" || job.state === "failed" || job.state === "error") {
+    setAssetDlActive(true);
+    setAssetDlFailed(false);
+    const tick = () => {
+      void fetchMediaAssetsDownloadJob(jobId)
+        .then((job) => {
+          if (job.lines?.length) setJobLines(job.lines);
+          if (job.message) setAssetDlLabel(job.message);
+          if (job.progress_percent != null) {
+            setAssetDlPercent(Math.max(0, Math.min(100, Number(job.progress_percent) || 0)));
+          }
+          const state = String(job.state || "");
+          if (state === "done" || state === "failed" || state === "error") {
+            if (pollRef.current != null) window.clearInterval(pollRef.current);
+            pollRef.current = null;
+            setAssetDlActive(false);
+            if (state === "done") {
+              setAssetDlPercent(100);
+              setAssetDlLabel(job.message || "媒体权重下载完成");
+              notifyOk(job.message || "媒体权重下载完成");
+            } else {
+              setAssetDlFailed(true);
+              notifyErr(job.error || job.message || "媒体权重下载失败");
+            }
+            void qc.invalidateQueries({ queryKey: ["media-assets"] });
+          }
+        })
+        .catch((e) => {
           if (pollRef.current != null) window.clearInterval(pollRef.current);
           pollRef.current = null;
-          void qc.invalidateQueries({ queryKey: ["media-assets"] });
-        }
-      });
-    }, 1500);
+          setAssetDlActive(false);
+          setAssetDlFailed(true);
+          notifyErr(axiosErrorDetail(e));
+        });
+    };
+    tick();
+    pollRef.current = window.setInterval(tick, 1000);
   };
 
   const downloadMut = useMutation({
-    mutationFn: (assets?: string[]) => postMediaAssetsDownload(assets),
-    onSuccess: (job) => {
-      notifyOk(`下载任务 ${job.job_id || "—"} · ${job.state || "queued"}`);
-      if (job.job_id) pollJob(job.job_id);
+    mutationFn: (assets?: string[]) => {
+      setAssetDlPercent(0);
+      setAssetDlLabel("已排队…");
+      setJobLines([]);
+      setAssetDlFailed(false);
+      setAssetDlActive(true);
+      return postMediaAssetsDownload(assets);
     },
-    onError: (e) => notifyErr(axiosErrorDetail(e)),
+    onSuccess: (job) => {
+      if (job.progress_percent != null) {
+        setAssetDlPercent(Math.max(0, Math.min(100, Number(job.progress_percent) || 0)));
+      }
+      if (job.message) setAssetDlLabel(job.message);
+      if (job.lines?.length) setJobLines(job.lines);
+      const state = String(job.state || "");
+      if (state === "done") {
+        setAssetDlActive(false);
+        setAssetDlPercent(100);
+        notifyOk(job.message || "媒体权重已就绪");
+        void qc.invalidateQueries({ queryKey: ["media-assets"] });
+        return;
+      }
+      if (job.job_id) pollJob(job.job_id);
+      else {
+        setAssetDlActive(false);
+        notifyErr("下载任务未返回 job_id");
+      }
+    },
+    onError: (e) => {
+      setAssetDlActive(false);
+      setAssetDlFailed(true);
+      notifyErr(axiosErrorDetail(e));
+    },
   });
 
   const deleteMut = useMutation({
@@ -143,7 +201,7 @@ export default function AiConfigCapabilitiesSection() {
   });
 
   const assetKeys = Object.keys(mediaQ.data?.assets || {});
-  const busy = downloadMut.isPending || deleteMut.isPending || singMut.isPending || ttsMut.isPending;
+  const busy = downloadMut.isPending || assetDlActive || deleteMut.isPending || singMut.isPending || ttsMut.isPending;
 
   const chromeMiddle = useMemo(
     () => (
@@ -205,10 +263,21 @@ export default function AiConfigCapabilitiesSection() {
                 </Button>
               ))}
             </div>
-            {jobLines.length ? (
-              <pre className="mt-3 max-h-40 overflow-auto rounded-[var(--radius-control,8px)] border bg-muted/30 p-2 text-xs">
-                {jobLines.join("\n")}
-              </pre>
+            {assetDlActive || assetDlFailed || jobLines.length ? (
+              <div className="mt-3">
+                <AiJobProgressBlock
+                  label={
+                    assetDlActive
+                      ? assetDlLabel || "下载中…"
+                      : assetDlFailed
+                        ? assetDlLabel || "下载失败"
+                        : assetDlLabel || "最近一次下载"
+                  }
+                  percent={assetDlPercent}
+                  lines={jobLines}
+                  failed={assetDlFailed}
+                />
+              </div>
             ) : null}
           </StateBlock>
         ) : null}
