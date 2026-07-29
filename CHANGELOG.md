@@ -6,6 +6,19 @@
 
 ## [0.8.8] - 2026-07-29
 
+### Added
+
+* feat(console): 危险操作统一二次确认弹窗 ([00a7035](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/00a7035632c6dbfe173a6d3224764b6575dda954))
+
+### Fixed
+
+* fix(community): 多机协同入池文案支持自动写入密钥 ([5f83392](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5f83392e8857601da948d6b5be5a85665b735070))
+
+**完整变更**: [`v0.8.7...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.7...HEAD)
+
+
+## [0.8.8] - 2026-07-29
+
 相对 **0.8.7** 至本版的控制台更新。
 
 ### 更新公告
