@@ -461,3 +461,71 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
     max-width: none;
   }
 }
+
+/* AI Runtime 安装进度（对齐 update-page__apply-progress） */
+.ai-install-progress {
+  padding: 10px 12px;
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-muted) 42%, transparent);
+}
+
+.ai-install-progress--failed {
+  border-color: color-mix(in srgb, var(--destructive, #ef4444) 35%, var(--border));
+  background: color-mix(in srgb, var(--destructive, #ef4444) 6%, var(--bg-muted) 42%);
+}
+
+.ai-install-progress__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.ai-install-progress__label {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.ai-install-progress__pct {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.ai-install-progress__bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-strong, var(--border)) 80%, transparent);
+}
+
+.ai-install-progress__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+
+.ai-install-progress__fill--done {
+  width: 100% !important;
+}
+
+.ai-install-progress__log {
+  margin-top: 10px;
+  max-height: 12rem;
+  overflow: auto;
+  padding: 8px;
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

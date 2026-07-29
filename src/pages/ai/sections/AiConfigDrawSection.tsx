@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
+import ConsoleHint from "@/components/ConsoleHint";
 import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
 } from "@/components/PluginConfigWorkspace";
@@ -47,16 +48,18 @@ export default function AiConfigDrawSection() {
   return (
     <Card>
       <CardContent className="space-y-3 pt-5">
-        <p className="text-xs text-muted-foreground">
-          画画配置已并入{" "}
-          <Link
-            to={aiConfigSectionPath("media", "draw")}
-            className="text-primary underline-offset-2 hover:underline"
-          >
-            AI 配置 · 媒体 · 画画
-          </Link>
-          ；此处与插件配置共享。
-        </p>
+        <ConsoleHint>
+          <span>
+            画画配置已并入{" "}
+            <Link to={aiConfigSectionPath("media", "draw")}>
+              AI 配置 · 媒体 · 画画
+            </Link>
+            ；此处与插件配置共享。未安装时请先到{" "}
+            <Link to="/plugin-store">插件商店</Link>
+            {" "}
+            安装画画插件。
+          </span>
+        </ConsoleHint>
         <PluginConfigWorkspace
           ref={workspaceRef}
           pluginName="draw"

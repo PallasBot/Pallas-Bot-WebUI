@@ -172,6 +172,11 @@
   margin-bottom: 12px;
 }
 
+/* 进度条与下方「更新完成后…」说明卡都有描边底，留足间距避免贴紧 */
+.update-page__release-actions:has(.update-page__apply-progress) {
+  margin-bottom: 20px;
+}
+
 .update-page__release-primary {
   display: flex;
   flex-wrap: wrap;

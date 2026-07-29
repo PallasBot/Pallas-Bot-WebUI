@@ -4,6 +4,43 @@
 
 <!-- entries -->
 
+## [0.8.9] - 2026-07-29
+
+相对 **0.8.8** 至本版的控制台更新。
+
+### 更新公告
+
+- 需要 Bot ≥ 4.1.14；请勿只升控制台
+- AI 媒体服务支持安装进度面板（克隆 / 引导安装可看日志流）
+- 媒体资产等面板会等 Runtime 健康后再请求，减少空报错
+- 任务编排模型列表按当前提供方收窄
+- 更新进度条与完成后文案间距略拉开
+
+### Added
+
+- 媒体服务安装进度面板
+
+### Fixed
+
+- Runtime 未就绪时不抢先拉媒体资产
+- 任务编排模型列表按提供方过滤
+- 更新进度条文案间距
+
+### 提交明细
+
+### Added
+
+* feat(ai): 媒体服务安装进度面板 ([fe0311a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fe0311a))
+
+### Fixed
+
+* fix(ai): 任务编排模型列表按提供方收窄 ([9cbb1c1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9cbb1c1))
+* fix(ai): 媒体资产等面板待 Runtime 健康后再请求 ([7112de5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7112de5))
+* fix(ui): 拉开更新进度条与完成后文案间距 ([8a4f563](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8a4f563))
+
+**完整变更**: [`v0.8.8...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.8...HEAD)
+
+
 ## [0.8.8] - 2026-07-29
 
 ### Added

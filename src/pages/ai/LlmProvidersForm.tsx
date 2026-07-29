@@ -38,6 +38,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
+import {
+  modelAfterProviderChange,
+  modelOptionsForProvider as listModelsForProvider,
+} from "@/utils/llmProviderModels";
 import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import { AlertTriangle, Cloud, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Server, type LucideIcon } from "lucide-react";
@@ -219,19 +223,6 @@ export default function LlmProvidersForm() {
   const dirty = useMemo(() => JSON.stringify(doc) !== baseline, [doc, baseline]);
   const localDirty = useMemo(() => JSON.stringify(localDoc) !== localBaseline, [localDoc, localBaseline]);
   const providerIds = doc.providers.map((p) => p.id);
-  const knownModels = useMemo(() => {
-    const values = new Set<string>();
-    for (const p of doc.providers) {
-      if (p.default_model) values.add(p.default_model);
-      for (const model of Object.values(p.task_models || {})) if (model) values.add(model);
-      for (const model of providerModels[p.id] || []) if (model) values.add(model);
-    }
-    for (const model of Object.values(localDoc.moe_models || {})) if (model) values.add(model);
-    for (const model of Object.values(localDoc.task_models || {})) if (model) values.add(model);
-    if (localDoc.llm_model) values.add(localDoc.llm_model);
-    return [...values];
-  }, [doc.providers, localDoc, providerModels]);
-
   const ollamaModels = useMemo(() => {
     const values = new Set<string>();
     for (const p of doc.providers) {
@@ -854,6 +845,10 @@ export default function LlmProvidersForm() {
           value={opts.providerId}
           onValueChange={(providerId) => {
             opts.onProviderChange(providerId);
+            // update*Slot 换提供方时会先清空 model；此处按新提供方决定保留或维持清空
+            opts.onModelChange(
+              modelAfterProviderChange(providerId, opts.model, doc.providers, providerModels),
+            );
             loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
           }}
           options={doc.providers.map((p) => ({
@@ -880,13 +875,7 @@ export default function LlmProvidersForm() {
   }
 
   function modelOptionsForProvider(providerId: string): string[] {
-    const provider = doc.providers.find((p) => p.id === providerId);
-    return [
-      ...(provider?.default_model ? [provider.default_model] : []),
-      ...Object.values(provider?.task_models || {}),
-      ...(provider ? providerModels[provider.id] || [] : []),
-      ...knownModels,
-    ];
+    return listModelsForProvider(providerId, doc.providers, providerModels);
   }
 
   const selectedPreset =
