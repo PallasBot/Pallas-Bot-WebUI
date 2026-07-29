@@ -23,6 +23,8 @@ import { coerceBoolean } from "@/utils/protocolUi";
 import { snowlumaRuntimeWebUiHref } from "@/utils/protocolLinks";
 import { cn } from "@/lib/utils";
 import type { SystemData } from "@/api/pallasTypes";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
+import { useConfirmAgain } from "@/hooks/useConfirmAgain";
 
 function accountLabel(account: NapcatAccountRow): string {
   const name = String(account.display_name ?? "").trim();
@@ -55,6 +57,8 @@ export default function ProtocolRuntimeConfigDialog({
   onClose: () => void;
   onChanged?: () => void;
 }) {
+  const { confirm, confirmDialog } = useConsoleConfirm();
+  const again = useConfirmAgain();
   const [memberBusyKey, setMemberBusyKey] = useState<string | null>(null);
   const [addAccountId, setAddAccountId] = useState("");
 
@@ -122,9 +126,12 @@ export default function ProtocolRuntimeConfigDialog({
   async function detachAccount(accountId: string) {
     if (!mountUrl || !accountId) return;
     if (
-      !window.confirm(
-        `将账号 ${accountId} 从该 Runtime 卸下？会为其新建独立 Runtime，账号仍为 SnowLuma。`,
-      )
+      !(await confirm({
+        title: "卸下账号",
+        subtitle: `将账号 ${accountId} 从该 Runtime 卸下？`,
+        warnings: ["会为其新建独立 Runtime，账号仍为 SnowLuma。"],
+        confirmLabel: "卸下",
+      }))
     ) {
       return;
     }
@@ -176,17 +183,19 @@ export default function ProtocolRuntimeConfigDialog({
 
   function requestClose() {
     if (busy) return;
+    again.clear();
     setAddAccountId("");
     onClose();
   }
 
   return (
-    <Dialog
-      open={open && Boolean(runtime)}
-      onOpenChange={(next) => {
-        if (!next) requestClose();
-      }}
-    >
+    <>
+      <Dialog
+        open={open && Boolean(runtime)}
+        onOpenChange={(next) => {
+          if (!next) requestClose();
+        }}
+      >
       <DialogContent
         className="plugin-config-dialog protocol-runtime-config-dialog flex max-h-[min(720px,calc(100dvh-32px))] w-[min(560px,calc(100vw-32px))] max-w-[min(560px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
         onEscapeKeyDown={(e) => {
@@ -267,7 +276,13 @@ export default function ProtocolRuntimeConfigDialog({
                         <Button
                           type="button"
                           size="sm"
-                          variant={running ? "outline" : "default"}
+                          variant={
+                            running && again.isArmed(`qq-stop:${id}`)
+                              ? "destructive"
+                              : running
+                                ? "outline"
+                                : "default"
+                          }
                           title={
                             running
                               ? "停止该账号的 QQ 进程"
@@ -275,11 +290,19 @@ export default function ProtocolRuntimeConfigDialog({
                           }
                           aria-label={running ? `停 QQ ${label}` : `启 QQ ${label}`}
                           disabled={busy}
-                          onClick={() =>
-                            void (running ? stopMemberQq(id) : startMemberQq(id))
-                          }
+                          onClick={() => {
+                            if (running) {
+                              again.run(`qq-stop:${id}`, () => stopMemberQq(id));
+                            } else {
+                              void startMemberQq(id);
+                            }
+                          }}
                         >
-                          {powerBusy ? "…" : running ? "停 QQ" : "启 QQ"}
+                          {powerBusy
+                            ? "…"
+                            : running
+                              ? again.label(`qq-stop:${id}`, "停 QQ")
+                              : "启 QQ"}
                         </Button>
                         <Button
                           type="button"
@@ -344,7 +367,9 @@ export default function ProtocolRuntimeConfigDialog({
             关闭
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      {confirmDialog}
+    </>
   );
 }

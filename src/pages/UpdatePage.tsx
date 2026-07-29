@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { readPrefs, writePrefs } from "@/theme/applyShellTheme";
 import { ChevronRight, RefreshCw, LayoutDashboard, Bot } from "lucide-react";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 const PB_PROTOCOL_PLUGIN = "pb_protocol";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
@@ -196,6 +197,7 @@ function releaseNotesFoldSummary(
 export default function UpdatePage() {
   const qc = useQueryClient();
   const location = useLocation();
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const [applyKind, setApplyKind] = useState<ApplyKind | null>(null);
   const [applyPercent, setApplyPercent] = useState(0);
   const [applyHint, setApplyHint] = useState("");
@@ -380,7 +382,14 @@ export default function UpdatePage() {
   }
 
   async function clearGithubToken() {
-    if (!window.confirm("确定清除已保存的 GitHub 令牌？")) return;
+    if (
+      !(await confirm({
+        title: "清除 GitHub 令牌",
+        subtitle: "确定清除已保存的 GitHub 令牌？",
+        confirmLabel: "清除",
+      }))
+    )
+      return;
     setGhTokenBusy(true);
     setGhTokenErr("");
     try {
@@ -399,7 +408,15 @@ export default function UpdatePage() {
 
   async function applyWeb() {
     if (!web?.latest_tag) return;
-    if (!window.confirm(`将 WebUI 更新到 ${web.latest_tag}？`)) return;
+    if (
+      !(await confirm({
+        title: "更新 WebUI",
+        subtitle: `将 WebUI 更新到 ${web.latest_tag}？`,
+        confirmLabel: "更新",
+        confirmVariant: "default",
+      }))
+    )
+      return;
     setApplyKind("web");
     setApplyPercent(1);
     setApplyHint("排队中…");
@@ -433,10 +450,17 @@ export default function UpdatePage() {
 
   async function applyBot(restart = false) {
     if (!bot?.latest_tag) return;
-    const prompt = restart
-      ? `将 Bot 更新到 ${bot.latest_tag} 并重启进程？`
-      : `将 Bot 更新到 ${bot.latest_tag}？`;
-    if (!window.confirm(prompt)) return;
+    if (
+      !(await confirm({
+        title: restart ? "更新并重启 Bot" : "更新 Bot",
+        subtitle: restart
+          ? `将 Bot 更新到 ${bot.latest_tag} 并重启进程？`
+          : `将 Bot 更新到 ${bot.latest_tag}？`,
+        confirmLabel: restart ? "更新并重启" : "更新",
+        confirmVariant: "default",
+      }))
+    )
+      return;
     setApplyKind("bot");
     setApplyPercent(1);
     setApplyHint("排队中…");
@@ -886,6 +910,7 @@ export default function UpdatePage() {
       </Dialog>
 
       <GitMirrorDialog open={gitMirrorOpen} onClose={() => setGitMirrorOpen(false)} />
+      {confirmDialog}
     </div>
   );
 }

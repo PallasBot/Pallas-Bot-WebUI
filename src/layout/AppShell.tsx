@@ -211,6 +211,7 @@ export default function AppShell() {
     shardedRuntime,
     ensureRestartContext,
     restartBot,
+    restartConfirmDialog,
   } = useBotSystemRestart();
   const restartSession = useSyncExternalStore(subscribeBotRestartSession, getBotRestartSession, getBotRestartSession);
   const restartActionBusy =
@@ -264,6 +265,7 @@ export default function AppShell() {
 
   return (
     <div className={cn("shell", collapsed && !isNarrow && "shell--sidebar-collapsed")}>
+      {restartConfirmDialog}
       <div className="shell__bg" aria-hidden />
 
       {isNarrow ? (

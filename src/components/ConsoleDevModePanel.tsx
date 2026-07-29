@@ -4,6 +4,7 @@ import { axiosErrorDetail } from "@/api/http";
 import { putPluginConfig } from "@/api/console";
 import ConsoleSwitch from "@/components/ConsoleSwitch";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 const PB_WEBUI_PLUGIN = "pb_webui";
 
@@ -31,6 +32,7 @@ export default function ConsoleDevModePanel({
   showPanel?: boolean;
   onUpdated?: (active: boolean) => void;
 }) {
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -39,8 +41,15 @@ export default function ConsoleDevModePanel({
 
   async function applyDevMode(next: boolean) {
     if (busy) return;
-    if (next && !window.confirm(enableConfirmText)) return;
-    if (!next && !window.confirm("关闭后将恢复控制台 API 与页面登录鉴权。确定关闭开发模式？")) return;
+    const ok = await confirm({
+      title: next ? "开启开发模式" : "关闭开发模式",
+      subtitle: next
+        ? enableConfirmText
+        : "关闭后将恢复控制台 API 与页面登录鉴权。确定关闭开发模式？",
+      confirmLabel: next ? "开启" : "关闭",
+      confirmVariant: "default",
+    });
+    if (!ok) return;
     setBusy(true);
     setErr("");
     try {
@@ -66,60 +75,69 @@ export default function ConsoleDevModePanel({
 
   if (showDevBanner) {
     return (
-      <div className="console-dev-mode-banner alert alert--warn" role="status">
-        <strong>开发模式已开启</strong>
-        <span>
-          控制台 API 与页面鉴权已跳过；请勿在公网或生产环境长期开启。
-          <Link to={`/plugins/${PB_WEBUI_PLUGIN}`}>网页控制台配置</Link>
-        </span>
-      </div>
+      <>
+        <div className="console-dev-mode-banner alert alert--warn" role="status">
+          <strong>开发模式已开启</strong>
+          <span>
+            控制台 API 与页面鉴权已跳过；请勿在公网或生产环境长期开启。
+            <Link to={`/plugins/${PB_WEBUI_PLUGIN}`}>网页控制台配置</Link>
+          </span>
+        </div>
+        {confirmDialog}
+      </>
     );
   }
 
   if (showPanel && prefsRow) {
     return (
-      <div className="prefs-dev-mode-row" title={DEV_MODE_TOOLTIP}>
-        <div className="prefs-switch-row">
-          <span className="prefs-switch-row__label">开发模式</span>
-          <div className="prefs-switch-row__control">
-            <ConsoleSwitch
-              checked={active}
-              disabled={busy}
-              tone="amber"
-              showLabel={false}
-              ariaLabel={active ? "关闭开发模式" : "开启开发模式"}
-              onCheckedChange={onToggleInput}
-            />
-            <span className="prefs-switch-row__state" aria-hidden="true">
-              {active ? "开" : "关"}
-            </span>
+      <>
+        <div className="prefs-dev-mode-row" title={DEV_MODE_TOOLTIP}>
+          <div className="prefs-switch-row">
+            <span className="prefs-switch-row__label">开发模式</span>
+            <div className="prefs-switch-row__control">
+              <ConsoleSwitch
+                checked={active}
+                disabled={busy}
+                tone="amber"
+                showLabel={false}
+                ariaLabel={active ? "关闭开发模式" : "开启开发模式"}
+                onCheckedChange={onToggleInput}
+              />
+              <span className="prefs-switch-row__state" aria-hidden="true">
+                {active ? "开" : "关"}
+              </span>
+            </div>
           </div>
+          {err ? <div className="alert alert--err">{err}</div> : null}
         </div>
-        {err ? <div className="alert alert--err">{err}</div> : null}
-      </div>
+        {confirmDialog}
+      </>
     );
   }
 
   if (showPanel && toolbar) {
     return (
-      <div
-        className={cnShellTopbar(active)}
-        title={DEV_MODE_TOOLTIP}
-      >
-        <span className="shell__topbar-dev__label">开发模式</span>
-        <ConsoleSwitch
-          checked={active}
-          disabled={busy}
-          tone="amber"
-          showLabel={false}
-          ariaLabel={active ? "关闭开发模式" : "开启开发模式"}
-          onCheckedChange={onToggleInput}
-        />
-      </div>
+      <>
+        <div
+          className={cnShellTopbar(active)}
+          title={DEV_MODE_TOOLTIP}
+        >
+          <span className="shell__topbar-dev__label">开发模式</span>
+          <ConsoleSwitch
+            checked={active}
+            disabled={busy}
+            tone="amber"
+            showLabel={false}
+            ariaLabel={active ? "关闭开发模式" : "开启开发模式"}
+            onCheckedChange={onToggleInput}
+          />
+        </div>
+        {confirmDialog}
+      </>
     );
   }
 
-  if (!showPanel) return null;
+  if (!showPanel) return confirmDialog;
 
   return (
     <div
@@ -149,6 +167,7 @@ export default function ConsoleDevModePanel({
           onCheckedChange={onToggleInput}
         />
       </div>
+      {confirmDialog}
     </div>
   );
 }

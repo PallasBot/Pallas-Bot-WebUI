@@ -35,6 +35,8 @@ import { botAccountFavoriteRank } from "@/utils/botDisplay";
 import { slicePage } from "@/utils/paginate";
 import { snowlumaRuntimeWebUiHref } from "@/utils/protocolLinks";
 import { cn } from "@/lib/utils";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
+import { useConfirmAgain } from "@/hooks/useConfirmAgain";
 
 const PROTO_PANEL = "protocol-page__panel flex flex-col overflow-hidden shadow-none";
 const PROTO_PANEL_HD =
@@ -105,6 +107,8 @@ function runtimeConnectedRank(
 export default function ProtocolRuntimeTab() {
   const { mountUrl, system } = useOutletContext<ProtocolOutletContext>();
   const qc = useQueryClient();
+  const { confirm, confirmDialog } = useConsoleConfirm();
+  const again = useConfirmAgain();
   const prefs = useConsolePrefs();
   const { favorites } = useBotFavorites();
   const [searchQ, setSearchQ] = useState("");
@@ -262,10 +266,18 @@ export default function ProtocolRuntimeTab() {
     const force = members > 0;
     if (!opts?.skipConfirm) {
       const ok = force
-        ? window.confirm(
-            `Runtime「${title}」仍有 ${members} 个账号。\n强制删除会一并删除这些协议账号、容器与数据，确定？`,
-          )
-        : window.confirm(`删除空闲 Runtime「${title}」？\n将停止并移除对应容器与注册记录。`);
+        ? await confirm({
+            title: "强制删除 Runtime",
+            subtitle: `Runtime「${title}」仍有 ${members} 个账号。`,
+            warnings: ["会一并删除这些协议账号、容器与数据。"],
+            confirmLabel: "强制删除",
+          })
+        : await confirm({
+            title: "删除空闲 Runtime",
+            subtitle: `删除空闲 Runtime「${title}」？`,
+            warnings: ["将停止并移除对应容器与注册记录。"],
+            confirmLabel: "删除",
+          });
       if (!ok) return false;
     }
     await protocolDeleteSnowlumaRuntime(mountUrl, rt.id, force);
@@ -298,12 +310,16 @@ export default function ProtocolRuntimeTab() {
     if (!mountUrl || !selectedRows.length || batchBusy) return;
     const withMembers = selectedRows.filter((rt) => runtimeMemberCount(rt) > 0);
     const emptyCount = selectedRows.length - withMembers.length;
-    const ok = withMembers.length
-      ? window.confirm(
-          `将删除 ${selectedRows.length} 个 Runtime（空闲 ${emptyCount}，含账号 ${withMembers.length}）。\n` +
-            `含账号的项会强制删除协议账号、容器与数据，确定？`,
-        )
-      : window.confirm(`将删除 ${emptyCount} 个空闲 Runtime（容器与注册记录），确定？`);
+    const ok = await confirm({
+      title: "批量删除 Runtime",
+      subtitle: withMembers.length
+        ? `将删除 ${selectedRows.length} 个 Runtime（空闲 ${emptyCount}，含账号 ${withMembers.length}）。`
+        : `将删除 ${emptyCount} 个空闲 Runtime。`,
+      warnings: withMembers.length
+        ? ["含账号的项会强制删除协议账号、容器与数据。"]
+        : ["将移除对应容器与注册记录。"],
+      confirmLabel: "删除",
+    });
     if (!ok) return;
 
     setBatchBusy(true);
@@ -585,7 +601,13 @@ export default function ProtocolRuntimeTab() {
                         <Button
                           type="button"
                           size="sm"
-                          variant={rt.process_running ? "outline" : "default"}
+                          variant={
+                            rt.process_running && again.isArmed(`runtime-stop:${rt.id}`)
+                              ? "destructive"
+                              : rt.process_running
+                                ? "outline"
+                                : "default"
+                          }
                           className="gap-1"
                           title={
                             rt.process_running
@@ -594,18 +616,20 @@ export default function ProtocolRuntimeTab() {
                           }
                           aria-label={rt.process_running ? "停止 Runtime" : "启动 Runtime"}
                           disabled={runtimeBusy}
-                          onClick={() =>
-                            void (rt.process_running
-                              ? stopSnowlumaRuntime(rt.id)
-                              : startSnowlumaRuntime(rt.id))
-                          }
+                          onClick={() => {
+                            if (rt.process_running) {
+                              again.run(`runtime-stop:${rt.id}`, () => stopSnowlumaRuntime(rt.id));
+                            } else {
+                              void startSnowlumaRuntime(rt.id);
+                            }
+                          }}
                         >
                           {runtimeBusy && snowlumaRuntimeBusyId === rt.id ? (
                             "…"
                           ) : rt.process_running ? (
                             <>
                               <Square className="size-3.5" aria-hidden />
-                              停止
+                              {again.label(`runtime-stop:${rt.id}`, "停止")}
                             </>
                           ) : (
                             <>
@@ -642,6 +666,7 @@ export default function ProtocolRuntimeTab() {
         onClose={() => setConfigRuntimeId(null)}
         onChanged={refresh}
       />
+      {confirmDialog}
     </div>
   );
 }

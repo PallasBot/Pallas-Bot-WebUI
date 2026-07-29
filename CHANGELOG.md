@@ -4,6 +4,38 @@
 
 <!-- entries -->
 
+## [0.8.8] - 2026-07-29
+
+相对 **0.8.7** 至本版的控制台更新。
+
+### 更新公告
+
+- 需要 Bot ≥ 4.1.13；请勿只升控制台
+- 危险操作统一二次确认弹窗；窄屏下保留外边距，避免贴边
+- 社区页多机协同入池说明对齐自动写入密钥
+
+### Added
+
+- 统一确认弹窗与相关 hooks
+
+### Fixed
+
+- 窄屏确认弹窗边距
+- 多机协同入池文案（可自动写入密钥）
+
+### 提交明细
+
+### Added
+
+* feat(console): 危险操作统一二次确认弹窗 ([00a7035](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/00a7035))
+
+### Fixed
+
+* fix(community): 多机协同入池文案支持自动写入密钥 ([5f83392](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5f83392))
+
+**完整变更**: [`v0.8.7...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.7...HEAD)
+
+
 ## [0.8.7] - 2026-07-28
 
 相对 **0.8.6** 至本版的控制台更新。

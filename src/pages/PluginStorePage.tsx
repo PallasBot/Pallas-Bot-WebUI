@@ -66,6 +66,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { waitForPluginStoreJob } from "@/utils/pluginStoreJobStream";
 import { InstallJobFailedError } from "@/utils/installJobStream";
 import {
@@ -218,8 +219,10 @@ export default function PluginStorePage() {
     shardedRuntime,
     ensureRestartContext,
     restartBot,
+    restartConfirmDialog,
     trackRestartFromPluginResult,
   } = useBotSystemRestart();
+  const { confirm, confirmDialog } = useConsoleConfirm();
 
   const webuiInstallEnabled = rows.some((row) => row.webui_install);
   const communityRows = communityStore?.plugins ?? [];
@@ -650,7 +653,30 @@ export default function PluginStorePage() {
   );
 
   const enqueueInstallUpdate = useCallback(
-    (entry: InstallUpdateQueueEntry) => {
+    async (entry: InstallUpdateQueueEntry) => {
+      const name = queueEntryLabel(entry);
+      const isInstall = entry.action === "install";
+      const ok = await confirm({
+        title: entry.restart
+          ? isInstall
+            ? "安装并重启"
+            : "更新并重启"
+          : isInstall
+            ? "安装插件"
+            : "更新插件",
+        subtitle: entry.restart
+          ? `将${isInstall ? "安装" : "更新"}「${name}」并重启 Bot。`
+          : `将${isInstall ? "安装" : "更新"}「${name}」。完成后可能需要重启 Bot 才能加载。`,
+        confirmVariant: "default",
+        confirmLabel: entry.restart
+          ? isInstall
+            ? "确认安装并重启"
+            : "确认更新并重启"
+          : isInstall
+            ? "确认安装"
+            : "确认更新",
+      });
+      if (!ok) return;
       const descriptor = queueTaskDescriptor(entry);
       const queued = isPluginStoreTaskQueued(installUpdateQueueRef.current.map(queueTaskDescriptor), descriptor);
       const active =
@@ -672,6 +698,7 @@ export default function PluginStorePage() {
       void drainInstallUpdateQueue();
     },
     [
+      confirm,
       drainInstallUpdateQueue,
       isInstallUpdatePipelineBusy,
       storeBusyCommunityAction,
@@ -819,11 +846,13 @@ export default function PluginStorePage() {
 
   async function uninstallExtension(row: OfficialExtensionRow, restart = false) {
     if (storeBusyPackage) return;
-    const ok = window.confirm(
-      restart
-        ? `确定卸载 ${row.package} 并重启 Bot？`
-        : `确定卸载 ${row.package}？卸载后需重启 Bot，且不会删除 local/plugins 副本。`,
-    );
+    const ok = await confirm({
+      title: restart ? "卸载并重启" : "卸载扩展",
+      subtitle: restart
+        ? `将卸载 ${row.package} 并重启 Bot。`
+        : `将卸载 ${row.package}。卸载后需重启 Bot，且不会删除 local/plugins 副本。`,
+      confirmLabel: restart ? "确认卸载并重启" : "确认卸载",
+    });
     if (!ok) return;
     setStoreErr("");
     setStoreActionHint("");
@@ -853,11 +882,13 @@ export default function PluginStorePage() {
 
   async function uninstallCommunity(row: CommunityPluginRow, restart = false) {
     if (storeBusyPluginId) return;
-    const ok = window.confirm(
-      restart
-        ? `确定删除 local/plugins/${row.plugin_id} 并重启 Bot？`
-        : `确定删除 local/plugins/${row.plugin_id}？删除后需重启 Bot。`,
-    );
+    const ok = await confirm({
+      title: restart ? "删除并重启" : "删除社区插件",
+      subtitle: restart
+        ? `将删除 local/plugins/${row.plugin_id} 并重启 Bot。`
+        : `将删除 local/plugins/${row.plugin_id}。删除后需重启 Bot。`,
+      confirmLabel: restart ? "确认删除并重启" : "确认删除",
+    });
     if (!ok) return;
     setStoreErr("");
     setStoreActionHint("");
@@ -887,11 +918,20 @@ export default function PluginStorePage() {
 
   async function installCommunityFromGit(restart = false) {
     if (gitInstallBusy || !gitInstallValid) return;
+    const pluginId = gitPluginId.trim();
+    const ok = await confirm({
+      title: restart ? "Git 安装并重启" : "从 Git 安装",
+      subtitle: restart
+        ? `将从仓库安装「${pluginId}」并重启 Bot。`
+        : `将从仓库安装「${pluginId}」。完成后可能需要重启 Bot。`,
+      confirmVariant: "default",
+      confirmLabel: restart ? "确认安装并重启" : "确认安装",
+    });
+    if (!ok) return;
     setStoreErr("");
     setStoreActionHint("");
     setStoreActionNeedsRestart(false);
     setGitInstallBusy(true);
-    const pluginId = gitPluginId.trim();
     setStoreBusyPluginId(pluginId);
     setCardProgress({ key: pluginId, percent: 0, message: "正在安装…" });
     try {
@@ -1658,6 +1698,8 @@ export default function PluginStorePage() {
       </Dialog>
 
       <GitMirrorDialog open={gitMirrorOpen} onClose={() => setGitMirrorOpen(false)} />
+      {restartConfirmDialog}
+      {confirmDialog}
     </div>
   );
 }

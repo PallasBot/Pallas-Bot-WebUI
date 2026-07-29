@@ -71,6 +71,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 function num(v: unknown, fallback = 0): number {
   const n = Number(v);
@@ -123,6 +124,7 @@ function notifyErr(message: string) {
 
 export default function AiMemoryPage() {
   const qc = useQueryClient();
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const { botId, groupId } = useAiObservationScope();
   const [tab, setTab] = useState<TabId>("overview");
   const [query, setQuery] = useState("");
@@ -452,6 +454,19 @@ export default function AiMemoryPage() {
   const categoriesByLayer = groupCategoriesByLayer(categories);
   const trash = trashQ.data;
 
+  async function purgeTrash(kind: "entity" | "category", id: string | number, name: string) {
+    if (
+      !(await confirm({
+        title: kind === "entity" ? "彻底删除实体" : "彻底删除分类",
+        subtitle: `彻底删除${kind === "entity" ? "实体" : "分类"}「${name}」？`,
+        warnings: ["此操作不可恢复。"],
+        confirmLabel: "彻底删除",
+      }))
+    )
+      return;
+    trashPurgeM.mutate({ kind, id, botId: bot });
+  }
+
   return (
     <div className="space-y-3">
       {!botReady ? <AiScopeHint>请在顶栏指定 Bot QQ。</AiScopeHint> : null}
@@ -551,10 +566,7 @@ export default function AiMemoryPage() {
                 <Button
                   size="sm"
                   disabled={!botReady || hierRebuildM.isPending}
-                  onClick={() => {
-                    if (!window.confirm("确认重建分层？旧分类会软删后按 LLM 重新生成。")) return;
-                    hierRebuildM.mutate({ botId: bot, groupId: group });
-                  }}
+                  onClick={() => hierRebuildM.mutate({ botId: bot, groupId: group })}
                 >
                   重建分层
                 </Button>
@@ -734,10 +746,7 @@ export default function AiMemoryPage() {
                   size="sm"
                   variant="destructive"
                   disabled={!botReady || clearM.isPending}
-                  onClick={() => {
-                    if (!window.confirm("确认清空当前 Bot/群范围记忆？")) return;
-                    clearM.mutate({ botId: bot, groupId: group });
-                  }}
+                  onClick={() => clearM.mutate({ botId: bot, groupId: group })}
                 >
                   清空范围
                 </Button>
@@ -1018,10 +1027,7 @@ export default function AiMemoryPage() {
                 size="sm"
                 variant="outline"
                 disabled={!botReady || hierRebuildM.isPending}
-                onClick={() => {
-                  if (!window.confirm("确认重建分层？旧分类会软删后按 LLM 重新生成。")) return;
-                  hierRebuildM.mutate({ botId: bot, groupId: group });
-                }}
+                onClick={() => hierRebuildM.mutate({ botId: bot, groupId: group })}
               >
                 重建分层
               </Button>
@@ -1150,11 +1156,7 @@ export default function AiMemoryPage() {
                               variant="destructive"
                               className="h-7 px-2 text-xs"
                               disabled={trashPurgeM.isPending}
-                              onClick={() => {
-                                if (!window.confirm(`彻底删除实体「${ent.name}」？不可恢复。`))
-                                  return;
-                                trashPurgeM.mutate({ kind: "entity", id: ent.id, botId: bot });
-                              }}
+                              onClick={() => void purgeTrash("entity", ent.id, ent.name)}
                             >
                               彻底删除
                             </Button>
@@ -1235,15 +1237,7 @@ export default function AiMemoryPage() {
                               variant="destructive"
                               className="h-7 px-2 text-xs"
                               disabled={trashPurgeM.isPending}
-                              onClick={() => {
-                                if (!window.confirm(`彻底删除分类「${cat.name}」？不可恢复。`))
-                                  return;
-                                trashPurgeM.mutate({
-                                  kind: "category",
-                                  id: cat.id,
-                                  botId: bot,
-                                });
-                              }}
+                              onClick={() => void purgeTrash("category", cat.id, cat.name)}
                             >
                               彻底删除
                             </Button>
@@ -1298,15 +1292,7 @@ export default function AiMemoryPage() {
                   size="sm"
                   variant="destructive"
                   disabled={!botReady || clearGraphM.isPending}
-                  onClick={() => {
-                    if (
-                      !window.confirm(
-                        "确认软删当前 scope 的图数据（实体/关系/分类）？可在回收站恢复。",
-                      )
-                    )
-                      return;
-                    clearGraphM.mutate({ botId: bot, groupId: group, hard: false });
-                  }}
+                  onClick={() => clearGraphM.mutate({ botId: bot, groupId: group, hard: false })}
                 >
                   清空图数据（软删）
                 </Button>
@@ -1397,19 +1383,13 @@ export default function AiMemoryPage() {
                         variant="destructive"
                         className="h-7 px-2 text-xs"
                         disabled={clearGraphM.isPending}
-                        onClick={() => {
-                          if (
-                            !window.confirm(
-                              `确认软删 scope「${s.scope_key}」的图数据？可在回收站恢复。`,
-                            )
-                          )
-                            return;
+                        onClick={() =>
                           clearGraphM.mutate({
                             botId: s.bot_id,
                             groupId: s.group_id,
                             hard: false,
-                          });
-                        }}
+                          })
+                        }
                       >
                         清空该 scope 图
                       </Button>
@@ -1490,6 +1470,7 @@ export default function AiMemoryPage() {
           </div>
         </TabsContent>
       </Tabs>
+      {confirmDialog}
     </div>
   );
 }

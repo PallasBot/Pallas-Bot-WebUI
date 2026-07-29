@@ -52,6 +52,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useConfirmAgain } from "@/hooks/useConfirmAgain";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import {
@@ -180,6 +181,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     const [qrRefreshBusy, setQrRefreshBusy] = useState(false);
     const [qrImageUrl, setQrImageUrl] = useState("");
     const [followLogTail, setFollowLogTail] = useState(true);
+    const again = useConfirmAgain();
 
     const resolvedSystem = system ?? systemLocal;
 
@@ -898,11 +900,23 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                         <Button type="button" size="sm" variant="outline" disabled={actionBusy} onClick={() => void runAction("start")}>
                           启动
                         </Button>
-                        <Button type="button" size="sm" variant="outline" disabled={actionBusy} onClick={() => void runAction("stop")}>
-                          停止
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={again.isArmed("stop") ? "default" : "outline"}
+                          disabled={actionBusy}
+                          onClick={() => again.run("stop", () => void runAction("stop"))}
+                        >
+                          {again.label("stop", "停止")}
                         </Button>
-                        <Button type="button" size="sm" variant="outline" disabled={actionBusy} onClick={() => void runAction("restart")}>
-                          重启
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={again.isArmed("restart") ? "default" : "outline"}
+                          disabled={actionBusy}
+                          onClick={() => again.run("restart", () => void runAction("restart"))}
+                        >
+                          {again.label("restart", "重启")}
                         </Button>
                         {isSnowluma ? (
                           <Button type="button" size="sm" variant="outline" disabled={injectBusy} onClick={() => void injectHook()}>
@@ -1006,19 +1020,19 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                         </button>
                         <button
                           type="button"
-                          className="btn ui-btn"
+                          className={`btn ui-btn${again.isArmed("stop") ? " btn--primary" : ""}`}
                           disabled={actionBusy}
-                          onClick={() => void runAction("stop")}
+                          onClick={() => again.run("stop", () => void runAction("stop"))}
                         >
-                          停止
+                          {again.label("stop", "停止")}
                         </button>
                         <button
                           type="button"
-                          className="btn ui-btn"
+                          className={`btn ui-btn${again.isArmed("restart") ? " btn--primary" : ""}`}
                           disabled={actionBusy}
-                          onClick={() => void runAction("restart")}
+                          onClick={() => again.run("restart", () => void runAction("restart"))}
                         >
-                          重启
+                          {again.label("restart", "重启")}
                         </button>
                         {isSnowluma ? (
                           <button
@@ -1547,9 +1561,11 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                         type="button"
                         className="btn btn--primary"
                         disabled={saveBusy}
-                        onClick={() => void saveSettings()}
+                        onClick={() => again.run("save-restart", () => void saveSettings())}
                       >
-                        {saveBusy ? "保存中…" : "保存并重启"}
+                        {saveBusy
+                          ? "保存中…"
+                          : again.label("save-restart", "保存并重启")}
                       </button>
                     </div>
                   </div>

@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { botPickerRowsFromInstances, botSelectDropdownLabel, qqAvatarUrl } from "@/utils/botDisplay";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { Images, List, Trash2 } from "lucide-react";
@@ -59,6 +60,7 @@ function pickClipboardImage(dt: DataTransfer | null): File | null {
 }
 
 export default function CommunityGallerySection() {
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const { favorites } = useBotFavorites();
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
   const mineQ = useQuery({
@@ -147,6 +149,12 @@ export default function CommunityGallerySection() {
   }
 
   async function onDelete(id: string) {
+    const ok = await confirm({
+      title: "撤下投稿",
+      subtitle: "将从社区中心撤下该投稿。",
+      confirmLabel: "确认撤下",
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await deleteCommunityGalleryPost(id);
@@ -406,6 +414,7 @@ export default function CommunityGallerySection() {
           )}
         </CardContent>
       </Card>
+      {confirmDialog}
     </section>
   );
 }

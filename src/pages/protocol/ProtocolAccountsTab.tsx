@@ -40,6 +40,8 @@ import { Cable, ChevronDown, Loader2, Play, QrCode, RefreshCw, Search, Square } 
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
+import { useConfirmAgain } from "@/hooks/useConfirmAgain";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import {
   coerceBoolean,
@@ -183,6 +185,8 @@ export default function ProtocolAccountsTab() {
   const qc = useQueryClient();
   const prefs = useConsolePrefs();
   const { favorites, toggleFavorite } = useBotFavorites();
+  const { confirm, confirmDialog } = useConsoleConfirm();
+  const again = useConfirmAgain();
 
   const [expProtocolAccounts, setExpProtocolAccounts] = useState(true);
   const [protoSearchQ, setProtoSearchQ] = useState("");
@@ -389,15 +393,14 @@ export default function ProtocolAccountsTab() {
     return accountWebUiHref(a, system as SystemData | null);
   }
 
-  async function runBatch(
-    body: { action: "restart" | "start" | "stop"; account_ids: string[] },
-    confirmText?: string,
-  ): Promise<ProtocolBatchJobPayload | null> {
+  async function runBatch(body: {
+    action: "restart" | "start" | "stop";
+    account_ids: string[];
+  }): Promise<ProtocolBatchJobPayload | null> {
     if (!mountUrl) {
       pushConsoleToast("协议端未启用", "warn");
       return null;
     }
-    if (confirmText && !window.confirm(confirmText)) return null;
     setBatchBusy(true);
     setBatchOpen(true);
     setBatchJob(null);
@@ -513,12 +516,16 @@ export default function ProtocolAccountsTab() {
       return;
     }
     if (restartAllBusy) return;
+    const ok = await confirm({
+      title: "重启全部账号",
+      subtitle: `将按间隔依次重启全部 ${ids.length} 个账号，以降低系统负载。`,
+      confirmVariant: "default",
+      confirmLabel: "确认重启",
+    });
+    if (!ok) return;
     setRestartAllBusy(true);
     try {
-      const job = await runBatch(
-        { action: "restart", account_ids: ids },
-        `将按间隔依次重启全部 ${ids.length} 个账号。继续？`,
-      );
+      const job = await runBatch({ action: "restart", account_ids: ids });
       if (job) {
         const failed = (job.results ?? []).filter((r) => !r.ok).length;
         pushConsoleToast(failed ? `重启完成，${failed} 个失败` : "已重启全部账号", failed ? "warn" : "ok");
@@ -922,13 +929,23 @@ export default function ProtocolAccountsTab() {
                         <div className="data-summary-card__tags data-summary-card__foot inst-card-actions protocol-acc-card-actions">
                           <button
                             type="button"
-                            className="btn btn--sm gap-1"
+                            className={`btn btn--sm gap-1${again.isArmed(`restart:${id}`) ? " btn--primary" : ""}`}
                             disabled={isAnyAccountActionBusy(a)}
-                            title={restartLabel(isAccountActionBusy(a, "restart"))}
-                            aria-label={restartLabel(isAccountActionBusy(a, "restart"))}
-                            onClick={() => void restartAccount(a)}
+                            title={again.label(
+                              `restart:${id}`,
+                              restartLabel(isAccountActionBusy(a, "restart")),
+                            )}
+                            aria-label={again.label(
+                              `restart:${id}`,
+                              restartLabel(isAccountActionBusy(a, "restart")),
+                            )}
+                            onClick={() =>
+                              again.run(`restart:${id}`, () => void restartAccount(a))
+                            }
                           >
-                            {restartContent(isAccountActionBusy(a, "restart"))}
+                            {again.isArmed(`restart:${id}`)
+                              ? "再点一次确认"
+                              : restartContent(isAccountActionBusy(a, "restart"))}
                           </button>
                           <button
                             type="button"
@@ -943,13 +960,41 @@ export default function ProtocolAccountsTab() {
                           </button>
                           <button
                             type="button"
-                            className={`btn btn--sm gap-1${isProcessRunning(a) ? "" : " btn--primary"}`}
+                            className={`btn btn--sm gap-1${
+                              again.isArmed(`stop:${id}`)
+                                ? " btn--primary"
+                                : isProcessRunning(a)
+                                  ? ""
+                                  : " btn--primary"
+                            }`}
                             disabled={isAnyAccountActionBusy(a)}
-                            title={togglePowerLabel(a, isAccountActionBusy(a, "power"))}
-                            aria-label={togglePowerLabel(a, isAccountActionBusy(a, "power"))}
-                            onClick={() => void toggleAccountPower(a)}
+                            title={
+                              isProcessRunning(a)
+                                ? again.label(
+                                    `stop:${id}`,
+                                    togglePowerLabel(a, isAccountActionBusy(a, "power")),
+                                  )
+                                : togglePowerLabel(a, isAccountActionBusy(a, "power"))
+                            }
+                            aria-label={
+                              isProcessRunning(a)
+                                ? again.label(
+                                    `stop:${id}`,
+                                    togglePowerLabel(a, isAccountActionBusy(a, "power")),
+                                  )
+                                : togglePowerLabel(a, isAccountActionBusy(a, "power"))
+                            }
+                            onClick={() => {
+                              if (isProcessRunning(a)) {
+                                again.run(`stop:${id}`, () => void toggleAccountPower(a));
+                                return;
+                              }
+                              void toggleAccountPower(a);
+                            }}
                           >
-                            {togglePowerContent(a, isAccountActionBusy(a, "power"))}
+                            {isProcessRunning(a) && again.isArmed(`stop:${id}`)
+                              ? "再点一次确认"
+                              : togglePowerContent(a, isAccountActionBusy(a, "power"))}
                           </button>
                         </div>
                       ) : null}
@@ -1017,6 +1062,7 @@ export default function ProtocolAccountsTab() {
         onClose={closeSelectedBatchConfirm}
         onConfirm={() => void confirmSelectedBatch()}
       />
+      {confirmDialog}
     </div>
   );
 }

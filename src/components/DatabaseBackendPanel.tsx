@@ -25,6 +25,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 type Props = {
   onMessage?: (kind: "ok" | "err", text: string) => void;
@@ -79,6 +80,7 @@ function activeLabel(raw: string | undefined): string {
 }
 
 export default function DatabaseBackendPanel({ onMessage }: Props) {
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const q = useQuery({ queryKey: ["db-backend-config"], queryFn: fetchDbBackendConfig });
   const [draft, setDraft] = useState<Draft | null>(null);
   const [probeBusy, setProbeBusy] = useState(false);
@@ -152,28 +154,32 @@ export default function DatabaseBackendPanel({ onMessage }: Props) {
     clearPageAlerts();
     try {
       let force = false;
+      let probeError = "";
       try {
         const probe = await postDbBackendProbe(body);
         if (!probe.ok) {
-          const ok = window.confirm(
-            `测试连接失败：${probe.detail || "未知错误"}\n\n若仍保存，重启后可能无法启动。确定要保存吗？`,
-          );
-          if (!ok) {
-            showHint("err", probe.detail || "无法连接");
-            return;
-          }
+          probeError = probe.detail || "未知错误";
           force = true;
         }
       } catch (e) {
-        const detail = axiosErrorDetail(e);
-        const ok = window.confirm(
-          `测试连接出错：${detail}\n\n若仍保存，重启后可能无法启动。确定要保存吗？`,
-        );
-        if (!ok) {
-          showHint("err", detail);
-          return;
-        }
+        probeError = axiosErrorDetail(e);
         force = true;
+      }
+
+      const ok = await confirm({
+        title: "保存数据库后端",
+        subtitle: force
+          ? `测试连接${probeError ? `失败：${probeError}` : "失败"}。是否仍要保存？`
+          : "连接测试成功。确定保存数据库后端配置？",
+        warnings: force
+          ? ["重启后可能无法启动。", "切换后端前请确认目标数据库已有所需数据。"]
+          : ["保存后需重启 Bot 才会生效。", "切换后端前请确认目标数据库已有所需数据。"],
+        confirmLabel: "保存",
+        confirmVariant: force ? "destructive" : "default",
+      });
+      if (!ok) {
+        if (force) showHint("err", probeError || "无法连接");
+        return;
       }
 
       const result = await putDbBackendConfig({ ...body, force });
@@ -188,18 +194,24 @@ export default function DatabaseBackendPanel({ onMessage }: Props) {
 
   if (q.isLoading && !draft) {
     return (
-      <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        正在加载…
-      </div>
+      <>
+        <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          正在加载…
+        </div>
+        {confirmDialog}
+      </>
     );
   }
 
   if (!draft) {
     return (
-      <p className="muted py-2 text-sm">
-        {q.error ? axiosErrorDetail(q.error) : "加载失败"}
-      </p>
+      <>
+        <p className="muted py-2 text-sm">
+          {q.error ? axiosErrorDetail(q.error) : "加载失败"}
+        </p>
+        {confirmDialog}
+      </>
     );
   }
 
@@ -400,6 +412,7 @@ export default function DatabaseBackendPanel({ onMessage }: Props) {
           </div>
         ) : null}
       </div>
+      {confirmDialog}
     </div>
   );
 }

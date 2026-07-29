@@ -30,6 +30,7 @@ import {
   type ProviderGatewayRow,
 } from "@/utils/providerGateways";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 export { providerGatewayBoundFieldNames };
 
@@ -96,6 +97,7 @@ export default function ProviderGatewayPanel({
   className,
   binding = DRAW_PROVIDER_GATEWAY_BINDING,
 }: Props) {
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const allowManual = Boolean(binding.allow_manual);
   const showCost = Boolean(binding.primary?.cost_per_image || binding.currency_field);
   const currencyField = String(binding.currency_field || "").trim();
@@ -296,6 +298,14 @@ export default function ProviderGatewayPanel({
 
   async function removeDraft() {
     if (!editingId || draft.role === "primary" || busy) return;
+    if (
+      !(await confirm({
+        title: "删除备选网关",
+        subtitle: `确定删除「${providerGatewayChipLabel(draft, 0)}」？`,
+        confirmLabel: "删除",
+      }))
+    )
+      return;
     try {
       await commitRows(rows.filter((r) => r.id !== editingId));
       pushConsoleToast("已删除备选网关", "warn");
@@ -307,6 +317,15 @@ export default function ProviderGatewayPanel({
 
   async function promoteDraft() {
     if (!editingId || draft.role !== "fallback" || busy) return;
+    if (
+      !(await confirm({
+        title: "设为主线",
+        subtitle: "确定将该备选网关设为主线？原主网关会降为备线。",
+        confirmLabel: "设为主线",
+        confirmVariant: "default",
+      }))
+    )
+      return;
     try {
       await commitRows(promoteProviderFallbackToPrimary(rows, editingId));
       pushConsoleToast("已将备选设为主网关（原主网关降为备线）", "ok");
@@ -319,6 +338,17 @@ export default function ProviderGatewayPanel({
   async function removeRow(row: ProviderGatewayRow, e: MouseEvent) {
     e.stopPropagation();
     if (busy) return;
+    if (
+      !(await confirm({
+        title: row.role === "primary" ? "清空主网关" : "删除备选网关",
+        subtitle:
+          row.role === "primary"
+            ? "确定清空主网关配置？"
+            : `确定删除「${providerGatewayChipLabel(row, 0)}」？`,
+        confirmLabel: row.role === "primary" ? "清空" : "删除",
+      }))
+    )
+      return;
     try {
       if (row.role === "primary") {
         await commitRows([
@@ -800,6 +830,7 @@ export default function ProviderGatewayPanel({
           </PopoverContent>
         </Popover>
       </div>
+      {confirmDialog}
     </PluginConfigFormSection>
   );
 }
