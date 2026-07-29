@@ -8,6 +8,7 @@ import {
 import type { BotUpdateCheckData } from "@/api/pallasTypes";
 import { fetchHealth } from "@/api/health";
 import { axiosErrorDetail } from "@/api/http";
+import ConsoleConfirmModal from "@/components/ConsoleConfirmModal";
 import {
   botRestartPhaseLabel,
   healthBootFingerprint,
@@ -59,6 +60,8 @@ export function useBotSystemRestart(options?: {
   const [restartPhase, setRestartPhase] = useState<BotRestartPhase>("idle");
   const [shardedRuntime, setShardedRuntime] = useState<boolean | null>(null);
   const [internalBotCheck, setInternalBotCheck] = useState<BotUpdateCheckData | null>(null);
+  const [restartConfirm, setRestartConfirm] = useState<{ workersOnly: boolean } | null>(null);
+  const restartConfirmResolver = useRef<((ok: boolean) => void) | null>(null);
   const shardedRef = useRef<boolean | null>(null);
 
   useEffect(() => {
@@ -113,10 +116,12 @@ export function useBotSystemRestart(options?: {
       const bot = options?.botUpdateCheck ?? internalBotCheck;
       const available = Boolean(bot?.restart_available && bot?.deployment_mode !== "docker");
       if (!available) return false;
-      const prompt = workersOnly
-        ? "确定仅重启分片节点进程？主节点与其它组件不受影响。"
-        : "确定重启 Bot 进程？数秒内连接会短暂中断。";
-      if (!window.confirm(prompt)) return false;
+      const ok = await new Promise<boolean>((resolve) => {
+        restartConfirmResolver.current?.(false);
+        restartConfirmResolver.current = resolve;
+        setRestartConfirm({ workersOnly });
+      });
+      if (!ok) return false;
 
       setRestartBusy(true);
       setRestartErr("");
@@ -187,6 +192,28 @@ export function useBotSystemRestart(options?: {
     [ensureRestartContext, internalBotCheck, options?.botUpdateCheck],
   );
 
+  const finishRestartConfirm = useCallback((ok: boolean) => {
+    restartConfirmResolver.current?.(ok);
+    restartConfirmResolver.current = null;
+    setRestartConfirm(null);
+  }, []);
+
+  const restartConfirmDialog = (
+    <ConsoleConfirmModal
+      open={restartConfirm != null}
+      title={restartConfirm?.workersOnly ? "重启分片节点" : "重启 Bot"}
+      subtitle={
+        restartConfirm?.workersOnly
+          ? "将仅重启分片节点进程，主节点与其它组件不受影响。"
+          : "将重启 Bot 进程，数秒内连接会短暂中断。"
+      }
+      confirmVariant="default"
+      confirmLabel={restartConfirm?.workersOnly ? "确认重启节点" : "确认重启"}
+      onClose={() => finishRestartConfirm(false)}
+      onConfirm={() => finishRestartConfirm(true)}
+    />
+  );
+
   return {
     restartBusy,
     restartMsg,
@@ -197,6 +224,7 @@ export function useBotSystemRestart(options?: {
     shardedRuntime,
     ensureRestartContext,
     restartBot,
+    restartConfirmDialog,
     trackRestartFromPluginResult: (result: Parameters<typeof trackRestartFromPluginResult>[0]) =>
       trackRestartFromPluginResult(result, (phase) => setRestartPhase(phase)),
   };

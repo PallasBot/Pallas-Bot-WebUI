@@ -12,12 +12,14 @@ import ConsoleHint from "@/components/ConsoleHint";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 type Props = {
   onMessage?: (kind: "ok" | "err", text: string) => void;
 };
 
 export default function DatabaseMigratePanel({ onMessage }: Props) {
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const infoQ = useQuery({
     queryKey: ["db-migrate-mongo-pg-info"],
     queryFn: fetchDbMigrateMongoPgInfo,
@@ -71,6 +73,16 @@ export default function DatabaseMigratePanel({ onMessage }: Props) {
   }, [job?.job_id, job?.status]);
 
   async function startJob() {
+    if (
+      !dryRun &&
+      !(await confirm({
+        title: "开始正式迁移",
+        subtitle: "确定将 MongoDB 数据正式迁入 PostgreSQL？",
+        warnings: ["迁移期间请尽量暂停写入。"],
+        confirmLabel: "开始迁移",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       lastNotifiedStatus.current = "";
@@ -166,6 +178,7 @@ export default function DatabaseMigratePanel({ onMessage }: Props) {
           </pre>
         </div>
       ) : null}
+      {confirmDialog}
     </div>
   );
 }

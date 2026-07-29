@@ -73,6 +73,7 @@ import {
   type TaskTierState,
   type TierProviderSlot,
 } from "@/utils/llmTierRouting";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 type Tab = "upstream" | "tasks" | "runtime" | "routing";
 type TasksViewMode = "tiers" | "all";
@@ -176,6 +177,7 @@ function ModelPriceField({
 
 export default function LlmProvidersForm() {
   const qc = useQueryClient();
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const [tab, setTab] = useState<Tab>("upstream");
   const [tasksViewMode, setTasksViewMode] = useState<TasksViewMode>("tiers");
   const [doc, setDoc] = useState<LlmProvidersConfig>(emptyDoc());
@@ -571,10 +573,17 @@ export default function LlmProvidersForm() {
     }
   }
 
-  function removeProvider(index: number) {
+  async function removeProvider(index: number) {
     const row = doc.providers[index];
     if (!row) return;
-    if (!window.confirm(`删除提供方「${row.id}」？`)) return;
+    if (
+      !(await confirm({
+        title: "删除提供方",
+        subtitle: `删除提供方「${row.id}」？`,
+        confirmLabel: "删除",
+      }))
+    )
+      return;
     setDoc((prev) => {
       const next = cloneDoc(prev);
       next.providers = next.providers.filter((_, i) => i !== index);
@@ -1014,9 +1023,12 @@ export default function LlmProvidersForm() {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="py-8 text-sm text-muted-foreground">正在加载配置...</CardContent>
-      </Card>
+      <>
+        <Card>
+          <CardContent className="py-8 text-sm text-muted-foreground">正在加载配置...</CardContent>
+        </Card>
+        {confirmDialog}
+      </>
     );
   }
 
@@ -1517,7 +1529,7 @@ export default function LlmProvidersForm() {
                           {testBusy ? "测试中…" : "测试"}
                         </Button>
                         {editIndex !== null ? (
-                          <Button type="button" variant="destructive" size="sm" onClick={() => removeProvider(editIndex)}>
+                          <Button type="button" variant="destructive" size="sm" onClick={() => void removeProvider(editIndex)}>
                             删除
                           </Button>
                         ) : null}
@@ -1792,6 +1804,7 @@ export default function LlmProvidersForm() {
           ) : null}
         </AiConfigSectionCard>
       ) : null}
+      {confirmDialog}
     </div>
   );
 }

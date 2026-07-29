@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDbBackup } from "@/hooks/useDbBackup";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { formatBackupBytes, formatBackupElapsed } from "@/utils/dbBackupFormat";
 import { HardDrive, History, RefreshCw } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
@@ -56,6 +57,7 @@ function formatModifiedAt(raw: string): string {
 }
 
 export default function DatabaseBackupsPage() {
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const [pageErr, setPageErr] = useState("");
   const [pageOk, setPageOk] = useState("");
   const [pageReady, setPageReady] = useState(false);
@@ -294,7 +296,15 @@ export default function DatabaseBackupsPage() {
   async function deleteSelected() {
     const paths = [...selected];
     if (!paths.length) return;
-    if (!window.confirm(`确定删除 ${paths.length} 个备份（合计约 ${formatBackupBytes(selectedBytes)}）？此操作不可恢复。`)) return;
+    if (
+      !(await confirm({
+        title: "删除备份",
+        subtitle: `确定删除 ${paths.length} 个备份（合计约 ${formatBackupBytes(selectedBytes)}）？`,
+        warnings: ["此操作不可恢复。"],
+        confirmLabel: "删除",
+      }))
+    )
+      return;
     setDeleting(true);
     setPageErr("");
     setPageOk("");
@@ -346,7 +356,15 @@ export default function DatabaseBackupsPage() {
       setPageErr(`未检测到 ${restoreToolName}，无法从 WebUI 复原。`);
       return;
     }
-    if (!window.confirm(`确定用备份「${row.name}」覆盖当前数据库？此操作不可撤销，进行中的备份/复原任务期间请勿重复发起。`)) return;
+    if (
+      !(await confirm({
+        title: "复原数据库",
+        subtitle: `确定用备份「${row.name}」覆盖当前数据库？`,
+        warnings: ["此操作不可撤销。", "进行中的备份/复原任务期间请勿重复发起。"],
+        confirmLabel: "复原",
+      }))
+    )
+      return;
     setRestoreBusy(true);
     setRestoreJob(null);
     setPageErr("");
@@ -815,6 +833,7 @@ export default function DatabaseBackupsPage() {
           void applyDirectoryAndRefresh();
         }}
       />
+      {confirmDialog}
     </div>
   );
 }

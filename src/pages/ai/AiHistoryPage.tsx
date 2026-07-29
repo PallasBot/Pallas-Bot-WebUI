@@ -69,6 +69,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 type SessionDetailTab = "turns" | "annotate" | "feedback" | "promotion";
 
@@ -293,6 +294,7 @@ function notifyErr(message: string) {
 
 export default function AiHistoryPage() {
   const qc = useQueryClient();
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const { botId, groupId } = useAiObservationScope();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<SessionDetailTab>("turns");
@@ -577,9 +579,16 @@ export default function AiHistoryPage() {
     void injectMut.mutateAsync(content);
   }
 
-  function confirmClearSession() {
+  async function confirmClearSession() {
     if (!selected || clearMut.isPending) return;
-    if (!window.confirm("确定清空当前会话上下文？")) return;
+    if (
+      !(await confirm({
+        title: "清空会话上下文",
+        subtitle: "确定清空当前会话上下文？",
+        confirmLabel: "清空",
+      }))
+    )
+      return;
     void clearMut.mutateAsync();
   }
 
@@ -1156,7 +1165,7 @@ export default function AiHistoryPage() {
                           variant="destructive"
                           className="h-9 flex-1 sm:flex-none"
                           disabled={injectMut.isPending || clearMut.isPending}
-                          onClick={confirmClearSession}
+                          onClick={() => void confirmClearSession()}
                         >
                           {clearMut.isPending ? "清空中…" : "清空"}
                         </Button>
@@ -1293,6 +1302,7 @@ export default function AiHistoryPage() {
           </div>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </div>
   );
 }

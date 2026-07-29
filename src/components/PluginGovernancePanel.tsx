@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 type Props = {
   pluginName: string;
@@ -51,6 +52,7 @@ function activationPolicyShortLabel(policy?: string | null): string {
 
 export default function PluginGovernancePanel({ pluginName, presentation = "page" }: Props) {
   const qc = useQueryClient();
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const isDialog = presentation === "dialog";
   const [permSelections, setPermSelections] = useState<Record<string, string>>({});
   const [limitSelections, setLimitSelections] = useState<Record<string, string>>({});
@@ -153,6 +155,17 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
     if (!g) return;
     if (kind === "global_disable" && globalDisableProtected) return;
     if (kind === "help_hidden" && helpIgnored) return;
+    if (
+      kind === "global_disable" &&
+      next &&
+      !(await confirm({
+        title: "禁用此插件",
+        subtitle: `确定全局禁用插件「${pluginName}」？`,
+        warnings: ["所有实例、所有群都不会再运行此插件；白名单群除外。"],
+        confirmLabel: "禁用",
+      }))
+    )
+      return;
     await saveGov.mutateAsync({
       global_disable: kind === "global_disable" ? next : g.runtime.global_disable,
       help_hidden: kind === "help_hidden" ? next : g.runtime.help_hidden,
@@ -382,6 +395,7 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
           {saveGov.isPending ? <p className="muted plugin-governance-panel__saving">保存中…</p> : null}
         </section>
       ) : null}
+      {confirmDialog}
     </StateBlock>
   );
 }

@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import UiBadge from "@/components/ui/UiBadge";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 const INHERIT = "__inherit__";
 
@@ -78,6 +79,7 @@ function mirrorBadgeVariant(mirrorId: string, preferredId: string): "ok" | "mute
 }
 
 export default function GitMirrorDialog({ open, onClose }: Props) {
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState("");
   const [info, setInfo] = useState<GitMirrorInfo | null>(null);
@@ -246,6 +248,13 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
   async function applyCommunityBatch() {
     if (applyBusyKey) return;
     if (!(await ensureSavedIfDirty())) return;
+    const ok = await confirm({
+      title: "改写社区 remote",
+      subtitle: "将按当前全局首选批量改写社区插件的 git remote。",
+      confirmVariant: "default",
+      confirmLabel: "确认改写",
+    });
+    if (!ok) return;
     setApplyBusyKey("community-batch");
     try {
       const summary = await postGitMirrorApplyCommunity({
@@ -725,6 +734,7 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </>
   );
 }

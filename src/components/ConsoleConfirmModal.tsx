@@ -9,50 +9,41 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export type ConsoleDeleteListItem = {
-  key: string;
-  label: string;
-};
-
 type Props = {
   open: boolean;
   title: string;
   subtitle: string;
-  items: ConsoleDeleteListItem[];
   busy?: boolean;
   error?: string;
   warnings?: string[];
   confirmLabel?: string;
   busyLabel?: string;
-  listLabel?: string;
-  /** 默认 destructive（删除）；重启/停止等用 default */
+  /** 默认 destructive；重启/停止等用 default */
   confirmVariant?: "destructive" | "default";
   titleId?: string;
   onClose: () => void;
   onConfirm: () => void;
 };
 
-/** 批量操作二级确认：shadcn AlertDialog（展示账号列表与可选警告）。 */
-export default function ConsoleDeleteConfirmModal({
+/** 单次危险操作二级确认（无需列表）。 */
+export default function ConsoleConfirmModal({
   open,
   title,
   subtitle,
-  items,
   busy = false,
   error,
   warnings,
   confirmLabel,
   busyLabel,
-  listLabel = "账号列表",
   confirmVariant = "destructive",
   titleId,
   onClose,
   onConfirm,
 }: Props) {
-  const headingId = titleId || "console-delete-modal-title";
+  const headingId = titleId || "console-confirm-modal-title";
   const confirmText = busy
-    ? busyLabel || (confirmVariant === "destructive" ? "删除中…" : "处理中…")
-    : confirmLabel || (confirmVariant === "destructive" ? "确认删除" : "确认");
+    ? busyLabel || (confirmVariant === "destructive" ? "处理中…" : "处理中…")
+    : confirmLabel || (confirmVariant === "destructive" ? "确认" : "确认");
 
   return (
     <AlertDialog
@@ -73,15 +64,6 @@ export default function ConsoleDeleteConfirmModal({
             {w}
           </p>
         ))}
-
-        <div className="space-y-2">
-          <p className="m-0 text-[13px] text-muted-foreground">{listLabel}</p>
-          <ul className="inst-delete-account-list muted m-0">
-            {items.map((item) => (
-              <li key={item.key}>{item.label}</li>
-            ))}
-          </ul>
-        </div>
 
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>取消</AlertDialogCancel>

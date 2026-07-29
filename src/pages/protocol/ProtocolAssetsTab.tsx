@@ -32,6 +32,7 @@ import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 import {
   dockerPullPercent,
@@ -205,6 +206,7 @@ function notifyWarn(message: string) {
 }
 
 export default function ProtocolAssetsTab() {
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const { mountUrl, reload } = useOutletContext<ProtocolOutletContext>();
   const [overview, setOverview] = useState<Record<string, unknown> | null>(null);
   const [profileForm, setProfileForm] = useState<ProtocolRuntimeProfile>({});
@@ -339,6 +341,16 @@ export default function ProtocolAssetsTab() {
   async function pullDocker(which: "napcat" | "snowluma") {
     if (!mountUrl) return;
     const image = which === "napcat" ? napcatImageTarget : snowlumaImageTarget;
+    const ok = await confirm({
+      title: which === "snowluma" ? "拉取并重建镜像" : "拉取 Docker 镜像",
+      subtitle:
+        which === "snowluma"
+          ? `将拉取上游镜像并重建派生镜像：${image}`
+          : `将拉取 Docker 镜像：${image}`,
+      confirmVariant: "default",
+      confirmLabel: which === "snowluma" ? "确认拉取并重建" : "确认拉取",
+    });
+    if (!ok) return;
     if (which === "napcat") setNapcatPullBusy(true);
     else setSnowlumaPullBusy(true);
     setDockerPullWhich(which);
@@ -747,6 +759,7 @@ export default function ProtocolAssetsTab() {
           </CardContent>
         </Card>
       ) : null}
+      {confirmDialog}
     </div>
   );
 }

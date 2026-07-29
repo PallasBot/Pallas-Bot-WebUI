@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 let logErrorsCache: Awaited<ReturnType<typeof fetchLogErrors>> | null = null;
 
@@ -46,6 +47,7 @@ function cardKey(it: MatcherErrorLogEntry, idx: number): string {
 }
 
 export default function LogErrorsPage() {
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const [q, setQ] = useState("");
   const [clearing, setClearing] = useState(false);
   const [err, setErr] = useState("");
@@ -115,11 +117,12 @@ export default function LogErrorsPage() {
 
   async function clearLogErrors() {
     if (clearing || query.isFetching || !entries.length) return;
-    if (
-      !window.confirm(
-        "确定清空全部日志报错记录？将删除 log_errors.jsonl 与分片 errors 归档，不可恢复。",
-      )
-    ) {
+    if (!(await confirm({
+      title: "清理全部日志报错",
+      subtitle: "确定清空全部日志报错记录？",
+      warnings: ["将删除 log_errors.jsonl 与分片 errors 归档，不可恢复。"],
+      confirmLabel: "清理全部",
+    }))) {
       return;
     }
     setClearing(true);
@@ -282,6 +285,7 @@ export default function LogErrorsPage() {
           </div>
         </CardContent>
       </Card>
+      {confirmDialog}
     </PageFill>
   );
 }
