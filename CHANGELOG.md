@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.10] - 2026-07-29
 
 相对 **0.8.9** 至本版的控制台更新。
 
@@ -30,6 +30,23 @@
 - 登录相关文案：口令 → 密钥；插件触发：口令 → 命令
 - 插件目录排序：收藏后优先 `pb_core`
 
+### 提交明细
+
+### Added
+
+* feat(ai): 媒体资产下载显示进度条 ([04bbfe0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/04bbfe085cf6b806a11c7d81f097b0f375c9fd3e))
+
+### Fixed
+
+* fix(plugins): 插件列表在收藏后固定牛牛核心靠前 ([fd75f7e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fd75f7ee09b09a802bd9a9c163339b4283de0a22))
+* fix(ai): 媒体说明收进标题旁问号并修弹层圆角裁字 ([164b2de](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/164b2defc8b81cfb55630b71fbfb2522c76e1ce8))
+
+### Changed
+
+* chore(ui): 控制台登录改称密钥，插件触发改称命令 ([e6004c0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e6004c0c33c9391c1a5e09e6b5e05da77d82ee8f))
+
+**完整变更**: [`v0.8.9...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.9...HEAD)
+
 
 ## [0.8.9] - 2026-07-29
 
@@ -44,7 +61,6 @@
 * fix(ui): 拉开更新进度条与完成后文案间距 ([8a4f563](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8a4f56394526229b6a9dddb52f7b850d93a86ba5))
 
 **完整变更**: [`v0.8.8...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.8...HEAD)
-
 
 ## [0.8.9] - 2026-07-29
 
@@ -82,7 +98,6 @@
 
 **完整变更**: [`v0.8.8...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.8...HEAD)
 
-
 ## [0.8.8] - 2026-07-29
 
 ### Added
@@ -94,7 +109,6 @@
 * fix(community): 多机协同入池文案支持自动写入密钥 ([5f83392](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5f83392e8857601da948d6b5be5a85665b735070))
 
 **完整变更**: [`v0.8.7...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.7...HEAD)
-
 
 ## [0.8.8] - 2026-07-29
 
@@ -127,7 +141,6 @@
 
 **完整变更**: [`v0.8.7...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.7...HEAD)
 
-
 ## [0.8.7] - 2026-07-28
 
 相对 **0.8.6** 至本版的控制台更新。
@@ -154,7 +167,6 @@
 * feat(ai): 对话工具页增加 MCP 服务器配置入口 ([92a99f3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/92a99f35146db2f80c3ac235f629d3e26ffce468))
 
 **完整变更**: [`v0.8.6...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.6...HEAD)
-
 
 ## [0.8.6] - 2026-07-28
 
