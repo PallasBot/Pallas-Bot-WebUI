@@ -323,7 +323,7 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
 
           <PluginGovernanceGroup
             title="命令权限"
-            description="展示命令中文名与实际触发口令；帮助图中的「何人可用」会随这里的配置同步变化。"
+            description="展示命令中文名与实际触发命令；帮助图中的「何人可用」会随这里的配置同步变化。"
           >
             {permPlugin?.commands?.length ? (
               permPlugin.commands.map((cmd) => (

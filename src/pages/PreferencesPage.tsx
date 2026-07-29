@@ -133,7 +133,7 @@ export default function PreferencesPage() {
     setPwdErr("");
     setPwdOk("");
     if (pwd.length < 8) {
-      setPwdErr("新口令至少 8 位。");
+      setPwdErr("新密钥至少 8 位。");
       return;
     }
     if (pwd !== pwd2) {
@@ -146,7 +146,7 @@ export default function PreferencesPage() {
       setPwd("");
       setPwd2("");
       setPwdOk(r.message || "已更新。");
-      pushConsoleToast("控制台口令已更新", "ok");
+      pushConsoleToast("控制台密钥已更新", "ok");
       void setupQ.refetch();
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -159,12 +159,12 @@ export default function PreferencesPage() {
 
   return (
     <div className="console-hub-page prefs-page">
-      <PageMasthead title="偏好与口令" description="外观与安全设置。" />
+      <PageMasthead title="偏好与密钥" description="外观与安全设置。" />
 
       {setupQ.data?.requires_setup ? (
         <div className="alert alert--warn">
-          当前仍处于首次引导阶段，请先完成控制台口令改密。
-          {setupQ.data.default_password_active ? <span> 默认口令仍有效，生产环境请勿继续保留。</span> : null}
+          当前仍处于首次引导阶段，请先完成控制台密钥改密。
+          {setupQ.data.default_password_active ? <span> 默认密钥仍有效，生产环境请勿继续保留。</span> : null}
           <Link to="/setup" className="prefs-page__setup-link">
             打开 Setup Wizard
           </Link>
@@ -451,7 +451,7 @@ export default function PreferencesPage() {
           </div>
         </PrefsSettingCard>
 
-        <PrefsSettingCard cardId="console-password" title="控制台口令" lead="用于登录 WebUI，至少 8 位。" wide>
+        <PrefsSettingCard cardId="console-password" title="控制台密钥" lead="用于登录 WebUI，至少 8 位。" wide>
           {pwdErr ? (
             <div className="alert alert--err" style={{ marginBottom: 12 }}>
               {pwdErr}
@@ -463,15 +463,15 @@ export default function PreferencesPage() {
             </div>
           ) : null}
           <div className="prefs-form-field">
-            <label className="prefs-form-field__label">新口令</label>
+            <label className="prefs-form-field__label">新密钥</label>
             <input className="inp" type="password" autoComplete="new-password" value={pwd} onChange={(e) => setPwd(e.target.value)} />
           </div>
           <div className="prefs-form-field">
-            <label className="prefs-form-field__label">确认口令</label>
+            <label className="prefs-form-field__label">确认密钥</label>
             <input className="inp" type="password" autoComplete="new-password" value={pwd2} onChange={(e) => setPwd2(e.target.value)} />
           </div>
           <button type="button" className="btn btn--primary" disabled={pwdBusy} onClick={() => void submitPassword()}>
-            {pwdBusy ? "提交中…" : "保存口令"}
+            {pwdBusy ? "提交中…" : "保存密钥"}
           </button>
         </PrefsSettingCard>
       </div>

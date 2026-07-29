@@ -246,7 +246,7 @@ export default function GroupSocialConfigModal({
                   <div className="bot-config-dialog__section-body social-config-dialog__strategy">
                     <BoolSwitchField
                       label="封禁本群"
-                      hint="开启后本群不响应口令与常规回复（与实例级配置独立）。"
+                      hint="开启后本群不响应命令与常规回复（与实例级配置独立）。"
                       checked={draft.banned}
                       onChange={(v) => setDraft({ ...draft, banned: v })}
                     />

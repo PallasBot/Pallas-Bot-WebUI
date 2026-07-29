@@ -1986,7 +1986,7 @@ export interface NapcatAccountRow {
   native_webui_url?: string;
   /** 兼容字段 */
   napcat_native_webui_url?: string;
-  /** 原生 WebUI 鉴权/口令提示（列表或详情旁注） */
+  /** 原生 WebUI 鉴权/密钥提示（列表或详情旁注） */
   native_webui_auth_note?: string;
   /** SnowLuma Docker noVNC 元数据（协议插件 compose） */
   snowluma_docker_novnc?: {
@@ -1995,9 +1995,9 @@ export interface NapcatAccountRow {
     host_port?: number;
     uses_default_vnc_password?: boolean;
   };
-  /** Bot 自动改密后写入 accounts.json 的 SnowLuma WebUI 管理口令 */
+  /** Bot 自动改密后写入 accounts.json 的 SnowLuma WebUI 管理密钥 */
   snowluma_managed_webui_password?: string;
-  /** 日志解析的一次性初始口令（改密前） */
+  /** 日志解析的一次性初始密钥（改密前） */
   snowluma_runtime_webui_password?: string;
   snowluma_webui_default_user?: string;
   snowluma_linux_docker?: boolean;

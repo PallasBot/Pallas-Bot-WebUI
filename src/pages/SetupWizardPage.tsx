@@ -45,7 +45,7 @@ export default function SetupWizardPage() {
     setPwdErr("");
     setPwdOk("");
     if (p1.length < 8) {
-      setPwdErr("新口令至少 8 位。");
+      setPwdErr("新密钥至少 8 位。");
       return;
     }
     if (p1 !== p2) {
@@ -88,7 +88,7 @@ export default function SetupWizardPage() {
       {requiresSetup ? (
         <div className="alert alert--warn">
           当前仍处于首次引导阶段，其他页面会先收口到这里。
-          {setupQ.data?.default_password_active ? <span> 默认口令仍有效，请立即改密。</span> : null}
+          {setupQ.data?.default_password_active ? <span> 默认密钥仍有效，请立即改密。</span> : null}
         </div>
       ) : setupCompleted ? (
         <div className="alert alert--ok">控制台首次引导已完成，可以继续进入其它页面。</div>
@@ -98,8 +98,8 @@ export default function SetupWizardPage() {
         <div className="panel setup-wizard-page__card">
           <div className="setup-wizard-page__card-head">
             <div>
-              <h3 className="setup-wizard-page__title">步骤 1 · 改控制台口令</h3>
-              <p className="muted setup-wizard-page__lead">口令至少 8 位；保存后会自动刷新 setup 状态。</p>
+              <h3 className="setup-wizard-page__title">步骤 1 · 改控制台密钥</h3>
+              <p className="muted setup-wizard-page__lead">密钥至少 8 位；保存后会自动刷新 setup 状态。</p>
             </div>
             <span className={`setup-wizard-page__pill${setupCompleted ? " is-done" : requiresSetup ? " is-warn" : ""}`}>
               {setupCompleted ? "已完成" : "待处理"}
@@ -108,16 +108,16 @@ export default function SetupWizardPage() {
           {pwdErr ? <div className="alert alert--err setup-wizard-page__inline-alert">{pwdErr}</div> : null}
           {pwdOk ? <div className="alert alert--ok setup-wizard-page__inline-alert">{pwdOk}</div> : null}
           <div className="setup-wizard-page__field">
-            <label className="setup-wizard-page__label">新口令</label>
+            <label className="setup-wizard-page__label">新密钥</label>
             <input className="inp" type="password" autoComplete="new-password" value={p1} onChange={(e) => setP1(e.target.value)} />
           </div>
           <div className="setup-wizard-page__field">
-            <label className="setup-wizard-page__label">确认口令</label>
+            <label className="setup-wizard-page__label">确认密钥</label>
             <input className="inp" type="password" autoComplete="new-password" value={p2} onChange={(e) => setP2(e.target.value)} />
           </div>
           <div className="setup-wizard-page__actions">
             <button type="button" className="btn btn--primary" disabled={pwdBusy} onClick={() => void submitPassword()}>
-              {pwdBusy ? "提交中…" : "保存口令"}
+              {pwdBusy ? "提交中…" : "保存密钥"}
             </button>
             <Link to="/preferences#console-password" className="btn">
               前往偏好页
