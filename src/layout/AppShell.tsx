@@ -3,6 +3,8 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import brandMarkAsset from "@/assets/brand-avatar.png?url";
 import { fetchHealth } from "@/api/health";
+import { fetchWebuiAutoUpdateStatus } from "@/api/fullConsole";
+import { pendingAutoUpdateLabel } from "@/utils/autoUpdateNotice";
 import { MAIN_NAV_ITEMS, buildNavEntries, isNavActive, sectionIcon } from "@/config/mainNav";
 import type { MainNavItem } from "@/config/mainNav";
 import BotRestartProgressDialog from "@/components/BotRestartProgressDialog";
@@ -68,23 +70,26 @@ function NavItemLink({
   linkClass,
   child,
   onNavigate,
+  notice,
 }: {
   item: MainNavItem;
   linkClass: string;
   child?: boolean;
   onNavigate?: () => void;
+  notice?: string | null;
 }) {
   const location = useLocation();
   const Icon = item.icon;
   const active = isNavActive(location.pathname, item.to);
   const exact = navExact(location.pathname, item.to);
+  const showNotice = Boolean(notice) && item.to === "/update";
   return (
     <div className={cn("shell__nav-item", child && "shell__nav-item--child")}>
       <NavLink
         to={item.to}
         end={item.to === "/"}
         onClick={onNavigate}
-        title={item.label}
+        title={showNotice ? notice || item.label : item.label}
         className={cn(
           linkClass,
           child && "shell__nav-link--child",
@@ -93,11 +98,14 @@ function NavItemLink({
           exact && "is-router-exact",
         )}
         aria-current={exact ? "page" : undefined}
-        aria-label={item.label}
+        aria-label={showNotice ? `${item.label}（${notice}）` : item.label}
       >
         <Icon className="shell__nav-ico" width={18} height={18} aria-hidden />
         <span className="shell__nav-text">
-          <span className="shell__nav-label">{item.label}</span>
+          <span className="shell__nav-label">
+            {item.label}
+            {showNotice ? <span className="shell__nav-notice-dot" aria-hidden /> : null}
+          </span>
         </span>
       </NavLink>
     </div>
@@ -108,11 +116,13 @@ function NavTree({
   onNavigate,
   mobile,
   railCollapsed,
+  updateNotice,
 }: {
   onNavigate?: () => void;
   mobile?: boolean;
   /** 桌面侧栏收起：扁平图标轨，隐藏分组折叠头 */
   railCollapsed?: boolean;
+  updateNotice?: string | null;
 }) {
   const location = useLocation();
   const entries = useMemo(() => buildNavEntries(MAIN_NAV_ITEMS), []);
@@ -153,6 +163,7 @@ function NavTree({
               item={entry.item}
               linkClass={linkClass}
               onNavigate={onNavigate}
+              notice={updateNotice}
             />
           );
         }
@@ -187,6 +198,7 @@ function NavTree({
                     linkClass={linkClass}
                     child={!mobile}
                     onNavigate={onNavigate}
+                    notice={updateNotice}
                   />
                 ))}
               </div>
@@ -204,6 +216,12 @@ export default function AppShell() {
   const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed());
   const [mobileOpen, setMobileOpen] = useState(false);
   const healthQ = useQuery({ queryKey: ["health"], queryFn: () => fetchHealth(), refetchInterval: 15_000 });
+  const autoUpdateQ = useQuery({
+    queryKey: ["webui-auto-update-status"],
+    queryFn: fetchWebuiAutoUpdateStatus,
+    refetchInterval: 60_000,
+  });
+  const updateNotice = pendingAutoUpdateLabel(autoUpdateQ.data?.pending_notice);
   const {
     restartBusy,
     restartInProgress,
@@ -357,7 +375,7 @@ export default function AppShell() {
 
         <div className="shell__nav-clip">
           <nav className="shell__nav" aria-label="主导航">
-            <NavTree railCollapsed={collapsed && !isNarrow} />
+            <NavTree railCollapsed={collapsed && !isNarrow} updateNotice={updateNotice} />
           </nav>
         </div>
 
@@ -476,7 +494,7 @@ export default function AppShell() {
               </button>
             </div>
             <nav className="shell-mobile-nav__links" aria-label="主导航">
-              <NavTree mobile onNavigate={() => setMobileOpen(false)} />
+              <NavTree mobile onNavigate={() => setMobileOpen(false)} updateNotice={updateNotice} />
             </nav>
             <div className="shell-mobile-nav__tools">
               {restartAvailable ? (

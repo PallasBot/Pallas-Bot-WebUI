@@ -7,10 +7,15 @@ import { fetchPluginConfig, putPluginConfig } from "@/api/console";
 import {
   fetchUpdateChangelog,
   fetchUpdateCheckAll,
+  fetchWebuiAutoUpdateStatus,
+  fetchInstances,
   openUpdateApplyJobEventSource,
   postBotUpdateApply,
   postUpdateApply,
+  postWebuiAutoUpdateAck,
+  postWebuiAutoUpdateRunOnce,
   type UpdateChangelogTarget,
+  type WebuiAutoUpdateStatusData,
 } from "@/api/fullConsole";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
 import { waitForUpdateApplyJob } from "@/utils/updateApplyJobStream";
@@ -23,10 +28,14 @@ import {
   PALLAS_WEBUI_RELEASES,
   PALLAS_WEBUI_REPO,
 } from "@/utils/pallasExternalLinks";
+import BotAccountCombobox from "@/components/BotAccountCombobox";
+import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import GitMirrorDialog from "@/components/GitMirrorDialog";
 import PageMasthead from "@/components/PageMasthead";
 import ReadmeMarkdown from "@/components/ReadmeMarkdown";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
+import ConsoleSwitch from "@/components/ConsoleSwitch";
+import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,18 +48,39 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import UiInput from "@/components/ui/UiInput";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { botSelectDropdownLabel } from "@/utils/botDisplay";
 import { readPrefs, writePrefs } from "@/theme/applyShellTheme";
-import { ChevronRight, RefreshCw, LayoutDashboard, Bot } from "lucide-react";
+import { ChevronRight, RefreshCw, LayoutDashboard, Bot, Timer } from "lucide-react";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
+import { useBotFavorites } from "@/hooks/useBotFavorites";
 
 const PB_PROTOCOL_PLUGIN = "pb_protocol";
+const PB_WEBUI_PLUGIN = "pb_webui";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
+const WEBUI_AUTO_ENABLED = "pallas_webui_auto_update_enabled";
+const BOT_AUTO_ENABLED = "pallas_bot_auto_update_enabled";
+const PLUGINS_AUTO_ENABLED = "pallas_plugins_auto_update_enabled";
+const AUTO_NOTIFY_SUPERUSERS = "pallas_auto_update_notify_superusers";
+const AUTO_NOTIFY_BOT_ID = "pallas_auto_update_notify_bot_id";
+const WEBUI_AUTO_MODE = "pallas_webui_auto_update_schedule_mode";
+const WEBUI_AUTO_INTERVAL = "pallas_webui_auto_update_interval_hours";
+const WEBUI_AUTO_CRON_HOUR = "pallas_webui_auto_update_cron_hour";
+const WEBUI_AUTO_CRON_MINUTE = "pallas_webui_auto_update_cron_minute";
 const WEBUI_RELEASES_PAGE = PALLAS_WEBUI_RELEASES;
 const BOT_RELEASES_PAGE = PALLAS_BOT_RELEASES;
 const PENDING_CHANGELOG_KEY = "pallas.webui.pendingUpdateChangelog";
+/** 汇报用牛：0 / 哨兵表示任选当前在线账号 */
+const NOTIFY_BOT_ANY = "0";
 
 const UPDATE_PANEL = "update-page__panel flex flex-col overflow-hidden shadow-none";
 const UPDATE_PANEL_HD =
@@ -58,15 +88,16 @@ const UPDATE_PANEL_HD =
 const UPDATE_PANEL_BD = "panel__bd update-page__bd update-page__bd--release space-y-0 px-4 pb-4 pt-3";
 const UPDATE_STATUS_PILL = "update-page__status-pill";
 
-type ApplyKind = "web" | "bot";
+type ManualApplyKind = "web" | "bot";
+type ApplyKind = ManualApplyKind | "auto";
 
 type PendingChangelog = {
-  kind: ApplyKind;
+  kind: ManualApplyKind;
   tag: string;
 };
 
 type ChangelogView = {
-  kind: ApplyKind;
+  kind: ManualApplyKind;
   tag: string;
   markdown: string;
   changelogUrl: string;
@@ -102,7 +133,7 @@ function clearPendingChangelog() {
   }
 }
 
-function applyKindToTarget(kind: ApplyKind): UpdateChangelogTarget {
+function applyKindToTarget(kind: ManualApplyKind): UpdateChangelogTarget {
   return kind === "bot" ? "bot" : "webui";
 }
 
@@ -198,6 +229,7 @@ export default function UpdatePage() {
   const qc = useQueryClient();
   const location = useLocation();
   const { confirm, confirmDialog } = useConsoleConfirm();
+  const { favorites } = useBotFavorites();
   const [applyKind, setApplyKind] = useState<ApplyKind | null>(null);
   const [applyPercent, setApplyPercent] = useState(0);
   const [applyHint, setApplyHint] = useState("");
@@ -213,8 +245,26 @@ export default function UpdatePage() {
   const [showChangelogAfterUpdate, setShowChangelogAfterUpdate] = useState(
     () => readPrefs().showUpdateChangelog,
   );
+  const [autoBusy, setAutoBusy] = useState(false);
+  const [autoDraft, setAutoDraft] = useState({
+    webui_enabled: false,
+    bot_enabled: false,
+    plugins_enabled: false,
+    notify_superusers: false,
+    notify_bot_id: 0,
+    schedule_mode: "interval" as "interval" | "cron",
+    interval_hours: 6,
+    cron_hour: 4,
+    cron_minute: 0,
+  });
 
   const q = useQuery({ queryKey: ["update-check-all"], queryFn: fetchUpdateCheckAll });
+  const autoQ = useQuery({
+    queryKey: ["webui-auto-update-status"],
+    queryFn: fetchWebuiAutoUpdateStatus,
+    refetchInterval: 60_000,
+  });
+  const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
   const web = q.data?.webui;
   const bot = q.data?.bot;
 
@@ -278,6 +328,33 @@ export default function UpdatePage() {
     return links;
   }, [bot?.deployment_mode]);
 
+  const notifyBotOptions = useMemo(() => {
+    const data = instQ.data;
+    const seen = new Set<string>();
+    const out: Array<{ id: string; nickname: string }> = [];
+    if (data) {
+      for (const b of data.nonebot_bots ?? []) {
+        const id = String(b.self_id || "").trim();
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        out.push({ id, nickname: data.bot_profiles?.[id]?.nickname?.trim() || "" });
+      }
+      for (const cfg of data.db_bot_configs ?? []) {
+        const id = String(cfg.account ?? "").trim();
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        out.push({ id, nickname: data.bot_profiles?.[id]?.nickname?.trim() || "" });
+      }
+    }
+    const cur = autoDraft.notify_bot_id > 0 ? String(autoDraft.notify_bot_id) : "";
+    if (cur && !seen.has(cur)) {
+      out.push({ id: cur, nickname: data?.bot_profiles?.[cur]?.nickname?.trim() || "" });
+    }
+    return out;
+  }, [instQ.data, autoDraft.notify_bot_id]);
+
+  const notifyBotSelected = notifyBotOptions.find((b) => b.id === String(autoDraft.notify_bot_id));
+
   const webDocLinks = useMemo(
     () => [
       { href: (web?.release_url || "").trim() || WEBUI_RELEASES_PAGE, label: "GitHub Release" },
@@ -293,6 +370,35 @@ export default function UpdatePage() {
   }, []);
 
   useEffect(() => {
+    const data = autoQ.data;
+    if (!data) return;
+    const mode = data.schedule_mode === "cron" ? "cron" : "interval";
+    setAutoDraft({
+      webui_enabled: Boolean(data.webui?.enabled ?? data.enabled),
+      bot_enabled: Boolean(data.bot?.enabled),
+      plugins_enabled: Boolean(data.plugins?.enabled),
+      notify_superusers: Boolean(data.notify_superusers),
+      notify_bot_id: Math.max(0, Math.floor(Number(data.notify_bot_id) || 0)),
+      schedule_mode: mode,
+      interval_hours: Math.max(1, Math.min(168, Number(data.interval_hours) || 6)),
+      cron_hour: Math.max(0, Math.min(23, Number(data.cron_hour) || 0)),
+      cron_minute: Math.max(0, Math.min(59, Number(data.cron_minute) || 0)),
+    });
+  }, [autoQ.data]);
+
+  useEffect(() => {
+    if (!autoQ.data?.pending_notice) return;
+    void (async () => {
+      try {
+        await postWebuiAutoUpdateAck();
+        await qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] });
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [autoQ.data?.pending_notice, qc]);
+
+  useEffect(() => {
     const raw = (location.hash || "").replace(/^#/, "").trim();
     if (!raw || q.isLoading) return;
     requestAnimationFrame(() => {
@@ -300,7 +406,7 @@ export default function UpdatePage() {
     });
   }, [location.hash, q.isLoading, q.dataUpdatedAt]);
 
-  async function openChangelogDialog(kind: ApplyKind, tag: string) {
+  async function openChangelogDialog(kind: ManualApplyKind, tag: string) {
     setChangelog({
       kind,
       tag,
@@ -339,7 +445,7 @@ export default function UpdatePage() {
     void openChangelogDialog(pending.kind, pending.tag);
   }, []);
 
-  function queueChangelogAfterUpdate(kind: ApplyKind, tag: string) {
+  function queueChangelogAfterUpdate(kind: ManualApplyKind, tag: string) {
     if (!readPrefs().showUpdateChangelog) return;
     writePendingChangelog({ kind, tag });
   }
@@ -404,6 +510,142 @@ export default function UpdatePage() {
     } finally {
       setGhTokenBusy(false);
     }
+  }
+
+  async function saveAutoUpdate(patch: Partial<typeof autoDraft>) {
+    const next = { ...autoDraft, ...patch };
+    setAutoBusy(true);
+    setErr("");
+    try {
+      await putPluginConfig(PB_WEBUI_PLUGIN, {
+        [WEBUI_AUTO_ENABLED]: next.webui_enabled,
+        [BOT_AUTO_ENABLED]: next.bot_enabled,
+        [PLUGINS_AUTO_ENABLED]: next.plugins_enabled,
+        [AUTO_NOTIFY_SUPERUSERS]: next.notify_superusers,
+        [AUTO_NOTIFY_BOT_ID]: next.notify_bot_id,
+        [WEBUI_AUTO_MODE]: next.schedule_mode,
+        [WEBUI_AUTO_INTERVAL]: next.interval_hours,
+        [WEBUI_AUTO_CRON_HOUR]: next.cron_hour,
+        [WEBUI_AUTO_CRON_MINUTE]: next.cron_minute,
+      });
+      setAutoDraft(next);
+      await qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] });
+      const anyOn = next.webui_enabled || next.bot_enabled || next.plugins_enabled;
+      pushConsoleToast(
+        anyOn
+          ? next.schedule_mode === "cron"
+            ? `自动更新已保存（每天 ${String(next.cron_hour).padStart(2, "0")}:${String(next.cron_minute).padStart(2, "0")}）`
+            : `自动更新已保存（每 ${next.interval_hours} 小时）`
+          : "自动更新设置已保存",
+        "ok",
+      );
+    } catch (e) {
+      const detail = axiosErrorDetail(e) || (e instanceof Error ? e.message : String(e));
+      setErr(detail);
+      pushConsoleToast(detail, "err");
+    } finally {
+      setAutoBusy(false);
+    }
+  }
+
+  async function runAutoOnce() {
+    setApplyKind("auto");
+    setApplyPercent(1);
+    setApplyHint("排队中…");
+    setErr("");
+    setMsg("");
+    try {
+      const started = await postWebuiAutoUpdateRunOnce();
+      if (!started.job_id) throw new Error("未返回更新任务 ID");
+      const done = await waitForUpdateApplyJob(started.job_id, openUpdateApplyJobEventSource, (p) => {
+        setApplyPercent(p.percent);
+        if (p.message) setApplyHint(p.message);
+      });
+      setApplyPercent(100);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] }),
+        qc.invalidateQueries({ queryKey: ["update-check-all"] }),
+      ]);
+      const tick = done.result?.tick;
+      const result = String(tick?.result || "");
+      const targetResults = tick?.targets || {};
+      const appliedKinds = Object.entries(targetResults)
+        .filter(([, v]) => ["applied", "partial"].includes(String(v?.result || "")))
+        .map(([k]) => k);
+      if (result === "applied" || appliedKinds.length) {
+        const label = appliedKinds.length ? `已自动更新：${appliedKinds.join(" / ")}` : done.message || "已自动更新";
+        setMsg(label);
+        pushConsoleToast(label, "ok");
+        if (appliedKinds.includes("webui") || appliedKinds.includes("bot") || appliedKinds.includes("plugins")) {
+          window.setTimeout(() => window.location.reload(), 1500);
+        } else {
+          setApplyKind(null);
+          setApplyPercent(0);
+          setApplyHint("");
+        }
+        return;
+      }
+      if (result === "up_to_date") {
+        setMsg(done.message || "各项均已是最新或无可应用更新");
+        pushConsoleToast("已是最新", "ok");
+        setApplyKind(null);
+        setApplyPercent(0);
+        setApplyHint("");
+        return;
+      }
+      if (result === "skipped") {
+        setMsg(done.message || "本轮已跳过（未开启或不可用）");
+        setApplyKind(null);
+        setApplyPercent(0);
+        setApplyHint("");
+        return;
+      }
+      const fail = String(tick?.error || done.result?.last_error || done.message || "自动更新失败");
+      setErr(fail);
+      pushConsoleToast(fail, "err");
+      setApplyKind(null);
+      setApplyPercent(0);
+      setApplyHint("");
+    } catch (e) {
+      const detail =
+        e instanceof InstallJobFailedError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : axiosErrorDetail(e);
+      setErr(detail);
+      pushConsoleToast(detail, "err");
+      setApplyKind(null);
+      setApplyPercent(0);
+      setApplyHint("");
+    }
+  }
+
+  function formatTargetStatus(data: WebuiAutoUpdateStatusData | undefined, kind: "webui" | "bot" | "plugins"): string {
+    const t = data?.[kind];
+    if (!t) return "尚未检查";
+    const at = formatCheckedAt(t.last_check_at ?? undefined);
+    const result = String(t.last_check_result || "").trim();
+    const label =
+      result === "applied" || result === "partial"
+        ? "已应用"
+        : result === "up_to_date"
+          ? "已是最新"
+          : result === "failed"
+            ? "失败"
+            : result === "skipped"
+              ? t.skip_reason
+                ? `已跳过（${t.skip_reason}）`
+                : "已跳过"
+              : result || "—";
+    if (at === "—") return label;
+    return `${label} · ${at}`;
+  }
+
+  function formatAutoStatus(data: WebuiAutoUpdateStatusData | undefined): string {
+    if (!data) return "尚未检查";
+    const at = formatCheckedAt(data.last_run_at ?? data.last_check_at ?? undefined);
+    return at === "—" ? "尚未整轮执行" : `上次整轮 ${at}`;
   }
 
   async function applyWeb() {
@@ -801,6 +1043,238 @@ export default function UpdatePage() {
             ) : null}
           </CardContent>
         </Card>
+        <Card id="console-update-auto" className={UPDATE_PANEL}>
+          <CardHeader className={UPDATE_PANEL_HD}>
+            <CardTitle className="panel__title flex min-w-0 flex-wrap items-center gap-1.5">
+              <PanelTitleIcon icon={Timer} />
+              自动更新
+            </CardTitle>
+          </CardHeader>
+          <CardContent className={UPDATE_PANEL_BD}>
+            <div className="update-page__auto" id="console-update-webui-auto">
+              <p className="update-page__auto-lead muted">
+                按下方开关与共用日程自动检查并应用更新。默认全部关闭；开启后仍可随时点「立即检查并应用」。
+              </p>
+              <div className="update-page__auto-toggles">
+                <div className="update-page__auto-row">
+                  <div className="update-page__auto-copy min-w-0">
+                    <div className="update-page__auto-title">控制台 WebUI</div>
+                    <p className="update-page__auto-desc muted">从正式版 Release 下载前端包并替换静态资源</p>
+                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "webui")}</p>
+                  </div>
+                  <ConsoleSwitch
+                    checked={autoDraft.webui_enabled}
+                    disabled={autoBusy || busy}
+                    onCheckedChange={(next) => void saveAutoUpdate({ webui_enabled: next })}
+                    ariaLabel="自动更新控制台"
+                    showLabel={false}
+                  />
+                </div>
+                <div className="update-page__auto-row">
+                  <div className="update-page__auto-copy min-w-0">
+                    <div className="update-page__auto-title">Bot 本体</div>
+                    <p className="update-page__auto-desc muted">
+                      仅干净正式版部署会自动升级并重启；当前为{" "}
+                      {botDeployLabel(autoQ.data?.bot?.deployment_mode || bot?.deployment_mode)}
+                      {autoQ.data?.bot?.auto_apply_eligible === false ? "，本机不会自动应用" : ""}
+                    </p>
+                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "bot")}</p>
+                  </div>
+                  <ConsoleSwitch
+                    checked={autoDraft.bot_enabled}
+                    disabled={autoBusy || busy}
+                    onCheckedChange={(next) => void saveAutoUpdate({ bot_enabled: next })}
+                    ariaLabel="自动更新 Bot"
+                    showLabel={false}
+                  />
+                </div>
+                <div className="update-page__auto-row">
+                  <div className="update-page__auto-copy min-w-0">
+                    <div className="update-page__auto-title">已安装插件</div>
+                    <p className="update-page__auto-desc muted">
+                      有新版本时更新官方扩展与社区插件，完成后尝试重启 Bot
+                    </p>
+                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "plugins")}</p>
+                  </div>
+                  <ConsoleSwitch
+                    checked={autoDraft.plugins_enabled}
+                    disabled={autoBusy || busy}
+                    onCheckedChange={(next) => void saveAutoUpdate({ plugins_enabled: next })}
+                    ariaLabel="自动更新插件"
+                    showLabel={false}
+                  />
+                </div>
+                <div className="update-page__auto-row">
+                  <div className="update-page__auto-copy min-w-0">
+                    <div className="update-page__auto-title">成功后私聊超管</div>
+                    <p className="update-page__auto-desc muted">
+                      自动更新有目标成功应用时，私聊 SUPERUSERS；失败不通知以免刷屏
+                    </p>
+                  </div>
+                  <ConsoleSwitch
+                    checked={autoDraft.notify_superusers}
+                    disabled={autoBusy || busy}
+                    onCheckedChange={(next) => void saveAutoUpdate({ notify_superusers: next })}
+                    ariaLabel="自动更新成功后私聊超管"
+                    showLabel={false}
+                  />
+                </div>
+              </div>
+              <div className="update-page__auto-grid">
+                <div className="update-page__auto-field">
+                  <ChromeField label="汇报用牛" icon={Bot} className="w-full min-w-0">
+                    <BotAccountCombobox
+                      value={
+                        autoDraft.notify_bot_id > 0 ? String(autoDraft.notify_bot_id) : NOTIFY_BOT_ANY
+                      }
+                      onValueChange={(v) => {
+                        const n =
+                          v === NOTIFY_BOT_ANY ? 0 : Math.max(0, Math.floor(Number(v) || 0));
+                        setAutoDraft((prev) => ({ ...prev, notify_bot_id: n }));
+                        if ((autoQ.data?.notify_bot_id || 0) === n) return;
+                        void saveAutoUpdate({ notify_bot_id: n });
+                      }}
+                      bots={notifyBotOptions}
+                      favorites={favorites}
+                      leadingOption={{
+                        value: NOTIFY_BOT_ANY,
+                        label: <ChromeOptionLabel icon={Bot}>任选在线</ChromeOptionLabel>,
+                        keywords: "任选在线 全部 0",
+                      }}
+                      placeholder="任选在线"
+                      disabled={autoBusy || busy || !autoDraft.notify_superusers}
+                      triggerClassName="h-9 w-full min-w-0 flex-1"
+                      ariaLabel="汇报用牛"
+                      title={
+                        notifyBotSelected
+                          ? botSelectDropdownLabel(notifyBotSelected.nickname, notifyBotSelected.id)
+                          : autoDraft.notify_bot_id > 0
+                            ? String(autoDraft.notify_bot_id)
+                            : undefined
+                      }
+                    />
+                  </ChromeField>
+                  <p className="muted update-page__auto-desc">
+                    默认任选当前在线的一头牛；指定账号须在线，否则跳过本次汇报
+                  </p>
+                </div>
+              </div>
+              <div className="update-page__auto-grid">
+                <div className="update-page__auto-field">
+                  <span className="update-page__auto-field-label">共用调度</span>
+                  <Select
+                    value={autoDraft.schedule_mode}
+                    disabled={
+                      autoBusy ||
+                      busy ||
+                      !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                    }
+                    onValueChange={(v) => {
+                      const mode = v === "cron" ? "cron" : "interval";
+                      void saveAutoUpdate({ schedule_mode: mode });
+                    }}
+                  >
+                    <SelectTrigger className={cn(CHROME_SELECT_TRIGGER, "w-full")} aria-label="共用调度">
+                      <SelectValue placeholder="选择调度方式" />
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      <SelectItem value="interval">按间隔</SelectItem>
+                      <SelectItem value="cron">每天定时</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {autoDraft.schedule_mode === "interval" ? (
+                  <label className="update-page__auto-field">
+                    <span className="update-page__auto-field-label">间隔（小时）</span>
+                    <UiInput
+                      type="number"
+                      min={1}
+                      max={168}
+                      className="update-page__auto-input"
+                      value={String(autoDraft.interval_hours)}
+                      disabled={
+                        autoBusy ||
+                        busy ||
+                        !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                      }
+                      onValueChange={(v) => {
+                        const n = Math.max(1, Math.min(168, Number(v) || 6));
+                        setAutoDraft((prev) => ({ ...prev, interval_hours: n }));
+                      }}
+                      onBlur={() => {
+                        if ((autoQ.data?.interval_hours || 6) === autoDraft.interval_hours) return;
+                        void saveAutoUpdate({ interval_hours: autoDraft.interval_hours });
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <label className="update-page__auto-field">
+                    <span className="update-page__auto-field-label">每天时刻</span>
+                    <div className="update-page__auto-cron">
+                      <UiInput
+                        type="number"
+                        min={0}
+                        max={23}
+                        className="update-page__auto-input"
+                        value={String(autoDraft.cron_hour)}
+                        disabled={
+                          autoBusy ||
+                          busy ||
+                          !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                        }
+                        onValueChange={(v) => {
+                          const n = Math.max(0, Math.min(23, Number(v) || 0));
+                          setAutoDraft((prev) => ({ ...prev, cron_hour: n }));
+                        }}
+                        onBlur={() => {
+                          if ((autoQ.data?.cron_hour || 0) === autoDraft.cron_hour) return;
+                          void saveAutoUpdate({ cron_hour: autoDraft.cron_hour });
+                        }}
+                      />
+                      <span className="muted">:</span>
+                      <UiInput
+                        type="number"
+                        min={0}
+                        max={59}
+                        className="update-page__auto-input"
+                        value={String(autoDraft.cron_minute)}
+                        disabled={
+                          autoBusy ||
+                          busy ||
+                          !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                        }
+                        onValueChange={(v) => {
+                          const n = Math.max(0, Math.min(59, Number(v) || 0));
+                          setAutoDraft((prev) => ({ ...prev, cron_minute: n }));
+                        }}
+                        onBlur={() => {
+                          if ((autoQ.data?.cron_minute || 0) === autoDraft.cron_minute) return;
+                          void saveAutoUpdate({ cron_minute: autoDraft.cron_minute });
+                        }}
+                      />
+                    </div>
+                  </label>
+                )}
+              </div>
+              <div className="update-page__auto-status-row">
+                <span className="muted update-page__auto-status">{formatAutoStatus(autoQ.data)}</span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={autoBusy || busy}
+                  onClick={() => void runAutoOnce()}
+                >
+                  {applyKind === "auto" ? "执行中…" : "立即检查并应用"}
+                </Button>
+              </div>
+              {applyKind === "auto" ? (
+                <UpdateApplyProgress label={applyHint || "正在检查并应用自动更新…"} percent={applyPercent} />
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+
       </div>
 
       <details id="console-update-github" className="update-page__gh-fold">
