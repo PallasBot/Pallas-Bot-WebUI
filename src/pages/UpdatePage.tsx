@@ -29,7 +29,7 @@ import {
   PALLAS_WEBUI_REPO,
 } from "@/utils/pallasExternalLinks";
 import BotAccountCombobox from "@/components/BotAccountCombobox";
-import { ChromeOptionLabel } from "@/components/ChromeField";
+import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import GitMirrorDialog from "@/components/GitMirrorDialog";
 import PageMasthead from "@/components/PageMasthead";
 import ReadmeMarkdown from "@/components/ReadmeMarkdown";
@@ -1122,37 +1122,38 @@ export default function UpdatePage() {
               </div>
               <div className="update-page__auto-grid">
                 <div className="update-page__auto-field">
-                  <span className="update-page__auto-field-label">汇报用牛</span>
-                  <BotAccountCombobox
-                    value={
-                      autoDraft.notify_bot_id > 0 ? String(autoDraft.notify_bot_id) : NOTIFY_BOT_ANY
-                    }
-                    onValueChange={(v) => {
-                      const n =
-                        v === NOTIFY_BOT_ANY ? 0 : Math.max(0, Math.floor(Number(v) || 0));
-                      setAutoDraft((prev) => ({ ...prev, notify_bot_id: n }));
-                      if ((autoQ.data?.notify_bot_id || 0) === n) return;
-                      void saveAutoUpdate({ notify_bot_id: n });
-                    }}
-                    bots={notifyBotOptions}
-                    favorites={favorites}
-                    leadingOption={{
-                      value: NOTIFY_BOT_ANY,
-                      label: <ChromeOptionLabel icon={Bot}>任选在线</ChromeOptionLabel>,
-                      keywords: "任选在线 全部 0",
-                    }}
-                    placeholder="任选在线"
-                    disabled={autoBusy || busy || !autoDraft.notify_superusers}
-                    triggerClassName="w-full"
-                    ariaLabel="汇报用牛"
-                    title={
-                      notifyBotSelected
-                        ? botSelectDropdownLabel(notifyBotSelected.nickname, notifyBotSelected.id)
-                        : autoDraft.notify_bot_id > 0
-                          ? String(autoDraft.notify_bot_id)
-                          : undefined
-                    }
-                  />
+                  <ChromeField label="汇报用牛" icon={Bot} className="w-full min-w-0">
+                    <BotAccountCombobox
+                      value={
+                        autoDraft.notify_bot_id > 0 ? String(autoDraft.notify_bot_id) : NOTIFY_BOT_ANY
+                      }
+                      onValueChange={(v) => {
+                        const n =
+                          v === NOTIFY_BOT_ANY ? 0 : Math.max(0, Math.floor(Number(v) || 0));
+                        setAutoDraft((prev) => ({ ...prev, notify_bot_id: n }));
+                        if ((autoQ.data?.notify_bot_id || 0) === n) return;
+                        void saveAutoUpdate({ notify_bot_id: n });
+                      }}
+                      bots={notifyBotOptions}
+                      favorites={favorites}
+                      leadingOption={{
+                        value: NOTIFY_BOT_ANY,
+                        label: <ChromeOptionLabel icon={Bot}>任选在线</ChromeOptionLabel>,
+                        keywords: "任选在线 全部 0",
+                      }}
+                      placeholder="任选在线"
+                      disabled={autoBusy || busy || !autoDraft.notify_superusers}
+                      triggerClassName="h-9 w-full min-w-0 flex-1"
+                      ariaLabel="汇报用牛"
+                      title={
+                        notifyBotSelected
+                          ? botSelectDropdownLabel(notifyBotSelected.nickname, notifyBotSelected.id)
+                          : autoDraft.notify_bot_id > 0
+                            ? String(autoDraft.notify_bot_id)
+                            : undefined
+                      }
+                    />
+                  </ChromeField>
                   <p className="muted update-page__auto-desc">
                     默认任选当前在线的一头牛；指定账号须在线，否则跳过本次汇报
                   </p>

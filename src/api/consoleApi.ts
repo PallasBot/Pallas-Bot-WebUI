@@ -3434,6 +3434,8 @@ export type WebuiAutoUpdateStatusData = {
   last_applied_at?: number | null;
   last_error?: string | null;
   pending_notice?: WebuiAutoUpdatePendingNotice | null;
+  notify_superusers?: boolean;
+  notify_bot_id?: number;
   tick?: WebuiAutoUpdateTickResult;
   webui?: WebuiAutoUpdateTargetStatus;
   bot?: WebuiAutoUpdateTargetStatus;
