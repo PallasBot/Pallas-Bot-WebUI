@@ -160,6 +160,96 @@
   opacity: 0.5;
 }
 
+.update-page__auto-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.update-page__auto {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.update-page__auto-lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.update-page__auto-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.update-page__auto-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.update-page__auto-desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.update-page__auto-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.update-page__auto-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.update-page__auto-field-label {
+  font-size: 12px;
+  color: var(--muted-fg, #888);
+}
+
+.update-page__auto-input {
+  width: 100%;
+}
+
+.update-page__auto-cron {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.update-page__auto-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.update-page__auto-status {
+  font-size: 12px;
+  line-height: 1.4;
+  min-width: 0;
+  flex: 1;
+}
+
+@media (max-width: 560px) {
+  .update-page__auto-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .update-page__auto-row {
+    flex-direction: column;
+  }
+}
+
 .update-page__release-meta {
   margin: 0 0 12px !important;
   font-size: 12px;
@@ -175,6 +265,12 @@
 /* 进度条与下方「更新完成后…」说明卡都有描边底，留足间距避免贴紧 */
 .update-page__release-actions:has(.update-page__apply-progress) {
   margin-bottom: 20px;
+}
+
+/* space-y-0 会清掉兄弟 margin-top；显式拉开按钮区与后续说明 */
+.update-page__release-actions + .update-page__release-callout,
+.update-page__release-actions + .update-page__release-inline-alert {
+  margin-top: 12px !important;
 }
 
 .update-page__release-primary {
@@ -787,6 +883,15 @@
   .update-page__release-primary > button {
     width: 100%;
     justify-content: center;
+  }
+
+  .update-page__release-actions {
+    margin-bottom: 0;
+  }
+
+  .update-page__release-actions + .update-page__release-callout,
+  .update-page__release-actions + .update-page__release-inline-alert {
+    margin-top: 12px !important;
   }
 
   .update-page__gh-row {

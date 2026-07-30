@@ -1,79 +1,38 @@
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 
-export interface AiConfigNavGroupDef {
-  id: string;
-  label: string;
-}
-
 export interface AiConfigSectionDef {
   id: string;
   label: string;
   lead: string;
   icon: ConsoleNavIconId;
-  groupId: string;
 }
 
-export interface AiConfigMoreNavItemDef {
-  id: "more";
-  label: string;
-  lead: string;
-  icon: ConsoleNavIconId;
-  targetSectionId: AiConfigSectionId;
-}
-
-export interface AiTopLevelNavDef {
-  id: "home" | "config";
-  label: string;
-  lead: string;
-  icon: ConsoleNavIconId;
-  path: string;
-}
-
-export const AI_CONFIG_NAV_GROUPS: AiConfigNavGroupDef[] = [
-  { id: "dialogue", label: "对话" },
-  { id: "extension", label: "媒体" },
-];
-
-/** 顶栏仅 3 段；旧 id 经 LEGACY_SECTION_ALIASES 归一。日志已迁至 AI 观测 /ai/logs。 */
+/**
+ * AI 配置一级分段（顶栏 Select）。
+ * URL 仍用 id（如 dialogue），改展示文案不影响深链。
+ */
 export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
     id: "provider",
     label: "接入",
     lead: "登记云端或本机 Ollama，并在任务编排里指定「谁负责哪种对话」。",
     icon: "server",
-    groupId: "dialogue",
   },
   {
     id: "dialogue",
-    label: "对话",
+    label: "接话",
     lead: "群里怎么接话、记不记得上文、用不用记忆/工具，以及「搜一下」联网。",
     icon: "sparkles",
-    groupId: "dialogue",
   },
   {
     id: "media",
     label: "媒体",
     lead: "唱歌、语音、画画、网易云等媒体能力（与文字聊天提供方分开）。",
     icon: "layers",
-    groupId: "extension",
   },
 ];
 
 export type AiConfigSectionId = (typeof AI_CONFIG_SECTIONS)[number]["id"];
-
-export const SIMPLE_AI_CONFIG_NAV_SECTION_IDS: AiConfigSectionId[] = [
-  "provider",
-  "dialogue",
-  "media",
-];
-
-export const AI_CONFIG_MORE_NAV_ITEM: AiConfigMoreNavItemDef = {
-  id: "more",
-  label: "更多",
-  lead: "媒体相关",
-  icon: "blocks",
-  targetSectionId: "media",
-};
 
 /** 旧分区 id → 现行分区（logs 不在此表，由配置页单独重定向到观测） */
 const LEGACY_SECTION_ALIASES: Record<string, AiConfigSectionId> = {
@@ -99,6 +58,15 @@ export const LEGACY_SECTION_DEFAULT_PANEL: Record<string, string> = {
 };
 
 /** @deprecated 侧栏已收口为 AI_SIDEBAR_NAV；保留供旧链接与迁移识别 */
+export interface AiTopLevelNavDef {
+  id: "home" | "config";
+  label: string;
+  lead: string;
+  icon: ConsoleNavIconId;
+  path: string;
+}
+
+/** @deprecated 侧栏已收口为 AI_SIDEBAR_NAV；保留供旧链接与迁移识别 */
 export const AI_TOP_LEVEL_NAV: AiTopLevelNavDef[] = [
   {
     id: "home",
@@ -118,7 +86,6 @@ export const AI_TOP_LEVEL_NAV: AiTopLevelNavDef[] = [
 
 const SECTION_BY_ID = new Map(AI_CONFIG_SECTIONS.map((s) => [s.id, s]));
 const SECTION_IDS = new Set<string>(AI_CONFIG_SECTIONS.map((s) => s.id));
-const GROUP_BY_ID = new Map(AI_CONFIG_NAV_GROUPS.map((g) => [g.id, g]));
 
 export const AI_CONFIG_SECTION_PATHS = AI_CONFIG_SECTIONS.map((s) => aiConfigSectionPath(s.id));
 export const AI_TOP_LEVEL_PATHS = AI_TOP_LEVEL_NAV.map((s) => s.path);
@@ -139,10 +106,6 @@ export function aiConfigSectionPath(id: AiConfigSectionId, panel?: string): stri
 
 export const AI_CONFIG_MAIN_NAV_ITEM =
   AI_TOP_LEVEL_NAV.find((item) => item.id === "config") ?? AI_TOP_LEVEL_NAV[AI_TOP_LEVEL_NAV.length - 1];
-
-export function aiConfigNavGroupMeta(groupId: string): AiConfigNavGroupDef {
-  return GROUP_BY_ID.get(groupId) ?? AI_CONFIG_NAV_GROUPS[0];
-}
 
 /** 兼容旧 ?tab= / ?section= 与非法值；旧的 runtime 分区已并入 AI 首页。 */
 export function normalizeAiConfigSection(raw: unknown): AiConfigSectionId {
@@ -172,11 +135,4 @@ export function aiConfigSectionPathFromRoute(path: string): AiConfigSectionId | 
   const m = (path || "").match(/^\/ai\/config\/([^/]+)\/?$/);
   if (!m) return null;
   return normalizeAiConfigSection(m[1]);
-}
-
-export function aiConfigSectionsByGroup(): Array<{ group: AiConfigNavGroupDef; sections: AiConfigSectionDef[] }> {
-  return AI_CONFIG_NAV_GROUPS.map((group) => ({
-    group,
-    sections: AI_CONFIG_SECTIONS.filter((section) => section.groupId === group.id),
-  })).filter((row) => row.sections.length > 0);
 }

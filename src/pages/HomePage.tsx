@@ -17,9 +17,11 @@ import {
   fetchRequestOverview,
   fetchSystem,
   fetchUpdateCheck,
+  fetchWebuiAutoUpdateStatus,
   peekHomeOverviewCache,
   refreshInstancesCatalogGlobal,
 } from "@/api/fullConsole";
+import { pendingAutoUpdateLabel } from "@/utils/autoUpdateNotice";
 import type { BotConfigPublic, InstancesData } from "@/api/pallasTypes";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { qqAvatarUrl } from "@/utils/botDisplay";
@@ -228,6 +230,13 @@ export default function HomePage() {
     enabled: overviewSettled,
     staleTime: HOME_UPDATE_STALE_MS,
   });
+  const autoUpdateQ = useQuery({
+    queryKey: ["webui-auto-update-status"],
+    queryFn: fetchWebuiAutoUpdateStatus,
+    enabled: overviewSettled,
+    staleTime: HOME_UPDATE_STALE_MS,
+    refetchInterval: 60_000,
+  });
   const systemQ = useQuery({
     queryKey: ["home-system"],
     queryFn: fetchSystem,
@@ -280,6 +289,7 @@ export default function HomePage() {
   const communityStats = communityQ.data ?? overviewQ.data?.community_stats;
   const botUpdate = botUpdateQ.data;
   const webUpdate = webUpdateQ.data;
+  const autoUpdateNotice = pendingAutoUpdateLabel(autoUpdateQ.data?.pending_notice);
 
   const throughputQ = useQuery({
     queryKey: ["home-throughput"],
@@ -1232,6 +1242,12 @@ export default function HomePage() {
                           <span className="home-ver-dl__meta">
                             <Link className="home-ver-dl__link" to="/update#console-update-webui">
                               <span className="badge badge--warn">有更新</span>
+                            </Link>
+                          </span>
+                        ) : autoUpdateNotice ? (
+                          <span className="home-ver-dl__meta">
+                            <Link className="home-ver-dl__link" to="/update#console-update-auto">
+                              <span className="badge badge--ok">{autoUpdateNotice}</span>
                             </Link>
                           </span>
                         ) : null}

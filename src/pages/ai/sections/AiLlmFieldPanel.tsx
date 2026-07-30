@@ -6,16 +6,38 @@ import { fetchCommonConfig, putCommonConfig, type PluginConfigField } from "@/ap
 import type { AiConfigSaveStateHandler } from "@/components/ai/aiConfigSaveState";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell";
+import ProviderGatewayPanel from "@/components/provider/ProviderGatewayPanel";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { collectFieldValues, fieldValuesFromConfig } from "@/utils/pluginConfigFieldModel";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import {
+  normalizeProviderGatewayBinding,
+  providerGatewayBoundFieldNames,
+  type ProviderGatewayBinding,
+} from "@/utils/providerGateways";
 
 function boolFromField(value: string | undefined): boolean {
   const raw = String(value ?? "").trim().toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 }
+
+/** Embedding 线路仅远程（openai / 自动且模型非 stub）需要。 */
+function embeddingRemoteGatewayNeeded(values: Record<string, string>): boolean {
+  const provider = String(values.llm_embedding_provider ?? "").trim().toLowerCase();
+  if (provider === "openai") return true;
+  if (provider === "stub" || provider === "local") return false;
+  const model = String(values.llm_embedding_model ?? "stub").trim().toLowerCase();
+  return Boolean(model && model !== "stub");
+}
+
+const EMBEDDING_GATEWAY_ONLY_KEYS = new Set([
+  "llm_embedding_provider_id",
+  "llm_embedding_base_url",
+  "llm_embedding_api_key",
+  "llm_embedding_api_backends",
+]);
 
 function fieldsByNames(fields: PluginConfigField[], names: readonly string[]): PluginConfigField[] {
   const byName = new Map(fields.map((f) => [f.name, f]));
@@ -70,10 +92,46 @@ export default function AiLlmFieldPanel({
 
   const dirty = useMemo(() => JSON.stringify(fieldValues) !== baseline, [fieldValues, baseline]);
   const masterOn = masterKey ? boolFromField(fieldValues[masterKey]) : true;
-  const detailFields = useMemo(
-    () => fieldsByNames(cfgQ.data?.fields || [], detailKeys),
-    [cfgQ.data?.fields, detailKeys],
+  const showEmbeddingGateway = useMemo(
+    () => embeddingRemoteGatewayNeeded(fieldValues),
+    [fieldValues],
   );
+
+  const gatewayWidgets = useMemo(() => {
+    if (!showEmbeddingGateway) return [];
+    const detailSet = new Set(detailKeys);
+    const out: Array<{ anchor: string; binding: ProviderGatewayBinding }> = [];
+    for (const field of cfgQ.data?.fields || []) {
+      if (!detailSet.has(field.name)) continue;
+      if (field.ui_widget !== "provider_gateway") continue;
+      const binding = normalizeProviderGatewayBinding(field.ui_gateway, {
+        anchorField: field.name,
+      });
+      if (binding) out.push({ anchor: field.name, binding });
+    }
+    return out;
+  }, [cfgQ.data?.fields, detailKeys, showEmbeddingGateway]);
+
+  const gatewayHidden = useMemo(() => {
+    const set = new Set<string>();
+    for (const widget of gatewayWidgets) {
+      for (const key of providerGatewayBoundFieldNames(widget.binding, widget.anchor)) {
+        set.add(key);
+      }
+    }
+    // 非远程时仍隐藏线路散字段，避免占位/本机时露出无用的地址密钥
+    if (!showEmbeddingGateway) {
+      for (const key of EMBEDDING_GATEWAY_ONLY_KEYS) set.add(key);
+    }
+    return set;
+  }, [gatewayWidgets, showEmbeddingGateway]);
+
+  const detailFields = useMemo(() => {
+    const listed = fieldsByNames(cfgQ.data?.fields || [], detailKeys);
+    return listed.filter(
+      (f) => f.ui_widget !== "provider_gateway" && !gatewayHidden.has(f.name),
+    );
+  }, [cfgQ.data?.fields, detailKeys, gatewayHidden]);
 
   const saveMut = useMutation({
     mutationFn: () => {
@@ -85,12 +143,17 @@ export default function AiLlmFieldPanel({
       setBaseline(JSON.stringify(fieldValues));
       await qc.invalidateQueries({ queryKey: ["common-config", "llm"] });
       await qc.invalidateQueries({ queryKey: ["common-config-raw", "llm"] });
+      await qc.invalidateQueries({ queryKey: ["llm-embedding-status"] });
     },
     onError: (e) => pushConsoleToast(axiosErrorDetail(e) || "保存失败", "err"),
   });
 
   function setFieldValue(name: string, value: string) {
     setFieldValues((prev) => ({ ...prev, [name]: value }));
+  }
+
+  async function patchGatewayFields(patch: Record<string, string>) {
+    setFieldValues((prev) => ({ ...prev, ...patch }));
   }
 
   const saveMutRef = useRef(saveMut);
@@ -142,15 +205,26 @@ export default function AiLlmFieldPanel({
             <span>{disabledHint || "已关闭；开启后可调整下方参数。"}</span>
           </div>
         ) : (
-          <div className="plugin-config-form-grid">
-            {detailFields.map((field) => (
-              <PluginConfigFieldShell
-                key={field.name}
-                field={field}
-                modelValue={fieldValues[field.name] ?? ""}
-                onValueChange={(v) => setFieldValue(field.name, v)}
+          <div className="space-y-4">
+            {gatewayWidgets.map((widget) => (
+              <ProviderGatewayPanel
+                key={widget.anchor}
+                binding={widget.binding}
+                fieldValues={fieldValues}
+                onFieldsPatch={patchGatewayFields}
+                busy={saveMut.isPending}
               />
             ))}
+            <div className="plugin-config-form-grid">
+              {detailFields.map((field) => (
+                <PluginConfigFieldShell
+                  key={field.name}
+                  field={field}
+                  modelValue={fieldValues[field.name] ?? ""}
+                  onValueChange={(v) => setFieldValue(field.name, v)}
+                />
+              ))}
+            </div>
           </div>
         )}
 

@@ -907,6 +907,29 @@ export interface LlmModelAdminStatus {
   local_moe_models?: Record<string, string>;
 }
 
+/** Embedding 提供方诊断（common-config/llm/embedding-status）。 */
+export interface LlmEmbeddingStatus {
+  embedding_provider: string;
+  embedding_kind?: string;
+  embedding_model: string;
+  resolved_model?: string;
+  embedding_provider_id?: string | null;
+  endpoint_provider_id?: string | null;
+  semantic_available: boolean;
+  embedding_fallback: boolean;
+  embedding_error?: string | null;
+  available_providers?: string[];
+  local_dependency_ready?: boolean;
+  local_default_model?: string | null;
+  remote_default_model?: string | null;
+  endpoint_configured?: boolean;
+  trigger_cache_count?: number;
+  trigger_cache_model?: string | null;
+  probe_ok?: boolean | null;
+  probe_dims?: number | null;
+  probe_ms?: number | null;
+}
+
 export type ConsoleLoginChangeResult =
   OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/security/console-login"]["post"]>;
 
@@ -2139,13 +2162,13 @@ export interface UpdateCheckData {
 
 export interface UpdateApplyJobStartData {
   job_id: string;
-  kind: "webui" | "bot";
+  kind: "webui" | "bot" | "auto";
   restart?: boolean;
 }
 
 export interface UpdateApplyJobSnapshot {
   job_id: string;
-  kind: "webui" | "bot";
+  kind: "webui" | "bot" | "auto";
   phase: "queued" | "running" | "done" | "failed";
   message: string;
   progress_percent: number;
@@ -2154,6 +2177,20 @@ export interface UpdateApplyJobSnapshot {
     version?: string;
     message?: string;
     restart_scheduled?: boolean;
+    tick?: {
+      result?: string;
+      reason?: string;
+      error?: string;
+      targets?: Record<
+        string,
+        {
+          result?: string;
+          error?: string;
+          reason?: string;
+        }
+      >;
+    };
+    last_error?: string | null;
   } | null;
   error?: string;
   restart?: boolean;

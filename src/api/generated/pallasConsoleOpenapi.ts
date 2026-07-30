@@ -2233,6 +2233,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/embedding-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Embedding Status Get */
+        get: operations["_llm_embedding_status_get_pallas_api_common_config_llm_embedding_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/embedding-status/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Embedding Status Probe */
+        post: operations["_llm_embedding_status_probe_pallas_api_common_config_llm_embedding_status_probe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/model-admin/switch": {
         parameters: {
             query?: never;
@@ -2557,6 +2591,24 @@ export interface paths {
         get: operations["_llm_media_models_tts_defaults_get_pallas_api_common_config_llm_media_models_tts_defaults_get"];
         /** Llm Media Models Tts Defaults Put */
         put: operations["_llm_media_models_tts_defaults_put_pallas_api_common_config_llm_media_models_tts_defaults_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/media-models/tts/translator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Media Models Tts Translator Get */
+        get: operations["_llm_media_models_tts_translator_get_pallas_api_common_config_llm_media_models_tts_translator_get"];
+        /** Llm Media Models Tts Translator Put */
+        put: operations["_llm_media_models_tts_translator_put_pallas_api_common_config_llm_media_models_tts_translator_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4166,6 +4218,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/update/auto/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Update Auto Status */
+        get: operations["_update_auto_status_pallas_api_update_auto_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/update/auto/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Auto Ack */
+        post: operations["_update_auto_ack_pallas_api_update_auto_ack_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/update/auto/run-once": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Auto Run Once */
+        post: operations["_update_auto_run_once_pallas_api_update_auto_run_once_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/update/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -4678,7 +4781,7 @@ export interface components {
              * @default clone_and_bootstrap
              * @enum {string}
              */
-            action: "clone" | "bootstrap" | "clone_and_bootstrap";
+            action: "clone" | "bootstrap" | "clone_and_bootstrap" | "update";
             /**
              * No Start
              * @default false
@@ -4867,6 +4970,18 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_ConsoleSetupStatusData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[_LlmEmbeddingStatusData] */
+        _ApiOkResponse__LlmEmbeddingStatusData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_LlmEmbeddingStatusData"];
             /** Error */
             error?: null;
         };
@@ -5189,6 +5304,78 @@ export interface components {
         _HelpMenuVisibilityBody: {
             /** Hidden Plugins */
             hidden_plugins?: string[];
+        };
+        /** _LlmEmbeddingProbeBody */
+        _LlmEmbeddingProbeBody: {
+            /**
+             * Text
+             * @default ping
+             */
+            text: string;
+        };
+        /** _LlmEmbeddingStatusData */
+        _LlmEmbeddingStatusData: {
+            /**
+             * Embedding Provider
+             * @default
+             */
+            embedding_provider: string;
+            /**
+             * Embedding Kind
+             * @default
+             */
+            embedding_kind: string;
+            /**
+             * Embedding Model
+             * @default
+             */
+            embedding_model: string;
+            /**
+             * Resolved Model
+             * @default
+             */
+            resolved_model: string;
+            /**
+             * Semantic Available
+             * @default false
+             */
+            semantic_available: boolean;
+            /**
+             * Embedding Fallback
+             * @default false
+             */
+            embedding_fallback: boolean;
+            /** Embedding Error */
+            embedding_error?: string | null;
+            /** Available Providers */
+            available_providers?: string[];
+            /**
+             * Local Dependency Ready
+             * @default false
+             */
+            local_dependency_ready: boolean;
+            /** Local Default Model */
+            local_default_model?: string | null;
+            /** Remote Default Model */
+            remote_default_model?: string | null;
+            /**
+             * Endpoint Configured
+             * @default false
+             */
+            endpoint_configured: boolean;
+            /**
+             * Trigger Cache Count
+             * @default 0
+             */
+            trigger_cache_count: number;
+            /** Trigger Cache Model */
+            trigger_cache_model?: string | null;
+            /** Probe Ok */
+            probe_ok?: boolean | null;
+            /** Probe Dims */
+            probe_dims?: number | null;
+            /** Probe Ms */
+            probe_ms?: number | null;
         };
         /** _LlmHealthProviderRow */
         _LlmHealthProviderRow: {
@@ -11513,6 +11700,76 @@ export interface operations {
             };
         };
     };
+    _llm_embedding_status_get_pallas_api_common_config_llm_embedding_status_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__LlmEmbeddingStatusData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_embedding_status_probe_pallas_api_common_config_llm_embedding_status_probe_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["_LlmEmbeddingProbeBody"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__LlmEmbeddingStatusData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     _llm_model_admin_switch_post_pallas_api_common_config_llm_model_admin_switch_post: {
         parameters: {
             query?: {
@@ -12333,6 +12590,78 @@ export interface operations {
         };
     };
     _llm_media_models_tts_defaults_put_pallas_api_common_config_llm_media_models_tts_defaults_put: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_media_models_tts_translator_get_pallas_api_common_config_llm_media_models_tts_translator_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_media_models_tts_translator_put_pallas_api_common_config_llm_media_models_tts_translator_put: {
         parameters: {
             query?: {
                 token?: string | null;
@@ -15956,6 +16285,105 @@ export interface operations {
         };
     };
     _update_apply_pallas_api_update_apply_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _update_auto_status_pallas_api_update_auto_status_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _update_auto_ack_pallas_api_update_auto_ack_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _update_auto_run_once_pallas_api_update_auto_run_once_post: {
         parameters: {
             query?: {
                 token?: string | null;

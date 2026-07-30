@@ -9,10 +9,10 @@ import { axiosErrorDetail } from "@/api/http";
 import {
   fetchAiExtensionConfig, fetchAiInstallStatus, fetchAiNcmStatus, fetchAiRuntimeStatus,
   fetchMediaAssetsDownloadJob, fetchMediaAssetsStatus, fetchSingBackends, fetchSingSpeakers,
-  fetchTtsVoices, openAiInstallJobEventSource, postAiExtensionTest, postAiInstall,
+  fetchTtsVoices, fetchTtsTranslator, openAiInstallJobEventSource, postAiExtensionTest, postAiInstall,
   postAiNcmLogout, postAiNcmSendSms, postAiNcmVerifySms, postMediaAssetsDelete,
   postMediaAssetsDownload, postAiRuntimeStart, postAiRuntimeStop, putAiExtensionConfig,
-  putSingDefaults, putTtsDefaults,
+  putSingDefaults, putTtsDefaults, putTtsTranslator,
 } from "@/api/console";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField from "@/components/ai/AiConfigField";
@@ -32,11 +32,16 @@ import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { AI_NCM_DEFAULTS, aiRuntimeLayoutLabel } from "@/config/aiConstants";
 import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
+import {
+  aiInstallSubtitle,
+  resolveAiInstallPrimary,
+  showAiInstallBootstrapSecondary,
+} from "@/utils/aiInstallPrimary";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 function notifyOk(message: string) {
@@ -61,10 +66,10 @@ function AiRuntimeNotReadyBlock({
   return (
     <div className="space-y-3">
       <ConsoleHint>
-        媒体服务未就绪。请先在「服务」用安装与启动拉起 Runtime，健康正常后再操作本页。
+        媒体服务还没就绪。请先到「媒体服务」完成安装与启动，确认健康后再回来操作。
       </ConsoleHint>
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={onGoService}>前往服务</Button>
+        <Button size="sm" onClick={onGoService}>前往媒体服务</Button>
         {canManage ? (
           <Button size="sm" variant="outline" disabled={busy} onClick={onStart}>
             启动媒体服务
@@ -81,12 +86,54 @@ type SelectPanel = "service" | "assets" | "sing" | "tts" | "draw" | "ncm";
 
 const SELECT_OPTIONS: Array<{ value: SelectPanel; label: string; icon: LucideIcon; lead: string }> = [
   { value: "service", label: "媒体服务", icon: Server, lead: "安装、启停与连接。" },
-  { value: "assets", label: "媒体资产", icon: HardDrive, lead: "唱歌 / TTS 权重与素材下载。" },
-  { value: "sing", label: "唱歌", icon: Music2, lead: "侧车默认与唱歌插件配置。" },
-  { value: "tts", label: "TTS", icon: AudioLines, lead: "侧车默认与牛牛说插件配置。" },
-  { value: "draw", label: "画画", icon: Palette, lead: "画画插件配置（与插件页同源）。" },
+  { value: "assets", label: "媒体资产", icon: HardDrive, lead: "下载唱歌 / 语音所需的模型与素材。" },
+  { value: "sing", label: "唱歌", icon: Music2, lead: "默认音色与音色映射。" },
+  { value: "tts", label: "牛牛说", icon: AudioLines, lead: "默认音色、语种与中译日。" },
+  { value: "draw", label: "画画", icon: Palette, lead: "画画网关；其它项在插件配置。" },
   { value: "ncm", label: "网易云", icon: Cloud, lead: "短信登录与会话状态。" },
 ];
+
+const SELECT_OPTION_GROUPS: Array<{ label: string; values: SelectPanel[] }> = [
+  { label: "服务", values: ["service", "assets"] },
+  { label: "能力", values: ["sing", "tts", "draw", "ncm"] },
+];
+
+const SELECT_BY_VALUE = new Map(SELECT_OPTIONS.map((item) => [item.value, item]));
+
+/** GPT-SoVITS v2 语种；合成语种 / 提示语种共用。 */
+const TTS_LANG_OPTIONS = [
+  { value: "zh", label: "中文", description: "zh" },
+  { value: "ja", label: "日语", description: "ja" },
+  { value: "en", label: "英语", description: "en" },
+  { value: "yue", label: "粤语", description: "yue" },
+  { value: "ko", label: "韩语", description: "ko" },
+  { value: "auto", label: "自动识别", description: "auto" },
+  { value: "auto_yue", label: "自动识别（含粤语）", description: "auto_yue" },
+  { value: "all_zh", label: "强制中文切分", description: "all_zh" },
+  { value: "all_ja", label: "强制日语切分", description: "all_ja" },
+  { value: "all_yue", label: "强制粤语切分", description: "all_yue" },
+  { value: "all_ko", label: "强制韩语切分", description: "all_ko" },
+];
+
+function PluginConfigElsewhereHint({
+  pluginName,
+  label,
+  extras,
+}: {
+  pluginName: string;
+  label: string;
+  extras: string;
+}) {
+  return (
+    <p className="text-sm text-muted-foreground">
+      {extras}
+      请到{" "}
+      <Link to={`/plugins/${encodeURIComponent(pluginName)}`}>{`插件配置 · ${label}`}</Link>
+      {" "}
+      设置。
+    </p>
+  );
+}
 const PANEL_SET = new Set<string>([
   ...SELECT_OPTIONS.map((item) => item.value),
   "connection",
@@ -152,6 +199,12 @@ export default function AiConfigMediaSection() {
     enabled: panel === "tts" && runtimeProbeDone && runtimeReady,
     retry: false,
   });
+  const ttsTranslatorQ = useQuery({
+    queryKey: ["tts-translator"],
+    queryFn: fetchTtsTranslator,
+    enabled: panel === "tts" && runtimeProbeDone && runtimeReady,
+    retry: false,
+  });
   const statusQ = useQuery({
     queryKey: ["ai-ncm"],
     queryFn: fetchAiNcmStatus,
@@ -180,6 +233,14 @@ export default function AiConfigMediaSection() {
   const [ttsPrompt, setTtsPrompt] = useState("");
   const [ttsPromptLang, setTtsPromptLang] = useState("");
   const [ttsTextLang, setTtsTextLang] = useState("");
+  const [ttsTranslateEnable, setTtsTranslateEnable] = useState(false);
+  const [ttsTranslateProvider, setTtsTranslateProvider] = useState("baidu");
+  const [ttsBaiduAppId, setTtsBaiduAppId] = useState("");
+  const [ttsBaiduSecret, setTtsBaiduSecret] = useState("");
+  const [ttsYoudaoAppKey, setTtsYoudaoAppKey] = useState("");
+  const [ttsYoudaoSecret, setTtsYoudaoSecret] = useState("");
+  const [ttsBaiduSecretConfigured, setTtsBaiduSecretConfigured] = useState(false);
+  const [ttsYoudaoSecretConfigured, setTtsYoudaoSecretConfigured] = useState(false);
   const [phone, setPhone] = useState("");
   const [ctcode, setCtcode] = useState(String(AI_NCM_DEFAULTS.countryCode));
   const [captcha, setCaptcha] = useState("");
@@ -203,6 +264,18 @@ export default function AiConfigMediaSection() {
     if (d?.ref_audio_path) setTtsRef(d.ref_audio_path); if (d?.prompt_text) setTtsPrompt(d.prompt_text);
     if (d?.prompt_lang) setTtsPromptLang(d.prompt_lang); if (d?.text_lang) setTtsTextLang(d.text_lang);
   }, [singQ.data, ttsQ.data]);
+  useEffect(() => {
+    const t = ttsTranslatorQ.data;
+    if (!t) return;
+    setTtsTranslateEnable(Boolean(t.enable));
+    setTtsTranslateProvider(String(t.provider || "baidu").trim() || "baidu");
+    setTtsBaiduAppId(String(t.baidu_app_id || ""));
+    setTtsYoudaoAppKey(String(t.youdao_app_key || ""));
+    setTtsBaiduSecretConfigured(Boolean(t.baidu_secret_configured));
+    setTtsYoudaoSecretConfigured(Boolean(t.youdao_secret_configured));
+    setTtsBaiduSecret("");
+    setTtsYoudaoSecret("");
+  }, [ttsTranslatorQ.data]);
   useEffect(() => () => { if (pollRef.current != null) window.clearInterval(pollRef.current); }, []);
 
   // 旧深链 ?panel=connection|runtime → service；draw-raw → draw
@@ -261,7 +334,7 @@ export default function AiConfigMediaSection() {
     onSuccess: async () => { notifyOk("媒体服务已停止"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const installMut = useMutation({
-    mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap") => {
+    mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap" | "update") => {
       setInstallProgress("已排队…");
       setInstallPercent(0);
       setInstallLogLines([]);
@@ -389,6 +462,21 @@ export default function AiConfigMediaSection() {
     mutationFn: () => putTtsDefaults({ ref_audio_path: ttsRef, prompt_text: ttsPrompt, prompt_lang: ttsPromptLang, text_lang: ttsTextLang }),
     onSuccess: () => notifyOk("TTS 默认已保存"), onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
+  const ttsTranslatorMut = useMutation({
+    mutationFn: () => putTtsTranslator({
+      enable: ttsTranslateEnable,
+      provider: ttsTranslateProvider,
+      baidu_app_id: ttsBaiduAppId,
+      baidu_secret_key: ttsBaiduSecret.trim() || undefined,
+      youdao_app_key: ttsYoudaoAppKey,
+      youdao_app_secret: ttsYoudaoSecret.trim() || undefined,
+    }),
+    onSuccess: async () => {
+      notifyOk("TTS 翻译配置已保存");
+      await qc.invalidateQueries({ queryKey: ["tts-translator"] });
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
+  });
   const singSaveRef = useRef(singMut.mutateAsync);
   const ttsSaveRef = useRef(ttsMut.mutateAsync);
   singSaveRef.current = singMut.mutateAsync;
@@ -423,6 +511,7 @@ export default function AiConfigMediaSection() {
   });
   const busy = saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || installMut.isPending ||
     downloadMut.isPending || assetDlActive || deleteMut.isPending || singMut.isPending || ttsMut.isPending ||
+    ttsTranslatorMut.isPending ||
     sendMut.isPending || verifyMut.isPending || logoutMut.isPending;
   const assetKeys = Object.keys(mediaQ.data?.assets || {});
   const speakerOptions = useMemo(
@@ -463,7 +552,6 @@ export default function AiConfigMediaSection() {
   const contentPanel: SelectPanel = panel as SelectPanel;
   const drawWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
   const singWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
-  const ttsWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
   const emptyPluginStatus = {
     saving: false,
     checking: false,
@@ -473,7 +561,6 @@ export default function AiConfigMediaSection() {
   };
   const [drawStatus, setDrawStatus] = useState(emptyPluginStatus);
   const [singPluginStatus, setSingPluginStatus] = useState(emptyPluginStatus);
-  const [ttsPluginStatus, setTtsPluginStatus] = useState(emptyPluginStatus);
 
   const onPluginStatusChange = useCallback(
     (
@@ -499,23 +586,30 @@ export default function AiConfigMediaSection() {
     () => onPluginStatusChange(setSingPluginStatus),
     [onPluginStatusChange],
   );
-  const onTtsPluginStatusChange = useMemo(
-    () => onPluginStatusChange(setTtsPluginStatus),
-    [onPluginStatusChange],
-  );
 
   const chromeMiddle = useMemo(() => (
-    <ChromeField label="媒体配置" icon={Layers}>
+    <ChromeField label="分区" icon={Layers}>
       <Select
         value={contentPanel}
         onValueChange={(value) => setPanel(value as SelectPanel)}
       >
         <SelectTrigger className={CHROME_SELECT_TRIGGER}><SelectValue /></SelectTrigger>
-        <SelectContent align="start">{SELECT_OPTIONS.map((item) => (
-          <SelectItem key={item.value} value={item.value}>
-            <ChromeOptionLabel icon={item.icon}>{item.label}</ChromeOptionLabel>
-          </SelectItem>
-        ))}</SelectContent>
+        <SelectContent align="start">
+          {SELECT_OPTION_GROUPS.map((group) => (
+            <SelectGroup key={group.label}>
+              <SelectLabel>{group.label}</SelectLabel>
+              {group.values.map((value) => {
+                const item = SELECT_BY_VALUE.get(value);
+                if (!item) return null;
+                return (
+                  <SelectItem key={item.value} value={item.value}>
+                    <ChromeOptionLabel icon={item.icon}>{item.label}</ChromeOptionLabel>
+                  </SelectItem>
+                );
+              })}
+            </SelectGroup>
+          ))}
+        </SelectContent>
       </Select>
     </ChromeField>
   ), [contentPanel]);
@@ -551,21 +645,10 @@ export default function AiConfigMediaSection() {
           type="button"
           size="sm"
           className="shrink-0"
-          disabled={
-            busy
-            || ttsQ.isLoading
-            || ttsMut.isPending
-            || ttsPluginStatus.saving
-            || ttsPluginStatus.loading
-          }
-          onClick={() => {
-            void (async () => {
-              await ttsSaveRef.current();
-              if (ttsPluginStatus.hasData) await ttsWorkspaceRef.current?.save();
-            })();
-          }}
+          disabled={busy || ttsQ.isLoading || ttsMut.isPending}
+          onClick={() => { void ttsSaveRef.current(); }}
         >
-          {ttsMut.isPending || ttsPluginStatus.saving ? "保存中…" : "保存"}
+          {ttsMut.isPending ? "保存中…" : "保存"}
         </Button>
       );
     }
@@ -609,7 +692,6 @@ export default function AiConfigMediaSection() {
     contentPanel,
     drawStatus,
     singPluginStatus,
-    ttsPluginStatus,
     busy,
     singQ.isLoading,
     ttsQ.isLoading,
@@ -636,9 +718,14 @@ export default function AiConfigMediaSection() {
   const canManageRuntime = runtimeQ.data?.can_manage === true;
   const canClone = installQ.data?.can_clone === true;
   const canBootstrap = installQ.data?.can_bootstrap === true;
+  const canUpdate = installQ.data?.can_update === true;
+  const hasUpdate = installQ.data?.has_update;
+  const installPrimary = resolveAiInstallPrimary({ canClone, canBootstrap, canUpdate, hasUpdate });
+  const showBootstrapSecondary = showAiInstallBootstrapSecondary({ canBootstrap, canUpdate });
   const inDocker = installQ.data?.in_docker === true;
   const runtimeLayout = runtimeQ.data?.layout || installQ.data?.layout || "";
   const localInstallUi = canManageRuntime || canClone || canBootstrap;
+  const installSubtitle = aiInstallSubtitle({ localInstallUi, canClone, canUpdate, hasUpdate });
   const dockerOrRemoteHint =
     (installQ.data?.docker_hint || "").trim()
     || (inDocker || runtimeLayout === "docker" || runtimeLayout === "remote"
@@ -656,10 +743,10 @@ export default function AiConfigMediaSection() {
         <>
           <span>下方清单是官方打包权重（可一键下载）。</span>
           <span>
-            自备唱歌音色请放到 AI 仓
+            自备唱歌音色请放到媒体服务安装目录下的
             {" "}
             <code className="font-mono">{singModelsRel}</code>
-            （目录名即 Speaker id，勿用
+            （目录名即音色 id，勿用
             {" "}
             <code className="font-mono">pretrain</code>
             ），放入
@@ -684,10 +771,10 @@ export default function AiConfigMediaSection() {
             中的 pallas-plugin-ai-media）。
           </span>
           <span>
-            自备音色：在 AI Runtime 仓库下新建
+            自备音色：在媒体服务安装目录下新建
             {" "}
             <code className="font-mono">{singModelsRel}</code>
-            ，目录名即 Speaker id（勿占用
+            ，目录名即音色 id（勿占用
             {" "}
             <code className="font-mono">pretrain</code>
             ）。放入
@@ -704,7 +791,7 @@ export default function AiConfigMediaSection() {
               <code className="break-all font-mono text-[11px]">{singModelsAbs}</code>
             </span>
           ) : (
-            <span>尚未探测到 AI 仓根时请按相对路径放置；就绪后会显示绝对路径。</span>
+            <span>尚未探测到媒体服务目录时请按相对路径放置；就绪后会显示绝对路径。</span>
           )}
         </>
       );
@@ -714,7 +801,7 @@ export default function AiConfigMediaSection() {
         <span>
           需安装官方扩展「牛牛说」（
           <Link to="/plugin-store">插件商店</Link>
-          中的 pallas-plugin-ai-media）。Bearer 在「媒体服务」连接里配置。
+          ）。访问密钥在「媒体服务」的连接里配置。
         </span>
       );
     }
@@ -754,11 +841,7 @@ export default function AiConfigMediaSection() {
         <div className="space-y-4">
           <PluginConfigFormSection
             title="安装与运行"
-            subtitle={
-              localInstallUi
-                ? "首次建议「下载并安装」，完成后点「启动」。"
-                : "Docker / 远端部署时，请在宿主机管理媒体服务。"
-            }
+            subtitle={installSubtitle}
             bodyClassName="!grid-cols-1 gap-3"
           >
             <div className="flex flex-wrap gap-2">
@@ -807,24 +890,32 @@ export default function AiConfigMediaSection() {
                     启动
                   </Button>
                   <Button size="sm" variant="outline" disabled={busy || !canManageRuntime} onClick={() => { void stopMut.mutateAsync(); }}>停止</Button>
-                  <Button
-                    size="sm"
-                    variant={canClone ? "default" : "outline"}
-                    disabled={busy || !canClone}
-                    title="首次使用：拉取媒体服务源码并安装依赖"
-                    onClick={() => { void installMut.mutateAsync("clone_and_bootstrap"); }}
-                  >
-                    下载并安装
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy || !canBootstrap}
-                    title="已有源码目录时：只重装依赖"
-                    onClick={() => { void installMut.mutateAsync("bootstrap"); }}
-                  >
-                    安装依赖
-                  </Button>
+                  {installPrimary.visible !== false ? (
+                    <Button
+                      size="sm"
+                      variant={
+                        installPrimary.enabled && (canClone || hasUpdate === true || hasUpdate == null)
+                          ? "default"
+                          : "outline"
+                      }
+                      disabled={busy || !installPrimary.enabled}
+                      title={installPrimary.title}
+                      onClick={() => { void installMut.mutateAsync(installPrimary.action); }}
+                    >
+                      {installPrimary.label}
+                    </Button>
+                  ) : null}
+                  {showBootstrapSecondary ? (
+                    <Button
+                      size="sm"
+                      variant={installPrimary.visible === false ? "outline" : "ghost"}
+                      disabled={busy || !canBootstrap}
+                      title="只重跑 bootstrap（不 git pull），用于修复依赖或切换 GPU 开关后重装"
+                      onClick={() => { void installMut.mutateAsync("bootstrap"); }}
+                    >
+                      仅重装依赖
+                    </Button>
+                  ) : null}
                 </div>
               </>
             ) : (
@@ -1002,19 +1093,19 @@ export default function AiConfigMediaSection() {
           <div className="space-y-4">
             <PluginConfigFormSection
               title="运行概况"
-              subtitle="已探测到的 Speaker 目录与推理后端。"
+              subtitle="已探测到的音色目录与可用推理方式。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">
-                  Speaker {singQ.data?.speakers.speakers?.length ?? 0} 个
+                  音色 {singQ.data?.speakers.speakers?.length ?? 0} 个
                 </Badge>
                 <Badge variant="outline">
-                  后端 {singQ.data?.backends.backends?.length ?? 0} 个
+                  推理方式 {singQ.data?.backends.backends?.length ?? 0} 个
                 </Badge>
               </div>
               <p className="break-all font-mono text-[11px] text-muted-foreground">
-                {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "暂无后端"}
+                {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "暂无推理方式"}
               </p>
               {(singQ.data?.speakers.speakers || []).length ? (
                 <ul className="space-y-1 rounded-[var(--radius-control,8px)] border bg-muted/20 px-3 py-2 text-[11px]">
@@ -1032,7 +1123,7 @@ export default function AiConfigMediaSection() {
                 </ul>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  尚未探测到 Speaker。请确认已下载官方
+                  尚未探测到音色。请确认已下载官方
                   {" "}
                   <code className="font-mono text-[11px]">sing_pallas</code>
                   {" "}
@@ -1042,25 +1133,25 @@ export default function AiConfigMediaSection() {
             </PluginConfigFormSection>
 
             <PluginConfigFormSection
-              title="侧车默认"
-              subtitle="未在命令中指定时使用的 Speaker / 后端。"
+              title="默认设置"
+              subtitle="点歌时未指定音色或推理方式时使用。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="grid grid-cols-2 gap-3">
-                <AiConfigField label="默认 Speaker" description="未指定时使用的唱歌音色。">
+                <AiConfigField label="默认音色" description="未指定时使用的唱歌音色。">
                   <AiOptionSelect
                     value={defaultSpeaker}
                     options={speakerOptions}
-                    placeholder="选择 Speaker"
+                    placeholder="选择音色"
                     emptyLabel="（未指定）"
                     onValueChange={setDefaultSpeaker}
                   />
                 </AiConfigField>
-                <AiConfigField label="优先后端" description="首选推理后端。">
+                <AiConfigField label="优先推理方式" description="首选的唱歌推理实现；失败时仍会自动尝试其它可用方式。">
                   <AiOptionSelect
                     value={preferredBackend}
                     options={backendOptions}
-                    placeholder="选择后端"
+                    placeholder="选择推理方式"
                     emptyLabel="（未指定）"
                     onValueChange={setPreferredBackend}
                   />
@@ -1070,8 +1161,8 @@ export default function AiConfigMediaSection() {
           </div>
         </StateBlock>
         <PluginConfigFormSection
-          title="插件配置"
-          subtitle="与插件页同源：启停、音色映射、默认合成时长等。"
+          title="音色映射"
+          subtitle="口令里的名字对应到媒体服务里的音色 id。"
           bodyClassName="!grid-cols-1 gap-3"
           defaultOpen
         >
@@ -1079,7 +1170,14 @@ export default function AiConfigMediaSection() {
             ref={singWorkspaceRef}
             pluginName="sing"
             presentation="dialog"
+            compact
+            includeFields={["sing_speakers"]}
             onStatusChange={onSingPluginStatusChange}
+          />
+          <PluginConfigElsewhereHint
+            pluginName="sing"
+            label="唱歌"
+            extras="启停、默认合成时长、任务模式等其它项"
           />
         </PluginConfigFormSection>
       </div>
@@ -1102,7 +1200,7 @@ export default function AiConfigMediaSection() {
           <div className="space-y-4">
             <PluginConfigFormSection
               title="音色概况"
-              subtitle="可用的参考音频路径。"
+              subtitle="可用的参考音频。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="flex flex-wrap items-center gap-2">
@@ -1111,12 +1209,12 @@ export default function AiConfigMediaSection() {
             </PluginConfigFormSection>
 
             <PluginConfigFormSection
-              title="侧车默认"
-              subtitle="参考音频、提示文本与语种默认值。"
+              title="默认音色"
+              subtitle="「牛牛说」未另外指定时使用的参考音频与语种。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="grid grid-cols-2 gap-3">
-                <AiConfigField label="参考音频" description="参考音频路径" className="md:col-span-2">
+                <AiConfigField label="参考音频" description="用于模仿说话风格的样例音频。" className="md:col-span-2">
                   <AiOptionSelect
                     value={ttsRef}
                     options={voicePathOptions}
@@ -1127,7 +1225,7 @@ export default function AiConfigMediaSection() {
                 </AiConfigField>
                 <AiConfigField
                   label="提示文本"
-                  description="参考音频对应原文，供克隆对齐。"
+                  description="参考音频里实际说的内容，用来对齐音色。"
                   className="md:col-span-2"
                 >
                   <Input
@@ -1136,27 +1234,135 @@ export default function AiConfigMediaSection() {
                     placeholder="与参考音频一致的原文"
                   />
                 </AiConfigField>
-                <AiConfigField label="提示语种" description="参考音频对应语种，如 zh / en。">
-                  <Input value={ttsPromptLang} onChange={(e) => setTtsPromptLang(e.target.value)} />
+                <AiConfigField label="提示语种" description="参考音频本身的语种（与提示文本一致）。例如参考音是日语样例，选日语。">
+                  <AiOptionSelect
+                    value={ttsPromptLang}
+                    options={TTS_LANG_OPTIONS}
+                    placeholder="选择语种"
+                    allowEmpty={false}
+                    onValueChange={setTtsPromptLang}
+                  />
                 </AiConfigField>
-                <AiConfigField label="合成语种" description="待合成文本语种。">
-                  <Input value={ttsTextLang} onChange={(e) => setTtsTextLang(e.target.value)} />
+                <AiConfigField
+                  label="合成语种"
+                  description={
+                    "要念的文字语种，作默认与兜底。"
+                    + "开启下方「中译日」且翻译成功时，会自动按日语合成，不必改成日语；"
+                    + "翻译失败或关闭中译日时，按这里的设置念原文——中文输入请保持「中文」，以免中文被当成日语切分。"
+                  }
+                >
+                  <AiOptionSelect
+                    value={ttsTextLang}
+                    options={TTS_LANG_OPTIONS}
+                    placeholder="选择语种"
+                    allowEmpty={false}
+                    onValueChange={setTtsTextLang}
+                  />
                 </AiConfigField>
               </div>
+            </PluginConfigFormSection>
+
+            <PluginConfigFormSection
+              title="中文转日语"
+              subtitle="念之前可选先把中文译成日文（部分音色更适合日语）。译成功会自动按日语合成；译失败则退回原文并用上方「合成语种」。密钥保存在媒体服务；留空密钥表示不改已有值。尚未在本页保存过时，会沿用安装目录里的默认配置。"
+              bodyClassName="!grid-cols-1 gap-3"
+            >
+              <StateBlock loading={ttsTranslatorQ.isLoading} error={ttsTranslatorQ.error}>
+                <div className="space-y-3">
+                  <AiConfigField
+                    label="启用中译日"
+                    description={
+                      "开：先把中文译成日文再合成（成功时自动按日语，与上方「合成语种」无关）。"
+                      + "关：直接按「合成语种」念原文。"
+                      + "翻译失败时仍用原文 +「合成语种」，故中文场景建议合成语种保持中文。"
+                    }
+                  >
+                    <div className="flex min-h-9 flex-wrap items-center gap-2">
+                      <Switch checked={ttsTranslateEnable} onCheckedChange={setTtsTranslateEnable} />
+                      {ttsTranslatorQ.data?.source ? (
+                        <span className="text-xs text-muted-foreground">
+                          当前生效：
+                          {ttsTranslatorQ.data.source === "disk" ? "本页已保存" : "安装目录默认配置"}
+                        </span>
+                      ) : null}
+                    </div>
+                  </AiConfigField>
+                  <div className="grid grid-cols-2 gap-3">
+                    <AiConfigField label="翻译服务" description="百度或有道（一般有免费额度）。">
+                      <AiOptionSelect
+                        value={ttsTranslateProvider}
+                        options={[
+                          { value: "baidu", label: "百度" },
+                          { value: "youdao", label: "有道" },
+                        ]}
+                        placeholder="选择服务"
+                        emptyLabel="（未指定）"
+                        onValueChange={setTtsTranslateProvider}
+                      />
+                    </AiConfigField>
+                    {ttsTranslateProvider === "youdao" ? (
+                      <>
+                        <AiConfigField label="有道 App Key" description="有道开放平台里的应用 Key。">
+                          <Input value={ttsYoudaoAppKey} onChange={(e) => setTtsYoudaoAppKey(e.target.value)} />
+                        </AiConfigField>
+                        <AiConfigField
+                          label="有道密钥"
+                          description={ttsYoudaoSecretConfigured ? "已配置；留空则不改。" : "有道应用密钥。"}
+                          className="md:col-span-2"
+                        >
+                          <Input
+                            type="password"
+                            autoComplete="new-password"
+                            value={ttsYoudaoSecret}
+                            onChange={(e) => setTtsYoudaoSecret(e.target.value)}
+                            placeholder={ttsYoudaoSecretConfigured ? "已配置，留空不改" : ""}
+                          />
+                        </AiConfigField>
+                      </>
+                    ) : (
+                      <>
+                        <AiConfigField label="百度 App ID" description="百度翻译开放平台里的应用 ID。">
+                          <Input value={ttsBaiduAppId} onChange={(e) => setTtsBaiduAppId(e.target.value)} />
+                        </AiConfigField>
+                        <AiConfigField
+                          label="百度密钥"
+                          description={ttsBaiduSecretConfigured ? "已配置；留空则不改。" : "百度翻译密钥。"}
+                          className="md:col-span-2"
+                        >
+                          <Input
+                            type="password"
+                            autoComplete="new-password"
+                            value={ttsBaiduSecret}
+                            onChange={(e) => setTtsBaiduSecret(e.target.value)}
+                            placeholder={ttsBaiduSecretConfigured ? "已配置，留空不改" : ""}
+                          />
+                        </AiConfigField>
+                      </>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={busy || ttsTranslatorQ.isLoading || ttsTranslatorMut.isPending || ttsTranslatorQ.data?.writable === false}
+                    onClick={() => void ttsTranslatorMut.mutateAsync()}
+                  >
+                    {ttsTranslatorMut.isPending ? "保存中…" : "保存翻译配置"}
+                  </Button>
+                </div>
+              </StateBlock>
             </PluginConfigFormSection>
           </div>
         </StateBlock>
         <PluginConfigFormSection
-          title="插件配置"
-          subtitle="与插件页同源：启停、通路、超时与字数上限等。"
+          title="其它设置"
+          subtitle="启停、超时与字数上限等。"
           bodyClassName="!grid-cols-1 gap-3"
           defaultOpen
         >
-          <PluginConfigWorkspace
-            ref={ttsWorkspaceRef}
+          <PluginConfigElsewhereHint
             pluginName="tts"
-            presentation="dialog"
-            onStatusChange={onTtsPluginStatusChange}
+            label="牛牛说"
+            extras="启停、超时、字数上限等"
           />
         </PluginConfigFormSection>
       </div>
@@ -1164,13 +1370,28 @@ export default function AiConfigMediaSection() {
     ) : null}
 
     {panel === "draw" ? (
-      <div className="space-y-3">
-        <PluginConfigWorkspace
-          ref={drawWorkspaceRef}
-          pluginName="draw"
-          presentation="dialog"
-          onStatusChange={onDrawStatusChange}
-        />
+      <div className="space-y-4">
+        <PluginConfigFormSection
+          title="画画网关"
+          subtitle="主线与备用画图线路。"
+          bodyClassName="!grid-cols-1 gap-3"
+          defaultOpen
+        >
+          <PluginConfigWorkspace
+            ref={drawWorkspaceRef}
+            pluginName="draw"
+            presentation="dialog"
+            compact
+            includeFields={[]}
+            includeGateways
+            onStatusChange={onDrawStatusChange}
+          />
+          <PluginConfigElsewhereHint
+            pluginName="draw"
+            label="画画"
+            extras="模型、默认尺寸、冷却等其它项"
+          />
+        </PluginConfigFormSection>
       </div>
     ) : null}
 

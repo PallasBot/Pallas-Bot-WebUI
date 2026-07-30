@@ -367,6 +367,12 @@ export default function ProviderGatewayPanel({
 
   function startAddGateway() {
     const primary = rows.find((r) => r.role === "primary");
+    const hasBackends = Boolean(binding.backends) || binding.mode === "unified";
+    // 无线备字段时只配主线，避免「添加」却无处落盘
+    if (!hasBackends) {
+      openEditor(primary ?? emptyProviderGatewayDraft("primary"), "primary");
+      return;
+    }
     if (primary && !providerGatewayIsConfigured(primary)) {
       openEditor(primary);
       return;
@@ -586,7 +592,11 @@ export default function ProviderGatewayPanel({
               }}
             >
               <Plus className="size-3.5" />
-              添加网关
+              {binding.mode === "split" && !binding.backends
+                ? rows.some((r) => r.role === "primary" && providerGatewayIsConfigured(r))
+                  ? "编辑线路"
+                  : "添加网关"
+                : "添加网关"}
             </Button>
           </PopoverTrigger>
           <PopoverContent

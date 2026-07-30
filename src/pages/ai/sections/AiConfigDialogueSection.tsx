@@ -22,7 +22,9 @@ import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -32,6 +34,7 @@ import {
   LLM_SESSION_DETAIL_KEYS,
 } from "@/config/configFieldLabels";
 import AiLlmFieldPanel from "@/pages/ai/sections/AiLlmFieldPanel";
+import AiEmbeddingStatusCard from "@/pages/ai/sections/AiEmbeddingStatusCard";
 
 type ContentPanel = "form" | "session" | "memory" | "budget" | "arknights" | "sources" | "tools";
 type EditMode = "form" | "raw";
@@ -73,12 +76,20 @@ const SELECT_OPTIONS: Array<{ value: ContentPanel; label: string; icon: LucideIc
   },
 ];
 
+/** 二级下拉轻分组（仅展示；URL panel 不变）。 */
+const SELECT_OPTION_GROUPS: Array<{ label: string; values: ContentPanel[] }> = [
+  { label: "策略", values: ["form"] },
+  { label: "上下文", values: ["session", "memory", "budget"] },
+  { label: "知识与工具", values: ["arknights", "sources", "tools"] },
+];
+
 const MODE_OPTIONS = [
   { value: "form", label: "表单" },
   { value: "raw", label: "原始 TOML" },
 ];
 
 const PANEL_SET = new Set<string>([...SELECT_OPTIONS.map((p) => p.value), "raw"]);
+const SELECT_BY_VALUE = new Map(SELECT_OPTIONS.map((p) => [p.value, p]));
 
 export default function AiConfigDialogueSection() {
   const [params, setParams] = useSearchParams();
@@ -131,7 +142,7 @@ export default function AiConfigDialogueSection() {
   const chromeMiddle = useMemo(
     () => (
       <>
-        <ChromeField label="对话分区" icon={Layers}>
+        <ChromeField label="分区" icon={Layers}>
           <Select
             value={contentPanel}
             onValueChange={(v) => {
@@ -142,10 +153,19 @@ export default function AiConfigDialogueSection() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="start">
-              {SELECT_OPTIONS.map((p) => (
-                <SelectItem key={p.value} value={p.value}>
-                  <ChromeOptionLabel icon={p.icon}>{p.label}</ChromeOptionLabel>
-                </SelectItem>
+              {SELECT_OPTION_GROUPS.map((group) => (
+                <SelectGroup key={group.label}>
+                  <SelectLabel>{group.label}</SelectLabel>
+                  {group.values.map((value) => {
+                    const opt = SELECT_BY_VALUE.get(value);
+                    if (!opt) return null;
+                    return (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <ChromeOptionLabel icon={opt.icon}>{opt.label}</ChromeOptionLabel>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectGroup>
               ))}
             </SelectContent>
           </Select>
@@ -229,18 +249,21 @@ export default function AiConfigDialogueSection() {
         />
       ) : null}
       {contentPanel === "memory" ? (
-        <AiLlmFieldPanel
-          icon={Brain}
-          title="记忆"
-          lead="群记忆检索、向量与自动沉淀。关闭后不注入记忆。"
-          masterKey="llm_memory_rag_enabled"
-          masterLabel="启用记忆"
-          disabledHint="记忆已关；开启后可调检索与沉淀参数。"
-          detailKeys={LLM_MEMORY_DETAIL_KEYS}
-          savedMessage="记忆配置已保存"
-          inlineSave={false}
-          onSaveState={onSaveState}
-        />
+        <div className="space-y-4">
+          <AiEmbeddingStatusCard />
+          <AiLlmFieldPanel
+            icon={Brain}
+            title="记忆"
+            lead="群记忆检索、向量与自动沉淀。关闭后不注入记忆。"
+            masterKey="llm_memory_rag_enabled"
+            masterLabel="启用记忆"
+            disabledHint="记忆已关；开启后可调检索与沉淀参数。"
+            detailKeys={LLM_MEMORY_DETAIL_KEYS}
+            savedMessage="记忆配置已保存"
+            inlineSave={false}
+            onSaveState={onSaveState}
+          />
+        </div>
       ) : null}
       {contentPanel === "budget" ? (
         <AiLlmFieldPanel

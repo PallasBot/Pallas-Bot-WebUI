@@ -11,7 +11,7 @@ export function learningLoopHint(status: ConversationKernelStatus | undefined): 
   if (!status.feedback_collect_active) {
     return {
       kind: "warn",
-      text: "纠错收集未开。可在 AI 配置 → 对话 → 策略中打开「收集 LLM 对话纠错」。",
+      text: "纠错收集未开。可在 AI 配置 → 接话 → 策略中打开「收集 LLM 对话纠错」。",
     };
   }
   if (!status.feedback_bias_active) {

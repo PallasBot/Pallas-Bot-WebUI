@@ -73,6 +73,7 @@ import type {
   CommonConfigSectionMeta,
   LlmModelAdminModelResult,
   LlmModelAdminStatus,
+  LlmEmbeddingStatus,
   LlmRuntimeOverviewData,
   LlmLocalRoutingConfig,
   LlmProvidersConfig,
@@ -1723,6 +1724,18 @@ export async function fetchLlmModelAdminStatus(): Promise<LlmModelAdminStatus> {
   )) as LlmModelAdminStatus;
 }
 
+export async function fetchLlmEmbeddingStatus(): Promise<LlmEmbeddingStatus> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/embedding-status"]["get"]
+  >("/common-config/llm/embedding-status")) as LlmEmbeddingStatus;
+}
+
+export async function postLlmEmbeddingProbe(text = "ping"): Promise<LlmEmbeddingStatus> {
+  return (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/embedding-status/probe"]["post"]
+  >("/common-config/llm/embedding-status/probe", { text }, { timeout: 30_000 })) as LlmEmbeddingStatus;
+}
+
 export async function postLlmModelAdminSwitch(
   model: string,
   pull = true,
@@ -3016,6 +3029,12 @@ export type AiInstallStatus = {
   git_available: boolean;
   can_clone: boolean;
   can_bootstrap: boolean;
+  can_update?: boolean;
+  /** 托管仓相对远端是否有更新；null 表示探测失败/未查 */
+  has_update?: boolean | null;
+  installed_ref?: string | null;
+  latest_ref?: string | null;
+  update_check_error?: string | null;
   in_docker?: boolean;
   endpoint?: { host: string; port: number };
   docker_hint: string;
@@ -3042,7 +3061,7 @@ export async function postAiRuntimeStop(): Promise<Record<string, unknown>> {
 }
 
 export async function postAiInstall(body: {
-  action: "clone" | "bootstrap" | "clone_and_bootstrap";
+  action: "clone" | "bootstrap" | "clone_and_bootstrap" | "update";
   no_start?: boolean;
   remote_only?: boolean;
   with_media?: boolean;
@@ -3131,6 +3150,17 @@ export type TtsVoicesPayload = {
   deploy_mode?: string;
 };
 
+export type TtsTranslatorPayload = {
+  enable?: boolean;
+  provider?: string;
+  baidu_app_id?: string;
+  baidu_secret_configured?: boolean;
+  youdao_app_key?: string;
+  youdao_secret_configured?: boolean;
+  source?: string;
+  writable?: boolean;
+};
+
 export async function fetchMediaAssetsStatus(): Promise<MediaAssetsStatus> {
   const res = (await consoleOpenapiGet("/common-config/llm/media-assets/status")) as {
     ok?: boolean;
@@ -3212,6 +3242,29 @@ export async function putTtsDefaults(body: {
     data?: Record<string, unknown>;
   };
   return (res?.data ?? res) as Record<string, unknown>;
+}
+
+export async function fetchTtsTranslator(): Promise<TtsTranslatorPayload> {
+  const res = (await consoleOpenapiGet("/common-config/llm/media-models/tts/translator")) as {
+    ok?: boolean;
+    data?: TtsTranslatorPayload;
+  };
+  return (res?.data ?? res) as TtsTranslatorPayload;
+}
+
+export async function putTtsTranslator(body: {
+  enable?: boolean;
+  provider?: string;
+  baidu_app_id?: string;
+  baidu_secret_key?: string;
+  youdao_app_key?: string;
+  youdao_app_secret?: string;
+}): Promise<TtsTranslatorPayload> {
+  const res = (await consoleOpenapiPut("/common-config/llm/media-models/tts/translator", body)) as {
+    ok?: boolean;
+    data?: TtsTranslatorPayload;
+  };
+  return (res?.data ?? res) as TtsTranslatorPayload;
 }
 
 export function openAiInstallJobEventSource(jobId: string): EventSource {
@@ -3341,6 +3394,82 @@ export function openUpdateApplyJobEventSource(jobId: string): EventSource {
 
 export async function fetchUpdateApplyJob(jobId: string): Promise<UpdateApplyJobSnapshot> {
   return (await consoleOpenapiGet(`/update/jobs/${encodeURIComponent(jobId)}`)) as UpdateApplyJobSnapshot;
+}
+
+export type WebuiAutoUpdatePendingNotice = {
+  kind?: string;
+  tag?: string;
+  from_tag?: string;
+  applied_at?: number;
+  updated?: string[];
+  failed?: Array<{ id?: string; error?: string }>;
+  items?: WebuiAutoUpdatePendingNotice[];
+};
+
+export type WebuiAutoUpdateTickResult = {
+  result?: string;
+  reason?: string;
+  tag?: string;
+  from_tag?: string;
+  error?: string;
+  message?: string;
+  current_tag?: string;
+  latest_tag?: string;
+  pending_notice?: WebuiAutoUpdatePendingNotice | null;
+  targets?: Record<string, WebuiAutoUpdateTickResult>;
+  updated?: string[];
+  failed?: Array<{ id?: string; error?: string }>;
+};
+
+export type WebuiAutoUpdateTargetStatus = {
+  enabled?: boolean;
+  last_check_at?: number | null;
+  last_check_result?: string | null;
+  last_applied_tag?: string | null;
+  last_applied_at?: number | null;
+  last_error?: string | null;
+  skip_reason?: string | null;
+  updated?: string[] | null;
+  failed?: Array<{ id?: string; error?: string }> | null;
+  deployment_mode?: string;
+  auto_apply_eligible?: boolean;
+};
+
+export type WebuiAutoUpdateStatusData = {
+  enabled?: boolean;
+  schedule_mode?: "interval" | "cron" | string;
+  interval_hours?: number;
+  cron_hour?: number;
+  cron_minute?: number;
+  last_check_at?: number | null;
+  last_check_result?: string | null;
+  last_applied_tag?: string | null;
+  last_applied_at?: number | null;
+  last_error?: string | null;
+  pending_notice?: WebuiAutoUpdatePendingNotice | null;
+  notify_superusers?: boolean;
+  notify_bot_id?: number;
+  tick?: WebuiAutoUpdateTickResult;
+  webui?: WebuiAutoUpdateTargetStatus;
+  bot?: WebuiAutoUpdateTargetStatus;
+  plugins?: WebuiAutoUpdateTargetStatus;
+  last_run_at?: number | null;
+};
+
+export async function fetchWebuiAutoUpdateStatus(): Promise<WebuiAutoUpdateStatusData> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/update/auto/status"]["get"]
+  >("/update/auto/status")) as WebuiAutoUpdateStatusData;
+}
+
+export async function postWebuiAutoUpdateAck(): Promise<WebuiAutoUpdateStatusData> {
+  return (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/update/auto/ack"]["post"]
+  >("/update/auto/ack", {})) as WebuiAutoUpdateStatusData;
+}
+
+export async function postWebuiAutoUpdateRunOnce(): Promise<UpdateApplyJobStartData> {
+  return (await consoleOpenapiPost("/update/auto/run-once", {})) as UpdateApplyJobStartData;
 }
 
 export async function postSystemRestart(options?: {
