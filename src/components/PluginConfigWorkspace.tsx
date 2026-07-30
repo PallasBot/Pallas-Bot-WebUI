@@ -140,6 +140,15 @@ type Props = {
   initialPluginRow?: PluginRow | null;
   readmeTarget?: PluginReadmeTarget | null;
   onStatusChange?: (status: Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">) => void;
+  /** 仅展示这些表单字段；未传则展示全部（网关绑定键仍隐藏） */
+  includeFields?: string[];
+  /**
+   * 是否展示网关面板。
+   * 默认：未限制字段时展示；传入 includeFields 后默认不展示（除非显式 true）。
+   */
+  includeGateways?: boolean;
+  /** 紧凑嵌入：只保留配置表单，隐藏治理 / README / 模式切换 */
+  compact?: boolean;
 };
 
 function PluginBundledReadme({
@@ -189,16 +198,30 @@ function PluginBundledReadme({
 }
 
 const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(function PluginConfigWorkspace(
-  { pluginName, presentation = "page", initialPluginRow, readmeTarget, onStatusChange },
+  {
+    pluginName,
+    presentation = "page",
+    initialPluginRow,
+    readmeTarget,
+    onStatusChange,
+    includeFields,
+    includeGateways,
+    compact = false,
+  },
   ref,
 ) {
   const qc = useQueryClient();
   const name = pluginName.trim();
   const isDialog = presentation === "dialog";
-  const supportsConfigCheck = name === "draw";
+  const supportsConfigCheck = name === "draw" && !compact;
   const isHelpPlugin = name === "help";
   const pluginResolvedId = (initialPluginRow?.resolved_plugin_id || name).trim();
-  const showDrawAiConfigHint = pluginResolvedId === "draw";
+  const showDrawAiConfigHint = pluginResolvedId === "draw" && !compact;
+  const fieldAllowSet = useMemo(
+    () => (includeFields ? new Set(includeFields) : null),
+    [includeFields],
+  );
+  const showGateways = includeGateways ?? fieldAllowSet == null;
 
   const [mode, setMode] = useState<"form" | "raw">("form");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
@@ -231,8 +254,8 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
   const pluginRow = initialPluginRow ?? pluginRowQ.data ?? null;
   const hasConfigFields = Boolean(cfgQ.data?.fields.length);
-  const hasGovernanceTab = Boolean(pluginResolvedId);
-  const showReadmeTab = isDialog;
+  const hasGovernanceTab = Boolean(pluginResolvedId) && !compact;
+  const showReadmeTab = isDialog && !compact;
 
   const fields = cfgQ.data?.fields || [];
   const gatewayWidgets = useMemo(() => {
@@ -364,8 +387,10 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
       list = list.filter((f) => !gatewayHiddenFieldSet.has(f.name));
     }
     if (usesHelpTagOverridesPanel) list = list.filter((f) => !HELP_TAG_OVERRIDE_FIELD_SET.has(f.name));
+    if (fieldAllowSet) list = list.filter((f) => fieldAllowSet.has(f.name));
     return list;
   })();
+  const visibleGatewayWidgets = showGateways ? gatewayWidgets : [];
 
   async function patchFieldValuesAndPersist(patch: Record<string, string>) {
     await saveGatewayPatch.mutateAsync(patch);
@@ -433,48 +458,50 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
   const configBody = (
     <>
-      <ChromeTools className="plugin-config-workspace__chrome">
-        <ChromeField label="工作区" icon={Layers} className="shrink-0">
-          <Select
-            value={detailTab}
-            onValueChange={(v) => {
-              preserveShellMainScroll(() => setDetailTab(v as ConfigTab));
-            }}
-          >
-            <SelectTrigger
-              className={CHROME_SELECT_TRIGGER}
-              aria-label="工作区"
+      {!compact ? (
+        <ChromeTools className="plugin-config-workspace__chrome">
+          <ChromeField label="工作区" icon={Layers} className="shrink-0">
+            <Select
+              value={detailTab}
+              onValueChange={(v) => {
+                preserveShellMainScroll(() => setDetailTab(v as ConfigTab));
+              }}
             >
-              <SelectValue placeholder="工作区">{currentWorkspaceLabel}</SelectValue>
-            </SelectTrigger>
-            <SelectContent align="start">
-              {workspaceTabOptions.map((t) => (
-                <SelectItem key={t.value} value={t.value}>
-                  <ChromeOptionLabel icon={WORKSPACE_TAB_ICONS[t.value]}>
-                    {t.label}
-                  </ChromeOptionLabel>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </ChromeField>
+              <SelectTrigger
+                className={CHROME_SELECT_TRIGGER}
+                aria-label="工作区"
+              >
+                <SelectValue placeholder="工作区">{currentWorkspaceLabel}</SelectValue>
+              </SelectTrigger>
+              <SelectContent align="start">
+                {workspaceTabOptions.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    <ChromeOptionLabel icon={WORKSPACE_TAB_ICONS[t.value]}>
+                      {t.label}
+                    </ChromeOptionLabel>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </ChromeField>
 
-        {detailTab === "config" && hasConfigFields ? (
-          <div className={CHROME_TOOLS_TRAILING}>
-            <SegTabs
-              className="plugin-config-page__mode-toggle"
-              size="toolbar"
-              ariaLabel="配置编辑模式"
-              value={mode}
-              onValueChange={(v) => setMode(v === "raw" ? "raw" : "form")}
-              options={[
-                { value: "form", label: "表单" },
-                { value: "raw", label: "Raw TOML", className: "plugin-config-page__mode-tab--raw" },
-              ]}
-            />
-          </div>
-        ) : null}
-      </ChromeTools>
+          {detailTab === "config" && hasConfigFields ? (
+            <div className={CHROME_TOOLS_TRAILING}>
+              <SegTabs
+                className="plugin-config-page__mode-toggle"
+                size="toolbar"
+                ariaLabel="配置编辑模式"
+                value={mode}
+                onValueChange={(v) => setMode(v === "raw" ? "raw" : "form")}
+                options={[
+                  { value: "form", label: "表单" },
+                  { value: "raw", label: "Raw TOML", className: "plugin-config-page__mode-tab--raw" },
+                ]}
+              />
+            </div>
+          ) : null}
+        </ChromeTools>
+      ) : null}
 
       {showDrawAiConfigHint && !isDialog ? (
         <p className="muted plugin-config-dialog__ai-hint">
@@ -508,7 +535,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
       {detailTab === "config" ? (
         <>
-          {isHelpPlugin && mode === "form" ? (
+          {isHelpPlugin && mode === "form" && !compact ? (
             <HelpImagePreview embedded={isDialog} defaultPlugin={name} />
           ) : null}
           {!hasConfigFields && !isHelpPlugin ? (
@@ -521,7 +548,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
           {msg ? <p className="text-sm text-destructive">{msg}</p> : null}
           {mode === "form" ? (
             <>
-              {pluginResolvedId ? (
+              {pluginResolvedId && !compact ? (
                 <PluginHelpTagField
                   className="mb-4"
                   pluginId={pluginResolvedId}
@@ -552,7 +579,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                   empty={false}
                   emptyText="该插件无可编辑配置字段"
                 >
-                  {gatewayWidgets.map((widget) => (
+                  {visibleGatewayWidgets.map((widget) => (
                     <ProviderGatewayPanel
                       key={widget.anchor}
                       className="mb-4"
@@ -562,7 +589,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                       binding={widget.binding}
                     />
                   ))}
-                  {usesHelpTagOverridesPanel ? (
+                  {usesHelpTagOverridesPanel && !compact ? (
                     <HelpTagOverridesPanel
                       className="mb-4"
                       fieldValues={fieldValues}
