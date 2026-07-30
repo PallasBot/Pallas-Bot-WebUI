@@ -252,6 +252,7 @@ export type AiInstallStatus = {
   deployment?: string;
   can_clone?: boolean;
   can_bootstrap?: boolean;
+  can_update?: boolean;
   in_docker?: boolean;
   docker_hint?: string;
   endpoint?: { host?: string; port?: number };
@@ -1075,6 +1076,16 @@ export type TtsVoicesPayload = {
   defaults?: { ref_audio_path?: string; prompt_text?: string; prompt_lang?: string; text_lang?: string };
   writable?: boolean;
 };
+export type TtsTranslatorPayload = {
+  enable?: boolean;
+  provider?: string;
+  baidu_app_id?: string;
+  baidu_secret_configured?: boolean;
+  youdao_app_key?: string;
+  youdao_secret_configured?: boolean;
+  source?: string;
+  writable?: boolean;
+};
 
 export async function postAiExtensionTest(): Promise<AiExtensionTestData> {
   const { data: body } = await http.post("/ai-extension/test", {}, { timeout: 60_000 });
@@ -1110,7 +1121,7 @@ export async function postAiRuntimeStop(): Promise<Record<string, unknown>> {
 }
 
 export async function postAiInstall(body: {
-  action: "clone" | "bootstrap" | "clone_and_bootstrap";
+  action: "clone" | "bootstrap" | "clone_and_bootstrap" | "update";
   no_start?: boolean;
   remote_only?: boolean;
   with_media?: boolean;
@@ -1248,6 +1259,23 @@ export async function putTtsDefaults(body: {
 }): Promise<Record<string, unknown>> {
   const { data: res } = await http.put("/common-config/llm/media-models/tts/defaults", body);
   return unwrapNestedEnvelope(res);
+}
+
+export async function fetchTtsTranslator(): Promise<TtsTranslatorPayload> {
+  const { data: body } = await http.get("/common-config/llm/media-models/tts/translator");
+  return unwrapNestedEnvelope<TtsTranslatorPayload>(body);
+}
+
+export async function putTtsTranslator(body: {
+  enable?: boolean;
+  provider?: string;
+  baidu_app_id?: string;
+  baidu_secret_key?: string;
+  youdao_app_key?: string;
+  youdao_app_secret?: string;
+}): Promise<TtsTranslatorPayload> {
+  const { data: res } = await http.put("/common-config/llm/media-models/tts/translator", body);
+  return unwrapNestedEnvelope<TtsTranslatorPayload>(res);
 }
 
 export async function fetchCommonConfig(sectionId: string): Promise<PluginConfigData> {

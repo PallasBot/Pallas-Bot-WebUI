@@ -3016,6 +3016,7 @@ export type AiInstallStatus = {
   git_available: boolean;
   can_clone: boolean;
   can_bootstrap: boolean;
+  can_update?: boolean;
   in_docker?: boolean;
   endpoint?: { host: string; port: number };
   docker_hint: string;
@@ -3042,7 +3043,7 @@ export async function postAiRuntimeStop(): Promise<Record<string, unknown>> {
 }
 
 export async function postAiInstall(body: {
-  action: "clone" | "bootstrap" | "clone_and_bootstrap";
+  action: "clone" | "bootstrap" | "clone_and_bootstrap" | "update";
   no_start?: boolean;
   remote_only?: boolean;
   with_media?: boolean;
@@ -3131,6 +3132,17 @@ export type TtsVoicesPayload = {
   deploy_mode?: string;
 };
 
+export type TtsTranslatorPayload = {
+  enable?: boolean;
+  provider?: string;
+  baidu_app_id?: string;
+  baidu_secret_configured?: boolean;
+  youdao_app_key?: string;
+  youdao_secret_configured?: boolean;
+  source?: string;
+  writable?: boolean;
+};
+
 export async function fetchMediaAssetsStatus(): Promise<MediaAssetsStatus> {
   const res = (await consoleOpenapiGet("/common-config/llm/media-assets/status")) as {
     ok?: boolean;
@@ -3212,6 +3224,29 @@ export async function putTtsDefaults(body: {
     data?: Record<string, unknown>;
   };
   return (res?.data ?? res) as Record<string, unknown>;
+}
+
+export async function fetchTtsTranslator(): Promise<TtsTranslatorPayload> {
+  const res = (await consoleOpenapiGet("/common-config/llm/media-models/tts/translator")) as {
+    ok?: boolean;
+    data?: TtsTranslatorPayload;
+  };
+  return (res?.data ?? res) as TtsTranslatorPayload;
+}
+
+export async function putTtsTranslator(body: {
+  enable?: boolean;
+  provider?: string;
+  baidu_app_id?: string;
+  baidu_secret_key?: string;
+  youdao_app_key?: string;
+  youdao_app_secret?: string;
+}): Promise<TtsTranslatorPayload> {
+  const res = (await consoleOpenapiPut("/common-config/llm/media-models/tts/translator", body)) as {
+    ok?: boolean;
+    data?: TtsTranslatorPayload;
+  };
+  return (res?.data ?? res) as TtsTranslatorPayload;
 }
 
 export function openAiInstallJobEventSource(jobId: string): EventSource {

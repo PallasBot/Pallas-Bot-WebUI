@@ -9,10 +9,10 @@ import { axiosErrorDetail } from "@/api/http";
 import {
   fetchAiExtensionConfig, fetchAiInstallStatus, fetchAiNcmStatus, fetchAiRuntimeStatus,
   fetchMediaAssetsDownloadJob, fetchMediaAssetsStatus, fetchSingBackends, fetchSingSpeakers,
-  fetchTtsVoices, openAiInstallJobEventSource, postAiExtensionTest, postAiInstall,
+  fetchTtsVoices, fetchTtsTranslator, openAiInstallJobEventSource, postAiExtensionTest, postAiInstall,
   postAiNcmLogout, postAiNcmSendSms, postAiNcmVerifySms, postMediaAssetsDelete,
   postMediaAssetsDownload, postAiRuntimeStart, postAiRuntimeStop, putAiExtensionConfig,
-  putSingDefaults, putTtsDefaults,
+  putSingDefaults, putTtsDefaults, putTtsTranslator,
 } from "@/api/console";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField from "@/components/ai/AiConfigField";
@@ -152,6 +152,12 @@ export default function AiConfigMediaSection() {
     enabled: panel === "tts" && runtimeProbeDone && runtimeReady,
     retry: false,
   });
+  const ttsTranslatorQ = useQuery({
+    queryKey: ["tts-translator"],
+    queryFn: fetchTtsTranslator,
+    enabled: panel === "tts" && runtimeProbeDone && runtimeReady,
+    retry: false,
+  });
   const statusQ = useQuery({
     queryKey: ["ai-ncm"],
     queryFn: fetchAiNcmStatus,
@@ -180,6 +186,14 @@ export default function AiConfigMediaSection() {
   const [ttsPrompt, setTtsPrompt] = useState("");
   const [ttsPromptLang, setTtsPromptLang] = useState("");
   const [ttsTextLang, setTtsTextLang] = useState("");
+  const [ttsTranslateEnable, setTtsTranslateEnable] = useState(false);
+  const [ttsTranslateProvider, setTtsTranslateProvider] = useState("baidu");
+  const [ttsBaiduAppId, setTtsBaiduAppId] = useState("");
+  const [ttsBaiduSecret, setTtsBaiduSecret] = useState("");
+  const [ttsYoudaoAppKey, setTtsYoudaoAppKey] = useState("");
+  const [ttsYoudaoSecret, setTtsYoudaoSecret] = useState("");
+  const [ttsBaiduSecretConfigured, setTtsBaiduSecretConfigured] = useState(false);
+  const [ttsYoudaoSecretConfigured, setTtsYoudaoSecretConfigured] = useState(false);
   const [phone, setPhone] = useState("");
   const [ctcode, setCtcode] = useState(String(AI_NCM_DEFAULTS.countryCode));
   const [captcha, setCaptcha] = useState("");
@@ -203,6 +217,18 @@ export default function AiConfigMediaSection() {
     if (d?.ref_audio_path) setTtsRef(d.ref_audio_path); if (d?.prompt_text) setTtsPrompt(d.prompt_text);
     if (d?.prompt_lang) setTtsPromptLang(d.prompt_lang); if (d?.text_lang) setTtsTextLang(d.text_lang);
   }, [singQ.data, ttsQ.data]);
+  useEffect(() => {
+    const t = ttsTranslatorQ.data;
+    if (!t) return;
+    setTtsTranslateEnable(Boolean(t.enable));
+    setTtsTranslateProvider(String(t.provider || "baidu").trim() || "baidu");
+    setTtsBaiduAppId(String(t.baidu_app_id || ""));
+    setTtsYoudaoAppKey(String(t.youdao_app_key || ""));
+    setTtsBaiduSecretConfigured(Boolean(t.baidu_secret_configured));
+    setTtsYoudaoSecretConfigured(Boolean(t.youdao_secret_configured));
+    setTtsBaiduSecret("");
+    setTtsYoudaoSecret("");
+  }, [ttsTranslatorQ.data]);
   useEffect(() => () => { if (pollRef.current != null) window.clearInterval(pollRef.current); }, []);
 
   // 旧深链 ?panel=connection|runtime → service；draw-raw → draw
@@ -261,7 +287,7 @@ export default function AiConfigMediaSection() {
     onSuccess: async () => { notifyOk("媒体服务已停止"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const installMut = useMutation({
-    mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap") => {
+    mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap" | "update") => {
       setInstallProgress("已排队…");
       setInstallPercent(0);
       setInstallLogLines([]);
@@ -389,6 +415,21 @@ export default function AiConfigMediaSection() {
     mutationFn: () => putTtsDefaults({ ref_audio_path: ttsRef, prompt_text: ttsPrompt, prompt_lang: ttsPromptLang, text_lang: ttsTextLang }),
     onSuccess: () => notifyOk("TTS 默认已保存"), onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
+  const ttsTranslatorMut = useMutation({
+    mutationFn: () => putTtsTranslator({
+      enable: ttsTranslateEnable,
+      provider: ttsTranslateProvider,
+      baidu_app_id: ttsBaiduAppId,
+      baidu_secret_key: ttsBaiduSecret.trim() || undefined,
+      youdao_app_key: ttsYoudaoAppKey,
+      youdao_app_secret: ttsYoudaoSecret.trim() || undefined,
+    }),
+    onSuccess: async () => {
+      notifyOk("TTS 翻译配置已保存");
+      await qc.invalidateQueries({ queryKey: ["tts-translator"] });
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
+  });
   const singSaveRef = useRef(singMut.mutateAsync);
   const ttsSaveRef = useRef(ttsMut.mutateAsync);
   singSaveRef.current = singMut.mutateAsync;
@@ -423,6 +464,7 @@ export default function AiConfigMediaSection() {
   });
   const busy = saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || installMut.isPending ||
     downloadMut.isPending || assetDlActive || deleteMut.isPending || singMut.isPending || ttsMut.isPending ||
+    ttsTranslatorMut.isPending ||
     sendMut.isPending || verifyMut.isPending || logoutMut.isPending;
   const assetKeys = Object.keys(mediaQ.data?.assets || {});
   const speakerOptions = useMemo(
@@ -636,6 +678,7 @@ export default function AiConfigMediaSection() {
   const canManageRuntime = runtimeQ.data?.can_manage === true;
   const canClone = installQ.data?.can_clone === true;
   const canBootstrap = installQ.data?.can_bootstrap === true;
+  const canUpdate = installQ.data?.can_update === true;
   const inDocker = installQ.data?.in_docker === true;
   const runtimeLayout = runtimeQ.data?.layout || installQ.data?.layout || "";
   const localInstallUi = canManageRuntime || canClone || canBootstrap;
@@ -824,6 +867,15 @@ export default function AiConfigMediaSection() {
                     onClick={() => { void installMut.mutateAsync("bootstrap"); }}
                   >
                     安装依赖
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || !canUpdate}
+                    title="托管目录：git pull --ff-only 后重新 bootstrap"
+                    onClick={() => { void installMut.mutateAsync("update"); }}
+                  >
+                    更新 Runtime
                   </Button>
                 </div>
               </>
@@ -1143,6 +1195,86 @@ export default function AiConfigMediaSection() {
                   <Input value={ttsTextLang} onChange={(e) => setTtsTextLang(e.target.value)} />
                 </AiConfigField>
               </div>
+            </PluginConfigFormSection>
+
+            <PluginConfigFormSection
+              title="中翻日（侧车）"
+              subtitle="合成前可选把中文译成日文。密钥落在 AI Runtime 的 media_models；空密钥表示不改已有值。未在控制台保存过时回退 AI .env。"
+              bodyClassName="!grid-cols-1 gap-3"
+            >
+              <StateBlock loading={ttsTranslatorQ.isLoading} error={ttsTranslatorQ.error}>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <AiConfigField label="启用中翻日" description="开=TTS 先翻译再合成；关=按合成语种直接念原文。">
+                      <Switch checked={ttsTranslateEnable} onCheckedChange={setTtsTranslateEnable} />
+                    </AiConfigField>
+                    <Badge variant="outline">
+                      来源 {ttsTranslatorQ.data?.source === "disk" ? "落盘" : "环境变量"}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <AiConfigField label="翻译后端" description="百度或有道（均有免费额度）。">
+                      <AiOptionSelect
+                        value={ttsTranslateProvider}
+                        options={[
+                          { value: "baidu", label: "百度" },
+                          { value: "youdao", label: "有道" },
+                        ]}
+                        placeholder="选择后端"
+                        emptyLabel="（未指定）"
+                        onValueChange={setTtsTranslateProvider}
+                      />
+                    </AiConfigField>
+                    {ttsTranslateProvider === "youdao" ? (
+                      <>
+                        <AiConfigField label="有道 App Key" description="有道开放平台应用 Key。">
+                          <Input value={ttsYoudaoAppKey} onChange={(e) => setTtsYoudaoAppKey(e.target.value)} />
+                        </AiConfigField>
+                        <AiConfigField
+                          label="有道 App Secret"
+                          description={ttsYoudaoSecretConfigured ? "已配置；留空则不改。" : "有道应用密钥。"}
+                          className="md:col-span-2"
+                        >
+                          <Input
+                            type="password"
+                            autoComplete="new-password"
+                            value={ttsYoudaoSecret}
+                            onChange={(e) => setTtsYoudaoSecret(e.target.value)}
+                            placeholder={ttsYoudaoSecretConfigured ? "已配置，留空不改" : ""}
+                          />
+                        </AiConfigField>
+                      </>
+                    ) : (
+                      <>
+                        <AiConfigField label="百度 App ID" description="百度翻译开放平台应用 ID。">
+                          <Input value={ttsBaiduAppId} onChange={(e) => setTtsBaiduAppId(e.target.value)} />
+                        </AiConfigField>
+                        <AiConfigField
+                          label="百度密钥"
+                          description={ttsBaiduSecretConfigured ? "已配置；留空则不改。" : "百度翻译 Secret Key。"}
+                          className="md:col-span-2"
+                        >
+                          <Input
+                            type="password"
+                            autoComplete="new-password"
+                            value={ttsBaiduSecret}
+                            onChange={(e) => setTtsBaiduSecret(e.target.value)}
+                            placeholder={ttsBaiduSecretConfigured ? "已配置，留空不改" : ""}
+                          />
+                        </AiConfigField>
+                      </>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={busy || ttsTranslatorQ.isLoading || ttsTranslatorMut.isPending || ttsTranslatorQ.data?.writable === false}
+                    onClick={() => void ttsTranslatorMut.mutateAsync()}
+                  >
+                    {ttsTranslatorMut.isPending ? "保存中…" : "保存翻译配置"}
+                  </Button>
+                </div>
+              </StateBlock>
             </PluginConfigFormSection>
           </div>
         </StateBlock>
