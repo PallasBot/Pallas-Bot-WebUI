@@ -110,7 +110,7 @@ export default function AiConfigConnectionSection() {
   });
 
   const installMut = useMutation({
-    mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap") => {
+    mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap" | "update") => {
       const job = await postAiInstall({
         action,
         no_start: noStart,
@@ -228,6 +228,15 @@ export default function AiConfigConnectionSection() {
                 onClick={() => void installMut.mutateAsync("bootstrap")}
               >
                 仅引导
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || installQ.data?.can_update !== true}
+                title="托管目录：git pull --ff-only 后重新 bootstrap"
+                onClick={() => void installMut.mutateAsync("update")}
+              >
+                更新 Runtime
               </Button>
             </div>
           </StateBlock>
