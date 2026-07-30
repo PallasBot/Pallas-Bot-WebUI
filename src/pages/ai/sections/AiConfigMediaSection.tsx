@@ -38,6 +38,7 @@ import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { AI_NCM_DEFAULTS, aiRuntimeLayoutLabel } from "@/config/aiConstants";
 import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
 import {
+  aiInstallSubtitle,
   resolveAiInstallPrimary,
   showAiInstallBootstrapSecondary,
 } from "@/utils/aiInstallPrimary";
@@ -700,11 +701,13 @@ export default function AiConfigMediaSection() {
   const canClone = installQ.data?.can_clone === true;
   const canBootstrap = installQ.data?.can_bootstrap === true;
   const canUpdate = installQ.data?.can_update === true;
-  const installPrimary = resolveAiInstallPrimary({ canClone, canBootstrap, canUpdate });
+  const hasUpdate = installQ.data?.has_update;
+  const installPrimary = resolveAiInstallPrimary({ canClone, canBootstrap, canUpdate, hasUpdate });
   const showBootstrapSecondary = showAiInstallBootstrapSecondary({ canBootstrap, canUpdate });
   const inDocker = installQ.data?.in_docker === true;
   const runtimeLayout = runtimeQ.data?.layout || installQ.data?.layout || "";
   const localInstallUi = canManageRuntime || canClone || canBootstrap;
+  const installSubtitle = aiInstallSubtitle({ localInstallUi, canClone, canUpdate, hasUpdate });
   const dockerOrRemoteHint =
     (installQ.data?.docker_hint || "").trim()
     || (inDocker || runtimeLayout === "docker" || runtimeLayout === "remote"
@@ -820,11 +823,7 @@ export default function AiConfigMediaSection() {
         <div className="space-y-4">
           <PluginConfigFormSection
             title="安装与运行"
-            subtitle={
-              localInstallUi
-                ? "未安装点「下载并安装」；已安装点「更新 Runtime」。仅重装依赖用于修复。"
-                : "Docker / 远端部署时，请在宿主机管理媒体服务。"
-            }
+            subtitle={installSubtitle}
             bodyClassName="!grid-cols-1 gap-3"
           >
             <div className="flex flex-wrap gap-2">
@@ -873,19 +872,25 @@ export default function AiConfigMediaSection() {
                     启动
                   </Button>
                   <Button size="sm" variant="outline" disabled={busy || !canManageRuntime} onClick={() => { void stopMut.mutateAsync(); }}>停止</Button>
-                  <Button
-                    size="sm"
-                    variant={installPrimary.enabled && (canClone || canUpdate) ? "default" : "outline"}
-                    disabled={busy || !installPrimary.enabled}
-                    title={installPrimary.title}
-                    onClick={() => { void installMut.mutateAsync(installPrimary.action); }}
-                  >
-                    {installPrimary.label}
-                  </Button>
+                  {installPrimary.visible !== false ? (
+                    <Button
+                      size="sm"
+                      variant={
+                        installPrimary.enabled && (canClone || hasUpdate === true || hasUpdate == null)
+                          ? "default"
+                          : "outline"
+                      }
+                      disabled={busy || !installPrimary.enabled}
+                      title={installPrimary.title}
+                      onClick={() => { void installMut.mutateAsync(installPrimary.action); }}
+                    >
+                      {installPrimary.label}
+                    </Button>
+                  ) : null}
                   {showBootstrapSecondary ? (
                     <Button
                       size="sm"
-                      variant="ghost"
+                      variant={installPrimary.visible === false ? "outline" : "ghost"}
                       disabled={busy || !canBootstrap}
                       title="只重跑 bootstrap（不 git pull），用于修复依赖或切换 GPU 开关后重装"
                       onClick={() => { void installMut.mutateAsync("bootstrap"); }}

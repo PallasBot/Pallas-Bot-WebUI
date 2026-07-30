@@ -253,6 +253,11 @@ export type AiInstallStatus = {
   can_clone?: boolean;
   can_bootstrap?: boolean;
   can_update?: boolean;
+  /** 托管仓相对远端是否有更新；null 表示探测失败/未查 */
+  has_update?: boolean | null;
+  installed_ref?: string | null;
+  latest_ref?: string | null;
+  update_check_error?: string | null;
   in_docker?: boolean;
   docker_hint?: string;
   endpoint?: { host?: string; port?: number };

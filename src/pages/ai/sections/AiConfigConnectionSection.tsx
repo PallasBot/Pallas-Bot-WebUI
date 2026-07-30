@@ -143,8 +143,9 @@ export default function AiConfigConnectionSection() {
   const canClone = installQ.data?.can_clone === true;
   const canBootstrap = installQ.data?.can_bootstrap === true;
   const canUpdate = installQ.data?.can_update === true;
+  const hasUpdate = installQ.data?.has_update;
   const canManageRuntime = runtimeQ.data?.can_manage === true;
-  const installPrimary = resolveAiInstallPrimary({ canClone, canBootstrap, canUpdate });
+  const installPrimary = resolveAiInstallPrimary({ canClone, canBootstrap, canUpdate, hasUpdate });
   const showBootstrapSecondary = showAiInstallBootstrapSecondary({ canBootstrap, canUpdate });
 
   const chromeMiddle = useMemo(
@@ -215,7 +216,11 @@ export default function AiConfigConnectionSection() {
               </label>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy || !canManageRuntime} onClick={() => void startMut.mutateAsync()}>
+              <Button
+                size="sm"
+                disabled={busy || !canManageRuntime}
+                onClick={() => void startMut.mutateAsync()}
+              >
                 启动
               </Button>
               <Button
@@ -226,19 +231,25 @@ export default function AiConfigConnectionSection() {
               >
                 停止
               </Button>
-              <Button
-                size="sm"
-                variant={installPrimary.enabled && (canClone || canUpdate) ? "default" : "outline"}
-                disabled={busy || !installPrimary.enabled}
-                title={installPrimary.title}
-                onClick={() => void installMut.mutateAsync(installPrimary.action)}
-              >
-                {installPrimary.label}
-              </Button>
+              {installPrimary.visible !== false ? (
+                <Button
+                  size="sm"
+                  variant={
+                    installPrimary.enabled && (canClone || hasUpdate === true || hasUpdate == null)
+                      ? "default"
+                      : "outline"
+                  }
+                  disabled={busy || !installPrimary.enabled}
+                  title={installPrimary.title}
+                  onClick={() => void installMut.mutateAsync(installPrimary.action)}
+                >
+                  {installPrimary.label}
+                </Button>
+              ) : null}
               {showBootstrapSecondary ? (
                 <Button
                   size="sm"
-                  variant="ghost"
+                  variant={installPrimary.visible === false ? "outline" : "ghost"}
                   disabled={busy || !canBootstrap}
                   title="只重跑 bootstrap（不 git pull），用于修复依赖或切换 GPU 开关后重装"
                   onClick={() => void installMut.mutateAsync("bootstrap")}
