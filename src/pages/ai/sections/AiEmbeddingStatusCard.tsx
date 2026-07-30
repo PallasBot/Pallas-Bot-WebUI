@@ -87,7 +87,13 @@ export default function AiEmbeddingStatusCard() {
           </div>
           {provider === "openai" && data?.endpoint_configured === false ? (
             <div className="sm:col-span-2 text-amber-700 dark:text-amber-400">
-              还缺接口地址：在下方填「Embedding 接口地址」，或先配好对话 Provider。
+              还缺接口地址：在下方「Embedding 线路」选 Provider，或手填接口地址；也可先配好对话主线。
+            </div>
+          ) : null}
+          {data?.endpoint_provider_id ? (
+            <div>
+              <dt className="inline text-foreground/80">实际线路 </dt>
+              <dd className="inline">{data.endpoint_provider_id}</dd>
             </div>
           ) : null}
           {provider === "openai" && data?.embedding_model === "stub" && data?.resolved_model ? (

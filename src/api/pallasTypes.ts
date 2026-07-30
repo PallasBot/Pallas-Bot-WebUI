@@ -913,6 +913,8 @@ export interface LlmEmbeddingStatus {
   embedding_kind?: string;
   embedding_model: string;
   resolved_model?: string;
+  embedding_provider_id?: string | null;
+  endpoint_provider_id?: string | null;
   semantic_available: boolean;
   embedding_fallback: boolean;
   embedding_error?: string | null;
