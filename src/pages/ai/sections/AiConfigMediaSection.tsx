@@ -37,6 +37,10 @@ import { Switch } from "@/components/ui/switch";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { AI_NCM_DEFAULTS, aiRuntimeLayoutLabel } from "@/config/aiConstants";
 import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
+import {
+  resolveAiInstallPrimary,
+  showAiInstallBootstrapSecondary,
+} from "@/utils/aiInstallPrimary";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 function notifyOk(message: string) {
@@ -696,6 +700,8 @@ export default function AiConfigMediaSection() {
   const canClone = installQ.data?.can_clone === true;
   const canBootstrap = installQ.data?.can_bootstrap === true;
   const canUpdate = installQ.data?.can_update === true;
+  const installPrimary = resolveAiInstallPrimary({ canClone, canBootstrap, canUpdate });
+  const showBootstrapSecondary = showAiInstallBootstrapSecondary({ canBootstrap, canUpdate });
   const inDocker = installQ.data?.in_docker === true;
   const runtimeLayout = runtimeQ.data?.layout || installQ.data?.layout || "";
   const localInstallUi = canManageRuntime || canClone || canBootstrap;
@@ -816,7 +822,7 @@ export default function AiConfigMediaSection() {
             title="安装与运行"
             subtitle={
               localInstallUi
-                ? "首次建议「下载并安装」，完成后点「启动」。"
+                ? "未安装点「下载并安装」；已安装点「更新 Runtime」。仅重装依赖用于修复。"
                 : "Docker / 远端部署时，请在宿主机管理媒体服务。"
             }
             bodyClassName="!grid-cols-1 gap-3"
@@ -869,31 +875,24 @@ export default function AiConfigMediaSection() {
                   <Button size="sm" variant="outline" disabled={busy || !canManageRuntime} onClick={() => { void stopMut.mutateAsync(); }}>停止</Button>
                   <Button
                     size="sm"
-                    variant={canClone ? "default" : "outline"}
-                    disabled={busy || !canClone}
-                    title="首次使用：拉取媒体服务源码并安装依赖"
-                    onClick={() => { void installMut.mutateAsync("clone_and_bootstrap"); }}
+                    variant={installPrimary.enabled && (canClone || canUpdate) ? "default" : "outline"}
+                    disabled={busy || !installPrimary.enabled}
+                    title={installPrimary.title}
+                    onClick={() => { void installMut.mutateAsync(installPrimary.action); }}
                   >
-                    下载并安装
+                    {installPrimary.label}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy || !canBootstrap}
-                    title="已有源码目录时：只重装依赖"
-                    onClick={() => { void installMut.mutateAsync("bootstrap"); }}
-                  >
-                    安装依赖
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy || !canUpdate}
-                    title="更新本机已安装的媒体服务，并重新安装依赖"
-                    onClick={() => { void installMut.mutateAsync("update"); }}
-                  >
-                    更新媒体服务
-                  </Button>
+                  {showBootstrapSecondary ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busy || !canBootstrap}
+                      title="只重跑 bootstrap（不 git pull），用于修复依赖或切换 GPU 开关后重装"
+                      onClick={() => { void installMut.mutateAsync("bootstrap"); }}
+                    >
+                      仅重装依赖
+                    </Button>
+                  ) : null}
                 </div>
               </>
             ) : (

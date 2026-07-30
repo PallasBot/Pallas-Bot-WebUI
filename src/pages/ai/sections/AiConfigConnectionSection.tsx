@@ -22,6 +22,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
+import {
+  resolveAiInstallPrimary,
+  showAiInstallBootstrapSecondary,
+} from "@/utils/aiInstallPrimary";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 type Panel = "connection" | "runtime";
@@ -136,6 +140,13 @@ export default function AiConfigConnectionSection() {
   const busy =
     saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || installMut.isPending;
 
+  const canClone = installQ.data?.can_clone === true;
+  const canBootstrap = installQ.data?.can_bootstrap === true;
+  const canUpdate = installQ.data?.can_update === true;
+  const canManageRuntime = runtimeQ.data?.can_manage === true;
+  const installPrimary = resolveAiInstallPrimary({ canClone, canBootstrap, canUpdate });
+  const showBootstrapSecondary = showAiInstallBootstrapSecondary({ canBootstrap, canUpdate });
+
   const chromeMiddle = useMemo(
     () => (
       <SegTabs
@@ -204,40 +215,37 @@ export default function AiConfigConnectionSection() {
               </label>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy} onClick={() => void startMut.mutateAsync()}>
+              <Button size="sm" disabled={busy || !canManageRuntime} onClick={() => void startMut.mutateAsync()}>
                 启动
               </Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => void stopMut.mutateAsync()}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || !canManageRuntime}
+                onClick={() => void stopMut.mutateAsync()}
+              >
                 停止
               </Button>
               <Button
                 size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={() => void installMut.mutateAsync("clone_and_bootstrap")}
+                variant={installPrimary.enabled && (canClone || canUpdate) ? "default" : "outline"}
+                disabled={busy || !installPrimary.enabled}
+                title={installPrimary.title}
+                onClick={() => void installMut.mutateAsync(installPrimary.action)}
               >
-                安装并引导
+                {installPrimary.label}
               </Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => void installMut.mutateAsync("clone")}>
-                仅克隆
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={() => void installMut.mutateAsync("bootstrap")}
-              >
-                仅引导
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy || installQ.data?.can_update !== true}
-                title="托管目录：git pull --ff-only 后重新 bootstrap"
-                onClick={() => void installMut.mutateAsync("update")}
-              >
-                更新媒体服务
-              </Button>
+              {showBootstrapSecondary ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy || !canBootstrap}
+                  title="只重跑 bootstrap（不 git pull），用于修复依赖或切换 GPU 开关后重装"
+                  onClick={() => void installMut.mutateAsync("bootstrap")}
+                >
+                  仅重装依赖
+                </Button>
+              ) : null}
             </div>
           </StateBlock>
         ) : null}
