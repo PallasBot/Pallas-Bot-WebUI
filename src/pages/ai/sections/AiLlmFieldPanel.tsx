@@ -23,6 +23,22 @@ function boolFromField(value: string | undefined): boolean {
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 }
 
+/** Embedding 线路仅远程（openai / 自动且模型非 stub）需要。 */
+function embeddingRemoteGatewayNeeded(values: Record<string, string>): boolean {
+  const provider = String(values.llm_embedding_provider ?? "").trim().toLowerCase();
+  if (provider === "openai") return true;
+  if (provider === "stub" || provider === "local") return false;
+  const model = String(values.llm_embedding_model ?? "stub").trim().toLowerCase();
+  return Boolean(model && model !== "stub");
+}
+
+const EMBEDDING_GATEWAY_ONLY_KEYS = new Set([
+  "llm_embedding_provider_id",
+  "llm_embedding_base_url",
+  "llm_embedding_api_key",
+  "llm_embedding_api_backends",
+]);
+
 function fieldsByNames(fields: PluginConfigField[], names: readonly string[]): PluginConfigField[] {
   const byName = new Map(fields.map((f) => [f.name, f]));
   const out: PluginConfigField[] = [];
@@ -76,8 +92,13 @@ export default function AiLlmFieldPanel({
 
   const dirty = useMemo(() => JSON.stringify(fieldValues) !== baseline, [fieldValues, baseline]);
   const masterOn = masterKey ? boolFromField(fieldValues[masterKey]) : true;
+  const showEmbeddingGateway = useMemo(
+    () => embeddingRemoteGatewayNeeded(fieldValues),
+    [fieldValues],
+  );
 
   const gatewayWidgets = useMemo(() => {
+    if (!showEmbeddingGateway) return [];
     const detailSet = new Set(detailKeys);
     const out: Array<{ anchor: string; binding: ProviderGatewayBinding }> = [];
     for (const field of cfgQ.data?.fields || []) {
@@ -89,7 +110,7 @@ export default function AiLlmFieldPanel({
       if (binding) out.push({ anchor: field.name, binding });
     }
     return out;
-  }, [cfgQ.data?.fields, detailKeys]);
+  }, [cfgQ.data?.fields, detailKeys, showEmbeddingGateway]);
 
   const gatewayHidden = useMemo(() => {
     const set = new Set<string>();
@@ -98,8 +119,12 @@ export default function AiLlmFieldPanel({
         set.add(key);
       }
     }
+    // 非远程时仍隐藏线路散字段，避免占位/本机时露出无用的地址密钥
+    if (!showEmbeddingGateway) {
+      for (const key of EMBEDDING_GATEWAY_ONLY_KEYS) set.add(key);
+    }
     return set;
-  }, [gatewayWidgets]);
+  }, [gatewayWidgets, showEmbeddingGateway]);
 
   const detailFields = useMemo(() => {
     const listed = fieldsByNames(cfgQ.data?.fields || [], detailKeys);
