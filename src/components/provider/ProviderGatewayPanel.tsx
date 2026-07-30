@@ -573,22 +573,24 @@ export default function ProviderGatewayPanel({
             if (!next) closeEditor();
           }}
         >
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 w-full gap-1.5 sm:w-auto"
-              disabled={busy}
-              onClick={(e) => {
-                e.preventDefault();
-                startAddGateway();
-              }}
-            >
-              <Plus className="size-3.5" />
-              添加网关
-            </Button>
-          </PopoverTrigger>
+          {binding.mode === "unified" || binding.backends ? (
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 w-full gap-1.5 sm:w-auto"
+                disabled={busy}
+                onClick={(e) => {
+                  e.preventDefault();
+                  startAddGateway();
+                }}
+              >
+                <Plus className="size-3.5" />
+                添加网关
+              </Button>
+            </PopoverTrigger>
+          ) : null}
           <PopoverContent
             align="start"
             side="bottom"

@@ -907,6 +907,29 @@ export interface LlmModelAdminStatus {
   local_moe_models?: Record<string, string>;
 }
 
+/** Embedding 提供方诊断（common-config/llm/embedding-status）。 */
+export interface LlmEmbeddingStatus {
+  embedding_provider: string;
+  embedding_kind?: string;
+  embedding_model: string;
+  resolved_model?: string;
+  embedding_provider_id?: string | null;
+  endpoint_provider_id?: string | null;
+  semantic_available: boolean;
+  embedding_fallback: boolean;
+  embedding_error?: string | null;
+  available_providers?: string[];
+  local_dependency_ready?: boolean;
+  local_default_model?: string | null;
+  remote_default_model?: string | null;
+  endpoint_configured?: boolean;
+  trigger_cache_count?: number;
+  trigger_cache_model?: string | null;
+  probe_ok?: boolean | null;
+  probe_dims?: number | null;
+  probe_ms?: number | null;
+}
+
 export type ConsoleLoginChangeResult =
   OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/security/console-login"]["post"]>;
 

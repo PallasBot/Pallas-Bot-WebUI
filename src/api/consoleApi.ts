@@ -73,6 +73,7 @@ import type {
   CommonConfigSectionMeta,
   LlmModelAdminModelResult,
   LlmModelAdminStatus,
+  LlmEmbeddingStatus,
   LlmRuntimeOverviewData,
   LlmLocalRoutingConfig,
   LlmProvidersConfig,
@@ -1721,6 +1722,18 @@ export async function fetchLlmModelAdminStatus(): Promise<LlmModelAdminStatus> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/model-admin"]["get"]>(
     "/common-config/llm/model-admin",
   )) as LlmModelAdminStatus;
+}
+
+export async function fetchLlmEmbeddingStatus(): Promise<LlmEmbeddingStatus> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/embedding-status"]["get"]
+  >("/common-config/llm/embedding-status")) as LlmEmbeddingStatus;
+}
+
+export async function postLlmEmbeddingProbe(text = "ping"): Promise<LlmEmbeddingStatus> {
+  return (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/embedding-status/probe"]["post"]
+  >("/common-config/llm/embedding-status/probe", { text }, { timeout: 30_000 })) as LlmEmbeddingStatus;
 }
 
 export async function postLlmModelAdminSwitch(

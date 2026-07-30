@@ -32,6 +32,7 @@ import {
   LLM_SESSION_DETAIL_KEYS,
 } from "@/config/configFieldLabels";
 import AiLlmFieldPanel from "@/pages/ai/sections/AiLlmFieldPanel";
+import AiEmbeddingStatusCard from "@/pages/ai/sections/AiEmbeddingStatusCard";
 
 type ContentPanel = "form" | "session" | "memory" | "budget" | "arknights" | "sources" | "tools";
 type EditMode = "form" | "raw";
@@ -229,18 +230,21 @@ export default function AiConfigDialogueSection() {
         />
       ) : null}
       {contentPanel === "memory" ? (
-        <AiLlmFieldPanel
-          icon={Brain}
-          title="记忆"
-          lead="群记忆检索、向量与自动沉淀。关闭后不注入记忆。"
-          masterKey="llm_memory_rag_enabled"
-          masterLabel="启用记忆"
-          disabledHint="记忆已关；开启后可调检索与沉淀参数。"
-          detailKeys={LLM_MEMORY_DETAIL_KEYS}
-          savedMessage="记忆配置已保存"
-          inlineSave={false}
-          onSaveState={onSaveState}
-        />
+        <div className="space-y-4">
+          <AiEmbeddingStatusCard />
+          <AiLlmFieldPanel
+            icon={Brain}
+            title="记忆"
+            lead="群记忆检索、向量与自动沉淀。关闭后不注入记忆。"
+            masterKey="llm_memory_rag_enabled"
+            masterLabel="启用记忆"
+            disabledHint="记忆已关；开启后可调检索与沉淀参数。"
+            detailKeys={LLM_MEMORY_DETAIL_KEYS}
+            savedMessage="记忆配置已保存"
+            inlineSave={false}
+            onSaveState={onSaveState}
+          />
+        </div>
       ) : null}
       {contentPanel === "budget" ? (
         <AiLlmFieldPanel

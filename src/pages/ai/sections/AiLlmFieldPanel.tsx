@@ -6,11 +6,17 @@ import { fetchCommonConfig, putCommonConfig, type PluginConfigField } from "@/ap
 import type { AiConfigSaveStateHandler } from "@/components/ai/aiConfigSaveState";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell";
+import ProviderGatewayPanel from "@/components/provider/ProviderGatewayPanel";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { collectFieldValues, fieldValuesFromConfig } from "@/utils/pluginConfigFieldModel";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import {
+  normalizeProviderGatewayBinding,
+  providerGatewayBoundFieldNames,
+  type ProviderGatewayBinding,
+} from "@/utils/providerGateways";
 
 function boolFromField(value: string | undefined): boolean {
   const raw = String(value ?? "").trim().toLowerCase();
@@ -70,10 +76,37 @@ export default function AiLlmFieldPanel({
 
   const dirty = useMemo(() => JSON.stringify(fieldValues) !== baseline, [fieldValues, baseline]);
   const masterOn = masterKey ? boolFromField(fieldValues[masterKey]) : true;
-  const detailFields = useMemo(
-    () => fieldsByNames(cfgQ.data?.fields || [], detailKeys),
-    [cfgQ.data?.fields, detailKeys],
-  );
+
+  const gatewayWidgets = useMemo(() => {
+    const detailSet = new Set(detailKeys);
+    const out: Array<{ anchor: string; binding: ProviderGatewayBinding }> = [];
+    for (const field of cfgQ.data?.fields || []) {
+      if (!detailSet.has(field.name)) continue;
+      if (field.ui_widget !== "provider_gateway") continue;
+      const binding = normalizeProviderGatewayBinding(field.ui_gateway, {
+        anchorField: field.name,
+      });
+      if (binding) out.push({ anchor: field.name, binding });
+    }
+    return out;
+  }, [cfgQ.data?.fields, detailKeys]);
+
+  const gatewayHidden = useMemo(() => {
+    const set = new Set<string>();
+    for (const widget of gatewayWidgets) {
+      for (const key of providerGatewayBoundFieldNames(widget.binding, widget.anchor)) {
+        set.add(key);
+      }
+    }
+    return set;
+  }, [gatewayWidgets]);
+
+  const detailFields = useMemo(() => {
+    const listed = fieldsByNames(cfgQ.data?.fields || [], detailKeys);
+    return listed.filter(
+      (f) => f.ui_widget !== "provider_gateway" && !gatewayHidden.has(f.name),
+    );
+  }, [cfgQ.data?.fields, detailKeys, gatewayHidden]);
 
   const saveMut = useMutation({
     mutationFn: () => {
@@ -85,12 +118,17 @@ export default function AiLlmFieldPanel({
       setBaseline(JSON.stringify(fieldValues));
       await qc.invalidateQueries({ queryKey: ["common-config", "llm"] });
       await qc.invalidateQueries({ queryKey: ["common-config-raw", "llm"] });
+      await qc.invalidateQueries({ queryKey: ["llm-embedding-status"] });
     },
     onError: (e) => pushConsoleToast(axiosErrorDetail(e) || "保存失败", "err"),
   });
 
   function setFieldValue(name: string, value: string) {
     setFieldValues((prev) => ({ ...prev, [name]: value }));
+  }
+
+  async function patchGatewayFields(patch: Record<string, string>) {
+    setFieldValues((prev) => ({ ...prev, ...patch }));
   }
 
   const saveMutRef = useRef(saveMut);
@@ -142,15 +180,26 @@ export default function AiLlmFieldPanel({
             <span>{disabledHint || "已关闭；开启后可调整下方参数。"}</span>
           </div>
         ) : (
-          <div className="plugin-config-form-grid">
-            {detailFields.map((field) => (
-              <PluginConfigFieldShell
-                key={field.name}
-                field={field}
-                modelValue={fieldValues[field.name] ?? ""}
-                onValueChange={(v) => setFieldValue(field.name, v)}
+          <div className="space-y-4">
+            {gatewayWidgets.map((widget) => (
+              <ProviderGatewayPanel
+                key={widget.anchor}
+                binding={widget.binding}
+                fieldValues={fieldValues}
+                onFieldsPatch={patchGatewayFields}
+                busy={saveMut.isPending}
               />
             ))}
+            <div className="plugin-config-form-grid">
+              {detailFields.map((field) => (
+                <PluginConfigFieldShell
+                  key={field.name}
+                  field={field}
+                  modelValue={fieldValues[field.name] ?? ""}
+                  onValueChange={(v) => setFieldValue(field.name, v)}
+                />
+              ))}
+            </div>
           </div>
         )}
 
