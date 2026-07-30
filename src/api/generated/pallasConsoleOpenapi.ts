@@ -2233,6 +2233,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/embedding-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Embedding Status Get */
+        get: operations["_llm_embedding_status_get_pallas_api_common_config_llm_embedding_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/embedding-status/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Embedding Status Probe */
+        post: operations["_llm_embedding_status_probe_pallas_api_common_config_llm_embedding_status_probe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/model-admin/switch": {
         parameters: {
             query?: never;
@@ -4939,6 +4973,18 @@ export interface components {
             /** Error */
             error?: null;
         };
+        /** _ApiOkResponse[_LlmEmbeddingStatusData] */
+        _ApiOkResponse__LlmEmbeddingStatusData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_LlmEmbeddingStatusData"];
+            /** Error */
+            error?: null;
+        };
         /** _ApiOkResponse[_LlmProviderTestData] */
         _ApiOkResponse__LlmProviderTestData_: {
             /**
@@ -5258,6 +5304,71 @@ export interface components {
         _HelpMenuVisibilityBody: {
             /** Hidden Plugins */
             hidden_plugins?: string[];
+        };
+        /** _LlmEmbeddingProbeBody */
+        _LlmEmbeddingProbeBody: {
+            /**
+             * Text
+             * @default ping
+             */
+            text: string;
+        };
+        /** _LlmEmbeddingStatusData */
+        _LlmEmbeddingStatusData: {
+            /**
+             * Embedding Provider
+             * @default
+             */
+            embedding_provider: string;
+            /**
+             * Embedding Kind
+             * @default
+             */
+            embedding_kind: string;
+            /**
+             * Embedding Model
+             * @default
+             */
+            embedding_model: string;
+            /**
+             * Resolved Model
+             * @default
+             */
+            resolved_model: string;
+            /**
+             * Semantic Available
+             * @default false
+             */
+            semantic_available: boolean;
+            /**
+             * Embedding Fallback
+             * @default false
+             */
+            embedding_fallback: boolean;
+            /** Embedding Error */
+            embedding_error?: string | null;
+            /** Available Providers */
+            available_providers?: string[];
+            /**
+             * Local Dependency Ready
+             * @default false
+             */
+            local_dependency_ready: boolean;
+            /** Local Default Model */
+            local_default_model?: string | null;
+            /**
+             * Trigger Cache Count
+             * @default 0
+             */
+            trigger_cache_count: number;
+            /** Trigger Cache Model */
+            trigger_cache_model?: string | null;
+            /** Probe Ok */
+            probe_ok?: boolean | null;
+            /** Probe Dims */
+            probe_dims?: number | null;
+            /** Probe Ms */
+            probe_ms?: number | null;
         };
         /** _LlmHealthProviderRow */
         _LlmHealthProviderRow: {
@@ -11569,6 +11680,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_embedding_status_get_pallas_api_common_config_llm_embedding_status_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__LlmEmbeddingStatusData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_embedding_status_probe_pallas_api_common_config_llm_embedding_status_probe_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["_LlmEmbeddingProbeBody"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__LlmEmbeddingStatusData_"];
                 };
             };
             /** @description Validation Error */

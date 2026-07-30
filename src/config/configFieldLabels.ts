@@ -48,6 +48,7 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_memory_rag_enabled: "群记忆检索",
   llm_vector_retrieve: "记忆/知识检索模式",
   llm_embedding_model: "Embedding 模型",
+  llm_embedding_provider: "Embedding 从哪里算",
   llm_memory_rag_top_k: "记忆检索条数",
   llm_memory_max_per_group: "每群记忆上限",
   llm_memory_content_max_len: "单条记忆字数上限",
@@ -221,6 +222,7 @@ export const LLM_SESSION_DETAIL_KEYS = [
 
 export const LLM_MEMORY_DETAIL_KEYS = [
   "llm_vector_retrieve",
+  "llm_embedding_provider",
   "llm_embedding_model",
   "llm_memory_rag_top_k",
   "llm_memory_max_per_group",
@@ -253,6 +255,7 @@ export const HIDDEN_LLM_STRATEGY_FIELDS = new Set([
   "llm_chat_char_budget",
   "llm_memory_rag_enabled",
   "llm_vector_retrieve",
+  "llm_embedding_provider",
   "llm_embedding_model",
   "llm_memory_rag_top_k",
   "llm_memory_max_per_group",
