@@ -3453,10 +3453,8 @@ export async function postWebuiAutoUpdateAck(): Promise<WebuiAutoUpdateStatusDat
   >("/update/auto/ack", {})) as WebuiAutoUpdateStatusData;
 }
 
-export async function postWebuiAutoUpdateRunOnce(): Promise<WebuiAutoUpdateStatusData> {
-  return (await consoleOpenapiPost<
-    ConsoleOpenapiPaths["/pallas/api/update/auto/run-once"]["post"]
-  >("/update/auto/run-once", {})) as WebuiAutoUpdateStatusData;
+export async function postWebuiAutoUpdateRunOnce(): Promise<UpdateApplyJobStartData> {
+  return (await consoleOpenapiPost("/update/auto/run-once", {})) as UpdateApplyJobStartData;
 }
 
 export async function postSystemRestart(options?: {

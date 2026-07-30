@@ -2139,13 +2139,13 @@ export interface UpdateCheckData {
 
 export interface UpdateApplyJobStartData {
   job_id: string;
-  kind: "webui" | "bot";
+  kind: "webui" | "bot" | "auto";
   restart?: boolean;
 }
 
 export interface UpdateApplyJobSnapshot {
   job_id: string;
-  kind: "webui" | "bot";
+  kind: "webui" | "bot" | "auto";
   phase: "queued" | "running" | "done" | "failed";
   message: string;
   progress_percent: number;
@@ -2154,6 +2154,20 @@ export interface UpdateApplyJobSnapshot {
     version?: string;
     message?: string;
     restart_scheduled?: boolean;
+    tick?: {
+      result?: string;
+      reason?: string;
+      error?: string;
+      targets?: Record<
+        string,
+        {
+          result?: string;
+          error?: string;
+          reason?: string;
+        }
+      >;
+    };
+    last_error?: string | null;
   } | null;
   error?: string;
   restart?: boolean;

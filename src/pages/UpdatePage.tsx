@@ -32,6 +32,7 @@ import PageMasthead from "@/components/PageMasthead";
 import ReadmeMarkdown from "@/components/ReadmeMarkdown";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import ConsoleSwitch from "@/components/ConsoleSwitch";
+import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import UiInput from "@/components/ui/UiInput";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -71,15 +79,16 @@ const UPDATE_PANEL_HD =
 const UPDATE_PANEL_BD = "panel__bd update-page__bd update-page__bd--release space-y-0 px-4 pb-4 pt-3";
 const UPDATE_STATUS_PILL = "update-page__status-pill";
 
-type ApplyKind = "web" | "bot";
+type ManualApplyKind = "web" | "bot";
+type ApplyKind = ManualApplyKind | "auto";
 
 type PendingChangelog = {
-  kind: ApplyKind;
+  kind: ManualApplyKind;
   tag: string;
 };
 
 type ChangelogView = {
-  kind: ApplyKind;
+  kind: ManualApplyKind;
   tag: string;
   markdown: string;
   changelogUrl: string;
@@ -115,7 +124,7 @@ function clearPendingChangelog() {
   }
 }
 
-function applyKindToTarget(kind: ApplyKind): UpdateChangelogTarget {
+function applyKindToTarget(kind: ManualApplyKind): UpdateChangelogTarget {
   return kind === "bot" ? "bot" : "webui";
 }
 
@@ -355,7 +364,7 @@ export default function UpdatePage() {
     });
   }, [location.hash, q.isLoading, q.dataUpdatedAt]);
 
-  async function openChangelogDialog(kind: ApplyKind, tag: string) {
+  async function openChangelogDialog(kind: ManualApplyKind, tag: string) {
     setChangelog({
       kind,
       tag,
@@ -394,7 +403,7 @@ export default function UpdatePage() {
     void openChangelogDialog(pending.kind, pending.tag);
   }, []);
 
-  function queueChangelogAfterUpdate(kind: ApplyKind, tag: string) {
+  function queueChangelogAfterUpdate(kind: ManualApplyKind, tag: string) {
     if (!readPrefs().showUpdateChangelog) return;
     writePendingChangelog({ kind, tag });
   }
@@ -496,48 +505,75 @@ export default function UpdatePage() {
   }
 
   async function runAutoOnce() {
-    setAutoBusy(true);
+    setApplyKind("auto");
+    setApplyPercent(1);
+    setApplyHint("排队中…");
     setErr("");
     setMsg("");
     try {
-      const data = await postWebuiAutoUpdateRunOnce();
+      const started = await postWebuiAutoUpdateRunOnce();
+      if (!started.job_id) throw new Error("未返回更新任务 ID");
+      const done = await waitForUpdateApplyJob(started.job_id, openUpdateApplyJobEventSource, (p) => {
+        setApplyPercent(p.percent);
+        if (p.message) setApplyHint(p.message);
+      });
+      setApplyPercent(100);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] }),
         qc.invalidateQueries({ queryKey: ["update-check-all"] }),
       ]);
-      const tick = data.tick;
+      const tick = done.result?.tick;
       const result = String(tick?.result || "");
       const targetResults = tick?.targets || {};
       const appliedKinds = Object.entries(targetResults)
         .filter(([, v]) => ["applied", "partial"].includes(String(v?.result || "")))
         .map(([k]) => k);
       if (result === "applied" || appliedKinds.length) {
-        const label = appliedKinds.length ? `已自动更新：${appliedKinds.join(" / ")}` : "已自动更新";
+        const label = appliedKinds.length ? `已自动更新：${appliedKinds.join(" / ")}` : done.message || "已自动更新";
         setMsg(label);
         pushConsoleToast(label, "ok");
         if (appliedKinds.includes("webui") || appliedKinds.includes("bot") || appliedKinds.includes("plugins")) {
           window.setTimeout(() => window.location.reload(), 1500);
+        } else {
+          setApplyKind(null);
+          setApplyPercent(0);
+          setApplyHint("");
         }
         return;
       }
       if (result === "up_to_date") {
-        setMsg("各项均已是最新或无可应用更新");
+        setMsg(done.message || "各项均已是最新或无可应用更新");
         pushConsoleToast("已是最新", "ok");
+        setApplyKind(null);
+        setApplyPercent(0);
+        setApplyHint("");
         return;
       }
       if (result === "skipped") {
-        setMsg("本轮已跳过（未开启或不可用）");
+        setMsg(done.message || "本轮已跳过（未开启或不可用）");
+        setApplyKind(null);
+        setApplyPercent(0);
+        setApplyHint("");
         return;
       }
-      const fail = String(tick?.error || data.last_error || "自动更新失败");
+      const fail = String(tick?.error || done.result?.last_error || done.message || "自动更新失败");
       setErr(fail);
       pushConsoleToast(fail, "err");
+      setApplyKind(null);
+      setApplyPercent(0);
+      setApplyHint("");
     } catch (e) {
-      const detail = axiosErrorDetail(e) || (e instanceof Error ? e.message : String(e));
+      const detail =
+        e instanceof InstallJobFailedError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : axiosErrorDetail(e);
       setErr(detail);
       pushConsoleToast(detail, "err");
-    } finally {
-      setAutoBusy(false);
+      setApplyKind(null);
+      setApplyPercent(0);
+      setApplyHint("");
     }
   }
 
@@ -716,176 +752,6 @@ export default function UpdatePage() {
       />
 
       <div className="update-page__panels">
-        <Card id="console-update-auto" className={UPDATE_PANEL}>
-          <CardHeader className={UPDATE_PANEL_HD}>
-            <CardTitle className="panel__title flex min-w-0 flex-wrap items-center gap-1.5">
-              <PanelTitleIcon icon={Timer} />
-              自动更新
-            </CardTitle>
-          </CardHeader>
-          <CardContent className={UPDATE_PANEL_BD}>
-            <div className="update-page__auto" id="console-update-webui-auto">
-              <p className="update-page__auto-desc muted" style={{ marginTop: 0 }}>
-                共用一套调度。Bot 仅在干净正式版（release_tag）自动 checkout；开发克隆 / Docker / 脏树只检查不应用。
-                跟随 commit 的开发通道另开，不进默认自动。
-              </p>
-              <div className="update-page__auto-toggles">
-                <div className="update-page__auto-row">
-                  <div className="update-page__auto-copy min-w-0">
-                    <div className="update-page__auto-title">控制台 WebUI</div>
-                    <p className="update-page__auto-desc muted">拉取 Release 的 dist.zip</p>
-                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "webui")}</p>
-                  </div>
-                  <ConsoleSwitch
-                    checked={autoDraft.webui_enabled}
-                    disabled={autoBusy || busy}
-                    onCheckedChange={(next) => void saveAutoUpdate({ webui_enabled: next })}
-                    ariaLabel="自动更新控制台"
-                    showLabel={false}
-                  />
-                </div>
-                <div className="update-page__auto-row">
-                  <div className="update-page__auto-copy min-w-0">
-                    <div className="update-page__auto-title">Bot 本体</div>
-                    <p className="update-page__auto-desc muted">
-                      仅干净正式版；当前{" "}
-                      {autoQ.data?.bot?.deployment_mode || bot?.deployment_mode || "—"}
-                      {autoQ.data?.bot?.auto_apply_eligible === false ? "（本机不自动应用）" : ""}
-                    </p>
-                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "bot")}</p>
-                  </div>
-                  <ConsoleSwitch
-                    checked={autoDraft.bot_enabled}
-                    disabled={autoBusy || busy}
-                    onCheckedChange={(next) => void saveAutoUpdate({ bot_enabled: next })}
-                    ariaLabel="自动更新 Bot"
-                    showLabel={false}
-                  />
-                </div>
-                <div className="update-page__auto-row">
-                  <div className="update-page__auto-copy min-w-0">
-                    <div className="update-page__auto-title">已安装插件</div>
-                    <p className="update-page__auto-desc muted">官方扩展 + 社区插件有更新时自动拉；完成后尝试重启</p>
-                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "plugins")}</p>
-                  </div>
-                  <ConsoleSwitch
-                    checked={autoDraft.plugins_enabled}
-                    disabled={autoBusy || busy}
-                    onCheckedChange={(next) => void saveAutoUpdate({ plugins_enabled: next })}
-                    ariaLabel="自动更新插件"
-                    showLabel={false}
-                  />
-                </div>
-              </div>
-              <div className="update-page__auto-grid">
-                <label className="update-page__auto-field">
-                  <span className="update-page__auto-field-label">共用调度</span>
-                  <select
-                    className="update-page__auto-select"
-                    value={autoDraft.schedule_mode}
-                    disabled={
-                      autoBusy ||
-                      busy ||
-                      !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
-                    }
-                    onChange={(e) => {
-                      const mode = e.target.value === "cron" ? "cron" : "interval";
-                      void saveAutoUpdate({ schedule_mode: mode });
-                    }}
-                  >
-                    <option value="interval">按间隔</option>
-                    <option value="cron">每天定时</option>
-                  </select>
-                </label>
-                {autoDraft.schedule_mode === "interval" ? (
-                  <label className="update-page__auto-field">
-                    <span className="update-page__auto-field-label">间隔（小时）</span>
-                    <UiInput
-                      type="number"
-                      min={1}
-                      max={168}
-                      className="update-page__auto-input"
-                      value={String(autoDraft.interval_hours)}
-                      disabled={
-                        autoBusy ||
-                        busy ||
-                        !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
-                      }
-                      onValueChange={(v) => {
-                        const n = Math.max(1, Math.min(168, Number(v) || 6));
-                        setAutoDraft((prev) => ({ ...prev, interval_hours: n }));
-                      }}
-                      onBlur={() => {
-                        if ((autoQ.data?.interval_hours || 6) === autoDraft.interval_hours) return;
-                        void saveAutoUpdate({ interval_hours: autoDraft.interval_hours });
-                      }}
-                    />
-                  </label>
-                ) : (
-                  <label className="update-page__auto-field">
-                    <span className="update-page__auto-field-label">每天时刻</span>
-                    <div className="update-page__auto-cron">
-                      <UiInput
-                        type="number"
-                        min={0}
-                        max={23}
-                        className="update-page__auto-input"
-                        value={String(autoDraft.cron_hour)}
-                        disabled={
-                          autoBusy ||
-                          busy ||
-                          !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
-                        }
-                        onValueChange={(v) => {
-                          const n = Math.max(0, Math.min(23, Number(v) || 0));
-                          setAutoDraft((prev) => ({ ...prev, cron_hour: n }));
-                        }}
-                        onBlur={() => {
-                          if ((autoQ.data?.cron_hour || 0) === autoDraft.cron_hour) return;
-                          void saveAutoUpdate({ cron_hour: autoDraft.cron_hour });
-                        }}
-                      />
-                      <span className="muted">:</span>
-                      <UiInput
-                        type="number"
-                        min={0}
-                        max={59}
-                        className="update-page__auto-input"
-                        value={String(autoDraft.cron_minute)}
-                        disabled={
-                          autoBusy ||
-                          busy ||
-                          !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
-                        }
-                        onValueChange={(v) => {
-                          const n = Math.max(0, Math.min(59, Number(v) || 0));
-                          setAutoDraft((prev) => ({ ...prev, cron_minute: n }));
-                        }}
-                        onBlur={() => {
-                          if ((autoQ.data?.cron_minute || 0) === autoDraft.cron_minute) return;
-                          void saveAutoUpdate({ cron_minute: autoDraft.cron_minute });
-                        }}
-                      />
-                    </div>
-                  </label>
-                )}
-              </div>
-              <div className="update-page__auto-status-row">
-                <span className="muted update-page__auto-status">{formatAutoStatus(autoQ.data)}</span>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={autoBusy || busy}
-                  onClick={() => void runAutoOnce()}
-                >
-                  {autoBusy ? "执行中…" : "立即检查并应用"}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         <Card id="console-update-webui" className={UPDATE_PANEL}>
           <CardHeader className={UPDATE_PANEL_HD}>
             <CardTitle className="panel__title flex min-w-0 flex-wrap items-center gap-1.5">
@@ -1133,6 +999,184 @@ export default function UpdatePage() {
             ) : null}
           </CardContent>
         </Card>
+        <Card id="console-update-auto" className={UPDATE_PANEL}>
+          <CardHeader className={UPDATE_PANEL_HD}>
+            <CardTitle className="panel__title flex min-w-0 flex-wrap items-center gap-1.5">
+              <PanelTitleIcon icon={Timer} />
+              自动更新
+            </CardTitle>
+          </CardHeader>
+          <CardContent className={UPDATE_PANEL_BD}>
+            <div className="update-page__auto" id="console-update-webui-auto">
+              <p className="update-page__auto-lead muted">
+                按下方开关与共用日程自动检查并应用更新。默认全部关闭；开启后仍可随时点「立即检查并应用」。
+              </p>
+              <div className="update-page__auto-toggles">
+                <div className="update-page__auto-row">
+                  <div className="update-page__auto-copy min-w-0">
+                    <div className="update-page__auto-title">控制台 WebUI</div>
+                    <p className="update-page__auto-desc muted">从正式版 Release 下载前端包并替换静态资源</p>
+                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "webui")}</p>
+                  </div>
+                  <ConsoleSwitch
+                    checked={autoDraft.webui_enabled}
+                    disabled={autoBusy || busy}
+                    onCheckedChange={(next) => void saveAutoUpdate({ webui_enabled: next })}
+                    ariaLabel="自动更新控制台"
+                    showLabel={false}
+                  />
+                </div>
+                <div className="update-page__auto-row">
+                  <div className="update-page__auto-copy min-w-0">
+                    <div className="update-page__auto-title">Bot 本体</div>
+                    <p className="update-page__auto-desc muted">
+                      仅干净正式版部署会自动升级并重启；当前为{" "}
+                      {botDeployLabel(autoQ.data?.bot?.deployment_mode || bot?.deployment_mode)}
+                      {autoQ.data?.bot?.auto_apply_eligible === false ? "，本机不会自动应用" : ""}
+                    </p>
+                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "bot")}</p>
+                  </div>
+                  <ConsoleSwitch
+                    checked={autoDraft.bot_enabled}
+                    disabled={autoBusy || busy}
+                    onCheckedChange={(next) => void saveAutoUpdate({ bot_enabled: next })}
+                    ariaLabel="自动更新 Bot"
+                    showLabel={false}
+                  />
+                </div>
+                <div className="update-page__auto-row">
+                  <div className="update-page__auto-copy min-w-0">
+                    <div className="update-page__auto-title">已安装插件</div>
+                    <p className="update-page__auto-desc muted">
+                      有新版本时更新官方扩展与社区插件，完成后尝试重启 Bot
+                    </p>
+                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "plugins")}</p>
+                  </div>
+                  <ConsoleSwitch
+                    checked={autoDraft.plugins_enabled}
+                    disabled={autoBusy || busy}
+                    onCheckedChange={(next) => void saveAutoUpdate({ plugins_enabled: next })}
+                    ariaLabel="自动更新插件"
+                    showLabel={false}
+                  />
+                </div>
+              </div>
+              <div className="update-page__auto-grid">
+                <div className="update-page__auto-field">
+                  <span className="update-page__auto-field-label">共用调度</span>
+                  <Select
+                    value={autoDraft.schedule_mode}
+                    disabled={
+                      autoBusy ||
+                      busy ||
+                      !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                    }
+                    onValueChange={(v) => {
+                      const mode = v === "cron" ? "cron" : "interval";
+                      void saveAutoUpdate({ schedule_mode: mode });
+                    }}
+                  >
+                    <SelectTrigger className={cn(CHROME_SELECT_TRIGGER, "w-full")} aria-label="共用调度">
+                      <SelectValue placeholder="选择调度方式" />
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      <SelectItem value="interval">按间隔</SelectItem>
+                      <SelectItem value="cron">每天定时</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {autoDraft.schedule_mode === "interval" ? (
+                  <label className="update-page__auto-field">
+                    <span className="update-page__auto-field-label">间隔（小时）</span>
+                    <UiInput
+                      type="number"
+                      min={1}
+                      max={168}
+                      className="update-page__auto-input"
+                      value={String(autoDraft.interval_hours)}
+                      disabled={
+                        autoBusy ||
+                        busy ||
+                        !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                      }
+                      onValueChange={(v) => {
+                        const n = Math.max(1, Math.min(168, Number(v) || 6));
+                        setAutoDraft((prev) => ({ ...prev, interval_hours: n }));
+                      }}
+                      onBlur={() => {
+                        if ((autoQ.data?.interval_hours || 6) === autoDraft.interval_hours) return;
+                        void saveAutoUpdate({ interval_hours: autoDraft.interval_hours });
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <label className="update-page__auto-field">
+                    <span className="update-page__auto-field-label">每天时刻</span>
+                    <div className="update-page__auto-cron">
+                      <UiInput
+                        type="number"
+                        min={0}
+                        max={23}
+                        className="update-page__auto-input"
+                        value={String(autoDraft.cron_hour)}
+                        disabled={
+                          autoBusy ||
+                          busy ||
+                          !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                        }
+                        onValueChange={(v) => {
+                          const n = Math.max(0, Math.min(23, Number(v) || 0));
+                          setAutoDraft((prev) => ({ ...prev, cron_hour: n }));
+                        }}
+                        onBlur={() => {
+                          if ((autoQ.data?.cron_hour || 0) === autoDraft.cron_hour) return;
+                          void saveAutoUpdate({ cron_hour: autoDraft.cron_hour });
+                        }}
+                      />
+                      <span className="muted">:</span>
+                      <UiInput
+                        type="number"
+                        min={0}
+                        max={59}
+                        className="update-page__auto-input"
+                        value={String(autoDraft.cron_minute)}
+                        disabled={
+                          autoBusy ||
+                          busy ||
+                          !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                        }
+                        onValueChange={(v) => {
+                          const n = Math.max(0, Math.min(59, Number(v) || 0));
+                          setAutoDraft((prev) => ({ ...prev, cron_minute: n }));
+                        }}
+                        onBlur={() => {
+                          if ((autoQ.data?.cron_minute || 0) === autoDraft.cron_minute) return;
+                          void saveAutoUpdate({ cron_minute: autoDraft.cron_minute });
+                        }}
+                      />
+                    </div>
+                  </label>
+                )}
+              </div>
+              <div className="update-page__auto-status-row">
+                <span className="muted update-page__auto-status">{formatAutoStatus(autoQ.data)}</span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={autoBusy || busy}
+                  onClick={() => void runAutoOnce()}
+                >
+                  {applyKind === "auto" ? "执行中…" : "立即检查并应用"}
+                </Button>
+              </div>
+              {applyKind === "auto" ? (
+                <UpdateApplyProgress label={applyHint || "正在检查并应用自动更新…"} percent={applyPercent} />
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+
       </div>
 
       <details id="console-update-github" className="update-page__gh-fold">

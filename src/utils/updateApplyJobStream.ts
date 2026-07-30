@@ -13,6 +13,13 @@ export type UpdateApplyProgressEvent = {
     version?: string;
     message?: string;
     restart_scheduled?: boolean;
+    tick?: {
+      result?: string;
+      reason?: string;
+      error?: string;
+      targets?: Record<string, { result?: string; error?: string; reason?: string }>;
+    };
+    last_error?: string | null;
   } | null;
 };
 
