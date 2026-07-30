@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.11] - 2026-07-30
 
 相对 **0.8.10** 至本版的控制台更新。
 
@@ -33,6 +33,36 @@
 
 - 媒体页文案去黑话；安装主按钮按状态收敛；按 `has_update` 显隐更新按钮
 - 接话 / 媒体分区下拉轻分组；精简配置段声明
+
+### 提交明细
+
+### Added
+
+* feat(ai): 记忆页 Embedding 接入 Provider 网关面板 ([e9a60e7](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e9a60e7b4aeb1bbc87158023ff0c7d311f4dff28))
+* feat(ai): 记忆页 Embedding 提供方状态与配置 ([8d9e856](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8d9e8563e460804b67e04866c8228e4ff3cb088a))
+* feat(ai): Runtime 安装按 has_update 显隐更新按钮 ([10e66da](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/10e66da2be71ede4b657a44b427223d6b9a52fd9))
+* feat(update): 汇报用牛改用账号选择器，支持任选在线 ([ef342cf](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ef342cf4aa92455f11461554d4a982826e0c305d))
+* feat(ai): TTS 页增加中翻日配置 ([c68fdb1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c68fdb1a0d3041e0fe5e602a1d8134557601ff0e))
+* feat(ai): 收敛媒体服务安装主按钮 ([ae17979](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ae17979d37345b915012dc9a5a0a3be907cb38bc))
+* feat(ai): 媒体页文案去黑话并精简插件嵌入 ([b2df2c3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b2df2c3a8fccd91af9f5e4bd1bdbb9f7b1e4f508))
+* feat(update): 统一自动更新面板（WebUI/Bot/插件） ([66de14e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/66de14ee7f042c71f5676c27478c8a39c8d08de0))
+* feat(ai): 媒体连接页支持更新 Runtime ([3b96a9e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3b96a9e115ad0ac6149dbd8c662e20bf43850a6e))
+
+### Fixed
+
+* fix(ai): Embedding 仅远程显示线路；网关添加/编辑按钮对齐 ([16252a8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/16252a8df294ecb4d1ddaf652e0895be2fe38f54))
+* fix(plugins): 配置保存失败只 toast，去掉弹窗顶部重复报错 ([3dcc60d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3dcc60d3e5b49ae1951cc913b9e167a888fbbb96))
+* fix(ai): Embedding 记忆页展示端点字段与诊断提示 ([d77934f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d77934f32c8db447983cbede40cac75fc18b98e3))
+* fix(update): 补自动更新汇报类型并统一汇报用牛字段样式 ([c200313](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c200313a4676b40a651de1a4fc9905f3ca685111))
+* fix(update): 自动更新走 job 进度，面板移到 Bot 下方 ([dfee93e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dfee93e75b974af3a061646a42e5b0a289e89f48))
+
+### Changed
+
+* refactor(ai): 接话/媒体分区下拉分组，精简配置段声明 ([43c18b9](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/43c18b9271e06566d513043627b18825bf8fc125))
+* chore(api): 同步 Embedding 诊断 OpenAPI 类型 ([34ee9dd](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/34ee9ddeeec3b0cdb1d588d7fb270dd59851a116))
+
+**完整变更**: [`v0.8.10...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.10...HEAD)
+
 
 ## [0.8.10] - 2026-07-29
 
@@ -76,7 +106,6 @@
 * chore(ui): 控制台登录改称密钥，插件触发改称命令 ([e6004c0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e6004c0c33c9391c1a5e09e6b5e05da77d82ee8f))
 
 **完整变更**: [`v0.8.9...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.9...HEAD)
-
 
 ## [0.8.9] - 2026-07-29
 
