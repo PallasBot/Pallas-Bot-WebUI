@@ -8,6 +8,7 @@ import {
   fetchUpdateChangelog,
   fetchUpdateCheckAll,
   fetchWebuiAutoUpdateStatus,
+  fetchInstances,
   openUpdateApplyJobEventSource,
   postBotUpdateApply,
   postUpdateApply,
@@ -27,6 +28,8 @@ import {
   PALLAS_WEBUI_RELEASES,
   PALLAS_WEBUI_REPO,
 } from "@/utils/pallasExternalLinks";
+import BotAccountCombobox from "@/components/BotAccountCombobox";
+import { ChromeOptionLabel } from "@/components/ChromeField";
 import GitMirrorDialog from "@/components/GitMirrorDialog";
 import PageMasthead from "@/components/PageMasthead";
 import ReadmeMarkdown from "@/components/ReadmeMarkdown";
@@ -55,9 +58,11 @@ import {
 import UiInput from "@/components/ui/UiInput";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { botSelectDropdownLabel } from "@/utils/botDisplay";
 import { readPrefs, writePrefs } from "@/theme/applyShellTheme";
 import { ChevronRight, RefreshCw, LayoutDashboard, Bot, Timer } from "lucide-react";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
+import { useBotFavorites } from "@/hooks/useBotFavorites";
 
 const PB_PROTOCOL_PLUGIN = "pb_protocol";
 const PB_WEBUI_PLUGIN = "pb_webui";
@@ -65,6 +70,8 @@ const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
 const WEBUI_AUTO_ENABLED = "pallas_webui_auto_update_enabled";
 const BOT_AUTO_ENABLED = "pallas_bot_auto_update_enabled";
 const PLUGINS_AUTO_ENABLED = "pallas_plugins_auto_update_enabled";
+const AUTO_NOTIFY_SUPERUSERS = "pallas_auto_update_notify_superusers";
+const AUTO_NOTIFY_BOT_ID = "pallas_auto_update_notify_bot_id";
 const WEBUI_AUTO_MODE = "pallas_webui_auto_update_schedule_mode";
 const WEBUI_AUTO_INTERVAL = "pallas_webui_auto_update_interval_hours";
 const WEBUI_AUTO_CRON_HOUR = "pallas_webui_auto_update_cron_hour";
@@ -72,6 +79,8 @@ const WEBUI_AUTO_CRON_MINUTE = "pallas_webui_auto_update_cron_minute";
 const WEBUI_RELEASES_PAGE = PALLAS_WEBUI_RELEASES;
 const BOT_RELEASES_PAGE = PALLAS_BOT_RELEASES;
 const PENDING_CHANGELOG_KEY = "pallas.webui.pendingUpdateChangelog";
+/** 汇报用牛：0 / 哨兵表示任选当前在线账号 */
+const NOTIFY_BOT_ANY = "0";
 
 const UPDATE_PANEL = "update-page__panel flex flex-col overflow-hidden shadow-none";
 const UPDATE_PANEL_HD =
@@ -220,6 +229,7 @@ export default function UpdatePage() {
   const qc = useQueryClient();
   const location = useLocation();
   const { confirm, confirmDialog } = useConsoleConfirm();
+  const { favorites } = useBotFavorites();
   const [applyKind, setApplyKind] = useState<ApplyKind | null>(null);
   const [applyPercent, setApplyPercent] = useState(0);
   const [applyHint, setApplyHint] = useState("");
@@ -240,6 +250,8 @@ export default function UpdatePage() {
     webui_enabled: false,
     bot_enabled: false,
     plugins_enabled: false,
+    notify_superusers: false,
+    notify_bot_id: 0,
     schedule_mode: "interval" as "interval" | "cron",
     interval_hours: 6,
     cron_hour: 4,
@@ -252,6 +264,7 @@ export default function UpdatePage() {
     queryFn: fetchWebuiAutoUpdateStatus,
     refetchInterval: 60_000,
   });
+  const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
   const web = q.data?.webui;
   const bot = q.data?.bot;
 
@@ -315,6 +328,33 @@ export default function UpdatePage() {
     return links;
   }, [bot?.deployment_mode]);
 
+  const notifyBotOptions = useMemo(() => {
+    const data = instQ.data;
+    const seen = new Set<string>();
+    const out: Array<{ id: string; nickname: string }> = [];
+    if (data) {
+      for (const b of data.nonebot_bots ?? []) {
+        const id = String(b.self_id || "").trim();
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        out.push({ id, nickname: data.bot_profiles?.[id]?.nickname?.trim() || "" });
+      }
+      for (const cfg of data.db_bot_configs ?? []) {
+        const id = String(cfg.account ?? "").trim();
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        out.push({ id, nickname: data.bot_profiles?.[id]?.nickname?.trim() || "" });
+      }
+    }
+    const cur = autoDraft.notify_bot_id > 0 ? String(autoDraft.notify_bot_id) : "";
+    if (cur && !seen.has(cur)) {
+      out.push({ id: cur, nickname: data?.bot_profiles?.[cur]?.nickname?.trim() || "" });
+    }
+    return out;
+  }, [instQ.data, autoDraft.notify_bot_id]);
+
+  const notifyBotSelected = notifyBotOptions.find((b) => b.id === String(autoDraft.notify_bot_id));
+
   const webDocLinks = useMemo(
     () => [
       { href: (web?.release_url || "").trim() || WEBUI_RELEASES_PAGE, label: "GitHub Release" },
@@ -337,6 +377,8 @@ export default function UpdatePage() {
       webui_enabled: Boolean(data.webui?.enabled ?? data.enabled),
       bot_enabled: Boolean(data.bot?.enabled),
       plugins_enabled: Boolean(data.plugins?.enabled),
+      notify_superusers: Boolean(data.notify_superusers),
+      notify_bot_id: Math.max(0, Math.floor(Number(data.notify_bot_id) || 0)),
       schedule_mode: mode,
       interval_hours: Math.max(1, Math.min(168, Number(data.interval_hours) || 6)),
       cron_hour: Math.max(0, Math.min(23, Number(data.cron_hour) || 0)),
@@ -479,6 +521,8 @@ export default function UpdatePage() {
         [WEBUI_AUTO_ENABLED]: next.webui_enabled,
         [BOT_AUTO_ENABLED]: next.bot_enabled,
         [PLUGINS_AUTO_ENABLED]: next.plugins_enabled,
+        [AUTO_NOTIFY_SUPERUSERS]: next.notify_superusers,
+        [AUTO_NOTIFY_BOT_ID]: next.notify_bot_id,
         [WEBUI_AUTO_MODE]: next.schedule_mode,
         [WEBUI_AUTO_INTERVAL]: next.interval_hours,
         [WEBUI_AUTO_CRON_HOUR]: next.cron_hour,
@@ -492,7 +536,7 @@ export default function UpdatePage() {
           ? next.schedule_mode === "cron"
             ? `自动更新已保存（每天 ${String(next.cron_hour).padStart(2, "0")}:${String(next.cron_minute).padStart(2, "0")}）`
             : `自动更新已保存（每 ${next.interval_hours} 小时）`
-          : "已关闭全部自动更新",
+          : "自动更新设置已保存",
         "ok",
       );
     } catch (e) {
@@ -1059,6 +1103,59 @@ export default function UpdatePage() {
                     ariaLabel="自动更新插件"
                     showLabel={false}
                   />
+                </div>
+                <div className="update-page__auto-row">
+                  <div className="update-page__auto-copy min-w-0">
+                    <div className="update-page__auto-title">成功后私聊超管</div>
+                    <p className="update-page__auto-desc muted">
+                      自动更新有目标成功应用时，私聊 SUPERUSERS；失败不通知以免刷屏
+                    </p>
+                  </div>
+                  <ConsoleSwitch
+                    checked={autoDraft.notify_superusers}
+                    disabled={autoBusy || busy}
+                    onCheckedChange={(next) => void saveAutoUpdate({ notify_superusers: next })}
+                    ariaLabel="自动更新成功后私聊超管"
+                    showLabel={false}
+                  />
+                </div>
+              </div>
+              <div className="update-page__auto-grid">
+                <div className="update-page__auto-field">
+                  <span className="update-page__auto-field-label">汇报用牛</span>
+                  <BotAccountCombobox
+                    value={
+                      autoDraft.notify_bot_id > 0 ? String(autoDraft.notify_bot_id) : NOTIFY_BOT_ANY
+                    }
+                    onValueChange={(v) => {
+                      const n =
+                        v === NOTIFY_BOT_ANY ? 0 : Math.max(0, Math.floor(Number(v) || 0));
+                      setAutoDraft((prev) => ({ ...prev, notify_bot_id: n }));
+                      if ((autoQ.data?.notify_bot_id || 0) === n) return;
+                      void saveAutoUpdate({ notify_bot_id: n });
+                    }}
+                    bots={notifyBotOptions}
+                    favorites={favorites}
+                    leadingOption={{
+                      value: NOTIFY_BOT_ANY,
+                      label: <ChromeOptionLabel icon={Bot}>任选在线</ChromeOptionLabel>,
+                      keywords: "任选在线 全部 0",
+                    }}
+                    placeholder="任选在线"
+                    disabled={autoBusy || busy || !autoDraft.notify_superusers}
+                    triggerClassName="w-full"
+                    ariaLabel="汇报用牛"
+                    title={
+                      notifyBotSelected
+                        ? botSelectDropdownLabel(notifyBotSelected.nickname, notifyBotSelected.id)
+                        : autoDraft.notify_bot_id > 0
+                          ? String(autoDraft.notify_bot_id)
+                          : undefined
+                    }
+                  />
+                  <p className="muted update-page__auto-desc">
+                    默认任选当前在线的一头牛；指定账号须在线，否则跳过本次汇报
+                  </p>
                 </div>
               </div>
               <div className="update-page__auto-grid">
