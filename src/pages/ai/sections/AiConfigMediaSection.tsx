@@ -61,10 +61,10 @@ function AiRuntimeNotReadyBlock({
   return (
     <div className="space-y-3">
       <ConsoleHint>
-        媒体服务未就绪。请先在「服务」用安装与启动拉起 Runtime，健康正常后再操作本页。
+        媒体服务还没就绪。请先到「媒体服务」完成安装与启动，确认健康后再回来操作。
       </ConsoleHint>
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={onGoService}>前往服务</Button>
+        <Button size="sm" onClick={onGoService}>前往媒体服务</Button>
         {canManage ? (
           <Button size="sm" variant="outline" disabled={busy} onClick={onStart}>
             启动媒体服务
@@ -81,12 +81,47 @@ type SelectPanel = "service" | "assets" | "sing" | "tts" | "draw" | "ncm";
 
 const SELECT_OPTIONS: Array<{ value: SelectPanel; label: string; icon: LucideIcon; lead: string }> = [
   { value: "service", label: "媒体服务", icon: Server, lead: "安装、启停与连接。" },
-  { value: "assets", label: "媒体资产", icon: HardDrive, lead: "唱歌 / TTS 权重与素材下载。" },
-  { value: "sing", label: "唱歌", icon: Music2, lead: "侧车默认与唱歌插件配置。" },
-  { value: "tts", label: "TTS", icon: AudioLines, lead: "侧车默认与牛牛说插件配置。" },
-  { value: "draw", label: "画画", icon: Palette, lead: "画画插件配置（与插件页同源）。" },
+  { value: "assets", label: "媒体资产", icon: HardDrive, lead: "下载唱歌 / 语音所需的模型与素材。" },
+  { value: "sing", label: "唱歌", icon: Music2, lead: "默认音色与音色映射。" },
+  { value: "tts", label: "牛牛说", icon: AudioLines, lead: "默认音色、语种与中译日。" },
+  { value: "draw", label: "画画", icon: Palette, lead: "画画网关；其它项在插件配置。" },
   { value: "ncm", label: "网易云", icon: Cloud, lead: "短信登录与会话状态。" },
 ];
+
+/** GPT-SoVITS v2 语种；合成语种 / 提示语种共用。 */
+const TTS_LANG_OPTIONS = [
+  { value: "zh", label: "中文", description: "zh" },
+  { value: "ja", label: "日语", description: "ja" },
+  { value: "en", label: "英语", description: "en" },
+  { value: "yue", label: "粤语", description: "yue" },
+  { value: "ko", label: "韩语", description: "ko" },
+  { value: "auto", label: "自动识别", description: "auto" },
+  { value: "auto_yue", label: "自动识别（含粤语）", description: "auto_yue" },
+  { value: "all_zh", label: "强制中文切分", description: "all_zh" },
+  { value: "all_ja", label: "强制日语切分", description: "all_ja" },
+  { value: "all_yue", label: "强制粤语切分", description: "all_yue" },
+  { value: "all_ko", label: "强制韩语切分", description: "all_ko" },
+];
+
+function PluginConfigElsewhereHint({
+  pluginName,
+  label,
+  extras,
+}: {
+  pluginName: string;
+  label: string;
+  extras: string;
+}) {
+  return (
+    <p className="text-sm text-muted-foreground">
+      {extras}
+      请到{" "}
+      <Link to={`/plugins/${encodeURIComponent(pluginName)}`}>{`插件配置 · ${label}`}</Link>
+      {" "}
+      设置。
+    </p>
+  );
+}
 const PANEL_SET = new Set<string>([
   ...SELECT_OPTIONS.map((item) => item.value),
   "connection",
@@ -505,7 +540,6 @@ export default function AiConfigMediaSection() {
   const contentPanel: SelectPanel = panel as SelectPanel;
   const drawWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
   const singWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
-  const ttsWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
   const emptyPluginStatus = {
     saving: false,
     checking: false,
@@ -515,7 +549,6 @@ export default function AiConfigMediaSection() {
   };
   const [drawStatus, setDrawStatus] = useState(emptyPluginStatus);
   const [singPluginStatus, setSingPluginStatus] = useState(emptyPluginStatus);
-  const [ttsPluginStatus, setTtsPluginStatus] = useState(emptyPluginStatus);
 
   const onPluginStatusChange = useCallback(
     (
@@ -539,10 +572,6 @@ export default function AiConfigMediaSection() {
   const onDrawStatusChange = useMemo(() => onPluginStatusChange(setDrawStatus), [onPluginStatusChange]);
   const onSingPluginStatusChange = useMemo(
     () => onPluginStatusChange(setSingPluginStatus),
-    [onPluginStatusChange],
-  );
-  const onTtsPluginStatusChange = useMemo(
-    () => onPluginStatusChange(setTtsPluginStatus),
     [onPluginStatusChange],
   );
 
@@ -593,21 +622,10 @@ export default function AiConfigMediaSection() {
           type="button"
           size="sm"
           className="shrink-0"
-          disabled={
-            busy
-            || ttsQ.isLoading
-            || ttsMut.isPending
-            || ttsPluginStatus.saving
-            || ttsPluginStatus.loading
-          }
-          onClick={() => {
-            void (async () => {
-              await ttsSaveRef.current();
-              if (ttsPluginStatus.hasData) await ttsWorkspaceRef.current?.save();
-            })();
-          }}
+          disabled={busy || ttsQ.isLoading || ttsMut.isPending}
+          onClick={() => { void ttsSaveRef.current(); }}
         >
-          {ttsMut.isPending || ttsPluginStatus.saving ? "保存中…" : "保存"}
+          {ttsMut.isPending ? "保存中…" : "保存"}
         </Button>
       );
     }
@@ -651,7 +669,6 @@ export default function AiConfigMediaSection() {
     contentPanel,
     drawStatus,
     singPluginStatus,
-    ttsPluginStatus,
     busy,
     singQ.isLoading,
     ttsQ.isLoading,
@@ -699,10 +716,10 @@ export default function AiConfigMediaSection() {
         <>
           <span>下方清单是官方打包权重（可一键下载）。</span>
           <span>
-            自备唱歌音色请放到 AI 仓
+            自备唱歌音色请放到媒体服务安装目录下的
             {" "}
             <code className="font-mono">{singModelsRel}</code>
-            （目录名即 Speaker id，勿用
+            （目录名即音色 id，勿用
             {" "}
             <code className="font-mono">pretrain</code>
             ），放入
@@ -727,10 +744,10 @@ export default function AiConfigMediaSection() {
             中的 pallas-plugin-ai-media）。
           </span>
           <span>
-            自备音色：在 AI Runtime 仓库下新建
+            自备音色：在媒体服务安装目录下新建
             {" "}
             <code className="font-mono">{singModelsRel}</code>
-            ，目录名即 Speaker id（勿占用
+            ，目录名即音色 id（勿占用
             {" "}
             <code className="font-mono">pretrain</code>
             ）。放入
@@ -747,7 +764,7 @@ export default function AiConfigMediaSection() {
               <code className="break-all font-mono text-[11px]">{singModelsAbs}</code>
             </span>
           ) : (
-            <span>尚未探测到 AI 仓根时请按相对路径放置；就绪后会显示绝对路径。</span>
+            <span>尚未探测到媒体服务目录时请按相对路径放置；就绪后会显示绝对路径。</span>
           )}
         </>
       );
@@ -757,7 +774,7 @@ export default function AiConfigMediaSection() {
         <span>
           需安装官方扩展「牛牛说」（
           <Link to="/plugin-store">插件商店</Link>
-          中的 pallas-plugin-ai-media）。Bearer 在「媒体服务」连接里配置。
+          ）。访问密钥在「媒体服务」的连接里配置。
         </span>
       );
     }
@@ -872,10 +889,10 @@ export default function AiConfigMediaSection() {
                     size="sm"
                     variant="outline"
                     disabled={busy || !canUpdate}
-                    title="托管目录：git pull --ff-only 后重新 bootstrap"
+                    title="更新本机已安装的媒体服务，并重新安装依赖"
                     onClick={() => { void installMut.mutateAsync("update"); }}
                   >
-                    更新 Runtime
+                    更新媒体服务
                   </Button>
                 </div>
               </>
@@ -1054,19 +1071,19 @@ export default function AiConfigMediaSection() {
           <div className="space-y-4">
             <PluginConfigFormSection
               title="运行概况"
-              subtitle="已探测到的 Speaker 目录与推理后端。"
+              subtitle="已探测到的音色目录与可用推理方式。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">
-                  Speaker {singQ.data?.speakers.speakers?.length ?? 0} 个
+                  音色 {singQ.data?.speakers.speakers?.length ?? 0} 个
                 </Badge>
                 <Badge variant="outline">
-                  后端 {singQ.data?.backends.backends?.length ?? 0} 个
+                  推理方式 {singQ.data?.backends.backends?.length ?? 0} 个
                 </Badge>
               </div>
               <p className="break-all font-mono text-[11px] text-muted-foreground">
-                {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "暂无后端"}
+                {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "暂无推理方式"}
               </p>
               {(singQ.data?.speakers.speakers || []).length ? (
                 <ul className="space-y-1 rounded-[var(--radius-control,8px)] border bg-muted/20 px-3 py-2 text-[11px]">
@@ -1084,7 +1101,7 @@ export default function AiConfigMediaSection() {
                 </ul>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  尚未探测到 Speaker。请确认已下载官方
+                  尚未探测到音色。请确认已下载官方
                   {" "}
                   <code className="font-mono text-[11px]">sing_pallas</code>
                   {" "}
@@ -1094,25 +1111,25 @@ export default function AiConfigMediaSection() {
             </PluginConfigFormSection>
 
             <PluginConfigFormSection
-              title="侧车默认"
-              subtitle="未在命令中指定时使用的 Speaker / 后端。"
+              title="默认设置"
+              subtitle="点歌时未指定音色或推理方式时使用。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="grid grid-cols-2 gap-3">
-                <AiConfigField label="默认 Speaker" description="未指定时使用的唱歌音色。">
+                <AiConfigField label="默认音色" description="未指定时使用的唱歌音色。">
                   <AiOptionSelect
                     value={defaultSpeaker}
                     options={speakerOptions}
-                    placeholder="选择 Speaker"
+                    placeholder="选择音色"
                     emptyLabel="（未指定）"
                     onValueChange={setDefaultSpeaker}
                   />
                 </AiConfigField>
-                <AiConfigField label="优先后端" description="首选推理后端。">
+                <AiConfigField label="优先推理方式" description="首选的唱歌推理实现；失败时仍会自动尝试其它可用方式。">
                   <AiOptionSelect
                     value={preferredBackend}
                     options={backendOptions}
-                    placeholder="选择后端"
+                    placeholder="选择推理方式"
                     emptyLabel="（未指定）"
                     onValueChange={setPreferredBackend}
                   />
@@ -1122,8 +1139,8 @@ export default function AiConfigMediaSection() {
           </div>
         </StateBlock>
         <PluginConfigFormSection
-          title="插件配置"
-          subtitle="与插件页同源：启停、音色映射、默认合成时长等。"
+          title="音色映射"
+          subtitle="口令里的名字对应到媒体服务里的音色 id。"
           bodyClassName="!grid-cols-1 gap-3"
           defaultOpen
         >
@@ -1131,7 +1148,14 @@ export default function AiConfigMediaSection() {
             ref={singWorkspaceRef}
             pluginName="sing"
             presentation="dialog"
+            compact
+            includeFields={["sing_speakers"]}
             onStatusChange={onSingPluginStatusChange}
+          />
+          <PluginConfigElsewhereHint
+            pluginName="sing"
+            label="唱歌"
+            extras="启停、默认合成时长、任务模式等其它项"
           />
         </PluginConfigFormSection>
       </div>
@@ -1154,7 +1178,7 @@ export default function AiConfigMediaSection() {
           <div className="space-y-4">
             <PluginConfigFormSection
               title="音色概况"
-              subtitle="可用的参考音频路径。"
+              subtitle="可用的参考音频。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="flex flex-wrap items-center gap-2">
@@ -1163,12 +1187,12 @@ export default function AiConfigMediaSection() {
             </PluginConfigFormSection>
 
             <PluginConfigFormSection
-              title="侧车默认"
-              subtitle="参考音频、提示文本与语种默认值。"
+              title="默认音色"
+              subtitle="「牛牛说」未另外指定时使用的参考音频与语种。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="grid grid-cols-2 gap-3">
-                <AiConfigField label="参考音频" description="参考音频路径" className="md:col-span-2">
+                <AiConfigField label="参考音频" description="用于模仿说话风格的样例音频。" className="md:col-span-2">
                   <AiOptionSelect
                     value={ttsRef}
                     options={voicePathOptions}
@@ -1179,7 +1203,7 @@ export default function AiConfigMediaSection() {
                 </AiConfigField>
                 <AiConfigField
                   label="提示文本"
-                  description="参考音频对应原文，供克隆对齐。"
+                  description="参考音频里实际说的内容，用来对齐音色。"
                   className="md:col-span-2"
                 >
                   <Input
@@ -1188,50 +1212,79 @@ export default function AiConfigMediaSection() {
                     placeholder="与参考音频一致的原文"
                   />
                 </AiConfigField>
-                <AiConfigField label="提示语种" description="参考音频对应语种，如 zh / en。">
-                  <Input value={ttsPromptLang} onChange={(e) => setTtsPromptLang(e.target.value)} />
+                <AiConfigField label="提示语种" description="参考音频本身的语种（与提示文本一致）。例如参考音是日语样例，选日语。">
+                  <AiOptionSelect
+                    value={ttsPromptLang}
+                    options={TTS_LANG_OPTIONS}
+                    placeholder="选择语种"
+                    allowEmpty={false}
+                    onValueChange={setTtsPromptLang}
+                  />
                 </AiConfigField>
-                <AiConfigField label="合成语种" description="待合成文本语种。">
-                  <Input value={ttsTextLang} onChange={(e) => setTtsTextLang(e.target.value)} />
+                <AiConfigField
+                  label="合成语种"
+                  description={
+                    "要念的文字语种，作默认与兜底。"
+                    + "开启下方「中译日」且翻译成功时，会自动按日语合成，不必改成日语；"
+                    + "翻译失败或关闭中译日时，按这里的设置念原文——中文输入请保持「中文」，以免中文被当成日语切分。"
+                  }
+                >
+                  <AiOptionSelect
+                    value={ttsTextLang}
+                    options={TTS_LANG_OPTIONS}
+                    placeholder="选择语种"
+                    allowEmpty={false}
+                    onValueChange={setTtsTextLang}
+                  />
                 </AiConfigField>
               </div>
             </PluginConfigFormSection>
 
             <PluginConfigFormSection
-              title="中翻日（侧车）"
-              subtitle="合成前可选把中文译成日文。密钥落在 AI Runtime 的 media_models；空密钥表示不改已有值。未在控制台保存过时回退 AI .env。"
+              title="中文转日语"
+              subtitle="念之前可选先把中文译成日文（部分音色更适合日语）。译成功会自动按日语合成；译失败则退回原文并用上方「合成语种」。密钥保存在媒体服务；留空密钥表示不改已有值。尚未在本页保存过时，会沿用安装目录里的默认配置。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <StateBlock loading={ttsTranslatorQ.isLoading} error={ttsTranslatorQ.error}>
                 <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <AiConfigField label="启用中翻日" description="开=TTS 先翻译再合成；关=按合成语种直接念原文。">
+                  <AiConfigField
+                    label="启用中译日"
+                    description={
+                      "开：先把中文译成日文再合成（成功时自动按日语，与上方「合成语种」无关）。"
+                      + "关：直接按「合成语种」念原文。"
+                      + "翻译失败时仍用原文 +「合成语种」，故中文场景建议合成语种保持中文。"
+                    }
+                  >
+                    <div className="flex min-h-9 flex-wrap items-center gap-2">
                       <Switch checked={ttsTranslateEnable} onCheckedChange={setTtsTranslateEnable} />
-                    </AiConfigField>
-                    <Badge variant="outline">
-                      来源 {ttsTranslatorQ.data?.source === "disk" ? "落盘" : "环境变量"}
-                    </Badge>
-                  </div>
+                      {ttsTranslatorQ.data?.source ? (
+                        <span className="text-xs text-muted-foreground">
+                          当前生效：
+                          {ttsTranslatorQ.data.source === "disk" ? "本页已保存" : "安装目录默认配置"}
+                        </span>
+                      ) : null}
+                    </div>
+                  </AiConfigField>
                   <div className="grid grid-cols-2 gap-3">
-                    <AiConfigField label="翻译后端" description="百度或有道（均有免费额度）。">
+                    <AiConfigField label="翻译服务" description="百度或有道（一般有免费额度）。">
                       <AiOptionSelect
                         value={ttsTranslateProvider}
                         options={[
                           { value: "baidu", label: "百度" },
                           { value: "youdao", label: "有道" },
                         ]}
-                        placeholder="选择后端"
+                        placeholder="选择服务"
                         emptyLabel="（未指定）"
                         onValueChange={setTtsTranslateProvider}
                       />
                     </AiConfigField>
                     {ttsTranslateProvider === "youdao" ? (
                       <>
-                        <AiConfigField label="有道 App Key" description="有道开放平台应用 Key。">
+                        <AiConfigField label="有道 App Key" description="有道开放平台里的应用 Key。">
                           <Input value={ttsYoudaoAppKey} onChange={(e) => setTtsYoudaoAppKey(e.target.value)} />
                         </AiConfigField>
                         <AiConfigField
-                          label="有道 App Secret"
+                          label="有道密钥"
                           description={ttsYoudaoSecretConfigured ? "已配置；留空则不改。" : "有道应用密钥。"}
                           className="md:col-span-2"
                         >
@@ -1246,12 +1299,12 @@ export default function AiConfigMediaSection() {
                       </>
                     ) : (
                       <>
-                        <AiConfigField label="百度 App ID" description="百度翻译开放平台应用 ID。">
+                        <AiConfigField label="百度 App ID" description="百度翻译开放平台里的应用 ID。">
                           <Input value={ttsBaiduAppId} onChange={(e) => setTtsBaiduAppId(e.target.value)} />
                         </AiConfigField>
                         <AiConfigField
                           label="百度密钥"
-                          description={ttsBaiduSecretConfigured ? "已配置；留空则不改。" : "百度翻译 Secret Key。"}
+                          description={ttsBaiduSecretConfigured ? "已配置；留空则不改。" : "百度翻译密钥。"}
                           className="md:col-span-2"
                         >
                           <Input
@@ -1279,16 +1332,15 @@ export default function AiConfigMediaSection() {
           </div>
         </StateBlock>
         <PluginConfigFormSection
-          title="插件配置"
-          subtitle="与插件页同源：启停、通路、超时与字数上限等。"
+          title="其它设置"
+          subtitle="启停、超时与字数上限等。"
           bodyClassName="!grid-cols-1 gap-3"
           defaultOpen
         >
-          <PluginConfigWorkspace
-            ref={ttsWorkspaceRef}
+          <PluginConfigElsewhereHint
             pluginName="tts"
-            presentation="dialog"
-            onStatusChange={onTtsPluginStatusChange}
+            label="牛牛说"
+            extras="启停、超时、字数上限等"
           />
         </PluginConfigFormSection>
       </div>
@@ -1296,13 +1348,28 @@ export default function AiConfigMediaSection() {
     ) : null}
 
     {panel === "draw" ? (
-      <div className="space-y-3">
-        <PluginConfigWorkspace
-          ref={drawWorkspaceRef}
-          pluginName="draw"
-          presentation="dialog"
-          onStatusChange={onDrawStatusChange}
-        />
+      <div className="space-y-4">
+        <PluginConfigFormSection
+          title="画画网关"
+          subtitle="主线与备用画图线路。"
+          bodyClassName="!grid-cols-1 gap-3"
+          defaultOpen
+        >
+          <PluginConfigWorkspace
+            ref={drawWorkspaceRef}
+            pluginName="draw"
+            presentation="dialog"
+            compact
+            includeFields={[]}
+            includeGateways
+            onStatusChange={onDrawStatusChange}
+          />
+          <PluginConfigElsewhereHint
+            pluginName="draw"
+            label="画画"
+            extras="模型、默认尺寸、冷却等其它项"
+          />
+        </PluginConfigFormSection>
       </div>
     ) : null}
 

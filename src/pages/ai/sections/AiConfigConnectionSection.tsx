@@ -236,7 +236,7 @@ export default function AiConfigConnectionSection() {
                 title="托管目录：git pull --ff-only 后重新 bootstrap"
                 onClick={() => void installMut.mutateAsync("update")}
               >
-                更新 Runtime
+                更新媒体服务
               </Button>
             </div>
           </StateBlock>
