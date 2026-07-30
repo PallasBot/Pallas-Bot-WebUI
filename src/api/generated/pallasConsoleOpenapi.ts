@@ -5356,6 +5356,13 @@ export interface components {
             local_dependency_ready: boolean;
             /** Local Default Model */
             local_default_model?: string | null;
+            /** Remote Default Model */
+            remote_default_model?: string | null;
+            /**
+             * Endpoint Configured
+             * @default false
+             */
+            endpoint_configured: boolean;
             /**
              * Trigger Cache Count
              * @default 0
