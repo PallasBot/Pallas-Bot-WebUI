@@ -32,7 +32,7 @@ import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { AI_NCM_DEFAULTS, aiRuntimeLayoutLabel } from "@/config/aiConstants";
@@ -92,6 +92,13 @@ const SELECT_OPTIONS: Array<{ value: SelectPanel; label: string; icon: LucideIco
   { value: "draw", label: "画画", icon: Palette, lead: "画画网关；其它项在插件配置。" },
   { value: "ncm", label: "网易云", icon: Cloud, lead: "短信登录与会话状态。" },
 ];
+
+const SELECT_OPTION_GROUPS: Array<{ label: string; values: SelectPanel[] }> = [
+  { label: "服务", values: ["service", "assets"] },
+  { label: "能力", values: ["sing", "tts", "draw", "ncm"] },
+];
+
+const SELECT_BY_VALUE = new Map(SELECT_OPTIONS.map((item) => [item.value, item]));
 
 /** GPT-SoVITS v2 语种；合成语种 / 提示语种共用。 */
 const TTS_LANG_OPTIONS = [
@@ -581,17 +588,28 @@ export default function AiConfigMediaSection() {
   );
 
   const chromeMiddle = useMemo(() => (
-    <ChromeField label="媒体配置" icon={Layers}>
+    <ChromeField label="分区" icon={Layers}>
       <Select
         value={contentPanel}
         onValueChange={(value) => setPanel(value as SelectPanel)}
       >
         <SelectTrigger className={CHROME_SELECT_TRIGGER}><SelectValue /></SelectTrigger>
-        <SelectContent align="start">{SELECT_OPTIONS.map((item) => (
-          <SelectItem key={item.value} value={item.value}>
-            <ChromeOptionLabel icon={item.icon}>{item.label}</ChromeOptionLabel>
-          </SelectItem>
-        ))}</SelectContent>
+        <SelectContent align="start">
+          {SELECT_OPTION_GROUPS.map((group) => (
+            <SelectGroup key={group.label}>
+              <SelectLabel>{group.label}</SelectLabel>
+              {group.values.map((value) => {
+                const item = SELECT_BY_VALUE.get(value);
+                if (!item) return null;
+                return (
+                  <SelectItem key={item.value} value={item.value}>
+                    <ChromeOptionLabel icon={item.icon}>{item.label}</ChromeOptionLabel>
+                  </SelectItem>
+                );
+              })}
+            </SelectGroup>
+          ))}
+        </SelectContent>
       </Select>
     </ChromeField>
   ), [contentPanel]);

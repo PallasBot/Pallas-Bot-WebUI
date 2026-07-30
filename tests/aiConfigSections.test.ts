@@ -1,29 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
-  AI_CONFIG_MORE_NAV_ITEM,
-  SIMPLE_AI_CONFIG_NAV_SECTION_IDS,
+  AI_CONFIG_SECTIONS,
   aiConfigSectionMeta,
+  normalizeAiConfigSection,
+  legacyAiConfigPanel,
 } from "../src/config/aiConfigSections";
 
 describe("aiConfigSections", () => {
-  it("keeps simple mode focused on access, dialogue, capabilities, knowledge, and more", () => {
-    expect(SIMPLE_AI_CONFIG_NAV_SECTION_IDS.map((id) => aiConfigSectionMeta(id).label)).toEqual([
-      "接入",
-      "对话",
-      "能力包",
-      "知识库",
-    ]);
-    expect(AI_CONFIG_MORE_NAV_ITEM).toMatchObject({
-      id: "more",
-      label: "更多",
-      targetSectionId: "connection",
-    });
+  it("keeps three top-level sections with stable ids", () => {
+    expect(AI_CONFIG_SECTIONS.map((s) => s.id)).toEqual(["provider", "dialogue", "media"]);
+    expect(AI_CONFIG_SECTIONS.map((s) => s.label)).toEqual(["接入", "接话", "媒体"]);
   });
 
-  it("surfaces media services in extension group", () => {
-    expect(aiConfigSectionMeta("connection")).toMatchObject({
-      label: "媒体服务",
-      groupId: "extension",
-    });
+  it("normalizes legacy section aliases", () => {
+    expect(normalizeAiConfigSection("strategy")).toBe("dialogue");
+    expect(normalizeAiConfigSection("connection")).toBe("media");
+    expect(legacyAiConfigPanel("draw")).toBe("draw");
+    expect(aiConfigSectionMeta("dialogue").label).toBe("接话");
   });
 });

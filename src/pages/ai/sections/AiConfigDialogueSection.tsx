@@ -22,7 +22,9 @@ import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -74,12 +76,20 @@ const SELECT_OPTIONS: Array<{ value: ContentPanel; label: string; icon: LucideIc
   },
 ];
 
+/** 二级下拉轻分组（仅展示；URL panel 不变）。 */
+const SELECT_OPTION_GROUPS: Array<{ label: string; values: ContentPanel[] }> = [
+  { label: "策略", values: ["form"] },
+  { label: "上下文", values: ["session", "memory", "budget"] },
+  { label: "知识与工具", values: ["arknights", "sources", "tools"] },
+];
+
 const MODE_OPTIONS = [
   { value: "form", label: "表单" },
   { value: "raw", label: "原始 TOML" },
 ];
 
 const PANEL_SET = new Set<string>([...SELECT_OPTIONS.map((p) => p.value), "raw"]);
+const SELECT_BY_VALUE = new Map(SELECT_OPTIONS.map((p) => [p.value, p]));
 
 export default function AiConfigDialogueSection() {
   const [params, setParams] = useSearchParams();
@@ -132,7 +142,7 @@ export default function AiConfigDialogueSection() {
   const chromeMiddle = useMemo(
     () => (
       <>
-        <ChromeField label="对话分区" icon={Layers}>
+        <ChromeField label="分区" icon={Layers}>
           <Select
             value={contentPanel}
             onValueChange={(v) => {
@@ -143,10 +153,19 @@ export default function AiConfigDialogueSection() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="start">
-              {SELECT_OPTIONS.map((p) => (
-                <SelectItem key={p.value} value={p.value}>
-                  <ChromeOptionLabel icon={p.icon}>{p.label}</ChromeOptionLabel>
-                </SelectItem>
+              {SELECT_OPTION_GROUPS.map((group) => (
+                <SelectGroup key={group.label}>
+                  <SelectLabel>{group.label}</SelectLabel>
+                  {group.values.map((value) => {
+                    const opt = SELECT_BY_VALUE.get(value);
+                    if (!opt) return null;
+                    return (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <ChromeOptionLabel icon={opt.icon}>{opt.label}</ChromeOptionLabel>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectGroup>
               ))}
             </SelectContent>
           </Select>
