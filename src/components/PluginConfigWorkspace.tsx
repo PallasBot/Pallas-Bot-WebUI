@@ -226,7 +226,6 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const [mode, setMode] = useState<"form" | "raw">("form");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [raw, setRaw] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [checkErr, setCheckErr] = useState("");
   const [checkLines, setCheckLines] = useState<string[]>([]);
@@ -292,7 +291,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
     try {
       setFieldValues(fieldValuesFromConfig(cfgQ.data.fields));
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "配置字段解析失败");
+      pushConsoleToast(e instanceof Error ? e.message : "配置字段解析失败", "err");
       setFieldValues({});
     }
     setMode("form");
@@ -301,7 +300,6 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   }, [cfgQ.data, name]);
 
   useEffect(() => {
-    setMsg(null);
     setCheckErr("");
     setCheckLines([]);
   }, [name]);
@@ -327,16 +325,16 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
       return putPluginConfig(name, payload);
     },
     onSuccess: async () => {
-      setMsg(null);
       pushConsoleToast("配置已保存", "ok");
       await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
       await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
       await qc.invalidateQueries({ queryKey: ["plugins"] });
     },
     onError: (e) => {
-      const detail = axiosErrorDetail(e) || (e instanceof Error ? e.message : "保存失败");
-      setMsg(detail);
-      pushConsoleToast(detail, "err");
+      pushConsoleToast(
+        axiosErrorDetail(e) || (e instanceof Error ? e.message : "保存失败"),
+        "err",
+      );
     },
   });
 
@@ -356,24 +354,21 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
       await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
       await qc.invalidateQueries({ queryKey: ["plugins"] });
     },
-    onError: (e) => {
-      pushConsoleToast(axiosErrorDetail(e) || "网关保存失败", "err");
-    },
   });
 
   const saveRaw = useMutation({
     mutationFn: () => putPluginConfigRaw(name, raw),
     onSuccess: async () => {
-      setMsg(null);
       pushConsoleToast("原始 TOML 已保存", "ok");
       await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
       await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
       await qc.invalidateQueries({ queryKey: ["plugins"] });
     },
     onError: (e) => {
-      const detail = axiosErrorDetail(e);
-      setMsg(detail);
-      pushConsoleToast(detail, "err");
+      pushConsoleToast(
+        axiosErrorDetail(e) || (e instanceof Error ? e.message : "保存失败"),
+        "err",
+      );
     },
   });
 
@@ -417,14 +412,11 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
   async function save() {
     if (!cfgQ.data) return;
-    setMsg(null);
     try {
       if (mode === "raw") await saveRaw.mutateAsync();
       else await saveForm.mutateAsync();
-    } catch (e) {
-      const detail = axiosErrorDetail(e) || (e instanceof Error ? e.message : "保存失败");
-      setMsg(detail);
-      pushConsoleToast(detail, "err");
+    } catch {
+      // onError 已 toast；mutateAsync 仍会抛出，此处吞掉避免未处理 Promise
     }
   }
 
@@ -545,7 +537,6 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
           {checkLines.length ? (
             <pre className="plugin-config-page__check-output">{checkLines.join("\n")}</pre>
           ) : null}
-          {msg ? <p className="text-sm text-destructive">{msg}</p> : null}
           {mode === "form" ? (
             <>
               {pluginResolvedId && !compact ? (
