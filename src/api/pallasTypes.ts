@@ -919,6 +919,8 @@ export interface LlmEmbeddingStatus {
   available_providers?: string[];
   local_dependency_ready?: boolean;
   local_default_model?: string | null;
+  remote_default_model?: string | null;
+  endpoint_configured?: boolean;
   trigger_cache_count?: number;
   trigger_cache_model?: string | null;
   probe_ok?: boolean | null;

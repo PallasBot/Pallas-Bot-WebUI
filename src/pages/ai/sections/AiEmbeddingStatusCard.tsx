@@ -78,9 +78,24 @@ export default function AiEmbeddingStatusCard() {
         </div>
         <dl className="mt-3 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
           <div>
+            <dt className="inline text-foreground/80">实际模型 </dt>
+            <dd className="inline">{data?.resolved_model || data?.embedding_model || "—"}</dd>
+          </div>
+          <div>
             <dt className="inline text-foreground/80">Trigger 缓存 </dt>
             <dd className="inline">{data?.trigger_cache_count ?? 0} 条</dd>
           </div>
+          {provider === "openai" && data?.endpoint_configured === false ? (
+            <div className="sm:col-span-2 text-amber-700 dark:text-amber-400">
+              还缺接口地址：在下方填「Embedding 接口地址」，或先配好对话 Provider。
+            </div>
+          ) : null}
+          {provider === "openai" && data?.embedding_model === "stub" && data?.resolved_model ? (
+            <div className="sm:col-span-2">
+              模型仍写 stub，实际会用 {data.resolved_model}
+              {data.remote_default_model ? `（默认 ${data.remote_default_model}）` : ""}；建议改成真实模型名。
+            </div>
+          ) : null}
           {data?.probe_ms != null ? (
             <div>
               <dt className="inline text-foreground/80">最近探测 </dt>
