@@ -7,10 +7,14 @@ import { fetchPluginConfig, putPluginConfig } from "@/api/console";
 import {
   fetchUpdateChangelog,
   fetchUpdateCheckAll,
+  fetchWebuiAutoUpdateStatus,
   openUpdateApplyJobEventSource,
   postBotUpdateApply,
   postUpdateApply,
+  postWebuiAutoUpdateAck,
+  postWebuiAutoUpdateRunOnce,
   type UpdateChangelogTarget,
+  type WebuiAutoUpdateStatusData,
 } from "@/api/fullConsole";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
 import { waitForUpdateApplyJob } from "@/utils/updateApplyJobStream";
@@ -27,6 +31,7 @@ import GitMirrorDialog from "@/components/GitMirrorDialog";
 import PageMasthead from "@/components/PageMasthead";
 import ReadmeMarkdown from "@/components/ReadmeMarkdown";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
+import ConsoleSwitch from "@/components/ConsoleSwitch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,11 +48,19 @@ import UiInput from "@/components/ui/UiInput";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { readPrefs, writePrefs } from "@/theme/applyShellTheme";
-import { ChevronRight, RefreshCw, LayoutDashboard, Bot } from "lucide-react";
+import { ChevronRight, RefreshCw, LayoutDashboard, Bot, Timer } from "lucide-react";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 const PB_PROTOCOL_PLUGIN = "pb_protocol";
+const PB_WEBUI_PLUGIN = "pb_webui";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
+const WEBUI_AUTO_ENABLED = "pallas_webui_auto_update_enabled";
+const BOT_AUTO_ENABLED = "pallas_bot_auto_update_enabled";
+const PLUGINS_AUTO_ENABLED = "pallas_plugins_auto_update_enabled";
+const WEBUI_AUTO_MODE = "pallas_webui_auto_update_schedule_mode";
+const WEBUI_AUTO_INTERVAL = "pallas_webui_auto_update_interval_hours";
+const WEBUI_AUTO_CRON_HOUR = "pallas_webui_auto_update_cron_hour";
+const WEBUI_AUTO_CRON_MINUTE = "pallas_webui_auto_update_cron_minute";
 const WEBUI_RELEASES_PAGE = PALLAS_WEBUI_RELEASES;
 const BOT_RELEASES_PAGE = PALLAS_BOT_RELEASES;
 const PENDING_CHANGELOG_KEY = "pallas.webui.pendingUpdateChangelog";
@@ -213,8 +226,23 @@ export default function UpdatePage() {
   const [showChangelogAfterUpdate, setShowChangelogAfterUpdate] = useState(
     () => readPrefs().showUpdateChangelog,
   );
+  const [autoBusy, setAutoBusy] = useState(false);
+  const [autoDraft, setAutoDraft] = useState({
+    webui_enabled: false,
+    bot_enabled: false,
+    plugins_enabled: false,
+    schedule_mode: "interval" as "interval" | "cron",
+    interval_hours: 6,
+    cron_hour: 4,
+    cron_minute: 0,
+  });
 
   const q = useQuery({ queryKey: ["update-check-all"], queryFn: fetchUpdateCheckAll });
+  const autoQ = useQuery({
+    queryKey: ["webui-auto-update-status"],
+    queryFn: fetchWebuiAutoUpdateStatus,
+    refetchInterval: 60_000,
+  });
   const web = q.data?.webui;
   const bot = q.data?.bot;
 
@@ -291,6 +319,33 @@ export default function UpdatePage() {
   useEffect(() => {
     void loadGithubTokenHint();
   }, []);
+
+  useEffect(() => {
+    const data = autoQ.data;
+    if (!data) return;
+    const mode = data.schedule_mode === "cron" ? "cron" : "interval";
+    setAutoDraft({
+      webui_enabled: Boolean(data.webui?.enabled ?? data.enabled),
+      bot_enabled: Boolean(data.bot?.enabled),
+      plugins_enabled: Boolean(data.plugins?.enabled),
+      schedule_mode: mode,
+      interval_hours: Math.max(1, Math.min(168, Number(data.interval_hours) || 6)),
+      cron_hour: Math.max(0, Math.min(23, Number(data.cron_hour) || 0)),
+      cron_minute: Math.max(0, Math.min(59, Number(data.cron_minute) || 0)),
+    });
+  }, [autoQ.data]);
+
+  useEffect(() => {
+    if (!autoQ.data?.pending_notice) return;
+    void (async () => {
+      try {
+        await postWebuiAutoUpdateAck();
+        await qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] });
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [autoQ.data?.pending_notice, qc]);
 
   useEffect(() => {
     const raw = (location.hash || "").replace(/^#/, "").trim();
@@ -404,6 +459,113 @@ export default function UpdatePage() {
     } finally {
       setGhTokenBusy(false);
     }
+  }
+
+  async function saveAutoUpdate(patch: Partial<typeof autoDraft>) {
+    const next = { ...autoDraft, ...patch };
+    setAutoBusy(true);
+    setErr("");
+    try {
+      await putPluginConfig(PB_WEBUI_PLUGIN, {
+        [WEBUI_AUTO_ENABLED]: next.webui_enabled,
+        [BOT_AUTO_ENABLED]: next.bot_enabled,
+        [PLUGINS_AUTO_ENABLED]: next.plugins_enabled,
+        [WEBUI_AUTO_MODE]: next.schedule_mode,
+        [WEBUI_AUTO_INTERVAL]: next.interval_hours,
+        [WEBUI_AUTO_CRON_HOUR]: next.cron_hour,
+        [WEBUI_AUTO_CRON_MINUTE]: next.cron_minute,
+      });
+      setAutoDraft(next);
+      await qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] });
+      const anyOn = next.webui_enabled || next.bot_enabled || next.plugins_enabled;
+      pushConsoleToast(
+        anyOn
+          ? next.schedule_mode === "cron"
+            ? `自动更新已保存（每天 ${String(next.cron_hour).padStart(2, "0")}:${String(next.cron_minute).padStart(2, "0")}）`
+            : `自动更新已保存（每 ${next.interval_hours} 小时）`
+          : "已关闭全部自动更新",
+        "ok",
+      );
+    } catch (e) {
+      const detail = axiosErrorDetail(e) || (e instanceof Error ? e.message : String(e));
+      setErr(detail);
+      pushConsoleToast(detail, "err");
+    } finally {
+      setAutoBusy(false);
+    }
+  }
+
+  async function runAutoOnce() {
+    setAutoBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      const data = await postWebuiAutoUpdateRunOnce();
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] }),
+        qc.invalidateQueries({ queryKey: ["update-check-all"] }),
+      ]);
+      const tick = data.tick;
+      const result = String(tick?.result || "");
+      const targetResults = tick?.targets || {};
+      const appliedKinds = Object.entries(targetResults)
+        .filter(([, v]) => ["applied", "partial"].includes(String(v?.result || "")))
+        .map(([k]) => k);
+      if (result === "applied" || appliedKinds.length) {
+        const label = appliedKinds.length ? `已自动更新：${appliedKinds.join(" / ")}` : "已自动更新";
+        setMsg(label);
+        pushConsoleToast(label, "ok");
+        if (appliedKinds.includes("webui") || appliedKinds.includes("bot") || appliedKinds.includes("plugins")) {
+          window.setTimeout(() => window.location.reload(), 1500);
+        }
+        return;
+      }
+      if (result === "up_to_date") {
+        setMsg("各项均已是最新或无可应用更新");
+        pushConsoleToast("已是最新", "ok");
+        return;
+      }
+      if (result === "skipped") {
+        setMsg("本轮已跳过（未开启或不可用）");
+        return;
+      }
+      const fail = String(tick?.error || data.last_error || "自动更新失败");
+      setErr(fail);
+      pushConsoleToast(fail, "err");
+    } catch (e) {
+      const detail = axiosErrorDetail(e) || (e instanceof Error ? e.message : String(e));
+      setErr(detail);
+      pushConsoleToast(detail, "err");
+    } finally {
+      setAutoBusy(false);
+    }
+  }
+
+  function formatTargetStatus(data: WebuiAutoUpdateStatusData | undefined, kind: "webui" | "bot" | "plugins"): string {
+    const t = data?.[kind];
+    if (!t) return "尚未检查";
+    const at = formatCheckedAt(t.last_check_at ?? undefined);
+    const result = String(t.last_check_result || "").trim();
+    const label =
+      result === "applied" || result === "partial"
+        ? "已应用"
+        : result === "up_to_date"
+          ? "已是最新"
+          : result === "failed"
+            ? "失败"
+            : result === "skipped"
+              ? t.skip_reason
+                ? `已跳过（${t.skip_reason}）`
+                : "已跳过"
+              : result || "—";
+    if (at === "—") return label;
+    return `${label} · ${at}`;
+  }
+
+  function formatAutoStatus(data: WebuiAutoUpdateStatusData | undefined): string {
+    if (!data) return "尚未检查";
+    const at = formatCheckedAt(data.last_run_at ?? data.last_check_at ?? undefined);
+    return at === "—" ? "尚未整轮执行" : `上次整轮 ${at}`;
   }
 
   async function applyWeb() {
@@ -554,6 +716,176 @@ export default function UpdatePage() {
       />
 
       <div className="update-page__panels">
+        <Card id="console-update-auto" className={UPDATE_PANEL}>
+          <CardHeader className={UPDATE_PANEL_HD}>
+            <CardTitle className="panel__title flex min-w-0 flex-wrap items-center gap-1.5">
+              <PanelTitleIcon icon={Timer} />
+              自动更新
+            </CardTitle>
+          </CardHeader>
+          <CardContent className={UPDATE_PANEL_BD}>
+            <div className="update-page__auto" id="console-update-webui-auto">
+              <p className="update-page__auto-desc muted" style={{ marginTop: 0 }}>
+                共用一套调度。Bot 仅在干净正式版（release_tag）自动 checkout；开发克隆 / Docker / 脏树只检查不应用。
+                跟随 commit 的开发通道另开，不进默认自动。
+              </p>
+              <div className="update-page__auto-toggles">
+                <div className="update-page__auto-row">
+                  <div className="update-page__auto-copy min-w-0">
+                    <div className="update-page__auto-title">控制台 WebUI</div>
+                    <p className="update-page__auto-desc muted">拉取 Release 的 dist.zip</p>
+                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "webui")}</p>
+                  </div>
+                  <ConsoleSwitch
+                    checked={autoDraft.webui_enabled}
+                    disabled={autoBusy || busy}
+                    onCheckedChange={(next) => void saveAutoUpdate({ webui_enabled: next })}
+                    ariaLabel="自动更新控制台"
+                    showLabel={false}
+                  />
+                </div>
+                <div className="update-page__auto-row">
+                  <div className="update-page__auto-copy min-w-0">
+                    <div className="update-page__auto-title">Bot 本体</div>
+                    <p className="update-page__auto-desc muted">
+                      仅干净正式版；当前{" "}
+                      {autoQ.data?.bot?.deployment_mode || bot?.deployment_mode || "—"}
+                      {autoQ.data?.bot?.auto_apply_eligible === false ? "（本机不自动应用）" : ""}
+                    </p>
+                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "bot")}</p>
+                  </div>
+                  <ConsoleSwitch
+                    checked={autoDraft.bot_enabled}
+                    disabled={autoBusy || busy}
+                    onCheckedChange={(next) => void saveAutoUpdate({ bot_enabled: next })}
+                    ariaLabel="自动更新 Bot"
+                    showLabel={false}
+                  />
+                </div>
+                <div className="update-page__auto-row">
+                  <div className="update-page__auto-copy min-w-0">
+                    <div className="update-page__auto-title">已安装插件</div>
+                    <p className="update-page__auto-desc muted">官方扩展 + 社区插件有更新时自动拉；完成后尝试重启</p>
+                    <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "plugins")}</p>
+                  </div>
+                  <ConsoleSwitch
+                    checked={autoDraft.plugins_enabled}
+                    disabled={autoBusy || busy}
+                    onCheckedChange={(next) => void saveAutoUpdate({ plugins_enabled: next })}
+                    ariaLabel="自动更新插件"
+                    showLabel={false}
+                  />
+                </div>
+              </div>
+              <div className="update-page__auto-grid">
+                <label className="update-page__auto-field">
+                  <span className="update-page__auto-field-label">共用调度</span>
+                  <select
+                    className="update-page__auto-select"
+                    value={autoDraft.schedule_mode}
+                    disabled={
+                      autoBusy ||
+                      busy ||
+                      !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                    }
+                    onChange={(e) => {
+                      const mode = e.target.value === "cron" ? "cron" : "interval";
+                      void saveAutoUpdate({ schedule_mode: mode });
+                    }}
+                  >
+                    <option value="interval">按间隔</option>
+                    <option value="cron">每天定时</option>
+                  </select>
+                </label>
+                {autoDraft.schedule_mode === "interval" ? (
+                  <label className="update-page__auto-field">
+                    <span className="update-page__auto-field-label">间隔（小时）</span>
+                    <UiInput
+                      type="number"
+                      min={1}
+                      max={168}
+                      className="update-page__auto-input"
+                      value={String(autoDraft.interval_hours)}
+                      disabled={
+                        autoBusy ||
+                        busy ||
+                        !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                      }
+                      onValueChange={(v) => {
+                        const n = Math.max(1, Math.min(168, Number(v) || 6));
+                        setAutoDraft((prev) => ({ ...prev, interval_hours: n }));
+                      }}
+                      onBlur={() => {
+                        if ((autoQ.data?.interval_hours || 6) === autoDraft.interval_hours) return;
+                        void saveAutoUpdate({ interval_hours: autoDraft.interval_hours });
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <label className="update-page__auto-field">
+                    <span className="update-page__auto-field-label">每天时刻</span>
+                    <div className="update-page__auto-cron">
+                      <UiInput
+                        type="number"
+                        min={0}
+                        max={23}
+                        className="update-page__auto-input"
+                        value={String(autoDraft.cron_hour)}
+                        disabled={
+                          autoBusy ||
+                          busy ||
+                          !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                        }
+                        onValueChange={(v) => {
+                          const n = Math.max(0, Math.min(23, Number(v) || 0));
+                          setAutoDraft((prev) => ({ ...prev, cron_hour: n }));
+                        }}
+                        onBlur={() => {
+                          if ((autoQ.data?.cron_hour || 0) === autoDraft.cron_hour) return;
+                          void saveAutoUpdate({ cron_hour: autoDraft.cron_hour });
+                        }}
+                      />
+                      <span className="muted">:</span>
+                      <UiInput
+                        type="number"
+                        min={0}
+                        max={59}
+                        className="update-page__auto-input"
+                        value={String(autoDraft.cron_minute)}
+                        disabled={
+                          autoBusy ||
+                          busy ||
+                          !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
+                        }
+                        onValueChange={(v) => {
+                          const n = Math.max(0, Math.min(59, Number(v) || 0));
+                          setAutoDraft((prev) => ({ ...prev, cron_minute: n }));
+                        }}
+                        onBlur={() => {
+                          if ((autoQ.data?.cron_minute || 0) === autoDraft.cron_minute) return;
+                          void saveAutoUpdate({ cron_minute: autoDraft.cron_minute });
+                        }}
+                      />
+                    </div>
+                  </label>
+                )}
+              </div>
+              <div className="update-page__auto-status-row">
+                <span className="muted update-page__auto-status">{formatAutoStatus(autoQ.data)}</span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={autoBusy || busy}
+                  onClick={() => void runAutoOnce()}
+                >
+                  {autoBusy ? "执行中…" : "立即检查并应用"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card id="console-update-webui" className={UPDATE_PANEL}>
           <CardHeader className={UPDATE_PANEL_HD}>
             <CardTitle className="panel__title flex min-w-0 flex-wrap items-center gap-1.5">

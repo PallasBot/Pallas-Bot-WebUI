@@ -3383,6 +3383,82 @@ export async function fetchUpdateApplyJob(jobId: string): Promise<UpdateApplyJob
   return (await consoleOpenapiGet(`/update/jobs/${encodeURIComponent(jobId)}`)) as UpdateApplyJobSnapshot;
 }
 
+export type WebuiAutoUpdatePendingNotice = {
+  kind?: string;
+  tag?: string;
+  from_tag?: string;
+  applied_at?: number;
+  updated?: string[];
+  failed?: Array<{ id?: string; error?: string }>;
+  items?: WebuiAutoUpdatePendingNotice[];
+};
+
+export type WebuiAutoUpdateTickResult = {
+  result?: string;
+  reason?: string;
+  tag?: string;
+  from_tag?: string;
+  error?: string;
+  message?: string;
+  current_tag?: string;
+  latest_tag?: string;
+  pending_notice?: WebuiAutoUpdatePendingNotice | null;
+  targets?: Record<string, WebuiAutoUpdateTickResult>;
+  updated?: string[];
+  failed?: Array<{ id?: string; error?: string }>;
+};
+
+export type WebuiAutoUpdateTargetStatus = {
+  enabled?: boolean;
+  last_check_at?: number | null;
+  last_check_result?: string | null;
+  last_applied_tag?: string | null;
+  last_applied_at?: number | null;
+  last_error?: string | null;
+  skip_reason?: string | null;
+  updated?: string[] | null;
+  failed?: Array<{ id?: string; error?: string }> | null;
+  deployment_mode?: string;
+  auto_apply_eligible?: boolean;
+};
+
+export type WebuiAutoUpdateStatusData = {
+  enabled?: boolean;
+  schedule_mode?: "interval" | "cron" | string;
+  interval_hours?: number;
+  cron_hour?: number;
+  cron_minute?: number;
+  last_check_at?: number | null;
+  last_check_result?: string | null;
+  last_applied_tag?: string | null;
+  last_applied_at?: number | null;
+  last_error?: string | null;
+  pending_notice?: WebuiAutoUpdatePendingNotice | null;
+  tick?: WebuiAutoUpdateTickResult;
+  webui?: WebuiAutoUpdateTargetStatus;
+  bot?: WebuiAutoUpdateTargetStatus;
+  plugins?: WebuiAutoUpdateTargetStatus;
+  last_run_at?: number | null;
+};
+
+export async function fetchWebuiAutoUpdateStatus(): Promise<WebuiAutoUpdateStatusData> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/update/auto/status"]["get"]
+  >("/update/auto/status")) as WebuiAutoUpdateStatusData;
+}
+
+export async function postWebuiAutoUpdateAck(): Promise<WebuiAutoUpdateStatusData> {
+  return (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/update/auto/ack"]["post"]
+  >("/update/auto/ack", {})) as WebuiAutoUpdateStatusData;
+}
+
+export async function postWebuiAutoUpdateRunOnce(): Promise<WebuiAutoUpdateStatusData> {
+  return (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/update/auto/run-once"]["post"]
+  >("/update/auto/run-once", {})) as WebuiAutoUpdateStatusData;
+}
+
 export async function postSystemRestart(options?: {
   workersOnly?: boolean;
 }): Promise<SystemRestartData> {
