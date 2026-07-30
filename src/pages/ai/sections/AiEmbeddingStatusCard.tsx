@@ -87,7 +87,7 @@ export default function AiEmbeddingStatusCard() {
           </div>
           {provider === "openai" && data?.endpoint_configured === false ? (
             <div className="sm:col-span-2 text-amber-700 dark:text-amber-400">
-              还缺接口地址：在下方「Embedding 线路」选 Provider，或手填接口地址；也可先配好对话主线。
+              还缺接口地址：在下方「Embedding 线路」点添加网关选 Provider，或手填地址；也可先配好对话主线。
             </div>
           ) : null}
           {data?.endpoint_provider_id ? (
@@ -119,7 +119,7 @@ export default function AiEmbeddingStatusCard() {
           ) : null}
           {provider === "local" && !data?.local_dependency_ready ? (
             <div className="sm:col-span-2">
-              本机提供方需安装：`uv sync --extra embedding-local`（首次加载会占内存并较慢）
+              {"本机提供方需安装 fastembed（uv pip install 'fastembed>=0.5'；首次加载会占内存并较慢）"}
             </div>
           ) : null}
         </dl>
