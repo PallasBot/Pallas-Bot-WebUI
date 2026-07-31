@@ -29,6 +29,7 @@ import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
+import PendingValue from "@/components/PendingValue";
 import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialog";
 import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal";
 import StatusTone from "@/components/StatusTone";
@@ -781,9 +782,9 @@ export default function ProtocolAccountsTab() {
             <span className="inst-db-stat muted">
               当前已连接{" "}
               <strong className="inst-db-stat__num">
-                {showAccountsSkeleton ? "…" : protocolConnectedCount}
+                {showAccountsSkeleton ? <PendingValue pending /> : protocolConnectedCount}
               </strong>{" "}
-              / {showAccountsSkeleton ? "…" : protocolAccountsTotalCount} 账号
+              / {showAccountsSkeleton ? <PendingValue pending /> : protocolAccountsTotalCount} 账号
             </span>
           </div>
         </CardHeader>

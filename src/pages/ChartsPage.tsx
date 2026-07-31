@@ -15,7 +15,6 @@ import ChartsNamedSeriesTrend from "@/components/ChartsNamedSeriesTrend";
 import ChartsPluginFilter from "@/components/ChartsPluginFilter";
 import ChromeField from "@/components/ChromeField";
 import ChromeTools, { CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
-import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import DateModeFilter from "@/components/DateModeFilter";
 import PageMasthead from "@/components/PageMasthead";
 import PendingValue from "@/components/PendingValue";
@@ -466,7 +465,11 @@ export default function ChartsPage() {
         </ChromeTools>
       ) : null}
 
-      {instancesPending && selectedAccount == null ? <ConsolePageSkeleton panels={3} /> : null}
+      {instancesPending && selectedAccount == null ? (
+        <p className="muted charts-page__empty" role="status" aria-busy="true">
+          账号列表加载中 <PendingValue pending />
+        </p>
+      ) : null}
 
       {botsResolved && !sortedBots.length ? (
         <p className="muted charts-page__empty">数据库中暂无 Bot 配置。请先在「数据库实例」创建账号。</p>

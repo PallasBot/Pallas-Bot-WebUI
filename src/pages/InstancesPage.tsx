@@ -9,10 +9,10 @@ import BotConfigModal from "@/components/BotConfigModal";
 import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
-import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import ChromeTools, { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
+import PendingValue from "@/components/PendingValue";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import StatusTone from "@/components/StatusTone";
 import { Button } from "@/components/ui/button";
@@ -300,7 +300,44 @@ export default function InstancesPage() {
       />
 
       {q.isLoading && !data ? (
-        <ConsolePageSkeleton panels={4} />
+        <>
+          <ChromeTools>
+            <div className="relative min-w-[8rem] flex-1">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <Input
+                type="search"
+                className={CHROME_SEARCH_INPUT}
+                placeholder="搜索账号…"
+                aria-label="搜索账号"
+                autoComplete="off"
+                disabled
+                value=""
+              />
+            </div>
+          </ChromeTools>
+          <Card className={cn(INST_PANEL, "inst-db-panel")}>
+            <CardHeader className={INST_PANEL_HD}>
+              <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
+                <PanelTitleIcon icon={Database} />
+                数据库中的实例
+              </CardTitle>
+              <div className="inst-db-panel__hd-side">
+                <span className="inst-db-stat muted">
+                  当前已连接 <PendingValue pending /> / <PendingValue pending /> 账号
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className={INST_PANEL_BD}>
+              <p className="muted" role="status" aria-busy="true">
+                实例列表加载中
+              </p>
+            </CardContent>
+          </Card>
+        </>
       ) : data ? (
         <>
           <ChromeTools>

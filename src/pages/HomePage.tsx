@@ -45,8 +45,7 @@ import {
 } from "@/utils/homeActionDismissals";
 import { readSavedHomeAccount, writeSavedHomeAccount } from "@/utils/chartsPageHelpers";
 import RefreshIconButton from "@/components/RefreshIconButton";
-import ConsolePageSkeleton, { SkelValue } from "@/components/ConsolePageSkeleton";
-import HomeLazyReveal from "@/components/HomeLazyReveal";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import PendingValue from "@/components/PendingValue";
 import StatusTone from "@/components/StatusTone";
 import { querySettled } from "@/utils/querySettled";
@@ -249,7 +248,7 @@ export default function HomePage() {
     staleTime: HOME_SYSTEM_POLL_MS,
   });
   const communityQ = useQuery({
-    queryKey: ["home-community"],
+    queryKey: ["community-stats"],
     queryFn: () => fetchCommunityStats(),
     enabled: overviewSettled,
     refetchInterval: HOME_SYSTEM_POLL_MS,
@@ -506,19 +505,19 @@ export default function HomePage() {
   const accountTodayApiCallsDisplay = (() => {
     const n = scopedBotStatsRow?.today_api_calls;
     if (n == null || !Number.isFinite(Number(n))) {
-      return accountStatsBusy ? <SkelValue className="skel-value--narrow" /> : "—";
+      return accountStatsBusy ? <PendingValue pending /> : "—";
     }
     return String(Math.floor(Number(n)));
   })();
   const accountTodayRxDisplay = scopedBotStatsRow
     ? String(scopedBotStatsRow.today_received ?? "—")
     : accountStatsBusy
-      ? <SkelValue className="skel-value--narrow" />
+      ? <PendingValue pending />
       : "—";
   const accountTodayTxDisplay = scopedBotStatsRow
     ? String(scopedBotStatsRow.today_sent ?? "—")
     : accountStatsBusy
-      ? <SkelValue className="skel-value--narrow" />
+      ? <PendingValue pending />
       : "—";
 
   const accountSocialPending =
@@ -715,12 +714,24 @@ export default function HomePage() {
               <Link className="home-kpi-community" to="/community" title="社区统计与语料">
                 社区
                 <span className="home-kpi-community__val">
-                  {communityStats?.deployments_online?.toLocaleString() ?? "—"}
+                  {communityStats?.deployments_online != null ? (
+                    communityStats.deployments_online.toLocaleString()
+                  ) : !querySettled(communityQ) ? (
+                    <PendingValue pending />
+                  ) : (
+                    "—"
+                  )}
                 </span>
                 <span className="home-kpi-community__hint muted">安装</span>
                 <span className="home-kpi-community__sep muted">·</span>
                 <span className="home-kpi-community__val">
-                  {communityStats?.bots_online_sum?.toLocaleString() ?? "—"}
+                  {communityStats?.bots_online_sum != null ? (
+                    communityStats.bots_online_sum.toLocaleString()
+                  ) : !querySettled(communityQ) ? (
+                    <PendingValue pending />
+                  ) : (
+                    "—"
+                  )}
                 </span>
                 <span className="home-kpi-community__hint muted">牛牛</span>
               </Link>
@@ -887,19 +898,14 @@ export default function HomePage() {
                       )}
                     </span>
                   </div>
-                  <HomeLazyReveal
-                    loading={accountSocialPending && socialQ.data?.fl == null && socialQ.data?.gl == null}
-                    variant="account-social"
-                    ariaLabel="账号概况加载中"
-                  >
-                    <div className="home-acct-grid">
+                  <div className="home-acct-grid">
                       <div className="home-acct-tile">
                         <span className="home-acct-tile__label">好友</span>
                         <span className="home-acct-tile__value">
                           {socialQ.data?.fl != null ? (
                             `${socialQ.data.fl.friends?.length ?? 0}${socialQ.data.fl.truncated ? "+" : ""}`
                           ) : accountSocialPending ? (
-                            <SkelValue className="skel-value--narrow" />
+                            <PendingValue pending />
                           ) : (
                             "—"
                           )}
@@ -911,7 +917,7 @@ export default function HomePage() {
                           {socialQ.data?.gl != null ? (
                             `${socialQ.data.gl.groups?.length ?? 0}${socialQ.data.gl.truncated ? "+" : ""}`
                           ) : accountSocialPending ? (
-                            <SkelValue className="skel-value--narrow" />
+                            <PendingValue pending />
                           ) : (
                             "—"
                           )}
@@ -958,7 +964,6 @@ export default function HomePage() {
                         ) : null}
                       </div>
                     ) : null}
-                  </HomeLazyReveal>
                   <div className="home-acct__foot">
                     {scopedMatcherErrorLog.length ? (
                       <details className="home-acct-matcher">
@@ -1195,7 +1200,6 @@ export default function HomePage() {
                 ) : null}
               </CardHeader>
               <CardContent className={HOME_PANEL_BD}>
-                <HomeLazyReveal loading={versionMetaPending && !botUpdate && !webUpdate} variant="version-dl" ariaLabel="版本信息加载中">
                   <dl className="home-ver-dl">
                     <div className="home-ver-dl__row">
                       <dt>消息框架</dt>
@@ -1222,7 +1226,11 @@ export default function HomePage() {
                           const label = pallasBotVersionLabel(health ?? null, botUpdate ?? null);
                           return (
                             <span className="home-ver-dl__val" title={label && label !== "—" ? label : undefined}>
-                              {label}
+                              {versionMetaPending && !botUpdate && label === "—" ? (
+                                <PendingValue pending />
+                              ) : (
+                                label
+                              )}
                             </span>
                           );
                         })()}
@@ -1249,7 +1257,11 @@ export default function HomePage() {
                           });
                           return (
                             <span className="home-ver-dl__val" title={label && label !== "—" ? label : undefined}>
-                              {label}
+                              {versionMetaPending && !webUpdate && (!label || label === "—") ? (
+                                <PendingValue pending />
+                              ) : (
+                                label
+                              )}
                             </span>
                           );
                         })()}
@@ -1285,7 +1297,6 @@ export default function HomePage() {
                       </dd>
                     </div>
                   </dl>
-                </HomeLazyReveal>
               </CardContent>
             </Card>
 
@@ -1300,15 +1311,18 @@ export default function HomePage() {
                 ) : null}
               </CardHeader>
               <CardContent className={HOME_PANEL_BD}>
-                <HomeLazyReveal loading={versionMetaPending && !system} variant="version-dl" ariaLabel="环境信息加载中">
                   <dl className="home-ver-dl">
                     <div className="home-ver-dl__row">
                       <dt>服务时间</dt>
                       <dd>
                         <span className="home-ver-dl__val home-ver-dl__val--mono">
-                          {system?.server_time != null
-                            ? new Date(system.server_time * 1000).toLocaleString()
-                            : "—"}
+                          {system?.server_time != null ? (
+                            new Date(system.server_time * 1000).toLocaleString()
+                          ) : systemQ.isFetching && !system ? (
+                            <PendingValue pending narrow={false} />
+                          ) : (
+                            "—"
+                          )}
                         </span>
                       </dd>
                     </div>
@@ -1318,7 +1332,13 @@ export default function HomePage() {
                         <span className="home-ver-dl__val home-ver-dl__val--mono">
                           {(() => {
                             const d = system?.nonebot2_driver;
-                            if (!d?.host && d?.port == null) return "—";
+                            if (!d?.host && d?.port == null) {
+                              return systemQ.isFetching && !system ? (
+                                <PendingValue pending narrow={false} />
+                              ) : (
+                                "—"
+                              );
+                            }
                             const host = (d.host ?? "0.0.0.0").trim() || "0.0.0.0";
                             return `${host}:${d.port ?? "—"}`;
                           })()}
@@ -1328,17 +1348,32 @@ export default function HomePage() {
                     <div className="home-ver-dl__row">
                       <dt>系统</dt>
                       <dd>
-                        <span className="home-ver-dl__val">{osFamilyLabel(runtime?.platform)}</span>
+                        <span className="home-ver-dl__val">
+                          {runtime?.platform ? (
+                            osFamilyLabel(runtime.platform)
+                          ) : systemQ.isFetching && !system ? (
+                            <PendingValue pending narrow={false} />
+                          ) : (
+                            osFamilyLabel(undefined)
+                          )}
+                        </span>
                       </dd>
                     </div>
                     <div className="home-ver-dl__row">
                       <dt>主机</dt>
                       <dd>
-                        <span className="home-ver-dl__val">{runtime?.hostname?.trim() || "—"}</span>
+                        <span className="home-ver-dl__val">
+                          {runtime?.hostname?.trim() ? (
+                            runtime.hostname.trim()
+                          ) : systemQ.isFetching && !system ? (
+                            <PendingValue pending narrow={false} />
+                          ) : (
+                            "—"
+                          )}
+                        </span>
                       </dd>
                     </div>
                   </dl>
-                </HomeLazyReveal>
               </CardContent>
             </Card>
           </div>

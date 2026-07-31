@@ -9133,7 +9133,7 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   }
 
   /* 统计与语料「全网部署」：窄屏标题（含刷新）与「在线统计设置」保持同一行 */
-  #community-deploy .community-page__deploy-panel-hd.panel__hd--split {
+  .community-page__section--deploy .community-page__deploy-panel-hd.panel__hd--split {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -9141,14 +9141,14 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     gap: 8px;
   }
 
-  #community-deploy .community-page__deploy-panel-hd > .panel__title {
+  .community-page__section--deploy .community-page__deploy-panel-hd > .panel__title {
     flex: 0 1 auto;
     width: auto;
     min-width: 0;
     align-self: center;
   }
 
-  #community-deploy .community-page__deploy-hd-actions {
+  .community-page__section--deploy .community-page__deploy-hd-actions {
     display: flex;
     flex: 0 0 auto;
     margin-left: auto;
@@ -9156,8 +9156,8 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     gap: 8px;
   }
 
-  #community-deploy .community-page__deploy-settings-btn,
-  #community-deploy .community-page__deploy-probe-btn {
+  .community-page__section--deploy .community-page__deploy-settings-btn,
+  .community-page__section--deploy .community-page__deploy-probe-btn {
     flex: 0 0 auto;
     width: auto;
     max-width: none;

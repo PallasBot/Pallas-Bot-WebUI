@@ -1,3 +1,10 @@
+/*
+ * 控制台加载态约定：
+ * - 标签 / 卡片 / 表格壳已知 → 常驻真布局，仅数字与短文案用 .pending-value
+ * - 连接 / 接入类 → .status-tone 三态（pending → ok/off）
+ * - 整页 / 整表结构未知（冷启动、列表未定）→ 才用 ConsolePageSkeleton / 表行骨架
+ */
+
 /* 行内 pending / 连接态胶囊：与 home-acct__conn、skel-pulse 对齐 */
 
 .pending-value {

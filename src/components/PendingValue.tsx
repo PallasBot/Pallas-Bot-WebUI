@@ -2,7 +2,7 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import "@/styles/status-pending.css";
 
-/** 行内数值/短文案：pending 时脉冲占位，就绪后淡入 */
+/** 行内数值/短文案：pending 时脉冲占位，就绪后淡入（勿整卡换骨架） */
 export default function PendingValue({
   pending = false,
   narrow = true,
