@@ -87,7 +87,7 @@ type SelectPanel = "service" | "assets" | "sing" | "tts" | "draw" | "ncm";
 const SELECT_OPTIONS: Array<{ value: SelectPanel; label: string; icon: LucideIcon; lead: string }> = [
   { value: "service", label: "媒体服务", icon: Server, lead: "安装、启停与连接。" },
   { value: "assets", label: "媒体资产", icon: HardDrive, lead: "下载唱歌 / 语音所需的模型与素材。" },
-  { value: "sing", label: "唱歌", icon: Music2, lead: "默认音色与音色映射。" },
+  { value: "sing", label: "唱歌", icon: Music2, lead: "默认音色与音频映射。" },
   { value: "tts", label: "牛牛说", icon: AudioLines, lead: "默认音色、语种与中译日。" },
   { value: "draw", label: "画画", icon: Palette, lead: "画画网关；其它项在插件配置。" },
   { value: "ncm", label: "网易云", icon: Cloud, lead: "短信登录与会话状态。" },
@@ -811,7 +811,7 @@ export default function AiConfigMediaSection() {
             <code className="font-mono">.pt</code>
             /
             <code className="font-mono">.pth</code>
-            后刷新本页，再在「音色映射」指到该 id。
+            后刷新本页，再在「音频映射」指到该 id。
           </span>
           {singModelsAbs ? (
             <span>
@@ -963,6 +963,7 @@ export default function AiConfigMediaSection() {
               const cb = runtimeQ.data?.callback;
               const probeOk = cb?.probe?.ok === true;
               const aligned = cb?.aligned === true;
+              const hasCallback = cb != null;
               const target =
                 cb?.host && cb.port != null
                   ? `${cb.host}:${cb.port}`
@@ -974,14 +975,18 @@ export default function AiConfigMediaSection() {
               return (
                 <>
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant={aligned ? "success" : "warn"}>
-                      {aligned ? "已对齐" : "未对齐"}
+                    <Badge variant={!hasCallback ? "secondary" : aligned ? "success" : "warn"}>
+                      {!hasCallback ? "对齐未知" : aligned ? "已对齐" : "未对齐"}
                     </Badge>
-                    <Badge variant={probeOk ? "success" : "warn"}>
-                      探活 {probeOk ? "可达" : "不可达"}
+                    <Badge variant={!hasCallback ? "secondary" : probeOk ? "success" : "warn"}>
+                      {!hasCallback ? "探活未知" : probeOk ? "探活可达" : "探活不可达"}
                     </Badge>
-                    <Badge variant="outline">当前 {target}</Badge>
-                    <Badge variant="outline">期望 {expected}</Badge>
+                    {hasCallback ? (
+                      <>
+                        <Badge variant="outline">当前 {target}</Badge>
+                        <Badge variant="outline">期望 {expected}</Badge>
+                      </>
+                    ) : null}
                   </div>
                   {cb?.error || cb?.probe?.error ? (
                     <p className="text-xs text-muted-foreground">
@@ -1049,7 +1054,7 @@ export default function AiConfigMediaSection() {
                       </Button>
                     </div>
                   ) : null}
-                  {!cb?.can_edit ? (
+                  {!hasCallback ? null : !cb?.can_edit ? (
                     <p className="text-xs text-muted-foreground">
                       当前无法在此改回调（无本地 Runtime 时请改 compose / 远端 .env）。
                     </p>
@@ -1295,8 +1300,8 @@ export default function AiConfigMediaSection() {
           </div>
         </StateBlock>
         <PluginConfigFormSection
-          title="音色映射"
-          subtitle="口令里的名字对应到媒体服务里的音色 id。"
+          title="音频映射"
+          subtitle="命令里的名字对应到媒体服务里的音色 id。"
           bodyClassName="!grid-cols-1 gap-3"
           defaultOpen
         >
@@ -1306,6 +1311,7 @@ export default function AiConfigMediaSection() {
             presentation="dialog"
             compact
             includeFields={["sing_speakers"]}
+            hideGroupHeaders
             onStatusChange={onSingPluginStatusChange}
           />
           <PluginConfigElsewhereHint
@@ -1504,28 +1510,21 @@ export default function AiConfigMediaSection() {
     ) : null}
 
     {panel === "draw" ? (
-      <div className="space-y-4">
-        <PluginConfigFormSection
-          title="画画网关"
-          subtitle="主线与备用画图线路。"
-          bodyClassName="!grid-cols-1 gap-3"
-          defaultOpen
-        >
-          <PluginConfigWorkspace
-            ref={drawWorkspaceRef}
-            pluginName="draw"
-            presentation="dialog"
-            compact
-            includeFields={[]}
-            includeGateways
-            onStatusChange={onDrawStatusChange}
-          />
-          <PluginConfigElsewhereHint
-            pluginName="draw"
-            label="画画"
-            extras="模型、默认尺寸、冷却等其它项"
-          />
-        </PluginConfigFormSection>
+      <div className="space-y-3">
+        <PluginConfigWorkspace
+          ref={drawWorkspaceRef}
+          pluginName="draw"
+          presentation="dialog"
+          compact
+          includeFields={[]}
+          includeGateways
+          onStatusChange={onDrawStatusChange}
+        />
+        <PluginConfigElsewhereHint
+          pluginName="draw"
+          label="画画"
+          extras="模型、默认尺寸、冷却等其它项"
+        />
       </div>
     ) : null}
 
