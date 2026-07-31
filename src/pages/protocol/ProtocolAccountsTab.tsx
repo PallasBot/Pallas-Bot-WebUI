@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useLocation, useOutletContext } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { disconnectBotWs } from "@/api/fullConsole";
 import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import {
   isExternalProtocolAccount,
@@ -12,6 +13,7 @@ import {
   accountProtocolId,
   accountWebUiHref,
 } from "@/utils/protocolLinks";
+import { qqAvatarUrl } from "@/utils/botDisplay";
 import { slicePage } from "@/utils/paginate";
 import {
   protocolApiErrorMessage,
@@ -27,7 +29,6 @@ import {
 } from "@/api/protocol";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
-import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import PendingValue from "@/components/PendingValue";
 import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialog";
@@ -38,7 +39,17 @@ import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Cable, ChevronDown, Loader2, Play, QrCode, RefreshCw, Search, Square } from "lucide-react";
+import {
+  Cable,
+  ChevronDown,
+  Loader2,
+  Play,
+  QrCode,
+  RefreshCw,
+  Search,
+  Square,
+  Unplug,
+} from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { querySettled } from "@/utils/querySettled";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
@@ -46,6 +57,7 @@ import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConfirmAgain } from "@/hooks/useConfirmAgain";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
+import { pushConsoleToast } from "@/utils/consoleToast";
 import {
   coerceBoolean,
   protocolBackendDisplayName,
@@ -57,7 +69,6 @@ import {
   protocolBatchProgressPercent,
   waitForProtocolBatchJob,
 } from "@/utils/protocolBatch";
-import { pushConsoleToast } from "@/utils/consoleToast";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -73,7 +84,10 @@ const PROTO_PANEL_HD =
   "panel__hd panel__hd--split inst-db-panel__hd flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const PROTO_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
 
-type ProtocolAccountAction = "power" | "restart";
+const EMPTY_PROTOCOL_ACCOUNTS: NapcatAccountRow[] = [];
+const EMPTY_SNOWLUMA_RUNTIMES: SnowlumaRuntimeRow[] = [];
+
+type ProtocolAccountAction = "power" | "restart" | "disconnect";
 type SelectedBatchKind = "restart" | "stop";
 
 function protocolAccountNumber(a: NapcatAccountRow): number | null {
@@ -86,6 +100,8 @@ function profileNick(a: NapcatAccountRow, instances: InstancesData | null): stri
   const q = protocolAccountNumber(a);
   const nick = q != null ? instances?.bot_profiles?.[String(q)]?.nickname?.trim() : "";
   if (nick) return nick;
+  // 外置：只用 QQ 侧昵称，不用协议端 display_name
+  if (isExternalProtocolAccount(a)) return "";
   return String(a.display_name ?? "").trim();
 }
 
@@ -93,6 +109,27 @@ function primaryTitle(a: NapcatAccountRow, instances: InstancesData | null): str
   const nick = profileNick(a, instances);
   if (nick) return nick;
   return "BOT";
+}
+
+function AccountAvatar({ qq }: { qq: number | null }) {
+  if (qq == null) {
+    return <div className="data-summary-card__avatar" aria-hidden />;
+  }
+  return (
+    <div className="data-summary-card__avatar">
+      <img
+        src={qqAvatarUrl(qq)}
+        alt=""
+        width={36}
+        height={36}
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.visibility = "hidden";
+        }}
+      />
+    </div>
+  );
 }
 
 function isProcessRunning(a: NapcatAccountRow): boolean {
@@ -213,15 +250,35 @@ export default function ProtocolAccountsTab() {
     refetchInterval: 8000,
   });
 
-  const pluginAccounts = accountsQ.data ?? [];
-  const snowlumaRuntimes = runtimesQ.data ?? [];
-  const accountsSettled = querySettled(accountsQ);
-  /** 首屏：勿用 nonebot 在线连接冒充账号卡片；手动刷新只用工具条 busy，勿整表骨架 */
-  const showAccountsSkeleton = Boolean(mountUrl) && !accountsSettled;
+  const pluginAccounts = accountsQ.data ?? EMPTY_PROTOCOL_ACCOUNTS;
+  const snowlumaRuntimes = runtimesQ.data ?? EMPTY_SNOWLUMA_RUNTIMES;
+  const accountsSettled = !mountUrl || querySettled(accountsQ);
+  const hasOnlineBots = (instances?.nonebot_bots?.length ?? 0) > 0;
+  const location = useLocation();
+  const previewExternalOnly =
+    new URLSearchParams(location.search).get("preview_external") === "1";
+  /** 等插件账号与实例侧数据齐了再出卡，避免先出外置/骨架再补托管 */
+  const accountsListReady = previewExternalOnly || accountsSettled;
+  const showAccountsLoading =
+    !previewExternalOnly && Boolean(mountUrl) && !accountsSettled;
 
   const protocolAccountsSorted = useMemo(() => {
-    // 协议账号列表未拉到前不合并 nonebot，否则会短暂只显示「已连接」外部卡片
-    if (!accountsSettled) return [];
+    if (previewExternalOnly) {
+      return [
+        {
+          id: "3023094357",
+          qq: "3023094357",
+          connected: true,
+          process_running: false,
+          account_source: "external" as const,
+          protocol_backend: "external",
+          external_adapter: "OneBot V11",
+          ws_port: 8090,
+          ws_url: "ws://127.0.0.1:8090/onebot/v11/ws",
+        },
+      ];
+    }
+    if (!accountsListReady) return [];
     const list = mergeProtocolDisplayAccounts(instances, pluginAccounts);
     list.sort((a, b) => {
       const fa = protocolAccountNumber(a);
@@ -242,7 +299,7 @@ export default function ProtocolAccountsTab() {
       return String(a.qq ?? a.id ?? "").localeCompare(String(b.qq ?? b.id ?? ""), "zh-CN", { numeric: true });
     });
     return list;
-  }, [accountsSettled, instances, pluginAccounts, favorites]);
+  }, [accountsListReady, instances, pluginAccounts, favorites, previewExternalOnly]);
 
   const filteredProtocolAccounts = useMemo(() => {
     const q = protoSearchQ.trim().toLowerCase();
@@ -270,7 +327,6 @@ export default function ProtocolAccountsTab() {
   const pagedProtocolIds = useMemo(
     () =>
       pagedProtocolAccounts
-        .filter((a) => isPluginManagedProtocolAccount(a))
         .map((a) => accountProtocolId(a))
         .filter((id): id is string => Boolean(id)),
     [pagedProtocolAccounts],
@@ -279,6 +335,11 @@ export default function ProtocolAccountsTab() {
   const protoCardsPageAllSelected = useMemo(
     () => pagedProtocolIds.length > 0 && pagedProtocolIds.every((id) => selected.has(id)),
     [pagedProtocolIds, selected],
+  );
+
+  const hasManagedProtocolAccounts = useMemo(
+    () => protocolAccountsSorted.some((a) => isPluginManagedProtocolAccount(a)),
+    [protocolAccountsSorted],
   );
 
   const protocolConnectedCount = protocolAccountsSorted.filter((a) => a.connected === true).length;
@@ -293,6 +354,24 @@ export default function ProtocolAccountsTab() {
     return map;
   }, [protocolAccountsSorted]);
 
+  const selectedManagedIds = useMemo(
+    () =>
+      [...selected].filter((id) => {
+        const a = accountById.get(id);
+        return a != null && isPluginManagedProtocolAccount(a);
+      }),
+    [selected, accountById],
+  );
+
+  const selectedExternalIds = useMemo(
+    () =>
+      [...selected].filter((id) => {
+        const a = accountById.get(id);
+        return a != null && isExternalProtocolAccount(a);
+      }),
+    [selected, accountById],
+  );
+
   const deleteModalItems = useMemo(
     () =>
       [...selected]
@@ -301,29 +380,37 @@ export default function ProtocolAccountsTab() {
           const a = accountById.get(id);
           const title = a ? primaryTitle(a, instances) : id;
           const qq = a?.qq ?? a?.id ?? id;
-          return { key: id, label: `${title} · ${qq}` };
+          const tag = a && isExternalProtocolAccount(a) ? "外置" : "托管";
+          return { key: id, label: `${title} · ${qq}（${tag}）` };
         }),
     [selected, accountById, instances],
   );
 
   const deleteModalWarnings = useMemo(() => {
     const running: string[] = [];
-    const connected: string[] = [];
-    for (const id of [...selected].sort()) {
+    const connectedManaged: string[] = [];
+    for (const id of [...selectedManagedIds].sort()) {
       const a = accountById.get(id);
       if (!a) continue;
       if (isProcessRunning(a)) running.push(id);
-      if (a.connected === true) connected.push(id);
+      if (a.connected === true) connectedManaged.push(id);
     }
     const out: string[] = [];
     if (running.length) {
-      out.push(`以下账号进程仍在运行：${running.join("、")}。删除前将尝试停止，请确认。`);
+      out.push(`以下托管账号进程仍在运行：${running.join("、")}。删除前将尝试停止，请确认。`);
     }
-    if (connected.length) {
-      out.push(`其中以下账号当前仍在线连接：${connected.join("、")}。删除后可能导致运行异常，请确认。`);
+    if (connectedManaged.length) {
+      out.push(
+        `以下托管账号当前仍在线：${connectedManaged.join("、")}。删除后可能导致运行异常，请确认。`,
+      );
+    }
+    if (selectedExternalIds.length) {
+      out.push(
+        `外置连接 ${selectedExternalIds.length} 个将只断开本机 OneBot WS，不会停止外置协议端进程。`,
+      );
     }
     return out;
-  }, [selected, accountById]);
+  }, [selectedManagedIds, selectedExternalIds, accountById]);
 
   useEffect(() => {
     setProtoAccPage(1);
@@ -378,7 +465,11 @@ export default function ProtocolAccountsTab() {
   }
 
   function isAnyAccountActionBusy(a: NapcatAccountRow): boolean {
-    return isAccountActionBusy(a, "power") || isAccountActionBusy(a, "restart");
+    return (
+      isAccountActionBusy(a, "power") ||
+      isAccountActionBusy(a, "restart") ||
+      isAccountActionBusy(a, "disconnect")
+    );
   }
 
   function webUiHref(a: NapcatAccountRow): string | null {
@@ -449,10 +540,44 @@ export default function ProtocolAccountsTab() {
     }
   }
 
+  async function disconnectExternalWs(a: NapcatAccountRow) {
+    const id = accountProtocolId(a);
+    const qq = protocolAccountNumber(a);
+    if (!id || qq == null || isAnyAccountActionBusy(a)) return;
+    if (a.connected !== true) {
+      pushConsoleToast("当前未连接", "warn");
+      return;
+    }
+    const title = primaryTitle(a, instances);
+    const ok = await confirm({
+      title: "断开连接",
+      subtitle: `将关闭 Bot 对本机账号 ${title}（${qq}）的 OneBot WS。外置协议端进程不会被停止，可自行重连。`,
+      confirmLabel: "断开",
+      confirmVariant: "destructive",
+    });
+    if (!ok) return;
+    setAccountActionBusy(id, "disconnect", true);
+    try {
+      await disconnectBotWs(qq);
+      pushConsoleToast(`已断开 ${title}`, "warn");
+      await reload();
+      await qc.invalidateQueries({ queryKey: ["instances"] });
+    } catch (e) {
+      pushConsoleToast(e instanceof Error ? e.message : String(e), "err");
+    } finally {
+      setAccountActionBusy(id, "disconnect", false);
+    }
+  }
+
   async function restartSelectedAccounts() {
-    const ids = [...selected].sort();
+    const ids = [...selectedManagedIds].sort();
     if (!ids.length) {
-      pushConsoleToast("请先勾选要重启的账号", "warn");
+      pushConsoleToast(
+        selectedExternalIds.length
+          ? "所选均为外置连接，无法重启；请选择托管账号"
+          : "请先选择要重启的账号",
+        "warn",
+      );
       return;
     }
     if (restartSelectedBusy) return;
@@ -475,9 +600,14 @@ export default function ProtocolAccountsTab() {
   }
 
   async function stopSelectedAccounts() {
-    const ids = [...selected].sort();
+    const ids = [...selectedManagedIds].sort();
     if (!ids.length) {
-      pushConsoleToast("请先勾选要停止的账号", "warn");
+      pushConsoleToast(
+        selectedExternalIds.length
+          ? "所选均为外置连接，无法停止；请选择托管账号"
+          : "请先选择要停止的账号",
+        "warn",
+      );
       return;
     }
     if (stopSelectedBusy) return;
@@ -501,10 +631,11 @@ export default function ProtocolAccountsTab() {
 
   async function restartAllAccounts() {
     const ids = protocolAccountsSorted
+      .filter((a) => isPluginManagedProtocolAccount(a))
       .map((a) => accountProtocolId(a))
       .filter((id): id is string => Boolean(id));
     if (!mountUrl || !ids.length) {
-      pushConsoleToast("当前没有可重启的账号", "warn");
+      pushConsoleToast("当前没有可重启的托管账号", "warn");
       return;
     }
     if (restartAllBusy) return;
@@ -536,8 +667,11 @@ export default function ProtocolAccountsTab() {
   }
 
   function openSelectedBatchConfirm(kind: SelectedBatchKind) {
-    if (selected.size === 0) {
-      pushConsoleToast("请先勾选账号", "warn");
+    if (selectedManagedIds.length === 0) {
+      pushConsoleToast(
+        selected.size > 0 ? "所选不含可启停的托管账号" : "请先选择账号",
+        "warn",
+      );
       return;
     }
     setSelectedBatchKind(kind);
@@ -566,22 +700,48 @@ export default function ProtocolAccountsTab() {
   }
 
   async function confirmDeleteSelected() {
-    if (!mountUrl) return;
-    const ids = [...selected].sort();
-    if (!ids.length) return;
+    const managedIds = [...selectedManagedIds].sort();
+    const externalIds = [...selectedExternalIds].sort();
+    if (!managedIds.length && !externalIds.length) return;
+    if (managedIds.length && !mountUrl) {
+      setDeleteErr("协议 API 未挂载，无法删除托管账号");
+      return;
+    }
     setDeleteBusy(true);
     setDeleteErr("");
     try {
-      for (const id of ids) {
-        await protocolDeleteAccount(mountUrl, id);
+      let deleted = 0;
+      let disconnected = 0;
+      for (const id of managedIds) {
+        await protocolDeleteAccount(mountUrl!, id);
+        deleted += 1;
       }
-      pushConsoleToast(`已删除 ${ids.length} 个账号`, "warn");
+      for (const id of externalIds) {
+        const a = accountById.get(id);
+        const qq = a ? protocolAccountNumber(a) : null;
+        if (qq == null) continue;
+        try {
+          await disconnectBotWs(qq);
+          disconnected += 1;
+        } catch (e) {
+          throw e instanceof Error ? e : new Error(String(e));
+        }
+      }
+      const parts: string[] = [];
+      if (deleted) parts.push(`删除托管 ${deleted}`);
+      if (disconnected) parts.push(`断开外置 ${disconnected}`);
+      pushConsoleToast(parts.join("，") || "已处理", "warn");
       setSelected(new Set());
       setDeleteModalOpen(false);
-      if (configAccountId && ids.includes(configAccountId)) setConfigAccountId(null);
+      if (configAccountId && managedIds.includes(configAccountId)) setConfigAccountId(null);
       await refreshLists();
+      await qc.invalidateQueries({ queryKey: ["instances"] });
     } catch (e) {
-      setDeleteErr(protocolApiErrorMessage(e, "删除失败"));
+      setDeleteErr(
+        e instanceof Error && !mountUrl
+          ? e.message
+          : protocolApiErrorMessage(e, managedIds.length ? "删除失败" : "断开失败"),
+      );
       await refreshLists();
     } finally {
       setDeleteBusy(false);
@@ -595,6 +755,10 @@ export default function ProtocolAccountsTab() {
       else next.delete(id);
       return next;
     });
+  }
+
+  function toggleSelectedId(id: string) {
+    setSelectedId(id, !selected.has(id));
   }
 
   function openAccountConfig(accountId: string, tab: "overview" | "settings" = "overview") {
@@ -646,7 +810,7 @@ export default function ProtocolAccountsTab() {
             onChange={(e) => setProtoSearchQ(e.target.value)}
           />
         </div>
-        {protoActionsEnabled ? (
+        {protoActionsEnabled || protocolAccountsTotalCount > 0 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -671,18 +835,22 @@ export default function ProtocolAccountsTab() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-0 w-max">
-              <DropdownMenuItem
-                disabled={
-                  restartAllBusy ||
-                  batchBusy ||
-                  protocolAccountsTotalCount === 0 ||
-                  actionBusy.size > 0
-                }
-                onSelect={() => void restartAllAccounts()}
-              >
-                {restartAllBusy ? "重启全部中…" : "重启全部"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              {protoActionsEnabled ? (
+                <>
+                  <DropdownMenuItem
+                    disabled={
+                      restartAllBusy ||
+                      batchBusy ||
+                      actionBusy.size > 0 ||
+                      !hasManagedProtocolAccounts
+                    }
+                    onSelect={() => void restartAllAccounts()}
+                  >
+                    {restartAllBusy ? "重启全部中…" : "重启全部"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
               <DropdownMenuItem
                 disabled={pagedProtocolIds.length === 0}
                 onSelect={() => toggleSelectAllOnPage()}
@@ -695,26 +863,34 @@ export default function ProtocolAccountsTab() {
               >
                 清除选择
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                disabled={selected.size === 0 || restartSelectedBusy || batchBusy}
-                onSelect={() => openSelectedBatchConfirm("restart")}
-              >
-                重启所选
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={selected.size === 0 || stopSelectedBusy || batchBusy}
-                onSelect={() => openSelectedBatchConfirm("stop")}
-              >
-                停止所选
-              </DropdownMenuItem>
+              {protoActionsEnabled ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={selectedManagedIds.length === 0 || restartSelectedBusy || batchBusy}
+                    onSelect={() => openSelectedBatchConfirm("restart")}
+                  >
+                    重启所选
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={selectedManagedIds.length === 0 || stopSelectedBusy || batchBusy}
+                    onSelect={() => openSelectedBatchConfirm("stop")}
+                  >
+                    停止所选
+                  </DropdownMenuItem>
+                </>
+              ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 disabled={selected.size === 0 || deleteBusy}
                 onSelect={() => openDeleteModal()}
               >
-                删除选中
+                {selectedExternalIds.length && !selectedManagedIds.length
+                  ? "断开选中"
+                  : selectedExternalIds.length
+                    ? "删除/断开选中"
+                    : "删除选中"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -730,7 +906,10 @@ export default function ProtocolAccountsTab() {
       deleteBusy,
       batchBusy,
       protocolAccountsTotalCount,
+      hasManagedProtocolAccounts,
       selected.size,
+      selectedManagedIds.length,
+      selectedExternalIds.length,
       actionBusy.size,
       pagedProtocolIds.length,
       protoCardsPageAllSelected,
@@ -750,7 +929,9 @@ export default function ProtocolAccountsTab() {
 
   return (
     <div className="protocol-accounts-tab">
-      {!mountUrl ? <p className="muted text-sm">协议 API 未挂载，无法加载账号列表。</p> : null}
+      {!mountUrl && !hasOnlineBots ? (
+        <p className="muted text-sm">协议 API 未挂载，且当前无在线连接。</p>
+      ) : null}
 
       {batchOpen ? (
         <Card className="protocol-page__batch shadow-none" role="status" aria-live="polite">
@@ -782,54 +963,83 @@ export default function ProtocolAccountsTab() {
             <span className="inst-db-stat muted">
               当前已连接{" "}
               <strong className="inst-db-stat__num">
-                {showAccountsSkeleton ? <PendingValue pending /> : protocolConnectedCount}
+                {showAccountsLoading ? <PendingValue pending /> : protocolConnectedCount}
               </strong>{" "}
-              / {showAccountsSkeleton ? <PendingValue pending /> : protocolAccountsTotalCount} 账号
+              / {showAccountsLoading ? <PendingValue pending /> : protocolAccountsTotalCount} 账号
             </span>
           </div>
         </CardHeader>
 
         {expProtocolAccounts ? (
           <CardContent className={PROTO_PANEL_BD}>
-            {showAccountsSkeleton ? <ConsoleBlockSkeleton lines={4} label="账号列表加载中" /> : null}
-            {!showAccountsSkeleton && accountsQ.error ? (
+            {showAccountsLoading ? (
+              <p className="muted text-sm" role="status" aria-busy="true">
+                账号列表加载中…
+              </p>
+            ) : null}
+            {!showAccountsLoading && accountsQ.error ? (
               <p className="alert alert--err">{protocolApiErrorMessage(accountsQ.error, "加载失败")}</p>
             ) : null}
 
-            {!showAccountsSkeleton && !filteredProtocolAccounts.length ? (
+            {!showAccountsLoading && !filteredProtocolAccounts.length ? (
               <p className="muted">没有匹配的协议账号</p>
             ) : null}
 
-            {!showAccountsSkeleton && filteredProtocolAccounts.length > 0 ? (
+            {!showAccountsLoading && filteredProtocolAccounts.length > 0 ? (
               <div className="data-card-grid data-card-grid--bots">
                 {pagedProtocolAccounts.map((a, i) => {
                   const id = accountProtocolId(a);
                   const favNum = protocolAccountNumber(a);
                   const href = webUiHref(a);
+                  const external = isExternalProtocolAccount(a);
+                  const managed = isPluginManagedProtocolAccount(a);
+                  const canSelect = Boolean(id);
+                  const isSelected = Boolean(id && selected.has(id));
                   return (
                     <div
                       key={cardKey(a, i)}
-                      className="data-summary-card data-summary-card--kv data-summary-card--bot"
+                      className={cn(
+                        "data-summary-card data-summary-card--kv data-summary-card--bot",
+                        canSelect && "data-summary-card--selectable",
+                        isSelected && "data-summary-card--selected",
+                      )}
+                      role={canSelect ? "button" : undefined}
+                      tabIndex={canSelect ? 0 : undefined}
+                      aria-pressed={canSelect ? isSelected : undefined}
+                      aria-label={
+                        canSelect
+                          ? `${isSelected ? "取消选择" : "选择"}账号 ${id}`
+                          : undefined
+                      }
+                      onClick={
+                        canSelect && id
+                          ? () => toggleSelectedId(id)
+                          : undefined
+                      }
+                      onKeyDown={
+                        canSelect && id
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                toggleSelectedId(id);
+                              }
+                            }
+                          : undefined
+                      }
                     >
                       <div className="data-summary-card__head data-summary-card__head--bot">
-                        {protoActionsEnabled && id && isPluginManagedProtocolAccount(a) ? (
-                          <label className="inst-db-card-select" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selected.has(id)}
-                              aria-label={`选择账号 ${id}`}
-                              onChange={(e) => setSelectedId(id, e.target.checked)}
-                            />
-                          </label>
-                        ) : null}
+                        <AccountAvatar qq={favNum} />
                         <div className="data-summary-card__head-main">
                           <div className="data-summary-card__title-line">
                             <div className="data-summary-card__primary">
-                              {id ? (
+                              {managed && id ? (
                                 <button
                                   type="button"
                                   className="data-summary-card__title-link"
-                                  onClick={() => openAccountConfig(id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openAccountConfig(id);
+                                  }}
                                 >
                                   {primaryTitle(a, instances)}
                                 </button>
@@ -843,7 +1053,10 @@ export default function ProtocolAccountsTab() {
                                 className="data-card-fav-star"
                                 aria-pressed={favorites.has(favNum)}
                                 title={favorites.has(favNum) ? "取消收藏" : "收藏"}
-                                onClick={() => toggleFavorite(favNum)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(favNum);
+                                }}
                               >
                                 ★
                               </button>
@@ -854,77 +1067,121 @@ export default function ProtocolAccountsTab() {
                         <div className="data-summary-card__head-badges">
                           <StatusTone
                             className="data-conn-capsule"
-                            pending={!accountsSettled}
                             ok={a.connected === true}
                             pendingLabel="探测中"
                             okLabel="已连接"
                             offLabel="未连接"
                           />
-                          <StatusTone
-                            className={isExternalProtocolAccount(a) ? "muted" : "data-conn-capsule"}
-                            pending={!accountsSettled}
-                            ok={isProcessRunning(a)}
-                            pendingLabel="探测中"
-                            okLabel="运行中"
-                            offLabel={isExternalProtocolAccount(a) ? "—" : "未运行"}
-                          />
+                          {managed ? (
+                            <StatusTone
+                              className={
+                                isProcessRunning(a)
+                                  ? "data-conn-capsule data-conn-capsule--run"
+                                  : "data-conn-capsule"
+                              }
+                              ok={isProcessRunning(a)}
+                              pendingLabel="探测中"
+                              okLabel="运行中"
+                              offLabel="未运行"
+                            />
+                          ) : null}
                         </div>
                       </div>
-                      <div className="data-summary-card__body">
-                        <div className="data-summary-card__row">
-                          <span className="data-summary-card__label">协议实现</span>
-                          <span className="data-summary-card__val">{protocolBackendDisplayName(a)}</span>
-                        </div>
-                        {isSnowlumaAccount(a) ? (
+                      {managed ? (
+                        <div className="data-summary-card__body">
                           <div className="data-summary-card__row">
-                            <span className="data-summary-card__label">Runtime</span>
-                            <span
-                              className="data-summary-card__val muted"
-                              title={String(a.snowluma_runtime_id ?? "").trim() || undefined}
-                            >
-                              {snowlumaRuntimeLabel(a, snowlumaRuntimes)}
+                            <span className="data-summary-card__label">协议实现</span>
+                            <span className="data-summary-card__val">{protocolBackendDisplayName(a)}</span>
+                          </div>
+                          {isSnowlumaAccount(a) ? (
+                            <div className="data-summary-card__row">
+                              <span className="data-summary-card__label">Runtime</span>
+                              <span
+                                className="data-summary-card__val muted"
+                                title={String(a.snowluma_runtime_id ?? "").trim() || undefined}
+                              >
+                                {snowlumaRuntimeLabel(a, snowlumaRuntimes)}
+                              </span>
+                            </div>
+                          ) : null}
+                          <div className="data-summary-card__row">
+                            <span className="data-summary-card__label">运行方式</span>
+                            <span className="data-summary-card__val data-summary-card__val--mode">
+                              {protocolRuntimeModeLabel(a)}
                             </span>
                           </div>
-                        ) : null}
-                        <div className="data-summary-card__row">
-                          <span className="data-summary-card__label">运行方式</span>
-                          <span className="data-summary-card__val data-summary-card__val--mode">
-                            {protocolRuntimeModeLabel(a)}
-                          </span>
-                        </div>
-                        <div className="data-summary-card__row">
-                          <span className="data-summary-card__label">版本</span>
-                          <span
-                            className="data-summary-card__val data-summary-card__val--version"
-                            title={String(a.runtime_source ?? "").trim() || undefined}
-                          >
-                            {protocolRuntimeVersionText(a)}
-                          </span>
-                        </div>
-                        <div className="data-summary-card__row">
-                          <span className="data-summary-card__label">原生 WebUI</span>
-                          {href ? (
-                            <a
-                              className="data-summary-card__val data-summary-card__val--link link-quiet"
-                              href={href}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                          <div className="data-summary-card__row">
+                            <span className="data-summary-card__label">版本</span>
+                            <span
+                              className="data-summary-card__val data-summary-card__val--version"
+                              title={String(a.runtime_source ?? "").trim() || undefined}
                             >
-                              {a.webui_port ?? "打开"}
-                            </a>
-                          ) : (
-                            <span className="data-summary-card__val muted">{a.webui_port ?? "—"}</span>
-                          )}
+                              {protocolRuntimeVersionText(a)}
+                            </span>
+                          </div>
+                          <div className="data-summary-card__row">
+                            <span className="data-summary-card__label">原生 WebUI</span>
+                            {href ? (
+                              <a
+                                className="data-summary-card__val data-summary-card__val--link link-quiet"
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {a.webui_port ?? "打开"}
+                              </a>
+                            ) : (
+                              <span className="data-summary-card__val muted">{a.webui_port ?? "—"}</span>
+                            )}
+                          </div>
+                          <div className="data-summary-card__row">
+                            <span className="data-summary-card__label">WS 端口</span>
+                            <span className="data-summary-card__val">{accountConnectedWsPortLabel(a)}</span>
+                          </div>
                         </div>
-                        <div className="data-summary-card__row">
-                          <span className="data-summary-card__label">WS 端口</span>
-                          <span className="data-summary-card__val">
-                            {isExternalProtocolAccount(a) ? "—" : accountConnectedWsPortLabel(a)}
-                          </span>
+                      ) : (
+                        <div className="data-summary-card__body">
+                          <div className="data-summary-card__row">
+                            <span className="data-summary-card__label">协议</span>
+                            <span className="data-summary-card__val">{protocolBackendDisplayName(a)}</span>
+                          </div>
+                          <div className="data-summary-card__row">
+                            <span className="data-summary-card__label">WS 端口</span>
+                            <span className="data-summary-card__val">{accountConnectedWsPortLabel(a)}</span>
+                          </div>
                         </div>
-                      </div>
-                      {isPluginManagedProtocolAccount(a) && protoActionsEnabled ? (
-                        <div className="data-summary-card__tags data-summary-card__foot inst-card-actions protocol-acc-card-actions">
+                      )}
+                      {external ? (
+                        <div
+                          className="data-summary-card__tags data-summary-card__foot inst-card-actions protocol-acc-card-actions"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className="btn btn--sm gap-1"
+                            disabled={
+                              a.connected !== true ||
+                              isAccountActionBusy(a, "disconnect") ||
+                              protocolAccountNumber(a) == null
+                            }
+                            title={a.connected === true ? "断开本机 OneBot WS" : "当前未连接"}
+                            aria-label="断开连接"
+                            onClick={() => void disconnectExternalWs(a)}
+                          >
+                            {isAccountActionBusy(a, "disconnect") ? (
+                              <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+                            ) : (
+                              <Unplug className="size-3.5 shrink-0" aria-hidden />
+                            )}
+                            {isAccountActionBusy(a, "disconnect") ? "断开中…" : "断开连接"}
+                          </button>
+                        </div>
+                      ) : null}
+                      {managed && protoActionsEnabled ? (
+                        <div
+                          className="data-summary-card__tags data-summary-card__foot inst-card-actions protocol-acc-card-actions"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <button
                             type="button"
                             className={`btn btn--sm gap-1${again.isArmed(`restart:${id}`) ? " btn--primary" : ""}`}
@@ -1002,7 +1259,7 @@ export default function ProtocolAccountsTab() {
               </div>
             ) : null}
 
-            {!showAccountsSkeleton && filteredProtocolAccounts.length > 0 ? (
+            {!showAccountsLoading && filteredProtocolAccounts.length > 0 ? (
               <ConsolePagerBar
                 page={protoAccPage}
                 pageSize={prefs.tablePageSize}
@@ -1033,8 +1290,20 @@ export default function ProtocolAccountsTab() {
       />
       <ConsoleDeleteConfirmModal
         open={deleteModalOpen}
-        title="删除账号"
-        subtitle={`将删除以下账号（共 ${selected.size} 个），协议端账号将被移除，数据目录是否保留取决于主仓配置，操作不可撤销。`}
+        title={
+          selectedExternalIds.length && !selectedManagedIds.length
+            ? "断开外置连接"
+            : selectedExternalIds.length
+              ? "删除托管并断开外置"
+              : "删除账号"
+        }
+        subtitle={
+          selectedExternalIds.length && !selectedManagedIds.length
+            ? `将断开以下外置连接（共 ${selectedExternalIds.length} 个）的本机 OneBot WS；外置协议端进程不会被停止。`
+            : selectedExternalIds.length
+              ? `将删除托管账号并断开外置连接（共 ${selected.size} 个）。托管账号数据目录是否保留取决于主仓配置；外置仅断 WS。`
+              : `将删除以下托管账号（共 ${selectedManagedIds.length} 个），协议端账号将被移除，数据目录是否保留取决于主仓配置，操作不可撤销。`
+        }
         items={deleteModalItems}
         warnings={deleteModalWarnings}
         busy={deleteBusy}
@@ -1048,10 +1317,10 @@ export default function ProtocolAccountsTab() {
         title={selectedBatchKind === "stop" ? "停止所选账号" : "重启所选账号"}
         subtitle={
           selectedBatchKind === "stop"
-            ? `将按间隔依次停止 ${selected.size} 个账号。请确认后再继续。`
-            : `将按间隔依次重启 ${selected.size} 个账号，以降低系统负载。请确认后再继续。`
+            ? `将按间隔依次停止 ${selectedManagedIds.length} 个托管账号。请确认后再继续。`
+            : `将按间隔依次重启 ${selectedManagedIds.length} 个托管账号，以降低系统负载。请确认后再继续。`
         }
-        items={deleteModalItems}
+        items={deleteModalItems.filter((it) => selectedManagedIds.includes(it.key))}
         busy={restartSelectedBusy || stopSelectedBusy || batchBusy}
         confirmVariant="default"
         confirmLabel={selectedBatchKind === "stop" ? "确认停止" : "确认重启"}

@@ -242,7 +242,7 @@ export default function BotConfigModal({
                 {displayName}
               </DialogTitle>
               <p className="protocol-account-config-dialog__sub muted">
-                QQ {qq || "—"}
+                QQ <span className="protocol-account-config-dialog__qq">{qq || "—"}</span>
                 {isInit ? " · 初始化配置" : " · 数据库实例"}
               </p>
               <DialogDescription className="sr-only">

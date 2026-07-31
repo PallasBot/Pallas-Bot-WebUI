@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { deleteBotConfig, fetchInstances, fetchPlugins } from "@/api/fullConsole";
 import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
 import { accountHasNonebotBot } from "@/utils/botConnection";
+import { qqAvatarUrl } from "@/utils/botDisplay";
 import { formatDisabledPluginIds } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
 import BotConfigModal from "@/components/BotConfigModal";
@@ -27,7 +28,6 @@ import { Input } from "@/components/ui/input";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { querySettled } from "@/utils/querySettled";
 import { ChevronDown, Search, Database, Cable } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
@@ -81,7 +81,6 @@ export default function InstancesPage() {
   });
 
   const data = q.data as InstancesData | undefined;
-  const instancesSettled = querySettled(q);
   const plugins = (pluginsQ.data ?? []) as PluginRow[];
   const pluginLoadErr = pluginsQ.error ? String(pluginsQ.error) : "";
 
@@ -249,6 +248,10 @@ export default function InstancesPage() {
     });
   }
 
+  function toggleDbSelected(account: number) {
+    setDbSelected(account, !selectedAccounts.has(account));
+  }
+
   function toggleSelectAllDbOnPage() {
     setSelectedAccounts((prev) => {
       const next = new Set(prev);
@@ -302,7 +305,7 @@ export default function InstancesPage() {
 
       <PageMasthead
         title="数据库实例"
-        description="Bot 账号配置与连接状态。"
+        description="点击卡片选中；点击昵称进入编辑。"
       />
 
       {q.isLoading && !data ? (
@@ -458,24 +461,46 @@ export default function InstancesPage() {
                     {pagedDbBotConfigs.map((c) => (
                       <div
                         key={`card-${c.account}`}
-                        className="data-summary-card data-summary-card--kv data-summary-card--bot"
+                        className={cn(
+                          "data-summary-card data-summary-card--kv data-summary-card--bot data-summary-card--selectable",
+                          selectedAccounts.has(c.account) && "data-summary-card--selected",
+                        )}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={selectedAccounts.has(c.account)}
+                        aria-label={`${selectedAccounts.has(c.account) ? "取消选择" : "选择"}账号 ${c.account}`}
+                        onClick={() => toggleDbSelected(c.account)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleDbSelected(c.account);
+                          }
+                        }}
                       >
                         <div className="data-summary-card__head data-summary-card__head--bot">
-                          <label className="inst-db-card-select" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selectedAccounts.has(c.account)}
-                              aria-label={`选择账号 ${c.account}`}
-                              onChange={(e) => setDbSelected(c.account, e.target.checked)}
+                          <div className="data-summary-card__avatar">
+                            <img
+                              src={qqAvatarUrl(c.account)}
+                              alt=""
+                              width={36}
+                              height={36}
+                              decoding="async"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.visibility = "hidden";
+                              }}
                             />
-                          </label>
+                          </div>
                           <div className="data-summary-card__head-main">
                             <div className="data-summary-card__title-line">
                               <div className="data-summary-card__primary">
                                 <button
                                   type="button"
                                   className="data-summary-card__title-link"
-                                  onClick={() => startEdit(c)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEdit(c);
+                                  }}
                                 >
                                   {botNickname(c.account) || "BOT"}
                                 </button>
@@ -485,7 +510,10 @@ export default function InstancesPage() {
                                 className="data-card-fav-star"
                                 aria-pressed={favorites.has(c.account)}
                                 title={favorites.has(c.account) ? "取消收藏" : "收藏"}
-                                onClick={() => toggleFavorite(c.account)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(c.account);
+                                }}
                               >
                                 ★
                               </button>
@@ -495,13 +523,10 @@ export default function InstancesPage() {
                           <div className="data-summary-card__head-badges">
                             <StatusTone
                               className={
-                                instancesSettled && isBotConnected(c.account)
+                                isBotConnected(c.account)
                                   ? "data-conn-capsule data-conn-capsule--on"
-                                  : instancesSettled
-                                    ? "data-conn-capsule data-conn-capsule--off"
-                                    : "data-conn-capsule"
+                                  : "data-conn-capsule data-conn-capsule--off"
                               }
-                              pending={!instancesSettled}
                               ok={isBotConnected(c.account)}
                               pendingLabel="探测中"
                               okLabel="已连接"

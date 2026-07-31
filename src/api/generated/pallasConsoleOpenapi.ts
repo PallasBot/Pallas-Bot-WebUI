@@ -3774,6 +3774,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/bots/{qq}/disconnect-ws": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bot Disconnect Ws
+         * @description 关闭本进程对该 QQ 的 OneBot WS（不停止外置协议端进程）。
+         */
+        post: operations["_bot_disconnect_ws_pallas_api_bots__qq__disconnect_ws_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/ai-extension/config": {
         parameters: {
             query?: never;
@@ -15521,6 +15541,41 @@ export interface operations {
                 "application/json": components["schemas"]["_UserConfigPatch"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _bot_disconnect_ws_pallas_api_bots__qq__disconnect_ws_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                qq: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

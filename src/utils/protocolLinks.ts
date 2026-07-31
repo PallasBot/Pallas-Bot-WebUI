@@ -127,8 +127,17 @@ function parseUrlPort(raw: string | null | undefined): number | null {
   return null;
 }
 
-/** 协议账号配置的 OneBot WS 端口（自 ws_url 或 Docker 映射解析） */
+/** 协议账号配置的 OneBot WS 端口（自 ws_url / 直传 ws_port / Docker 映射解析） */
 export function accountOnebotWsPort(account: NapcatAccountRow): number | null {
+  const direct = account.ws_port;
+  if (typeof direct === "number" && Number.isFinite(direct) && direct >= 1 && direct <= 65535) {
+    return Math.floor(direct);
+  }
+  if (typeof direct === "string" && direct.trim()) {
+    const p = parseInt(direct.trim(), 10);
+    if (Number.isFinite(p) && p >= 1 && p <= 65535) return p;
+  }
+
   const wsUrl = typeof account.ws_url === "string" ? account.ws_url : null;
   const fromUrl = parseUrlPort(wsUrl);
   if (fromUrl != null) return fromUrl;

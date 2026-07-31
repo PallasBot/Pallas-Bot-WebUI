@@ -37,7 +37,9 @@ export default function StatusTone({
       aria-label={typeof label === "string" ? label : undefined}
       {...props}
     >
-      {showDot && tone === "ok" ? <span className="status-tone__dot" aria-hidden /> : null}
+      {tone === "pending" || (showDot && tone === "ok") ? (
+        <span className="status-tone__dot" aria-hidden />
+      ) : null}
       {label}
     </span>
   );

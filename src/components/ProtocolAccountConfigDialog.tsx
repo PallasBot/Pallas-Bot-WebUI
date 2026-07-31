@@ -139,12 +139,12 @@ export default function ProtocolAccountConfigDialog({
                     {displayName}
                   </DialogTitle>
                   <p className="protocol-account-config-dialog__sub muted">
-                    QQ {qq}
+                    QQ <span className="protocol-account-config-dialog__qq">{qq}</span>
                     {metaBits ? ` · ${metaBits}` : ""}
                   </p>
                   <div className="protocol-account-config-dialog__pills" aria-label="账号状态">
                     <StatusTone
-                      className="protocol-account-config-dialog__pill"
+                      className="protocol-account-config-dialog__pill data-conn-capsule"
                       pending={headerPending}
                       ok={headerProfile.processRunning}
                       showDot
@@ -153,7 +153,7 @@ export default function ProtocolAccountConfigDialog({
                       offLabel="已停止"
                     />
                     <StatusTone
-                      className="protocol-account-config-dialog__pill"
+                      className="protocol-account-config-dialog__pill data-conn-capsule"
                       pending={headerPending}
                       ok={headerProfile.connected}
                       showDot
