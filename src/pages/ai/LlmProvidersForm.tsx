@@ -1481,6 +1481,15 @@ export default function LlmProvidersForm() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      控制模型在回答前投入多少推理；具体档位由各厂商 API 解释，不支持时会被忽略。
+                    </p>
+                    {selectedPreset === "deepseek" ? (
+                      <p className="text-xs text-muted-foreground">
+                        DeepSeek：未选档位时默认关思考；选「开启」或具体强度后可与工具调用同开（强制
+                        tool_choice=required 的那一轮仍会关）。
+                      </p>
+                    ) : null}
                   </div>
 
                   {draft.kind !== "local" ? (
