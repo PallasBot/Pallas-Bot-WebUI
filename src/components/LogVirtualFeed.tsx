@@ -52,20 +52,36 @@ function LogScopeChips({ scope }: { scope: string }) {
   );
 }
 
-const ESTIMATE_ROW_PX = 38;
-const LINE_PX = 17;
-const ROW_PAD_PX = 14;
+const ESTIMATE_ROW_PX = 40;
+const LINE_PX = 18;
+const ROW_PAD_PX = 16;
+/** 窄屏 meta / 正文分行，估高需额外占一行 */
+const NARROW_META_PX = 22;
+const NARROW_LOG_MQ = "(max-width: 560px)";
 /** 与 CSS max-height 对齐，避免估高无限膨胀 */
 const MSG_MAX_PX = 480;
 
+function narrowLogLayout(): boolean {
+  return typeof window !== "undefined" && window.matchMedia(NARROW_LOG_MQ).matches;
+}
+
 function estimateRowPx(row: LogEntry | undefined): number {
-  if (!row) return ESTIMATE_ROW_PX;
+  const narrow = narrowLogLayout();
+  const metaExtra = narrow ? NARROW_META_PX : 0;
+  if (!row) return ESTIMATE_ROW_PX + metaExtra;
   const msg = String(row.message ?? "");
-  if (!msg) return ESTIMATE_ROW_PX;
+  if (!msg) return ESTIMATE_ROW_PX + metaExtra;
   const hardLines = msg.split("\n").length;
-  const softLines = Math.ceil(msg.length / 100);
+  /* 窄屏正文另起一行，按可视宽度估软换行，略偏高避免虚拟行重叠 */
+  const cpl = narrow
+    ? Math.max(28, Math.floor((Math.min(window.innerWidth, 480) - 24) / 6.5))
+    : 100;
+  const softLines = Math.ceil(msg.length / cpl);
   const lines = Math.max(1, hardLines, softLines);
-  return Math.min(MSG_MAX_PX + ROW_PAD_PX, ROW_PAD_PX + lines * LINE_PX);
+  const msgCap = narrow
+    ? Math.min(MSG_MAX_PX, Math.round(window.innerHeight * 0.4))
+    : MSG_MAX_PX;
+  return Math.min(msgCap + ROW_PAD_PX + metaExtra, ROW_PAD_PX + metaExtra + lines * LINE_PX);
 }
 
 const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtualFeed(
@@ -177,6 +193,16 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
     return () => ro.disconnect();
   }, [rowVirtualizer]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(NARROW_LOG_MQ);
+    const onChange = () => {
+      rowVirtualizer.measure();
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [rowVirtualizer]);
+
   function onScroll() {
     const el = scrollElRef.current;
     if (!el) return;
@@ -229,15 +255,17 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
                 title="点击固定到下方查看"
                 onClick={() => pinRow(stableKey, row)}
               >
-                <span className="log-line__lead">
-                  <span className="log-line__time">{formatLogDisplayTime(row.time)}</span>
-                  <span
-                    className={cn("log-line__lv-tag", "log-line__lv-tag--dot", `log-line__lv-tag--${row.level}`)}
-                    title={row.level}
-                    aria-label={row.level}
-                  />
+                <span className="log-line__meta-row">
+                  <span className="log-line__lead">
+                    <span className="log-line__time">{formatLogDisplayTime(row.time)}</span>
+                    <span
+                      className={cn("log-line__lv-tag", "log-line__lv-tag--dot", `log-line__lv-tag--${row.level}`)}
+                      title={row.level}
+                      aria-label={row.level}
+                    />
+                  </span>
+                  <LogScopeChips scope={row.scope} />
                 </span>
-                <LogScopeChips scope={row.scope} />
                 <span className="log-line__msg log-line__msg--wrap">{row.message}</span>
               </button>
             );

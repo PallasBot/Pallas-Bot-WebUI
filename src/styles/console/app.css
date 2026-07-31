@@ -1669,6 +1669,8 @@ html[data-layout="hub"][data-surface="solid"][data-theme="light"] .logs-page > .
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  container-type: inline-size;
+  container-name: logs-scroll;
 }
 
 .logs-page__scroll .log-feed,
