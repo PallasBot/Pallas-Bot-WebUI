@@ -9971,24 +9971,6 @@ table.data.console-data-table.database-page__storage-table tbody td {
   vertical-align: middle;
 }
 
-/* 实例页 · 数据库 Bot 配置：卡片多选批量操作（右下角紧凑条） */
-.inst-db-bulk-bar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-}
-.inst-db-bulk-bar .btn,
-.inst-db-bulk-bar .ui-btn {
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.35;
-  min-height: 0;
-}
-
 table.data tr:last-child td {
   border-bottom: none;
 }

@@ -6,10 +6,9 @@ import { accountHasNonebotBot } from "@/utils/botConnection";
 import { formatDisabledPluginIds } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
 import BotConfigModal from "@/components/BotConfigModal";
-import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
-import ChromeTools, { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
+import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import PendingValue from "@/components/PendingValue";
@@ -17,12 +16,19 @@ import RefreshIconButton from "@/components/RefreshIconButton";
 import StatusTone from "@/components/StatusTone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { querySettled } from "@/utils/querySettled";
-import { Search, Database, Cable } from "lucide-react";
+import { ChevronDown, Search, Database, Cable } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 
@@ -318,6 +324,9 @@ export default function InstancesPage() {
                 value=""
               />
             </div>
+            <div className={CHROME_TOOLS_TRAILING}>
+              <RefreshIconButton busy label="刷新" showLabel disabled />
+            </div>
           </ChromeTools>
           <Card className={cn(INST_PANEL, "inst-db-panel")}>
             <CardHeader className={INST_PANEL_HD}>
@@ -360,6 +369,53 @@ export default function InstancesPage() {
                 }}
               />
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0 gap-1"
+                  disabled={deleteBusy || filteredDbBotConfigs.length === 0}
+                  aria-label="选项"
+                >
+                  {deleteBusy
+                    ? "处理中…"
+                    : `选项${selectedAccounts.size > 0 ? `（${selectedAccounts.size}）` : ""}`}
+                  <ChevronDown className="size-3.5 opacity-70" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-0 w-max">
+                <DropdownMenuItem
+                  disabled={pagedDbAccountIds.length === 0}
+                  onSelect={() => toggleSelectAllDbOnPage()}
+                >
+                  {dbCardsPageAllSelected ? "取消全选" : "全选本页"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={selectedAccounts.size === 0}
+                  onSelect={() => setSelectedAccounts(new Set())}
+                >
+                  清除选择
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  disabled={selectedAccounts.size === 0 || deleteBusy}
+                  onSelect={() => openDeleteModal()}
+                >
+                  删除选中
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className={CHROME_TOOLS_TRAILING}>
+              <RefreshIconButton
+                busy={reloadBusy}
+                label="刷新"
+                showLabel
+                onClick={() => void reloadFromUser()}
+              />
+            </div>
           </ChromeTools>
 
           <Card className={cn(INST_PANEL, "inst-db-panel")}>
@@ -371,13 +427,6 @@ export default function InstancesPage() {
                   expanded={expDbBots}
                   label="数据库中的实例"
                   onToggle={() => setExpDbBots((v) => !v)}
-                />
-                <RefreshIconButton
-                  embedded
-                  showLabel={false}
-                  busy={reloadBusy}
-                  label="刷新实例数据"
-                  onClick={() => void reloadFromUser()}
                 />
               </CardTitle>
               <div className="inst-db-panel__hd-side">
@@ -513,17 +562,6 @@ export default function InstancesPage() {
                     total={filteredDbBotConfigs.length}
                     onPageChange={setInstDbPage}
                     onPageSizeChange={prefs.setTablePageSize}
-                  />
-                ) : null}
-
-                {filteredDbBotConfigs.length > 0 ? (
-                  <ConsoleCardBulkBar
-                    pageAllSelected={dbCardsPageAllSelected}
-                    selectedCount={selectedAccounts.size}
-                    deleteBusy={deleteBusy}
-                    onToggleSelectAll={toggleSelectAllDbOnPage}
-                    onClearSelection={() => setSelectedAccounts(new Set())}
-                    onDelete={openDeleteModal}
                   />
                 ) : null}
               </CardContent>
