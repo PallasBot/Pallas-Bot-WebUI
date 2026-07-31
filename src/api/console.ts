@@ -263,6 +263,22 @@ export type AiInstallStatus = {
   endpoint?: { host?: string; port?: number };
 };
 
+export type AiRuntimeCallbackStatus = {
+  can_edit?: boolean;
+  host?: string | null;
+  port?: number | null;
+  expected_host?: string | null;
+  expected_port?: number | null;
+  aligned?: boolean | null;
+  probe?: {
+    ok?: boolean;
+    url?: string | null;
+    status_code?: number | null;
+    error?: string | null;
+  } | null;
+  error?: string | null;
+};
+
 export type AiRuntimeStatus = {
   can_manage?: boolean;
   running?: boolean;
@@ -271,6 +287,7 @@ export type AiRuntimeStatus = {
   endpoint?: { host?: string; port?: number };
   services?: Record<string, { running?: boolean; pid?: number | null }>;
   health?: { ok?: boolean; url?: string; error?: string };
+  callback?: AiRuntimeCallbackStatus;
 };
 
 export type AiExtensionConfig = {
@@ -1122,6 +1139,22 @@ export async function postAiRuntimeStart(body?: { with_media?: boolean }): Promi
 
 export async function postAiRuntimeStop(): Promise<Record<string, unknown>> {
   const { data: res } = await http.post("/ai-extension/runtime/stop", {}, { timeout: 120_000 });
+  return envelopeData(res) || res;
+}
+
+export async function putAiRuntimeCallback(body: {
+  host?: string | null;
+  port?: number | null;
+  align?: boolean;
+  restart_media?: boolean;
+}): Promise<{
+  ok?: boolean;
+  error?: string | null;
+  callback?: AiRuntimeCallbackStatus;
+  output_tail?: string;
+  runtime?: AiRuntimeStatus;
+}> {
+  const { data: res } = await http.put("/ai-extension/runtime/callback", body, { timeout: 180_000 });
   return envelopeData(res) || res;
 }
 

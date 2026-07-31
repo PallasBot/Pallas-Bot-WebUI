@@ -3894,6 +3894,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/ai-extension/runtime/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Ai Extension Runtime Callback Put */
+        put: operations["_ai_extension_runtime_callback_put_pallas_api_ai_extension_runtime_callback_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/ai-extension/ncm/status": {
         parameters: {
             query?: never;
@@ -4824,6 +4841,23 @@ export interface components {
              * @default 86
              */
             ctcode: number;
+        };
+        /** _AiRuntimeCallbackBody */
+        _AiRuntimeCallbackBody: {
+            /** Host */
+            host?: string | null;
+            /** Port */
+            port?: number | null;
+            /**
+             * Align
+             * @default false
+             */
+            align: boolean;
+            /**
+             * Restart Media
+             * @default true
+             */
+            restart_media: boolean;
         };
         /** _AiRuntimeControlBody */
         _AiRuntimeControlBody: {
@@ -15667,6 +15701,43 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _ai_extension_runtime_callback_put_pallas_api_ai_extension_runtime_callback_put: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_AiRuntimeCallbackBody"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
