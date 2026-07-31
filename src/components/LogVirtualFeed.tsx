@@ -9,7 +9,8 @@ import {
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { LogEntry } from "@/api/pallasTypes";
-import { formatLogDisplayTime, splitLogScope } from "@/utils/logDisplay";
+import { formatLogDisplayTime, scopeBadgeHue, splitLogScope } from "@/utils/logDisplay";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import "@/styles/log-virtual-feed.css";
 
@@ -33,24 +34,47 @@ function stableRowKey(row: LogEntry, index: number): string {
 
 function LogScopeChips({ scope }: { scope: string }) {
   const { source, module } = splitLogScope(scope);
-  if (!source && !module) return null;
+  const text = [source, module].filter(Boolean).join("/") || "";
+  const hue = text ? scopeBadgeHue(text) : 0;
+  /* 始终占位，避免无 scope 时正文挤进定宽列 */
   return (
-    <span className="log-line__scope-group">
-      {source ? <span className="log-line__source">{source}</span> : null}
-      {module ? <span className="log-line__scope">[{module}]</span> : null}
+    <span className="log-line__scope-group" title={text || scope || undefined}>
+      {text ? (
+        <Badge
+          variant="outline"
+          className="log-line__scope-badge"
+          style={{ ["--scope-h" as string]: String(hue) }}
+        >
+          {text}
+        </Badge>
+      ) : null}
     </span>
   );
 }
 
-const ESTIMATE_ROW_PX = 36;
+const ESTIMATE_ROW_PX = 38;
+const LINE_PX = 17;
+const ROW_PAD_PX = 14;
+/** 与 CSS max-height 对齐，避免估高无限膨胀 */
+const MSG_MAX_PX = 480;
+
+function estimateRowPx(row: LogEntry | undefined): number {
+  if (!row) return ESTIMATE_ROW_PX;
+  const msg = String(row.message ?? "");
+  if (!msg) return ESTIMATE_ROW_PX;
+  const hardLines = msg.split("\n").length;
+  const softLines = Math.ceil(msg.length / 100);
+  const lines = Math.max(1, hardLines, softLines);
+  return Math.min(MSG_MAX_PX + ROW_PAD_PX, ROW_PAD_PX + lines * LINE_PX);
+}
 
 const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtualFeed(
   { rows, followTail = true, overscan = 12, onScrollState },
   ref,
 ) {
   const scrollElRef = useRef<HTMLDivElement | null>(null);
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  const [expandedSnapshot, setExpandedSnapshot] = useState<LogEntry | null>(null);
+  const [pinnedKey, setPinnedKey] = useState<string | null>(null);
+  const [pinnedSnapshot, setPinnedSnapshot] = useState<LogEntry | null>(null);
   const suppressScrollStateRef = useRef(0);
   const scrollBottomTokenRef = useRef(0);
   const rowKeys = useMemo(
@@ -61,17 +85,17 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollElRef.current,
-    estimateSize: () => ESTIMATE_ROW_PX,
+    estimateSize: (index) => estimateRowPx(rows[index]),
     overscan,
     getItemKey: (index) => rowKeys[index] ?? index,
   });
 
-  const expandedRow = useMemo(() => {
-    if (!expandedKey) return null;
-    const liveIdx = rowKeys.indexOf(expandedKey);
+  const pinnedRow = useMemo(() => {
+    if (!pinnedKey) return null;
+    const liveIdx = rowKeys.indexOf(pinnedKey);
     if (liveIdx >= 0) return rows[liveIdx] ?? null;
-    return expandedSnapshot;
-  }, [rows, rowKeys, expandedKey, expandedSnapshot]);
+    return pinnedSnapshot;
+  }, [rows, rowKeys, pinnedKey, pinnedSnapshot]);
 
   const scrollThreshold = useCallback((el: HTMLElement) => {
     const h = el.clientHeight;
@@ -143,6 +167,16 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
     rowVirtualizer.measure();
   }, [rows.length, rowVirtualizer]);
 
+  useEffect(() => {
+    const el = scrollElRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      rowVirtualizer.measure();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [rowVirtualizer]);
+
   function onScroll() {
     const el = scrollElRef.current;
     if (!el) return;
@@ -150,14 +184,14 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
     onScrollState?.(isNearBottom(el));
   }
 
-  function toggleRow(key: string, row: LogEntry) {
-    if (expandedKey === key) {
-      setExpandedKey(null);
-      setExpandedSnapshot(null);
+  function pinRow(key: string, row: LogEntry) {
+    if (pinnedKey === key) {
+      setPinnedKey(null);
+      setPinnedSnapshot(null);
       return;
     }
-    setExpandedKey(key);
-    setExpandedSnapshot({ ...row });
+    setPinnedKey(key);
+    setPinnedSnapshot({ ...row });
   }
 
   const virtualItems = rowVirtualizer.getVirtualItems();
@@ -173,7 +207,7 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
             const row = rows[vRow.index];
             if (!row) return null;
             const stableKey = rowKeys[vRow.index] ?? String(vRow.index);
-            const isError = row.level === "error";
+            const isPinned = pinnedKey === stableKey;
             return (
               <button
                 key={stableKey}
@@ -182,8 +216,8 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
                 ref={rowVirtualizer.measureElement}
                 className={cn(
                   "log-line log-line--virtual",
-                  isError && "log-line--virtual-error",
-                  expandedKey === stableKey && "log-line--virtual-active",
+                  `log-line--virtual-${row.level}`,
+                  isPinned && "log-line--virtual-pinned",
                 )}
                 style={{
                   position: "absolute",
@@ -192,15 +226,17 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
                   width: "100%",
                   transform: `translateY(${vRow.start}px)`,
                 }}
-                title={row.message}
-                onClick={() => toggleRow(stableKey, row)}
+                title="点击固定到下方查看"
+                onClick={() => pinRow(stableKey, row)}
               >
-                <span className="log-line__time">{formatLogDisplayTime(row.time)}</span>
-                <span
-                  className={cn("log-line__lv-tag", "log-line__lv-tag--dot", `log-line__lv-tag--${row.level}`)}
-                  title={row.level}
-                  aria-label={row.level}
-                />
+                <span className="log-line__lead">
+                  <span className="log-line__time">{formatLogDisplayTime(row.time)}</span>
+                  <span
+                    className={cn("log-line__lv-tag", "log-line__lv-tag--dot", `log-line__lv-tag--${row.level}`)}
+                    title={row.level}
+                    aria-label={row.level}
+                  />
+                </span>
                 <LogScopeChips scope={row.scope} />
                 <span className="log-line__msg log-line__msg--wrap">{row.message}</span>
               </button>
@@ -208,26 +244,29 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
           })}
         </div>
       </div>
-      {expandedRow ? (
-        <div className="log-virtual-feed__detail">
+      {pinnedRow ? (
+        <div className={cn("log-virtual-feed__detail", `log-virtual-feed__detail--${pinnedRow.level}`)}>
           <div className="log-virtual-feed__detail-meta">
-            <span className="log-line__time">{formatLogDisplayTime(expandedRow.time)}</span>
-            <span className={cn("log-line__lv-tag", `log-line__lv-tag--${expandedRow.level}`)}>
-              {expandedRow.level}
+            <span className="log-virtual-feed__detail-pin" title="已固定">
+              固定
             </span>
-            <LogScopeChips scope={expandedRow.scope} />
+            <span className="log-line__time">{formatLogDisplayTime(pinnedRow.time)}</span>
+            <span className={cn("log-line__lv-tag", `log-line__lv-tag--${pinnedRow.level}`)}>
+              {pinnedRow.level}
+            </span>
+            <LogScopeChips scope={pinnedRow.scope} />
             <button
               type="button"
               className="ui-btn ui-btn--ghost ui-btn--sm log-virtual-feed__detail-close"
               onClick={() => {
-                setExpandedKey(null);
-                setExpandedSnapshot(null);
+                setPinnedKey(null);
+                setPinnedSnapshot(null);
               }}
             >
-              收起
+              取消固定
             </button>
           </div>
-          <pre className="log-virtual-feed__detail-body">{expandedRow.message}</pre>
+          <pre className="log-virtual-feed__detail-body">{pinnedRow.message}</pre>
         </div>
       ) : null}
     </div>

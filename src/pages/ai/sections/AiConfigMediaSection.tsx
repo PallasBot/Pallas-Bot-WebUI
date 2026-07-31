@@ -8,12 +8,13 @@ import {
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchAiExtensionConfig, fetchAiInstallStatus, fetchAiNcmStatus, fetchAiRuntimeStatus,
-  fetchMediaAssetsDownloadJob, fetchMediaAssetsStatus, fetchSingBackends, fetchSingSpeakers,
+  fetchMediaAssetsDownloadActive, fetchMediaAssetsDownloadJob, fetchMediaAssetsStatus, fetchSingBackends, fetchSingSpeakers,
   fetchTtsVoices, fetchTtsTranslator, openAiInstallJobEventSource, postAiExtensionTest, postAiInstall,
   postAiNcmLogout, postAiNcmSendSms, postAiNcmVerifySms, postMediaAssetsDelete,
   postMediaAssetsDownload, postAiRuntimeStart, postAiRuntimeStop, putAiExtensionConfig,
-  putSingDefaults, putTtsDefaults, putTtsTranslator,
+  putAiRuntimeCallback, putSingDefaults, putTtsDefaults, putTtsTranslator,
 } from "@/api/console";
+import { fetchAiInstallJobActive } from "@/api/consoleApi";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField from "@/components/ai/AiConfigField";
 import AiJobProgressBlock from "@/components/ai/AiJobProgressBlock";
@@ -36,7 +37,8 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Switch } from "@/components/ui/switch";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { AI_NCM_DEFAULTS, aiRuntimeLayoutLabel } from "@/config/aiConstants";
-import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
+import { clearActiveJob, getActiveJob, setActiveJob } from "@/utils/activeJobSession";
+import { InstallJobFailedError, InstallJobStreamInterruptedError, waitForInstallJob } from "@/utils/installJobStream";
 import {
   aiInstallSubtitle,
   resolveAiInstallPrimary,
@@ -87,7 +89,7 @@ type SelectPanel = "service" | "assets" | "sing" | "tts" | "draw" | "ncm";
 const SELECT_OPTIONS: Array<{ value: SelectPanel; label: string; icon: LucideIcon; lead: string }> = [
   { value: "service", label: "媒体服务", icon: Server, lead: "安装、启停与连接。" },
   { value: "assets", label: "媒体资产", icon: HardDrive, lead: "下载唱歌 / 语音所需的模型与素材。" },
-  { value: "sing", label: "唱歌", icon: Music2, lead: "默认音色与音色映射。" },
+  { value: "sing", label: "唱歌", icon: Music2, lead: "默认音色与音频映射。" },
   { value: "tts", label: "牛牛说", icon: AudioLines, lead: "默认音色、语种与中译日。" },
   { value: "draw", label: "画画", icon: Palette, lead: "画画网关；其它项在插件配置。" },
   { value: "ncm", label: "网易云", icon: Cloud, lead: "短信登录与会话状态。" },
@@ -244,6 +246,9 @@ export default function AiConfigMediaSection() {
   const [phone, setPhone] = useState("");
   const [ctcode, setCtcode] = useState(String(AI_NCM_DEFAULTS.countryCode));
   const [captcha, setCaptcha] = useState("");
+  const [callbackHost, setCallbackHost] = useState("");
+  const [callbackPort, setCallbackPort] = useState("");
+  const [callbackAdvancedOpen, setCallbackAdvancedOpen] = useState(false);
 
   const installSwitchState = {
     useGpu: { checked: useGpu, set: setUseGpu },
@@ -257,6 +262,18 @@ export default function AiConfigMediaSection() {
       setBearerToken(aiCfgQ.data.token || "");
     }
   }, [aiCfgQ.data]);
+  useEffect(() => {
+    const cb = runtimeQ.data?.callback;
+    if (!cb) return;
+    setCallbackHost(cb.host || cb.expected_host || "");
+    setCallbackPort(
+      cb.port != null
+        ? String(cb.port)
+        : cb.expected_port != null
+          ? String(cb.expected_port)
+          : "",
+    );
+  }, [runtimeQ.data?.callback]);
   useEffect(() => {
     const sp = singQ.data?.speakers; if (sp?.default_speaker) setDefaultSpeaker(sp.default_speaker);
     if (sp?.preferred_backend) setPreferredBackend(sp.preferred_backend);
@@ -333,6 +350,19 @@ export default function AiConfigMediaSection() {
     mutationFn: postAiRuntimeStop,
     onSuccess: async () => { notifyOk("媒体服务已停止"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
+  const callbackMut = useMutation({
+    mutationFn: (body: { host?: string; port?: number; align?: boolean }) =>
+      putAiRuntimeCallback({ ...body, restart_media: true }),
+    onSuccess: async (r) => {
+      if (r.ok === false) {
+        notifyErr(r.error || "回调配置失败");
+        return;
+      }
+      notifyOk(r.callback?.aligned ? "回调已对齐并重启 media" : "回调已保存并重启 media");
+      await invalidate();
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
+  });
   const installMut = useMutation({
     mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap" | "update") => {
       setInstallProgress("已排队…");
@@ -364,6 +394,10 @@ export default function AiConfigMediaSection() {
       await invalidate();
     },
     onError: (e) => {
+      if (e instanceof InstallJobStreamInterruptedError) {
+        setInstallProgress((prev) => prev || "下载/安装仍在后台进行，返回本页可续看进度");
+        return;
+      }
       if (e instanceof InstallJobFailedError) {
         const tail = String(e.result?.output_tail || "").trim();
         if (tail) setInstallFailTail(tail);
@@ -377,6 +411,7 @@ export default function AiConfigMediaSection() {
   });
   const pollJob = (jobId: string) => {
     if (pollRef.current != null) window.clearInterval(pollRef.current);
+    setActiveJob("media-assets-download", jobId);
     setAssetDlActive(true);
     setAssetDlFailed(false);
     const tick = () => {
@@ -392,6 +427,7 @@ export default function AiConfigMediaSection() {
             if (pollRef.current != null) window.clearInterval(pollRef.current);
             pollRef.current = null;
             setAssetDlActive(false);
+            clearActiveJob("media-assets-download", jobId);
             if (state === "done") {
               setAssetDlPercent(100);
               setAssetDlLabel(job.message || "媒体权重下载完成");
@@ -408,6 +444,7 @@ export default function AiConfigMediaSection() {
           pollRef.current = null;
           setAssetDlActive(false);
           setAssetDlFailed(true);
+          clearActiveJob("media-assets-download", jobId);
           notifyErr(axiosErrorDetail(e));
         });
     };
@@ -449,6 +486,93 @@ export default function AiConfigMediaSection() {
       notifyErr(axiosErrorDetail(e));
     },
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    const resumeDownload = async () => {
+      try {
+        const active = await fetchMediaAssetsDownloadActive();
+        if (cancelled) return;
+        if (active?.job_id && String(active.state || "") === "running") {
+          if (active.message) setAssetDlLabel(active.message);
+          if (active.progress_percent != null) {
+            setAssetDlPercent(Math.max(0, Math.min(100, Number(active.progress_percent) || 0)));
+          }
+          if (active.lines?.length) setJobLines(active.lines);
+          pollJob(active.job_id);
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+      if (cancelled) return;
+      const saved = getActiveJob("media-assets-download");
+      if (saved?.jobId) pollJob(saved.jobId);
+    };
+    void resumeDownload();
+
+    const resumeInstall = async () => {
+      let jobId = "";
+      try {
+        const active = await fetchAiInstallJobActive();
+        if (cancelled) return;
+        if (active?.job_id && (active.phase === "queued" || active.phase === "running")) {
+          jobId = active.job_id;
+          setInstallProgress(active.message || "正在恢复安装进度…");
+          if (active.progress_percent != null) {
+            setInstallPercent(Math.max(0, Math.min(100, Number(active.progress_percent) || 0)));
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      if (!jobId) {
+        const installSaved = getActiveJob("ai-install");
+        if (!installSaved?.jobId) return;
+        jobId = installSaved.jobId;
+        setInstallProgress("正在恢复安装进度…");
+      }
+      void waitForInstallJob(jobId, openAiInstallJobEventSource, (p) => {
+        if (cancelled) return;
+        setInstallPercent(p.percent);
+        if (p.message) setInstallProgress(p.message);
+        if (p.line != null && p.line !== "") {
+          setInstallLogLines((prev) => {
+            const next = [...prev, p.line as string];
+            return next.length > 400 ? next.slice(-320) : next;
+          });
+        }
+      })
+        .then(async () => {
+          if (cancelled) return;
+          notifyOk("安装任务完成");
+          setInstallProgress("");
+          setInstallPercent(0);
+          await invalidate();
+        })
+        .catch((e) => {
+          if (cancelled || e instanceof InstallJobStreamInterruptedError) return;
+          if (e instanceof InstallJobFailedError) {
+            notifyErr(e.message);
+          } else {
+            notifyErr(axiosErrorDetail(e));
+          }
+          setInstallProgress("");
+        });
+    };
+    void resumeInstall();
+
+    return () => {
+      cancelled = true;
+      if (pollRef.current != null) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+    // 仅挂载时恢复；pollJob / invalidate 随渲染更新
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const deleteMut = useMutation({
     mutationFn: (assets: string[]) => postMediaAssetsDelete(assets),
     onSuccess: async () => { notifyOk("已删除选中资产"); await qc.invalidateQueries({ queryKey: ["media-assets"] }); },
@@ -510,6 +634,7 @@ export default function AiConfigMediaSection() {
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const busy = saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || installMut.isPending ||
+    callbackMut.isPending ||
     downloadMut.isPending || assetDlActive || deleteMut.isPending || singMut.isPending || ttsMut.isPending ||
     ttsTranslatorMut.isPending ||
     sendMut.isPending || verifyMut.isPending || logoutMut.isPending;
@@ -782,7 +907,7 @@ export default function AiConfigMediaSection() {
             <code className="font-mono">.pt</code>
             /
             <code className="font-mono">.pth</code>
-            后刷新本页，再在「音色映射」指到该 id。
+            后刷新本页，再在「音频映射」指到该 id。
           </span>
           {singModelsAbs ? (
             <span>
@@ -923,6 +1048,116 @@ export default function AiConfigMediaSection() {
                 {dockerOrRemoteHint || "当前无法在此安装或启停，请改用连接配置。"}
               </pre>
             )}
+          </PluginConfigFormSection>
+
+          <PluginConfigFormSection
+            title="回调（AI → Bot）"
+            subtitle="唱歌 / TTS 完成后媒体服务会把结果 POST 回 Bot。端口须与 Bot 监听一致（默认 8088）。"
+            bodyClassName="!grid-cols-1 gap-3"
+          >
+            {(() => {
+              const cb = runtimeQ.data?.callback;
+              const probeOk = cb?.probe?.ok === true;
+              const aligned = cb?.aligned === true;
+              const hasCallback = cb != null;
+              const target =
+                cb?.host && cb.port != null
+                  ? `${cb.host}:${cb.port}`
+                  : "未配置";
+              const expected =
+                cb?.expected_host && cb.expected_port != null
+                  ? `${cb.expected_host}:${cb.expected_port}`
+                  : "—";
+              return (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant={!hasCallback ? "secondary" : aligned ? "success" : "warn"}>
+                      {!hasCallback ? "对齐未知" : aligned ? "已对齐" : "未对齐"}
+                    </Badge>
+                    <Badge variant={!hasCallback ? "secondary" : probeOk ? "success" : "warn"}>
+                      {!hasCallback ? "探活未知" : probeOk ? "探活可达" : "探活不可达"}
+                    </Badge>
+                    {hasCallback ? (
+                      <>
+                        <Badge variant="outline">当前 {target}</Badge>
+                        <Badge variant="outline">期望 {expected}</Badge>
+                      </>
+                    ) : null}
+                  </div>
+                  {cb?.error || cb?.probe?.error ? (
+                    <p className="text-xs text-muted-foreground">
+                      {cb.error || cb.probe?.error}
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      disabled={busy || !cb?.can_edit || aligned}
+                      title={aligned ? "已与 Bot 监听端口一致" : "写入 Bot 监听地址并重启 media"}
+                      onClick={() => { void callbackMut.mutateAsync({ align: true }); }}
+                    >
+                      一键对齐
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy || !cb?.can_edit}
+                      onClick={() => setCallbackAdvancedOpen((v) => !v)}
+                    >
+                      {callbackAdvancedOpen ? "收起高级" : "高级"}
+                    </Button>
+                  </div>
+                  {callbackAdvancedOpen ? (
+                    <div className="space-y-3 rounded-[var(--radius-control,8px)] border p-3">
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        Docker / 跨机时把 Host 改成 Bot 容器名或可达地址；保存后会重启 media worker。
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <AiConfigField label="CALLBACK_HOST" description="AI 回调 Bot 的主机名">
+                          <Input
+                            value={callbackHost}
+                            disabled={!cb?.can_edit}
+                            onChange={(e) => setCallbackHost(e.target.value)}
+                            placeholder="127.0.0.1"
+                          />
+                        </AiConfigField>
+                        <AiConfigField label="CALLBACK_PORT" description="须等于 Bot 监听端口">
+                          <Input
+                            type="number"
+                            value={callbackPort}
+                            disabled={!cb?.can_edit}
+                            onChange={(e) => setCallbackPort(e.target.value)}
+                            placeholder="8088"
+                          />
+                        </AiConfigField>
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={busy || !cb?.can_edit}
+                        onClick={() => {
+                          const portNum = Number(callbackPort);
+                          if (!callbackHost.trim() || !Number.isFinite(portNum) || portNum < 1 || portNum > 65535) {
+                            notifyErr("请填写合法的 Host 与端口");
+                            return;
+                          }
+                          void callbackMut.mutateAsync({
+                            host: callbackHost.trim(),
+                            port: portNum,
+                          });
+                        }}
+                      >
+                        保存并重启 media
+                      </Button>
+                    </div>
+                  ) : null}
+                  {!hasCallback ? null : !cb?.can_edit ? (
+                    <p className="text-xs text-muted-foreground">
+                      当前无法在此改回调（无本地 Runtime 时请改 compose / 远端 .env）。
+                    </p>
+                  ) : null}
+                </>
+              );
+            })()}
           </PluginConfigFormSection>
 
           <PluginConfigFormSection
@@ -1161,8 +1396,8 @@ export default function AiConfigMediaSection() {
           </div>
         </StateBlock>
         <PluginConfigFormSection
-          title="音色映射"
-          subtitle="口令里的名字对应到媒体服务里的音色 id。"
+          title="音频映射"
+          subtitle="命令里的名字对应到媒体服务里的音色 id。"
           bodyClassName="!grid-cols-1 gap-3"
           defaultOpen
         >
@@ -1172,6 +1407,7 @@ export default function AiConfigMediaSection() {
             presentation="dialog"
             compact
             includeFields={["sing_speakers"]}
+            hideGroupHeaders
             onStatusChange={onSingPluginStatusChange}
           />
           <PluginConfigElsewhereHint
@@ -1370,28 +1606,21 @@ export default function AiConfigMediaSection() {
     ) : null}
 
     {panel === "draw" ? (
-      <div className="space-y-4">
-        <PluginConfigFormSection
-          title="画画网关"
-          subtitle="主线与备用画图线路。"
-          bodyClassName="!grid-cols-1 gap-3"
-          defaultOpen
-        >
-          <PluginConfigWorkspace
-            ref={drawWorkspaceRef}
-            pluginName="draw"
-            presentation="dialog"
-            compact
-            includeFields={[]}
-            includeGateways
-            onStatusChange={onDrawStatusChange}
-          />
-          <PluginConfigElsewhereHint
-            pluginName="draw"
-            label="画画"
-            extras="模型、默认尺寸、冷却等其它项"
-          />
-        </PluginConfigFormSection>
+      <div className="space-y-3">
+        <PluginConfigWorkspace
+          ref={drawWorkspaceRef}
+          pluginName="draw"
+          presentation="dialog"
+          compact
+          includeFields={[]}
+          includeGateways
+          onStatusChange={onDrawStatusChange}
+        />
+        <PluginConfigElsewhereHint
+          pluginName="draw"
+          label="画画"
+          extras="模型、默认尺寸、冷却等其它项"
+        />
       </div>
     ) : null}
 

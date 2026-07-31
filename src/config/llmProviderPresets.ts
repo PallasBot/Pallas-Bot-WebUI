@@ -80,12 +80,12 @@ export const LLM_PROVIDER_PRESETS: readonly LlmProviderPreset[] = [
 ] as const;
 
 export const LLM_TASK_ROUTE_LABELS: Record<string, string> = {
-  llm_chat: "@ 对话",
+  llm_chat: "@对话",
   drunk: "醉聊",
-  repeater_select: "接话选句",
-  repeater_polish_lite: "接话轻润色",
-  repeater_fallback: "接话兜底",
-  repeater_polish: "接话完整润色",
+  repeater_select: "接话·语料选句",
+  repeater_polish_lite: "接话·轻改口气",
+  repeater_fallback: "接话·现编（非@）",
+  repeater_polish: "接话·完整润色",
   other: "其他",
 };
 
@@ -139,6 +139,11 @@ export const LLM_PROVIDER_CAPABILITIES = [
   { id: "audio", label: "音频" },
   { id: "video", label: "视频" },
 ] as const;
+
+/** 编辑表单可勾选；音频/视频管线未接入前不展示 */
+export const LLM_PROVIDER_CAPABILITIES_EDITABLE = LLM_PROVIDER_CAPABILITIES.filter(
+  (cap) => cap.id === "text" || cap.id === "image",
+);
 
 export const LLM_PROVIDER_MODEL_EFFORTS = [
   { id: "", label: "默认" },

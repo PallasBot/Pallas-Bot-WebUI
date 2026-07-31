@@ -149,6 +149,12 @@ type Props = {
   includeGateways?: boolean;
   /** 紧凑嵌入：只保留配置表单，隐藏治理 / README / 模式切换 */
   compact?: boolean;
+  /** group.id 或 group.title → 分组标题覆盖 */
+  groupTitles?: Record<string, string>;
+  /** group.id → 副文案覆盖 */
+  groupSubtitles?: Record<string, string>;
+  /** 嵌入外层分区时去掉内部分组标题 */
+  hideGroupHeaders?: boolean;
 };
 
 function PluginBundledReadme({
@@ -207,6 +213,9 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
     includeFields,
     includeGateways,
     compact = false,
+    groupTitles,
+    groupSubtitles: groupSubtitlesProp,
+    hideGroupHeaders = false,
   },
   ref,
 ) {
@@ -597,15 +606,18 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                       onFieldChange={(name, value) =>
                         setFieldValues((prev) => ({ ...prev, [name]: value }))
                       }
+                      groupTitles={groupTitles}
                       groupSubtitles={
-                        cfgQ.data?.field_groups?.length
+                        groupSubtitlesProp ??
+                        (cfgQ.data?.field_groups?.length
                           ? undefined
                           : {
                               // 仅单组「配置项」时保留原先说明；多 ui_group 用默认「共 N 项」
                               "ui:配置项": `共 ${formFields.length} 项参数，保存后按插件热重载策略生效`,
                               all: `共 ${formFields.length} 项参数，保存后按插件热重载策略生效`,
-                            }
+                            })
                       }
+                      hideGroupHeaders={hideGroupHeaders}
                     />
                   ) : null}
                   {!isDialog ? (

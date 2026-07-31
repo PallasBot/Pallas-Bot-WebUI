@@ -2999,6 +2999,22 @@ export type AiRuntimeServiceStatus = {
   pid: number | null;
 };
 
+export type AiRuntimeCallbackStatus = {
+  can_edit: boolean;
+  host: string | null;
+  port: number | null;
+  expected_host: string | null;
+  expected_port: number | null;
+  aligned: boolean | null;
+  probe: {
+    ok: boolean;
+    url: string | null;
+    status_code: number | null;
+    error: string | null;
+  } | null;
+  error: string | null;
+};
+
 export type AiRuntimeStatus = {
   can_manage: boolean;
   ai_root: string | null;
@@ -3013,6 +3029,7 @@ export type AiRuntimeStatus = {
     body_preview: string | null;
     error: string | null;
   };
+  callback?: AiRuntimeCallbackStatus;
 };
 
 export type AiInstallStatus = {
@@ -3058,6 +3075,27 @@ export async function postAiRuntimeStart(body?: {
 
 export async function postAiRuntimeStop(): Promise<Record<string, unknown>> {
   return (await consoleOpenapiPost("/ai-extension/runtime/stop", {})) as Record<string, unknown>;
+}
+
+export async function putAiRuntimeCallback(body: {
+  host?: string | null;
+  port?: number | null;
+  align?: boolean;
+  restart_media?: boolean;
+}): Promise<{
+  ok: boolean;
+  error?: string | null;
+  callback?: AiRuntimeCallbackStatus;
+  output_tail?: string;
+  runtime?: AiRuntimeStatus;
+}> {
+  return (await consoleOpenapiPut("/ai-extension/runtime/callback", body)) as {
+    ok: boolean;
+    error?: string | null;
+    callback?: AiRuntimeCallbackStatus;
+    output_tail?: string;
+    runtime?: AiRuntimeStatus;
+  };
 }
 
 export async function postAiInstall(body: {
@@ -3194,6 +3232,79 @@ export async function fetchMediaAssetsDownloadJob(jobId: string): Promise<MediaA
     `/common-config/llm/media-assets/download/jobs/${encodeURIComponent(jobId)}`,
   )) as { ok?: boolean; data?: MediaAssetsDownloadJob };
   return (res?.data ?? res) as MediaAssetsDownloadJob;
+}
+
+export async function fetchMediaAssetsDownloadActive(): Promise<MediaAssetsDownloadJob | null> {
+  const res = (await consoleOpenapiGet(
+    "/common-config/llm/media-assets/download/jobs/active",
+  )) as { ok?: boolean; data?: MediaAssetsDownloadJob | null };
+  const data = res?.data ?? null;
+  if (!data?.job_id) return null;
+  return data;
+}
+
+export async function fetchAiInstallJobActive(): Promise<{
+  job_id: string;
+  action?: string;
+  phase?: string;
+  message?: string;
+  progress_percent?: number;
+} | null> {
+  const res = (await consoleOpenapiGet("/ai-extension/install/jobs/active")) as {
+    ok?: boolean;
+    data?: {
+      job_id: string;
+      action?: string;
+      phase?: string;
+      message?: string;
+      progress_percent?: number;
+    } | null;
+  };
+  return res?.data ?? null;
+}
+
+export async function fetchUpdateApplyJobActive(): Promise<{
+  job_id: string;
+  kind?: string;
+  phase?: string;
+  message?: string;
+  progress_percent?: number;
+} | null> {
+  const res = (await consoleOpenapiGet("/update/jobs/active")) as {
+    ok?: boolean;
+    data?: {
+      job_id: string;
+      kind?: string;
+      phase?: string;
+      message?: string;
+      progress_percent?: number;
+    } | null;
+  };
+  return res?.data ?? null;
+}
+
+export async function fetchPluginStoreJobActive(): Promise<{
+  job_id: string;
+  kind?: string;
+  target?: string;
+  action?: string;
+  phase?: string;
+  message?: string;
+  progress_percent?: number;
+} | null> {
+  const res = (await consoleOpenapiGet("/plugins/store-jobs/active")) as {
+    ok?: boolean;
+    data?: {
+      job_id: string;
+      kind?: string;
+      target?: string;
+      action?: string;
+      phase?: string;
+      message?: string;
+      progress_percent?: number;
+    } | null;
+  };
+  return res?.data ?? null;
 }
 
 export async function fetchSingSpeakers(): Promise<SingSpeakersPayload> {

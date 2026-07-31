@@ -173,6 +173,17 @@
   gap: 6px;
 }
 
+.gs-trend-chart__leg-axis {
+  margin-left: 2px;
+  padding: 0 5px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
 .gs-trend-chart__leg-swatch {
   width: 14px;
   height: 4px;

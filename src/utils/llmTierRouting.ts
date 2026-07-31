@@ -50,23 +50,23 @@ export const TASK_ROUTE_META: Record<
     kind: "high",
   },
   repeater_polish: {
-    title: "接话润色",
+    title: "接话·完整润色",
     description: "强场景下把接话整段改得更顺，相对更费",
     kind: "high",
   },
   repeater_select: {
-    title: "接话选句",
+    title: "接话·语料选句",
     description: "从已有语料里挑一句发出，轻量常用",
     kind: "low",
   },
   repeater_polish_lite: {
-    title: "轻润色",
+    title: "接话·轻改口气",
     description: "语料命中后只轻轻改口气，比完整润色便宜",
     kind: "low",
   },
   repeater_fallback: {
-    title: "接话兜底",
-    description: "语料不够用时现编一句，避免冷场",
+    title: "接话·现编（非@）",
+    description: "日常接话语料不够时现写一句；不是 @ 对话",
     kind: "low",
   },
   affect_refine: {

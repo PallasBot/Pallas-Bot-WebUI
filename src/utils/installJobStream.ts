@@ -1,5 +1,7 @@
 /** 监听插件/扩展安装 job 的 SSE，直到 complete 或失败。 */
 
+import { clearActiveJob, setActiveJob } from "@/utils/activeJobSession";
+
 export type InstallJobProgress = {
   percent: number;
   message: string;
@@ -41,13 +43,23 @@ export class InstallJobFailedError extends Error {
   }
 }
 
+/** 连接中断（切页等）时抛出；不清除 session，便于回页续连。 */
+export class InstallJobStreamInterruptedError extends Error {
+  constructor(message = "安装进度连接中断") {
+    super(message);
+    this.name = "InstallJobStreamInterruptedError";
+  }
+}
+
 export function waitForInstallJob(
   jobId: string,
   openStream: (id: string) => EventSource,
   onProgress?: (progress: InstallJobProgress) => void,
 ): Promise<InstallJobCompletePayload> {
+  const id = String(jobId || "").trim();
+  if (id) setActiveJob("ai-install", id);
   return new Promise((resolve, reject) => {
-    const stream = openStream(jobId);
+    const stream = openStream(id);
     const closeStream = () => stream.close();
     stream.onmessage = (ev) => {
       if (!ev.data) return;
@@ -66,6 +78,7 @@ export function waitForInstallJob(
         }
         if (payload.type === "complete") {
           if (payload.phase === "failed") {
+            clearActiveJob("ai-install", id);
             closeStream();
             reject(
               new InstallJobFailedError(
@@ -76,10 +89,12 @@ export function waitForInstallJob(
             );
             return;
           }
+          clearActiveJob("ai-install", id);
           closeStream();
           resolve(payload);
         }
         if (payload.type === "error") {
+          clearActiveJob("ai-install", id);
           closeStream();
           reject(new Error(payload.error || "任务不存在"));
         }
@@ -89,7 +104,7 @@ export function waitForInstallJob(
     };
     stream.onerror = () => {
       closeStream();
-      reject(new Error("安装进度连接中断"));
+      reject(new InstallJobStreamInterruptedError());
     };
   });
 }

@@ -51,6 +51,7 @@ import {
   LLM_BASE_URL_SUGGESTIONS,
   LLM_LOCAL_BASE_URL_SUGGESTIONS,
   LLM_PROVIDER_CAPABILITIES,
+  LLM_PROVIDER_CAPABILITIES_EDITABLE,
   LLM_PROVIDER_MODEL_EFFORTS,
   LLM_PROVIDER_REQUEST_METHODS,
   LLM_PROVIDER_PRESETS,
@@ -1435,7 +1436,7 @@ export default function LlmProvidersForm() {
                       模型支持能力
                     </Label>
                     <div className="flex flex-wrap gap-2">
-                      {LLM_PROVIDER_CAPABILITIES.map((cap) => {
+                      {LLM_PROVIDER_CAPABILITIES_EDITABLE.map((cap) => {
                         const active = (draft.capabilities || []).includes(cap.id);
                         return (
                           <Button
@@ -1480,6 +1481,15 @@ export default function LlmProvidersForm() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      控制模型在回答前投入多少推理；具体档位由各厂商 API 解释，不支持时会被忽略。
+                    </p>
+                    {selectedPreset === "deepseek" ? (
+                      <p className="text-xs text-muted-foreground">
+                        DeepSeek：未选档位时默认关思考；选「开启」或具体强度后可与工具调用同开（强制
+                        tool_choice=required 的那一轮仍会关）。
+                      </p>
+                    ) : null}
                   </div>
 
                   {draft.kind !== "local" ? (

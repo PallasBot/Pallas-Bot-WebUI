@@ -46,6 +46,7 @@ describe("hourlyTokenIoTrendSeries", () => {
     ];
     const series = hourlyTokenIoTrendSeries(rows, "2026-07-27");
     expect(series.map((s) => s.id)).toEqual(["prompt", "completion"]);
+    expect(series.map((s) => s.axis)).toEqual(["left", "right"]);
     expect(series[0].points).toHaveLength(15);
     expect(series[0].points[13].total).toBe(100);
     expect(series[0].points[14].total).toBe(50);

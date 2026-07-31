@@ -1611,12 +1611,12 @@ html[data-layout="hub"][data-surface="solid"][data-theme="light"] .logs-page > .
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin: 0;
+  margin: 0 0 2px;
 }
 
 .logs-page__status + .logs-page__level-bar,
 .logs-page__status + .logs-page__level-stats {
-  margin-top: 0;
+  margin-top: 2px;
 }
 
 .logs-page__badge {
@@ -1715,9 +1715,9 @@ html[data-layout="hub"][data-surface="solid"][data-theme="light"] .logs-page > .
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 10px;
+  gap: 10px 14px;
   width: 100%;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
 }
 
 .logs-page__level-bar__label {
@@ -1726,13 +1726,14 @@ html[data-layout="hub"][data-surface="solid"][data-theme="light"] .logs-page > .
   font-weight: 500;
   color: var(--text-muted);
   line-height: 1.3;
+  margin-right: 2px;
 }
 
 .logs-page__level-stats {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px 10px;
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
@@ -1743,7 +1744,7 @@ html[data-layout="hub"][data-surface="solid"][data-theme="light"] .logs-page > .
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding: 5px 12px 5px 5px;
+  padding: 6px 14px 6px 6px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
   background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-muted) 12%);
@@ -1809,6 +1810,35 @@ html[data-layout="hub"][data-surface="solid"][data-theme="light"] .logs-page > .
 
 .logs-page__level-stat--off .logs-page__level-stat__label {
   color: var(--text-muted);
+}
+
+/* 工具条「筛选」内的紧凑级别开关 */
+.logs-page__level-field {
+  align-items: center;
+}
+.logs-page__level-stats--chrome {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+  margin: 0;
+}
+.logs-page__level-stats--chrome .logs-page__level-stat {
+  padding: 3px 10px 3px 4px;
+  min-height: 32px;
+  box-sizing: border-box;
+}
+.logs-page__level-stats--chrome .logs-page__level-stat__badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  font-size: 10px;
+}
+.logs-page__level-stats--chrome .logs-page__level-stat__label {
+  font-size: 10px;
+  letter-spacing: 0.02em;
 }
 
 .logs-page__levels {
@@ -9326,17 +9356,17 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     scrollbar-width: thin;
     padding-bottom: 2px;
     margin: 0 0 2px;
-    gap: 4px;
+    gap: 8px;
   }
 
   .logs-page__status + .logs-page__level-bar,
   .logs-page__status + .logs-page__level-stats {
-    margin-top: 0;
+    margin-top: 4px;
   }
 
   .logs-page__level-bar {
-    gap: 6px;
-    margin-bottom: 6px;
+    gap: 8px 10px;
+    margin-bottom: 8px;
   }
 
   .logs-page__level-bar__label {
@@ -9344,23 +9374,34 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     flex-basis: auto;
   }
 
-  .logs-page__level-stats {
+  .logs-page__level-stats:not(.logs-page__level-stats--chrome) {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
+    gap: 8px;
     overflow: visible;
     width: 100%;
   }
 
-  .logs-page__level-stat {
+  .logs-page__level-stats:not(.logs-page__level-stats--chrome) .logs-page__level-stat {
     width: 100%;
     min-width: 0;
-    padding: 5px 10px 5px 5px;
+    padding: 6px 10px 6px 5px;
     box-sizing: border-box;
   }
 
-  .logs-page__level-stat:nth-child(4),
-  .logs-page__level-stat:nth-child(5) {
+  .logs-page__level-stats--chrome {
+    display: inline-flex;
+    width: auto;
+    max-width: none;
+  }
+
+  .logs-page__level-stats--chrome .logs-page__level-stat {
+    width: auto;
+    padding: 3px 10px 3px 4px;
+  }
+
+  .logs-page__level-stats:not(.logs-page__level-stats--chrome) .logs-page__level-stat:nth-child(4),
+  .logs-page__level-stats:not(.logs-page__level-stats--chrome) .logs-page__level-stat:nth-child(5) {
     grid-column: span 1;
   }
 

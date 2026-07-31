@@ -1,4 +1,5 @@
-/* Ported from Vue LogVirtualFeed.vue scoped — virtual row layout */
+/* 运行日志虚拟列表：定宽 meta 列 + 正文齐列；窄屏 meta/正文分行 */
+
 .log-virtual-feed-wrap {
   display: flex;
   flex-direction: column;
@@ -12,49 +13,71 @@
   flex: 1;
   min-height: 0;
   max-height: none;
-  /* 覆盖全局 .log-feed 的 padding，避免估高贴底后视觉上仍「差一截」 */
   padding: 0;
 }
 .log-virtual-feed__spacer {
   position: relative;
   width: 100%;
 }
-.log-virtual-feed__window {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-}
-.log-line--virtual {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
+
+/* 时间+色点 | 定宽 scope badge | 正文紧贴 —— 正文同列 */
+.log-line.log-line--virtual {
+  display: grid;
+  grid-template-columns: auto 5.5rem minmax(0, 1fr);
+  column-gap: 0;
+  align-items: start;
   width: 100%;
   box-sizing: border-box;
-  padding: 4px 10px;
+  padding: 3px 8px;
   margin: 0;
   border: none;
   background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
+  overflow: visible;
   cursor: pointer;
-  overflow: hidden;
+  row-gap: 0;
 }
 .log-line--virtual:hover,
-.log-line--virtual-active {
+.log-line--virtual-pinned {
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
+.log-line--virtual-pinned {
+  outline: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  outline-offset: -1px;
+}
+
+.log-line--virtual .log-line__lead {
+  grid-column: 1;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+  padding-right: 4px;
+}
+.log-line--virtual .log-line__time {
+  width: 4rem;
+  margin: 1px 0 0;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .log-line--virtual .log-line__lv-tag {
-  flex: 0 0 auto;
+  flex: none;
 }
 .log-line--virtual .log-line__lv-tag--dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
-  min-width: 8px;
+  width: 6px;
+  height: 6px;
+  min-width: 6px;
   padding: 0;
-  margin-top: 5px;
+  margin-top: 6px;
+  margin-right: 0;
   border-radius: 999px;
   border: none;
   font-size: 0;
@@ -80,60 +103,100 @@
 .log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--error {
   background: var(--danger);
 }
+
 .log-line--virtual .log-line__scope-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex: 0 0 auto;
-  min-width: 0;
-  max-width: min(40%, 14rem);
-}
-.log-line--virtual .log-line__source {
-  flex: 0 0 auto;
+  grid-column: 2;
+  display: block;
+  width: 5.5rem;
+  min-width: 5.5rem;
   max-width: 5.5rem;
-  padding: 1px 5px;
-  border-radius: 4px;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  background: color-mix(in srgb, var(--text-muted) 10%, var(--bg-card));
-  color: var(--text-muted);
-  font-size: 10px;
-  line-height: 1.25;
-  white-space: nowrap;
+  margin: 1px 0 0;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
-.log-line--virtual .log-line__scope {
-  flex: 0 0 auto;
-  flex-grow: 0;
-  width: auto;
-  max-width: 10rem;
-  color: var(--text-muted);
+/* scope 实心色：列表行与固定面板共用（色相 --scope-h） */
+.log-line__scope-badge {
+  display: inline-flex;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: 3px;
+  border: none !important;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.45;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 10px;
+  --scope-h: 210;
+  color: #fff !important;
+  background: hsl(var(--scope-h) 68% 46%) !important;
+}
+html[data-theme="dark"] .log-line__scope-badge {
+  background: hsl(var(--scope-h) 62% 42%) !important;
+}
+.log-line--virtual .log-line__scope-badge {
+  width: 100%;
+}
+
+.log-line--virtual .log-line__msg--clip,
+.log-line--virtual .log-line__msg--wrap {
+  grid-column: 3;
+  min-width: 0;
+  padding-left: 4px;
 }
 .log-line--virtual .log-line__msg--clip {
-  flex: 1 1 0;
-  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .log-line--virtual .log-line__msg--wrap {
-  flex: 1 1 0;
-  min-width: 0;
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.45;
+  max-height: min(40vh, 480px);
+  overflow: auto;
 }
-.log-line--virtual-error .log-line__msg--wrap {
-  color: color-mix(in srgb, var(--danger) 88%, var(--text));
+/* 正文颜色与级别色点一致 */
+.log-line--virtual-debug .log-line__msg--wrap,
+.log-line--virtual-debug .log-line__msg--clip {
+  color: var(--text-muted);
 }
-.log-line--virtual .log-line__time,
-.log-line--virtual .log-line__scope-group {
-  margin-top: 1px;
+.log-line--virtual-info .log-line__msg--wrap,
+.log-line--virtual-info .log-line__msg--clip {
+  color: color-mix(in srgb, var(--accent) 82%, var(--text));
 }
+.log-line--virtual-success .log-line__msg--wrap,
+.log-line--virtual-success .log-line__msg--clip {
+  color: color-mix(in srgb, var(--success) 88%, var(--text));
+}
+.log-line--virtual-warn .log-line__msg--wrap,
+.log-line--virtual-warn .log-line__msg--clip {
+  color: color-mix(in srgb, var(--warn) 90%, var(--text));
+}
+.log-line--virtual-error .log-line__msg--wrap,
+.log-line--virtual-error .log-line__msg--clip {
+  color: color-mix(in srgb, var(--danger) 90%, var(--text));
+}
+
+/* 窄屏：meta 一行，正文整行（对齐 gsuid_hub 的分行思路） */
+@media (max-width: 560px) {
+  .log-line.log-line--virtual {
+    grid-template-columns: auto 5.5rem;
+    grid-template-rows: auto auto;
+    column-gap: 0;
+    padding: 3px 6px;
+  }
+  .log-line--virtual .log-line__scope-group {
+    grid-column: 2;
+  }
+  .log-line--virtual .log-line__msg--wrap,
+  .log-line--virtual .log-line__msg--clip {
+    grid-column: 1 / -1;
+    padding-left: 0;
+  }
+}
+
 .log-virtual-feed__detail {
   flex-shrink: 0;
   padding: 10px 12px;
@@ -148,6 +211,60 @@
   gap: 8px;
   margin-bottom: 8px;
 }
+.log-virtual-feed__detail .log-line__scope-group {
+  display: inline-flex;
+  width: auto;
+  min-width: 0;
+  max-width: 14rem;
+  margin: 0;
+}
+.log-virtual-feed__detail .log-line__scope-badge {
+  width: auto;
+  min-width: 4.5rem;
+  padding: 1px 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.log-virtual-feed__detail .log-line__lv-tag {
+  min-width: 3.6rem;
+  border: none;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.log-virtual-feed__detail .log-line__lv-tag--debug {
+  background: hsl(215 16% 47%);
+  color: #fff;
+}
+.log-virtual-feed__detail .log-line__lv-tag--info {
+  background: color-mix(in srgb, var(--accent) 35%, hsl(226 90% 56%));
+  color: #fff;
+}
+.log-virtual-feed__detail .log-line__lv-tag--success {
+  background: color-mix(in srgb, var(--success) 30%, hsl(142 76% 42%));
+  color: #fff;
+}
+.log-virtual-feed__detail .log-line__lv-tag--warn {
+  background: color-mix(in srgb, var(--warn) 28%, hsl(38 95% 48%));
+  color: #fff;
+}
+.log-virtual-feed__detail .log-line__lv-tag--error {
+  background: color-mix(in srgb, var(--danger) 28%, hsl(0 84% 55%));
+  color: #fff;
+}
+.log-virtual-feed__detail-pin {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: none;
+  background: color-mix(in srgb, var(--accent) 35%, hsl(258 90% 58%));
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
 .log-virtual-feed__detail-close {
   margin-left: auto;
   padding: 4px 10px;
@@ -156,7 +273,7 @@
 }
 .log-virtual-feed__detail-body {
   margin: 0;
-  max-height: min(220px, 28vh);
+  max-height: min(280px, 36vh);
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
@@ -164,4 +281,19 @@
   font-size: 11px;
   line-height: 1.45;
   color: var(--text);
+}
+.log-virtual-feed__detail--debug .log-virtual-feed__detail-body {
+  color: var(--text-muted);
+}
+.log-virtual-feed__detail--info .log-virtual-feed__detail-body {
+  color: color-mix(in srgb, var(--accent) 82%, var(--text));
+}
+.log-virtual-feed__detail--success .log-virtual-feed__detail-body {
+  color: color-mix(in srgb, var(--success) 88%, var(--text));
+}
+.log-virtual-feed__detail--warn .log-virtual-feed__detail-body {
+  color: color-mix(in srgb, var(--warn) 90%, var(--text));
+}
+.log-virtual-feed__detail--error .log-virtual-feed__detail-body {
+  color: color-mix(in srgb, var(--danger) 90%, var(--text));
 }

@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, MessageSquare, Ellipsis, Radio, Hash, Download } from "lucide-react";
+import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, MessageSquare, Ellipsis, Radio, Hash, Download, Layers } from "lucide-react";
 import { fetchLogs, openLogsEventSource } from "@/api/fullConsole";
 import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@/api/pallasTypes";
 import PageMasthead from "@/components/PageMasthead";
@@ -207,10 +207,17 @@ export default function LogsPage() {
       let next = [...buf];
       for (const row of pending) {
         const key = `${row.scope}|${row.time}`;
-        if (row.message.includes("\n") || row.message.startsWith("  File ")) {
+        const msg = String(row.message ?? "");
+        const looksLikeCont =
+          msg.startsWith("  File ") ||
+          msg.startsWith("    ") ||
+          msg.startsWith("\t") ||
+          msg.startsWith("Traceback") ||
+          (msg.includes("\n") && !/OneBot V11/i.test(msg));
+        if (looksLikeCont) {
           const prev = next[next.length - 1];
           if (prev && `${prev.scope}|${prev.time}` === key) {
-            prev.message = prev.message ? `${prev.message}\n${row.message}` : row.message;
+            prev.message = prev.message ? `${prev.message}\n${msg}` : msg;
             continue;
           }
         }
@@ -622,6 +629,28 @@ export default function LogsPage() {
                     onChange={(e) => onNInput(e.target.value, setN)}
                   />
                 </ChromeField>
+                <ChromeField label="级别" icon={Layers} className="logs-page__level-field">
+                  <div className="logs-page__level-stats logs-page__level-stats--chrome" role="group" aria-label="日志级别筛选">
+                    {LOG_ENTRY_LEVELS.map((lv) => (
+                      <button
+                        key={`stat-${lv}`}
+                        type="button"
+                        className={cn(
+                          "logs-page__level-stat",
+                          `logs-page__level-stat--${lv}`,
+                          enabledLevels.has(lv) ? "logs-page__level-stat--on" : "logs-page__level-stat--off",
+                        )}
+                        aria-pressed={enabledLevels.has(lv)}
+                        onClick={() => toggleLogLevel(lv)}
+                      >
+                        <span className="logs-page__level-stat__badge">
+                          {levelCounts[lv] > 0 ? levelCounts[lv] : "–"}
+                        </span>
+                        <span className="logs-page__level-stat__label">{lv}</span>
+                      </button>
+                    ))}
+                  </div>
+                </ChromeField>
               </>
             ) : undefined
           }
@@ -684,40 +713,14 @@ export default function LogsPage() {
       </PagePinned>
 
       <Card className="logs-page__panel flex min-h-0 flex-1 flex-col overflow-hidden shadow-none">
-        <CardContent className="logs-page__panel-bd flex min-h-0 flex-1 flex-col gap-1.5 px-4 pb-4 pt-2">
+        <CardContent className="logs-page__panel-bd flex min-h-0 flex-1 flex-col gap-2 px-4 pb-4 pt-3">
           {payload?.max != null ? (
-            <div className="logs-page__status flex flex-wrap items-center gap-1.5">
+            <div className="logs-page__status flex flex-wrap items-center gap-2">
               <Badge variant={streamBadgeVariant}>{streamBadgeLabel}</Badge>
               <Badge variant="outline">历史 {historyEntryCount}</Badge>
               {liveExtraCount ? <Badge variant="default">+{liveExtraCount} 实时</Badge> : null}
               <Badge variant="outline">显示 {visibleCount}</Badge>
               {activeFilterCount ? <Badge variant="muted">筛选中</Badge> : null}
-            </div>
-          ) : null}
-
-          {view === "feed" ? (
-            <div className="logs-page__level-bar">
-              <span className="logs-page__level-bar__label">日志级别:</span>
-              <div className="logs-page__level-stats" role="group" aria-label="日志级别筛选">
-                {LOG_ENTRY_LEVELS.map((lv) => (
-                  <button
-                    key={`stat-${lv}`}
-                    type="button"
-                    className={cn(
-                      "logs-page__level-stat",
-                      `logs-page__level-stat--${lv}`,
-                      enabledLevels.has(lv) ? "logs-page__level-stat--on" : "logs-page__level-stat--off",
-                    )}
-                    aria-pressed={enabledLevels.has(lv)}
-                    onClick={() => toggleLogLevel(lv)}
-                  >
-                    <span className="logs-page__level-stat__badge">
-                      {levelCounts[lv] > 0 ? levelCounts[lv] : "–"}
-                    </span>
-                    <span className="logs-page__level-stat__label">{lv}</span>
-                  </button>
-                ))}
-              </div>
             </div>
           ) : null}
 
