@@ -1266,6 +1266,14 @@ export async function fetchMediaAssetsDownloadJob(jobId: string): Promise<MediaA
   return unwrapNestedEnvelope<MediaAssetsDownloadJob>(body);
 }
 
+export async function fetchMediaAssetsDownloadActive(): Promise<MediaAssetsDownloadJob | null> {
+  const { data: body } = await http.get("/common-config/llm/media-assets/download/jobs/active");
+  const data = unwrapNestedEnvelope<MediaAssetsDownloadJob | null>(body);
+  if (!data || typeof data !== "object") return null;
+  if (!String((data as MediaAssetsDownloadJob).job_id || "").trim()) return null;
+  return data as MediaAssetsDownloadJob;
+}
+
 export async function fetchSingSpeakers(): Promise<SingSpeakersPayload> {
   const { data: body } = await http.get("/common-config/llm/media-models/sing/speakers");
   return unwrapNestedEnvelope<SingSpeakersPayload>(body);

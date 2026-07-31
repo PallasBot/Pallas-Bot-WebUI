@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
+  fetchMediaAssetsDownloadActive,
   fetchMediaAssetsDownloadJob,
   fetchMediaAssetsStatus,
   fetchSingBackends,
@@ -12,6 +13,7 @@ import {
   putSingDefaults,
   putTtsDefaults,
 } from "@/api/console";
+import { clearActiveJob, getActiveJob, setActiveJob } from "@/utils/activeJobSession";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField, { AiModelSelect } from "@/components/ai/AiConfigField";
 import AiJobProgressBlock from "@/components/ai/AiJobProgressBlock";
@@ -99,6 +101,7 @@ export default function AiConfigCapabilitiesSection() {
 
   const pollJob = (jobId: string) => {
     if (pollRef.current != null) window.clearInterval(pollRef.current);
+    setActiveJob("media-assets-download", jobId);
     setAssetDlActive(true);
     setAssetDlFailed(false);
     const tick = () => {
@@ -114,6 +117,7 @@ export default function AiConfigCapabilitiesSection() {
             if (pollRef.current != null) window.clearInterval(pollRef.current);
             pollRef.current = null;
             setAssetDlActive(false);
+            clearActiveJob("media-assets-download", jobId);
             if (state === "done") {
               setAssetDlPercent(100);
               setAssetDlLabel(job.message || "媒体权重下载完成");
@@ -130,6 +134,7 @@ export default function AiConfigCapabilitiesSection() {
           pollRef.current = null;
           setAssetDlActive(false);
           setAssetDlFailed(true);
+          clearActiveJob("media-assets-download", jobId);
           notifyErr(axiosErrorDetail(e));
         });
     };
@@ -172,6 +177,39 @@ export default function AiConfigCapabilitiesSection() {
       notifyErr(axiosErrorDetail(e));
     },
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    const resume = async () => {
+      try {
+        const active = await fetchMediaAssetsDownloadActive();
+        if (cancelled) return;
+        if (active?.job_id && String(active.state || "") === "running") {
+          if (active.message) setAssetDlLabel(active.message);
+          if (active.progress_percent != null) {
+            setAssetDlPercent(Math.max(0, Math.min(100, Number(active.progress_percent) || 0)));
+          }
+          if (active.lines?.length) setJobLines(active.lines);
+          pollJob(active.job_id);
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+      if (cancelled) return;
+      const saved = getActiveJob("media-assets-download");
+      if (saved?.jobId) pollJob(saved.jobId);
+    };
+    void resume();
+    return () => {
+      cancelled = true;
+      if (pollRef.current != null) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const deleteMut = useMutation({
     mutationFn: (assets: string[]) => postMediaAssetsDelete(assets),

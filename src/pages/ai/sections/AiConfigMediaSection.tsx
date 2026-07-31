@@ -8,12 +8,13 @@ import {
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchAiExtensionConfig, fetchAiInstallStatus, fetchAiNcmStatus, fetchAiRuntimeStatus,
-  fetchMediaAssetsDownloadJob, fetchMediaAssetsStatus, fetchSingBackends, fetchSingSpeakers,
+  fetchMediaAssetsDownloadActive, fetchMediaAssetsDownloadJob, fetchMediaAssetsStatus, fetchSingBackends, fetchSingSpeakers,
   fetchTtsVoices, fetchTtsTranslator, openAiInstallJobEventSource, postAiExtensionTest, postAiInstall,
   postAiNcmLogout, postAiNcmSendSms, postAiNcmVerifySms, postMediaAssetsDelete,
   postMediaAssetsDownload, postAiRuntimeStart, postAiRuntimeStop, putAiExtensionConfig,
   putAiRuntimeCallback, putSingDefaults, putTtsDefaults, putTtsTranslator,
 } from "@/api/console";
+import { fetchAiInstallJobActive } from "@/api/consoleApi";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField from "@/components/ai/AiConfigField";
 import AiJobProgressBlock from "@/components/ai/AiJobProgressBlock";
@@ -36,7 +37,8 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Switch } from "@/components/ui/switch";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { AI_NCM_DEFAULTS, aiRuntimeLayoutLabel } from "@/config/aiConstants";
-import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
+import { clearActiveJob, getActiveJob, setActiveJob } from "@/utils/activeJobSession";
+import { InstallJobFailedError, InstallJobStreamInterruptedError, waitForInstallJob } from "@/utils/installJobStream";
 import {
   aiInstallSubtitle,
   resolveAiInstallPrimary,
@@ -392,6 +394,10 @@ export default function AiConfigMediaSection() {
       await invalidate();
     },
     onError: (e) => {
+      if (e instanceof InstallJobStreamInterruptedError) {
+        setInstallProgress((prev) => prev || "下载/安装仍在后台进行，返回本页可续看进度");
+        return;
+      }
       if (e instanceof InstallJobFailedError) {
         const tail = String(e.result?.output_tail || "").trim();
         if (tail) setInstallFailTail(tail);
@@ -405,6 +411,7 @@ export default function AiConfigMediaSection() {
   });
   const pollJob = (jobId: string) => {
     if (pollRef.current != null) window.clearInterval(pollRef.current);
+    setActiveJob("media-assets-download", jobId);
     setAssetDlActive(true);
     setAssetDlFailed(false);
     const tick = () => {
@@ -420,6 +427,7 @@ export default function AiConfigMediaSection() {
             if (pollRef.current != null) window.clearInterval(pollRef.current);
             pollRef.current = null;
             setAssetDlActive(false);
+            clearActiveJob("media-assets-download", jobId);
             if (state === "done") {
               setAssetDlPercent(100);
               setAssetDlLabel(job.message || "媒体权重下载完成");
@@ -436,6 +444,7 @@ export default function AiConfigMediaSection() {
           pollRef.current = null;
           setAssetDlActive(false);
           setAssetDlFailed(true);
+          clearActiveJob("media-assets-download", jobId);
           notifyErr(axiosErrorDetail(e));
         });
     };
@@ -477,6 +486,93 @@ export default function AiConfigMediaSection() {
       notifyErr(axiosErrorDetail(e));
     },
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    const resumeDownload = async () => {
+      try {
+        const active = await fetchMediaAssetsDownloadActive();
+        if (cancelled) return;
+        if (active?.job_id && String(active.state || "") === "running") {
+          if (active.message) setAssetDlLabel(active.message);
+          if (active.progress_percent != null) {
+            setAssetDlPercent(Math.max(0, Math.min(100, Number(active.progress_percent) || 0)));
+          }
+          if (active.lines?.length) setJobLines(active.lines);
+          pollJob(active.job_id);
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+      if (cancelled) return;
+      const saved = getActiveJob("media-assets-download");
+      if (saved?.jobId) pollJob(saved.jobId);
+    };
+    void resumeDownload();
+
+    const resumeInstall = async () => {
+      let jobId = "";
+      try {
+        const active = await fetchAiInstallJobActive();
+        if (cancelled) return;
+        if (active?.job_id && (active.phase === "queued" || active.phase === "running")) {
+          jobId = active.job_id;
+          setInstallProgress(active.message || "正在恢复安装进度…");
+          if (active.progress_percent != null) {
+            setInstallPercent(Math.max(0, Math.min(100, Number(active.progress_percent) || 0)));
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      if (!jobId) {
+        const installSaved = getActiveJob("ai-install");
+        if (!installSaved?.jobId) return;
+        jobId = installSaved.jobId;
+        setInstallProgress("正在恢复安装进度…");
+      }
+      void waitForInstallJob(jobId, openAiInstallJobEventSource, (p) => {
+        if (cancelled) return;
+        setInstallPercent(p.percent);
+        if (p.message) setInstallProgress(p.message);
+        if (p.line != null && p.line !== "") {
+          setInstallLogLines((prev) => {
+            const next = [...prev, p.line as string];
+            return next.length > 400 ? next.slice(-320) : next;
+          });
+        }
+      })
+        .then(async () => {
+          if (cancelled) return;
+          notifyOk("安装任务完成");
+          setInstallProgress("");
+          setInstallPercent(0);
+          await invalidate();
+        })
+        .catch((e) => {
+          if (cancelled || e instanceof InstallJobStreamInterruptedError) return;
+          if (e instanceof InstallJobFailedError) {
+            notifyErr(e.message);
+          } else {
+            notifyErr(axiosErrorDetail(e));
+          }
+          setInstallProgress("");
+        });
+    };
+    void resumeInstall();
+
+    return () => {
+      cancelled = true;
+      if (pollRef.current != null) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+    // 仅挂载时恢复；pollJob / invalidate 随渲染更新
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const deleteMut = useMutation({
     mutationFn: (assets: string[]) => postMediaAssetsDelete(assets),
     onSuccess: async () => { notifyOk("已删除选中资产"); await qc.invalidateQueries({ queryKey: ["media-assets"] }); },

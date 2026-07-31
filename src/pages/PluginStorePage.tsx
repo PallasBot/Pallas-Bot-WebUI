@@ -13,6 +13,7 @@ import {
 import {
   fetchCommunityPluginStore,
   fetchOfficialExtensions,
+  fetchPluginStoreJobActive,
   fetchPlugins,
   fetchPluginStoreChangelog,
   fetchPluginStoreReadme,
@@ -68,7 +69,8 @@ import {
 import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { waitForPluginStoreJob } from "@/utils/pluginStoreJobStream";
-import { InstallJobFailedError } from "@/utils/installJobStream";
+import { InstallJobFailedError, InstallJobStreamInterruptedError } from "@/utils/installJobStream";
+import { getActiveJob } from "@/utils/activeJobSession";
 import {
   COMMUNITY_INDEX_REPO_URL,
   PLUGIN_ID_PATTERN,
@@ -459,12 +461,14 @@ export default function PluginStorePage() {
       setStoreBusyPackage(row.package);
       setStoreBusyOfficialAction("install");
       setCardProgress({ key: row.package, percent: 0, message: formatPluginStoreActiveHint("install", officialRowTitle(row)) });
+      let keepProgress = false;
       try {
         const job = await installOfficialExtensionAsync(row.package, { restart });
         const payload = await waitForPluginStoreJob(
           job.job_id,
           openPluginInstallJobEventSource,
           applyCardProgress(row.package),
+          { kind: "official", target: row.package, action: "install" },
         );
         const result = payload.result as OfficialExtensionInstallResult | undefined;
         if (result) {
@@ -475,11 +479,18 @@ export default function PluginStorePage() {
         }
         await refreshOfficialStore();
       } catch (e) {
-        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+        if (e instanceof InstallJobStreamInterruptedError) {
+          setStoreActionHint("操作仍在后台进行，返回本页可续看进度");
+          keepProgress = true;
+        } else {
+          setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+        }
       } finally {
-        setStoreBusyPackage("");
-        setStoreBusyOfficialAction("");
-        setCardProgress(null);
+        if (!keepProgress) {
+          setStoreBusyPackage("");
+          setStoreBusyOfficialAction("");
+          setCardProgress(null);
+        }
       }
     },
     [applyCardProgress, noteStoreActionResult, refreshOfficialStore],
@@ -493,23 +504,32 @@ export default function PluginStorePage() {
       setStoreBusyPackage(row.package);
       setStoreBusyOfficialAction("update");
       setCardProgress({ key: row.package, percent: 0, message: formatPluginStoreActiveHint("update", officialRowTitle(row)) });
+      let keepProgress = false;
       try {
         const job = await updateOfficialExtensionAsync(row.package, { restart });
         const payload = await waitForPluginStoreJob(
           job.job_id,
           openPluginInstallJobEventSource,
           applyCardProgress(row.package),
+          { kind: "official", target: row.package, action: "update" },
         );
         const out = (payload.result ?? {}) as OfficialExtensionInstallResult;
         setOfficialActionState((prev) => ({ ...prev, [row.package]: out }));
         await noteStoreActionResult(out.message || payload.message || "更新完成。", out, queuePending);
         await refreshOfficialStore();
       } catch (e) {
-        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+        if (e instanceof InstallJobStreamInterruptedError) {
+          setStoreActionHint("操作仍在后台进行，返回本页可续看进度");
+          keepProgress = true;
+        } else {
+          setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+        }
       } finally {
-        setStoreBusyPackage("");
-        setStoreBusyOfficialAction("");
-        setCardProgress(null);
+        if (!keepProgress) {
+          setStoreBusyPackage("");
+          setStoreBusyOfficialAction("");
+          setCardProgress(null);
+        }
       }
     },
     [applyCardProgress, noteStoreActionResult, refreshOfficialStore],
@@ -524,6 +544,7 @@ export default function PluginStorePage() {
       setStoreBusyCommunityAction("install");
       const label = (row.name || row.plugin_id).trim();
       setCardProgress({ key: row.plugin_id, percent: 0, message: formatPluginStoreActiveHint("install", label) });
+      let keepProgress = false;
       try {
         const job = await installCommunityPluginAsync(row.plugin_id, {
           restart,
@@ -534,17 +555,25 @@ export default function PluginStorePage() {
           job.job_id,
           openPluginInstallJobEventSource,
           applyCardProgress(row.plugin_id),
+          { kind: "community", target: row.plugin_id, action: "install" },
         );
         const out = (payload.result ?? {}) as CommunityPluginActionResult;
         setCommunityActionState((prev) => ({ ...prev, [row.plugin_id]: out }));
         await noteStoreActionResult(out.message || payload.message || "安装完成。", out, queuePending);
         await refreshCommunityStore();
       } catch (e) {
-        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+        if (e instanceof InstallJobStreamInterruptedError) {
+          setStoreActionHint("操作仍在后台进行，返回本页可续看进度");
+          keepProgress = true;
+        } else {
+          setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+        }
       } finally {
-        setStoreBusyPluginId("");
-        setStoreBusyCommunityAction("");
-        setCardProgress(null);
+        if (!keepProgress) {
+          setStoreBusyPluginId("");
+          setStoreBusyCommunityAction("");
+          setCardProgress(null);
+        }
       }
     },
     [applyCardProgress, noteStoreActionResult, refreshCommunityStore],
@@ -559,23 +588,32 @@ export default function PluginStorePage() {
       setStoreBusyCommunityAction("update");
       const label = (row.name || row.plugin_id).trim();
       setCardProgress({ key: row.plugin_id, percent: 0, message: formatPluginStoreActiveHint("update", label) });
+      let keepProgress = false;
       try {
         const job = await updateCommunityPluginAsync(row.plugin_id, { restart, ref: row.ref });
         const payload = await waitForPluginStoreJob(
           job.job_id,
           openPluginInstallJobEventSource,
           applyCardProgress(row.plugin_id),
+          { kind: "community", target: row.plugin_id, action: "update" },
         );
         const out = (payload.result ?? {}) as CommunityPluginActionResult;
         setCommunityActionState((prev) => ({ ...prev, [row.plugin_id]: out }));
         await noteStoreActionResult(out.message || payload.message || "更新完成。", out, queuePending);
         await refreshCommunityStore();
       } catch (e) {
-        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+        if (e instanceof InstallJobStreamInterruptedError) {
+          setStoreActionHint("操作仍在后台进行，返回本页可续看进度");
+          keepProgress = true;
+        } else {
+          setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+        }
       } finally {
-        setStoreBusyPluginId("");
-        setStoreBusyCommunityAction("");
-        setCardProgress(null);
+        if (!keepProgress) {
+          setStoreBusyPluginId("");
+          setStoreBusyCommunityAction("");
+          setCardProgress(null);
+        }
       }
     },
     [applyCardProgress, noteStoreActionResult, refreshCommunityStore],
@@ -715,13 +753,109 @@ export default function PluginStorePage() {
   }, [ensureRestartContext, refreshOfficialStore]);
 
   useEffect(() => {
+    let cancelled = false;
+    const resume = async () => {
+      let jobId = "";
+      let kind = "";
+      let target = "";
+      let action = "";
+      let percent = 0;
+      let message = "正在恢复进度…";
+      try {
+        const active = await fetchPluginStoreJobActive();
+        if (cancelled) return;
+        if (active?.job_id && (active.phase === "queued" || active.phase === "running")) {
+          jobId = active.job_id;
+          kind = String(active.kind || "");
+          target = String(active.target || "");
+          action = String(active.action || "");
+          percent = Math.max(0, Number(active.progress_percent) || 0);
+          if (active.message) message = active.message;
+        }
+      } catch {
+        /* ignore */
+      }
+      if (!jobId) {
+        const saved = getActiveJob("plugin-store");
+        if (!saved?.jobId) return;
+        jobId = saved.jobId;
+        kind = saved.meta?.kind || "";
+        target = saved.meta?.target || "";
+        action = saved.meta?.action || "";
+      }
+      if (kind === "official") {
+        setStoreBusyPackage(target);
+        if (action === "install" || action === "update" || action === "uninstall") {
+          setStoreBusyOfficialAction(action);
+        }
+      } else if (kind === "community") {
+        setStoreBusyPluginId(target);
+        if (action === "install" || action === "update" || action === "uninstall") {
+          setStoreBusyCommunityAction(action);
+        }
+      }
+      if (target) {
+        setCardProgress({ key: target, percent, message });
+      }
+      setStoreActionHint(message);
+      try {
+        const payload = await waitForPluginStoreJob(
+          jobId,
+          openPluginInstallJobEventSource,
+          applyCardProgress(target || jobId),
+          { kind, target, action },
+        );
+        if (cancelled) return;
+        const out = payload.result as
+          | OfficialExtensionInstallResult
+          | CommunityPluginActionResult
+          | null
+          | undefined;
+        await noteStoreActionResult(out?.message || payload.message || "操作完成。", out ?? null);
+        if (kind === "official") await refreshOfficialStore();
+        else await refreshCommunityStore();
+      } catch (e) {
+        if (cancelled || e instanceof InstallJobStreamInterruptedError) {
+          if (!cancelled) setStoreActionHint("操作仍在后台进行，返回本页可续看进度");
+          return;
+        }
+        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+      } finally {
+        if (!cancelled) {
+          const still = getActiveJob("plugin-store");
+          if (!still?.jobId || still.jobId !== jobId) {
+            setStoreBusyPackage("");
+            setStoreBusyOfficialAction("");
+            setStoreBusyPluginId("");
+            setStoreBusyCommunityAction("");
+            setCardProgress(null);
+          }
+        }
+      }
+    };
+    void resume();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     setActiveTab("all");
     setSearchQuery("");
-    setStoreActionHint("");
-    setStoreActionNeedsRestart(false);
     closeDetail();
     void refreshStore();
+    // 切官方/社区时清提示；首挂留给 resume job 用，勿立刻清空
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeSection]);
+
+  const storeSectionPrevRef = useRef<typeof storeSection | null>(null);
+  useEffect(() => {
+    const prev = storeSectionPrevRef.current;
+    storeSectionPrevRef.current = storeSection;
+    if (prev == null || prev === storeSection) return;
+    setStoreActionHint("");
+    setStoreActionNeedsRestart(false);
   }, [storeSection]);
 
   function closeDetail() {
@@ -860,23 +994,32 @@ export default function PluginStorePage() {
     setStoreBusyPackage(row.package);
     setStoreBusyOfficialAction("uninstall");
     setCardProgress({ key: row.package, percent: 0, message: `正在卸载 ${row.package}…` });
+    let keepProgress = false;
     try {
       const job = await uninstallOfficialExtensionAsync(row.package, { restart });
       const payload = await waitForPluginStoreJob(
         job.job_id,
         openPluginInstallJobEventSource,
         applyCardProgress(row.package),
+        { kind: "official", target: row.package, action: "uninstall" },
       );
       const out = (payload.result ?? {}) as OfficialExtensionInstallResult;
       setOfficialActionState((prev) => ({ ...prev, [row.package]: out }));
       await noteStoreActionResult(out.message || payload.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。"), out);
       await refreshOfficialStore();
     } catch (e) {
-      setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+      if (e instanceof InstallJobStreamInterruptedError) {
+        setStoreActionHint("操作仍在后台进行，返回本页可续看进度");
+        keepProgress = true;
+      } else {
+        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+      }
     } finally {
-      setStoreBusyPackage("");
-      setStoreBusyOfficialAction("");
-      setCardProgress(null);
+      if (!keepProgress) {
+        setStoreBusyPackage("");
+        setStoreBusyOfficialAction("");
+        setCardProgress(null);
+      }
     }
   }
 
@@ -896,23 +1039,32 @@ export default function PluginStorePage() {
     setStoreBusyPluginId(row.plugin_id);
     setStoreBusyCommunityAction("uninstall");
     setCardProgress({ key: row.plugin_id, percent: 0, message: `正在删除 ${row.plugin_id}…` });
+    let keepProgress = false;
     try {
       const job = await uninstallCommunityPluginAsync(row.plugin_id, { restart });
       const payload = await waitForPluginStoreJob(
         job.job_id,
         openPluginInstallJobEventSource,
         applyCardProgress(row.plugin_id),
+        { kind: "community", target: row.plugin_id, action: "uninstall" },
       );
       const out = (payload.result ?? {}) as CommunityPluginActionResult;
       setCommunityActionState((prev) => ({ ...prev, [row.plugin_id]: out }));
       await noteStoreActionResult(out.message || payload.message || "已卸载。", out);
       await refreshCommunityStore();
     } catch (e) {
-      setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+      if (e instanceof InstallJobStreamInterruptedError) {
+        setStoreActionHint("操作仍在后台进行，返回本页可续看进度");
+        keepProgress = true;
+      } else {
+        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+      }
     } finally {
-      setStoreBusyPluginId("");
-      setStoreBusyCommunityAction("");
-      setCardProgress(null);
+      if (!keepProgress) {
+        setStoreBusyPluginId("");
+        setStoreBusyCommunityAction("");
+        setCardProgress(null);
+      }
     }
   }
 
@@ -934,6 +1086,7 @@ export default function PluginStorePage() {
     setGitInstallBusy(true);
     setStoreBusyPluginId(pluginId);
     setCardProgress({ key: pluginId, percent: 0, message: "正在安装…" });
+    let keepProgress = false;
     try {
       const job = await installCommunityPluginAsync(pluginId, {
         restart,
@@ -944,6 +1097,7 @@ export default function PluginStorePage() {
         job.job_id,
         openPluginInstallJobEventSource,
         applyCardProgress(pluginId),
+        { kind: "community", target: pluginId, action: "install" },
       );
       const out = (payload.result ?? {}) as CommunityPluginActionResult;
       setCommunityActionState((prev) => ({ ...prev, [pluginId]: out }));
@@ -951,11 +1105,18 @@ export default function PluginStorePage() {
       setGitInstallOpen(false);
       await refreshCommunityStore();
     } catch (e) {
-      setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+      if (e instanceof InstallJobStreamInterruptedError) {
+        setStoreActionHint("操作仍在后台进行，返回本页可续看进度");
+        keepProgress = true;
+      } else {
+        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+      }
     } finally {
-      setGitInstallBusy(false);
-      setStoreBusyPluginId("");
-      setCardProgress(null);
+      if (!keepProgress) {
+        setGitInstallBusy(false);
+        setStoreBusyPluginId("");
+        setCardProgress(null);
+      }
     }
   }
 

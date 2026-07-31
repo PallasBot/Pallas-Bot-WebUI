@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
+import { InstallJobFailedError, InstallJobStreamInterruptedError, waitForInstallJob } from "@/utils/installJobStream";
+import { getActiveJob } from "@/utils/activeJobSession";
 import {
   fetchAiExtensionConfig,
   fetchAiInstallStatus,
@@ -12,6 +14,7 @@ import {
   postAiRuntimeStop,
   putAiExtensionConfig,
 } from "@/api/console";
+import { fetchAiInstallJobActive } from "@/api/consoleApi";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField from "@/components/ai/AiConfigField";
 import SegTabs from "@/components/SegTabs";
@@ -21,7 +24,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
 import {
   resolveAiInstallPrimary,
   showAiInstallBootstrapSecondary,
@@ -132,10 +134,57 @@ export default function AiConfigConnectionSection() {
       await invalidate();
     },
     onError: (e) => {
+      if (e instanceof InstallJobStreamInterruptedError) {
+        setInstallProgress((prev) => prev || "安装仍在后台进行，返回本页可续看进度");
+        return;
+      }
       setInstallProgress("");
       notifyErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
     },
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    const resume = async () => {
+      let jobId = "";
+      try {
+        const active = await fetchAiInstallJobActive();
+        if (cancelled) return;
+        if (active?.job_id && (active.phase === "queued" || active.phase === "running")) {
+          jobId = active.job_id;
+          setInstallProgress(active.message || "正在恢复安装进度…");
+        }
+      } catch {
+        /* ignore */
+      }
+      if (!jobId) {
+        const saved = getActiveJob("ai-install");
+        if (!saved?.jobId) return;
+        jobId = saved.jobId;
+        setInstallProgress("正在恢复安装进度…");
+      }
+      void waitForInstallJob(jobId, openAiInstallJobEventSource, (p) => {
+        if (cancelled) return;
+        setInstallProgress(p.message || `${p.percent}%`);
+      })
+        .then(async () => {
+          if (cancelled) return;
+          notifyOk("安装任务已完成");
+          setInstallProgress("");
+          await invalidate();
+        })
+        .catch((e) => {
+          if (cancelled || e instanceof InstallJobStreamInterruptedError) return;
+          setInstallProgress("");
+          notifyErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+        });
+    };
+    void resume();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const busy =
     saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || installMut.isPending;

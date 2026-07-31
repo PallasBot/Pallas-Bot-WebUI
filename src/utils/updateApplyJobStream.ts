@@ -1,6 +1,7 @@
 /** 监听 Bot / WebUI 更新 job 的 SSE，直到 complete 或失败。 */
 
-import { InstallJobFailedError } from "@/utils/installJobStream";
+import { clearActiveJob, setActiveJob } from "@/utils/activeJobSession";
+import { InstallJobFailedError, InstallJobStreamInterruptedError } from "@/utils/installJobStream";
 
 export type UpdateApplyProgressEvent = {
   type?: string;
@@ -31,9 +32,12 @@ export function waitForUpdateApplyJob(
   jobId: string,
   openStream: (id: string) => EventSource,
   onProgress?: (progress: { percent: number; message: string; phase: string }) => void,
+  meta?: Record<string, string>,
 ): Promise<UpdateApplyCompletePayload> {
+  const id = String(jobId || "").trim();
+  if (id) setActiveJob("update-apply", id, meta);
   return new Promise((resolve, reject) => {
-    const stream = openStream(jobId);
+    const stream = openStream(id);
     const closeStream = () => stream.close();
     stream.onmessage = (ev) => {
       if (!ev.data) return;
@@ -48,14 +52,17 @@ export function waitForUpdateApplyJob(
         }
         if (payload.type === "complete") {
           if (payload.phase === "failed") {
+            clearActiveJob("update-apply", id);
             closeStream();
             reject(new InstallJobFailedError(payload.error || payload.message || "更新失败", payload.result));
             return;
           }
+          clearActiveJob("update-apply", id);
           closeStream();
           resolve(payload as UpdateApplyCompletePayload);
         }
         if (payload.type === "error") {
+          clearActiveJob("update-apply", id);
           closeStream();
           reject(new Error(payload.error || "更新任务不存在"));
         }
@@ -65,7 +72,7 @@ export function waitForUpdateApplyJob(
     };
     stream.onerror = () => {
       closeStream();
-      reject(new Error("更新进度连接中断"));
+      reject(new InstallJobStreamInterruptedError("更新进度连接中断"));
     };
   });
 }

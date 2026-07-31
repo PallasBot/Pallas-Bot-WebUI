@@ -3234,6 +3234,79 @@ export async function fetchMediaAssetsDownloadJob(jobId: string): Promise<MediaA
   return (res?.data ?? res) as MediaAssetsDownloadJob;
 }
 
+export async function fetchMediaAssetsDownloadActive(): Promise<MediaAssetsDownloadJob | null> {
+  const res = (await consoleOpenapiGet(
+    "/common-config/llm/media-assets/download/jobs/active",
+  )) as { ok?: boolean; data?: MediaAssetsDownloadJob | null };
+  const data = res?.data ?? null;
+  if (!data?.job_id) return null;
+  return data;
+}
+
+export async function fetchAiInstallJobActive(): Promise<{
+  job_id: string;
+  action?: string;
+  phase?: string;
+  message?: string;
+  progress_percent?: number;
+} | null> {
+  const res = (await consoleOpenapiGet("/ai-extension/install/jobs/active")) as {
+    ok?: boolean;
+    data?: {
+      job_id: string;
+      action?: string;
+      phase?: string;
+      message?: string;
+      progress_percent?: number;
+    } | null;
+  };
+  return res?.data ?? null;
+}
+
+export async function fetchUpdateApplyJobActive(): Promise<{
+  job_id: string;
+  kind?: string;
+  phase?: string;
+  message?: string;
+  progress_percent?: number;
+} | null> {
+  const res = (await consoleOpenapiGet("/update/jobs/active")) as {
+    ok?: boolean;
+    data?: {
+      job_id: string;
+      kind?: string;
+      phase?: string;
+      message?: string;
+      progress_percent?: number;
+    } | null;
+  };
+  return res?.data ?? null;
+}
+
+export async function fetchPluginStoreJobActive(): Promise<{
+  job_id: string;
+  kind?: string;
+  target?: string;
+  action?: string;
+  phase?: string;
+  message?: string;
+  progress_percent?: number;
+} | null> {
+  const res = (await consoleOpenapiGet("/plugins/store-jobs/active")) as {
+    ok?: boolean;
+    data?: {
+      job_id: string;
+      kind?: string;
+      target?: string;
+      action?: string;
+      phase?: string;
+      message?: string;
+      progress_percent?: number;
+    } | null;
+  };
+  return res?.data ?? null;
+}
+
 export async function fetchSingSpeakers(): Promise<SingSpeakersPayload> {
   const res = (await consoleOpenapiGet("/common-config/llm/media-models/sing/speakers")) as {
     ok?: boolean;

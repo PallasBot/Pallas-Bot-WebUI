@@ -7,6 +7,7 @@ import { fetchPluginConfig, putPluginConfig } from "@/api/console";
 import {
   fetchUpdateChangelog,
   fetchUpdateCheckAll,
+  fetchUpdateApplyJobActive,
   fetchWebuiAutoUpdateStatus,
   fetchInstances,
   openUpdateApplyJobEventSource,
@@ -19,7 +20,8 @@ import {
 } from "@/api/fullConsole";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
 import { waitForUpdateApplyJob } from "@/utils/updateApplyJobStream";
-import { InstallJobFailedError } from "@/utils/installJobStream";
+import { InstallJobFailedError, InstallJobStreamInterruptedError } from "@/utils/installJobStream";
+import { getActiveJob } from "@/utils/activeJobSession";
 import { pallasBotVersionLabel, updateCheckCurrentTagLabel } from "@/utils/versionDisplay";
 import {
   PALLAS_BOT_DOC,
@@ -370,6 +372,92 @@ export default function UpdatePage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const mapKind = (raw: string | undefined): ApplyKind => {
+      if (raw === "bot") return "bot";
+      if (raw === "webui" || raw === "web") return "web";
+      return "auto";
+    };
+    const resume = async () => {
+      let jobId = "";
+      let kind: ApplyKind = "auto";
+      try {
+        const active = await fetchUpdateApplyJobActive();
+        if (cancelled) return;
+        if (active?.job_id && (active.phase === "queued" || active.phase === "running")) {
+          jobId = active.job_id;
+          kind = mapKind(active.kind);
+          setApplyKind(kind);
+          setApplyPercent(Math.max(1, Number(active.progress_percent) || 1));
+          setApplyHint(active.message || "正在恢复更新进度…");
+        }
+      } catch {
+        /* ignore */
+      }
+      if (!jobId) {
+        const saved = getActiveJob("update-apply");
+        if (!saved?.jobId) return;
+        jobId = saved.jobId;
+        kind = mapKind(saved.meta?.kind);
+        setApplyKind(kind);
+        setApplyPercent(1);
+        setApplyHint("正在恢复更新进度…");
+      }
+      try {
+        const done = await waitForUpdateApplyJob(
+          jobId,
+          openUpdateApplyJobEventSource,
+          (p) => {
+            if (cancelled) return;
+            setApplyPercent(p.percent);
+            if (p.message) setApplyHint(p.message);
+          },
+          { kind },
+        );
+        if (cancelled) return;
+        setApplyPercent(100);
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] }),
+          qc.invalidateQueries({ queryKey: ["update-check-all"] }),
+        ]);
+        const resultMsg = done.result?.message || done.message || "更新完成";
+        setMsg(resultMsg);
+        pushConsoleToast(resultMsg, "ok");
+        if (kind === "web") {
+          window.setTimeout(() => window.location.reload(), 800);
+          return;
+        }
+        setApplyKind(null);
+        setApplyPercent(0);
+        setApplyHint("");
+      } catch (e) {
+        if (cancelled || e instanceof InstallJobStreamInterruptedError) {
+          if (!cancelled) {
+            setApplyHint((prev) => prev || "更新仍在后台进行，返回本页可续看进度");
+          }
+          return;
+        }
+        const detail =
+          e instanceof InstallJobFailedError
+            ? e.message
+            : e instanceof Error
+              ? e.message
+              : axiosErrorDetail(e);
+        setErr(detail);
+        pushConsoleToast(detail, "err");
+        setApplyKind(null);
+        setApplyPercent(0);
+        setApplyHint("");
+      }
+    };
+    void resume();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     const data = autoQ.data;
     if (!data) return;
     const mode = data.schedule_mode === "cron" ? "cron" : "interval";
@@ -560,7 +648,7 @@ export default function UpdatePage() {
       const done = await waitForUpdateApplyJob(started.job_id, openUpdateApplyJobEventSource, (p) => {
         setApplyPercent(p.percent);
         if (p.message) setApplyHint(p.message);
-      });
+      }, { kind: "auto" });
       setApplyPercent(100);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] }),
@@ -607,6 +695,10 @@ export default function UpdatePage() {
       setApplyPercent(0);
       setApplyHint("");
     } catch (e) {
+      if (e instanceof InstallJobStreamInterruptedError) {
+        setApplyHint((prev) => prev || "更新仍在后台进行，返回本页可续看进度");
+        return;
+      }
       const detail =
         e instanceof InstallJobFailedError
           ? e.message
@@ -670,13 +762,17 @@ export default function UpdatePage() {
       const done = await waitForUpdateApplyJob(started.job_id, openUpdateApplyJobEventSource, (p) => {
         setApplyPercent(p.percent);
         if (p.message) setApplyHint(p.message);
-      });
+      }, { kind: "web" });
       setApplyPercent(100);
       const resultMsg = done.result?.message || done.message || "更新成功";
       queueChangelogAfterUpdate("web", web.latest_tag);
       setMsg(`${resultMsg} · 正在刷新页面以载入新版本…`);
       window.setTimeout(() => window.location.reload(), 800);
     } catch (e) {
+      if (e instanceof InstallJobStreamInterruptedError) {
+        setApplyHint((prev) => prev || "更新仍在后台进行，返回本页可续看进度");
+        return;
+      }
       const detail =
         e instanceof InstallJobFailedError
           ? e.message
@@ -714,7 +810,7 @@ export default function UpdatePage() {
       const done = await waitForUpdateApplyJob(started.job_id, openUpdateApplyJobEventSource, (p) => {
         setApplyPercent(p.percent);
         if (p.message) setApplyHint(p.message);
-      });
+      }, { kind: "bot" });
       setApplyPercent(100);
       setMsg(done.result?.message || done.message || (restart ? "已触发更新与重启。" : "已触发。"));
       if (readPrefs().showUpdateChangelog) {
@@ -726,6 +822,10 @@ export default function UpdatePage() {
       setApplyPercent(0);
       setApplyHint("");
     } catch (e) {
+      if (e instanceof InstallJobStreamInterruptedError) {
+        setApplyHint((prev) => prev || "更新仍在后台进行，返回本页可续看进度");
+        return;
+      }
       const detail =
         e instanceof InstallJobFailedError
           ? e.message
