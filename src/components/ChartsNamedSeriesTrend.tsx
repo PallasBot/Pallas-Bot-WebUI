@@ -171,6 +171,18 @@ export default function ChartsNamedSeriesTrend({
                   {tk.t}
                 </text>
               ))}
+              {pack.dualAxis
+                ? pack.yTicksRight.map((tk, ti) => (
+                    <text
+                      key={`ytr-${ti}`}
+                      className="gs-trend-chart__axis gs-trend-chart__axis--right"
+                      x={pack.W - 8}
+                      y={tk.y + 4}
+                    >
+                      {tk.t}
+                    </text>
+                  ))
+                : null}
               {pack.xTicks.map((xt, xi) => (
                 <text
                   key={`xt-${xi}`}
@@ -266,6 +278,11 @@ export default function ChartsNamedSeriesTrend({
               <span key={`leg-${s.def.id}`} className="gs-trend-chart__leg-item">
                 <i className="gs-trend-chart__leg-swatch" style={{ background: s.def.color }} aria-hidden="true" />
                 {s.def.label}
+                {pack.dualAxis ? (
+                  <span className="gs-trend-chart__leg-axis">
+                    {s.def.axis === "right" ? "右轴" : "左轴"}
+                  </span>
+                ) : null}
               </span>
             ))}
           </div>

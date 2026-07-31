@@ -11,16 +11,21 @@ import { softBucketAxisMax } from "@/utils/homePluginChartPack";
 
 export type NamedSeriesPoint = { at: number; total: number };
 
+export type NamedSeriesAxis = "left" | "right";
+
 export type NamedSeriesInput = {
   id: string;
   label: string;
   points: NamedSeriesPoint[];
+  /** 双纵轴时：输入走左、输出走右；缺省左轴 */
+  axis?: NamedSeriesAxis;
 };
 
 export type NamedSeriesTrendDef = {
   id: string;
   label: string;
   color: string;
+  axis: NamedSeriesAxis;
 };
 
 export type NamedSeriesTrendPack = {
@@ -34,6 +39,7 @@ export type NamedSeriesTrendPack = {
   gridYs: number[];
   timesSec: number[];
   stacked: boolean;
+  dualAxis: boolean;
   series: {
     def: NamedSeriesTrendDef;
     values: number[];
@@ -42,6 +48,7 @@ export type NamedSeriesTrendPack = {
     areaD: string;
   }[];
   yTicks: { y: number; t: string }[];
+  yTicksRight: { y: number; t: string }[];
   xTicks: { x: number; t: string }[];
   xAt: (i: number) => number;
 };
@@ -78,7 +85,18 @@ function downsample(
   return { timesSec: newTimes, seriesVals: newSeries };
 }
 
-/** 多条命名时序 → 与区间趋势同构的单轴折线 pack */
+function axisTicks(yMax: number, top: number, bottom: number, innerH: number, unit: string, rawMax: number) {
+  const axisTopPlus = rawMax > yMax;
+  return [
+    { y: bottom, t: "0" },
+    { y: bottom - innerH * 0.25, t: fmtAxisTick(yMax * 0.25, unit) },
+    { y: bottom - innerH / 2, t: fmtAxisTick(yMax / 2, unit) },
+    { y: bottom - innerH * 0.75, t: fmtAxisTick(yMax * 0.75, unit) },
+    { y: top, t: axisTopPlus ? `${fmtAxisTick(yMax, unit)}+` : fmtAxisTick(yMax, unit) },
+  ];
+}
+
+/** 多条命名时序 → 与区间趋势同构的折线 pack；可双纵轴 */
 export function buildNamedSeriesTrendPack(
   rows: NamedSeriesInput[],
   opts?: {
@@ -99,20 +117,34 @@ export function buildNamedSeriesTrendPack(
   const compact = Boolean(opts?.compact);
   const keepZeroSeries = Boolean(opts?.keepZeroSeries);
   const stacked = Boolean(opts?.stacked);
+
+  const wantsDual = !stacked && rows.some((r) => r.axis === "right");
   const ranked = [...rows]
     .map((r) => ({
       ...r,
+      axis: (r.axis === "right" ? "right" : "left") as NamedSeriesAxis,
       sum: r.points.reduce((s, p) => s + (Number(p.total) || 0), 0),
     }))
-    .filter((r) => r.points.length > 0 && (keepZeroSeries || r.sum > 0))
-    .sort((a, b) => b.sum - a.sum || a.label.localeCompare(b.label, "zh-CN"))
-    .slice(0, maxSeries);
+    .filter((r) => r.points.length > 0 && (keepZeroSeries || r.sum > 0));
+
   if (!ranked.length) return null;
-  // 堆叠时自下而上：用量小的先画底层
-  if (stacked) ranked.reverse();
+
+  let ordered = ranked;
+  if (wantsDual) {
+    // 双轴：保持输入顺序，不强行按总量重排（避免左右轴对调）
+    ordered = ranked.slice(0, maxSeries);
+  } else {
+    ordered = ranked
+      .sort((a, b) => b.sum - a.sum || a.label.localeCompare(b.label, "zh-CN"))
+      .slice(0, maxSeries);
+    if (stacked) ordered.reverse();
+  }
+  if (!ordered.length) return null;
+
+  const dualAxis = wantsDual && ordered.some((r) => r.axis === "right") && ordered.some((r) => r.axis === "left");
 
   const timeSet = new Set<number>();
-  for (const row of ranked) {
+  for (const row of ordered) {
     for (const p of row.points) {
       const t = Math.floor(Number(p.at));
       if (Number.isFinite(t)) timeSet.add(t);
@@ -121,12 +153,12 @@ export function buildNamedSeriesTrendPack(
   const timesRaw = [...timeSet].sort((a, b) => a - b);
   if (timesRaw.length < 2) return null;
 
-  const palette = fixedChartPalette(ranked.length);
+  const palette = fixedChartPalette(ordered.length);
   const valAt = (points: NamedSeriesPoint[], t: number) => {
     const hit = points.find((p) => Math.floor(Number(p.at)) === t);
     return hit ? Number(hit.total) || 0 : 0;
   };
-  const seriesValsRaw = ranked.map((r) => timesRaw.map((t) => valAt(r.points, t)));
+  const seriesValsRaw = ordered.map((r) => timesRaw.map((t) => valAt(r.points, t)));
   const { timesSec, seriesVals } = downsample(timesRaw, seriesValsRaw, maxSlots);
   if (timesSec.length < 2) return null;
 
@@ -139,14 +171,24 @@ export function buildNamedSeriesTrendPack(
     }
   }
 
-  const flat = stacked ? cumVals.flat() : seriesVals.flat();
-  const { rawMax, scaleMax } = softBucketAxisMax(flat);
-  const yMax = Math.max(1, scaleMax);
-  const axisTopPlus = rawMax > yMax;
+  const leftFlat = dualAxis
+    ? ordered.flatMap((r, si) => (r.axis === "left" ? seriesVals[si]! : []))
+    : stacked
+      ? cumVals.flat()
+      : seriesVals.flat();
+  const rightFlat = dualAxis
+    ? ordered.flatMap((r, si) => (r.axis === "right" ? seriesVals[si]! : []))
+    : [];
+
+  const leftScale = softBucketAxisMax(leftFlat.length ? leftFlat : [0]);
+  const rightScale = softBucketAxisMax(rightFlat.length ? rightFlat : [0]);
+  const yMaxLeft = Math.max(1, leftScale.scaleMax);
+  const yMaxRight = Math.max(1, rightScale.scaleMax);
+
   const W = compact ? 640 : 960;
   const H = compact ? 320 : 260;
   const padL = compact ? 48 : 56;
-  const padR = 16;
+  const padR = dualAxis ? (compact ? 48 : 56) : 16;
   const padT = 16;
   const padB = compact ? 40 : 36;
   const innerW = W - padL - padR;
@@ -157,24 +199,28 @@ export function buildNamedSeriesTrendPack(
   const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => bottom - t * innerH);
   const n = timesSec.length;
   const xAt = (i: number) => left + (i / (n - 1)) * innerW;
-  const yAt = (v: number) => bottom - (Math.min(v, yMax) / yMax) * innerH;
+  const yLeft = (v: number) => bottom - (Math.min(v, yMaxLeft) / yMaxLeft) * innerH;
+  const yRight = (v: number) => bottom - (Math.min(v, yMaxRight) / yMaxRight) * innerH;
 
-  const series = ranked.map((r, si) => {
+  const series = ordered.map((r, si) => {
+    const axis = dualAxis ? r.axis : "left";
     const def: NamedSeriesTrendDef = {
       id: r.id,
       label: r.label,
-      color: palette[stacked ? ranked.length - 1 - si : si]!,
+      color: palette[stacked ? ordered.length - 1 - si : si]!,
+      axis,
     };
     const values = seriesVals[si]!;
+    const yFn = axis === "right" ? yRight : yLeft;
     const tops = (stacked ? cumVals[si]! : values).map((v, i) => ({
       x: xAt(i),
-      y: yAt(v),
+      y: yFn(v),
       value: values[i] ?? 0,
     }));
     const bottoms = stacked
       ? si === 0
         ? tops.map((p) => ({ x: p.x, y: bottom }))
-        : cumVals[si - 1]!.map((v, i) => ({ x: xAt(i), y: yAt(v) }))
+        : cumVals[si - 1]!.map((v, i) => ({ x: xAt(i), y: yLeft(v) }))
       : null;
     return {
       def,
@@ -185,13 +231,10 @@ export function buildNamedSeriesTrendPack(
     };
   });
 
-  const yTicks = [
-    { y: bottom, t: "0" },
-    { y: bottom - innerH * 0.25, t: fmtAxisTick(yMax * 0.25, axisUnit) },
-    { y: bottom - innerH / 2, t: fmtAxisTick(yMax / 2, axisUnit) },
-    { y: bottom - innerH * 0.75, t: fmtAxisTick(yMax * 0.75, axisUnit) },
-    { y: top, t: axisTopPlus ? `${fmtAxisTick(yMax, axisUnit)}+` : fmtAxisTick(yMax, axisUnit) },
-  ];
+  const yTicks = axisTicks(yMaxLeft, top, bottom, innerH, axisUnit, leftScale.rawMax);
+  const yTicksRight = dualAxis
+    ? axisTicks(yMaxRight, top, bottom, innerH, axisUnit, rightScale.rawMax)
+    : [];
   const xTicks = pickTickIndices(n, compact ? 6 : 12).map((i) => ({
     x: xAt(i),
     t: fmtBucketTime(timesSec[i]!),
@@ -208,8 +251,10 @@ export function buildNamedSeriesTrendPack(
     gridYs,
     timesSec,
     stacked,
+    dualAxis,
     series,
     yTicks,
+    yTicksRight,
     xTicks,
     xAt,
   };

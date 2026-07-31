@@ -10,9 +10,11 @@ import {
   ImageIcon,
   Library,
   LineChart,
+  MessageCircle,
   Send,
   Wifi,
   WifiOff,
+  Wrench,
   XCircle,
 } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
@@ -35,8 +37,10 @@ import {
   aggregateHistoryImageRows,
   aggregateHistoryRag,
   aggregateHistoryRoutes,
+  aggregateHistorySpeak,
   aggregateHistoryTokenRows,
   aggregateHistoryTokens,
+  aggregateHistoryTools,
   buildPersistenceHint,
   buildRangeCostSummary,
   dailyAiSuccessTrend,
@@ -52,9 +56,11 @@ import {
   hourlyTokenIoTrendSeries,
   padDailyTrendPoints,
   ragDocumentRows,
+  speakTriggerTotal,
   summarizeKnowledgeInventory,
   summarizeTaskStats,
   todayIso,
+  toolCallTotal,
   type DimensionRow,
   type ImageRow,
   type TokenBucket,
@@ -476,6 +482,14 @@ export default function AiStatisticsPage() {
     () => aggregateHistoryGates(historyRows, start, end),
     [end, historyRows, start],
   );
+  const selectedSpeak = useMemo(
+    () => aggregateHistorySpeak(historyRows, start, end),
+    [end, historyRows, start],
+  );
+  const selectedTools = useMemo(
+    () => aggregateHistoryTools(historyRows, start, end),
+    [end, historyRows, start],
+  );
   const selectedRoutes = useMemo(
     () => aggregateHistoryRoutes(historyRows, start, end),
     [end, historyRows, start],
@@ -523,8 +537,8 @@ export default function AiStatisticsPage() {
       );
       if (prompt.length >= 2) {
         return [
-          { id: "prompt", label: AI_TOKEN_METRIC_LABELS.prompt, points: prompt },
-          { id: "completion", label: AI_TOKEN_METRIC_LABELS.completion, points: completion },
+          { id: "prompt", label: AI_TOKEN_METRIC_LABELS.prompt, axis: "left", points: prompt },
+          { id: "completion", label: AI_TOKEN_METRIC_LABELS.completion, axis: "right", points: completion },
         ];
       }
     }
@@ -644,6 +658,41 @@ export default function AiStatisticsPage() {
       ]),
     [selectedGates.defer, selectedGates.proceed, selectedGates.skip],
   );
+
+  const speakShareRows = useMemo(
+    () =>
+      countShareRows([
+        { key: "别名提及", count: selectedSpeak.mention },
+        { key: "氛围插嘴", count: selectedSpeak.ambient },
+        { key: "续聊", count: selectedSpeak.followup },
+        { key: "未触发", count: selectedSpeak.skip },
+      ]),
+    [selectedSpeak.ambient, selectedSpeak.followup, selectedSpeak.mention, selectedSpeak.skip],
+  );
+
+  const toolShareRows = useMemo(
+    () =>
+      countShareRows([
+        { key: "调用成功", count: selectedTools.callOk },
+        { key: "调用失败", count: selectedTools.callFail },
+      ]),
+    [selectedTools.callFail, selectedTools.callOk],
+  );
+
+  const toolSessionShareRows = useMemo(
+    () =>
+      countShareRows([
+        { key: "有工具调用", count: selectedTools.sessionCalled },
+        { key: "未调工具", count: selectedTools.sessionNoCall },
+      ]),
+    [selectedTools.sessionCalled, selectedTools.sessionNoCall],
+  );
+
+  const speakTriggered = speakTriggerTotal(selectedSpeak);
+  const toolCalls = toolCallTotal(selectedTools);
+  const toolCallSuccessRate =
+    toolCalls > 0 ? (selectedTools.callOk / toolCalls) * 100 : null;
+  const toolSessionTotal = selectedTools.sessionCalled + selectedTools.sessionNoCall;
 
   const aiOutcomeShareRows = useMemo(
     () =>
@@ -915,7 +964,9 @@ export default function AiStatisticsPage() {
                     <PanelTitleIcon icon={Filter} />
                     回复路径
                   </CardTitle>
-                  <CardDescription>各回复路径的次数占比</CardDescription>
+                  <CardDescription>
+                    接话走语料/现编；明确 @ 才是完整对话。下列为实际发出时的路径占比
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="min-h-[260px] p-3 pt-0 sm:p-6 sm:pt-0">
                   <ShareDistribution
@@ -982,6 +1033,70 @@ export default function AiStatisticsPage() {
                     prefer="donut"
                     centerTitle="命中率"
                     centerValue={`${rangeCacheHitRate.toFixed(1)}%`}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
+            <StatsSectionLabel>发言与工具</StatsSectionLabel>
+            <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
+              <Card>
+                <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+                  <CardTitle className="flex items-center gap-1.5 text-base">
+                    <PanelTitleIcon icon={MessageCircle} />
+                    发言感知
+                  </CardTitle>
+                  <CardDescription>
+                    非 @ 时别名提及 / 氛围插嘴 / 续聊触发与未触发占比
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  <ShareDistribution
+                    rows={speakShareRows}
+                    emptyText="暂无发言感知数据"
+                    prefer="donut"
+                    centerTitle="触发"
+                    centerValue={formatCompactNumber(speakTriggered)}
+                  />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+                  <CardTitle className="flex items-center gap-1.5 text-base">
+                    <PanelTitleIcon icon={Wrench} />
+                    工具调用
+                  </CardTitle>
+                  <CardDescription>单次工具执行成功与失败</CardDescription>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  <ShareDistribution
+                    rows={toolShareRows}
+                    emptyText="暂无工具调用"
+                    prefer="donut"
+                    centerTitle="成功率"
+                    centerValue={
+                      toolCallSuccessRate != null ? `${toolCallSuccessRate.toFixed(1)}%` : "—"
+                    }
+                  />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+                  <CardTitle className="flex items-center gap-1.5 text-base">
+                    <PanelTitleIcon icon={Wrench} />
+                    工具会话
+                  </CardTitle>
+                  <CardDescription>
+                    开启工具能力的对话里，是否实际发起了工具调用
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  <ShareDistribution
+                    rows={toolSessionShareRows}
+                    emptyText="暂无工具会话"
+                    prefer="donut"
+                    centerTitle="有调用"
+                    centerValue={formatCompactNumber(selectedTools.sessionCalled)}
                   />
                 </CardContent>
               </Card>
@@ -1655,6 +1770,41 @@ export default function AiStatisticsPage() {
                 }
                 valueClassName={
                   summary.aiFail > 0 ? "text-rose-600 dark:text-rose-400" : undefined
+                }
+              />
+            </div>
+
+            <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">
+              <IconStatCard
+                title="发言触发"
+                value={loading ? "…" : formatCompactNumber(speakTriggered)}
+                icon={MessageCircle}
+                subtitle={`提及 ${selectedSpeak.mention} · 插嘴 ${selectedSpeak.ambient} · 续聊 ${selectedSpeak.followup}`}
+              />
+              <IconStatCard
+                title="发言未触发"
+                value={loading ? "…" : formatCompactNumber(selectedSpeak.skip)}
+                icon={MessageCircle}
+                subtitle="命令/旁观/噪声等跳过"
+              />
+              <IconStatCard
+                title="工具调用"
+                value={loading ? "…" : formatCompactNumber(toolCalls)}
+                icon={Wrench}
+                subtitle={
+                  toolCallSuccessRate != null
+                    ? `成功 ${selectedTools.callOk} · 失败 ${selectedTools.callFail}`
+                    : "暂无工具执行"
+                }
+              />
+              <IconStatCard
+                title="工具会话"
+                value={loading ? "…" : formatCompactNumber(toolSessionTotal)}
+                icon={Wrench}
+                subtitle={
+                  toolSessionTotal > 0
+                    ? `有调用 ${selectedTools.sessionCalled} · 未调 ${selectedTools.sessionNoCall}`
+                    : "暂无工具会话"
                 }
               />
             </div>

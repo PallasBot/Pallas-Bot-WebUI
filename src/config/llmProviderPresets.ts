@@ -80,12 +80,12 @@ export const LLM_PROVIDER_PRESETS: readonly LlmProviderPreset[] = [
 ] as const;
 
 export const LLM_TASK_ROUTE_LABELS: Record<string, string> = {
-  llm_chat: "@ 对话",
+  llm_chat: "@对话",
   drunk: "醉聊",
-  repeater_select: "接话选句",
-  repeater_polish_lite: "接话轻润色",
-  repeater_fallback: "接话兜底",
-  repeater_polish: "接话完整润色",
+  repeater_select: "接话·语料选句",
+  repeater_polish_lite: "接话·轻改口气",
+  repeater_fallback: "接话·现编（非@）",
+  repeater_polish: "接话·完整润色",
   other: "其他",
 };
 

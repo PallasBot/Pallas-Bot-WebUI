@@ -603,6 +603,109 @@ export function aggregateHistoryGates(
   return total;
 }
 
+/** Bot 任务事件计数：优先 totals，否则累加 by_task。 */
+export function botEventSum(
+  bot: LlmTaskMetricsSlice | null | undefined,
+  event: string,
+): number {
+  const key = String(event || "").trim();
+  if (!key || !bot) return 0;
+  const totals = bot.totals;
+  if (totals && Object.prototype.hasOwnProperty.call(totals, key)) {
+    return Number(totals[key] ?? 0) || 0;
+  }
+  let sum = 0;
+  for (const row of Object.values(bot.by_task ?? {})) {
+    if (!row || typeof row !== "object") continue;
+    sum += Number((row as Record<string, unknown>)[key] ?? 0) || 0;
+  }
+  return sum;
+}
+
+export type SpeakPerceptionBucket = {
+  mention: number;
+  ambient: number;
+  followup: number;
+  skip: number;
+};
+
+export function emptySpeakPerceptionBucket(): SpeakPerceptionBucket {
+  return { mention: 0, ambient: 0, followup: 0, skip: 0 };
+}
+
+export function speakFromBotSlice(bot: LlmTaskMetricsSlice | null | undefined): SpeakPerceptionBucket {
+  return {
+    mention: botEventSum(bot, "speak_mention"),
+    ambient: botEventSum(bot, "speak_ambient"),
+    followup: botEventSum(bot, "speak_followup"),
+    skip: botEventSum(bot, "speak_skip"),
+  };
+}
+
+export function aggregateHistorySpeak(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): SpeakPerceptionBucket {
+  const total = emptySpeakPerceptionBucket();
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const s = speakFromBotSlice(row.bot ?? null);
+    total.mention += s.mention;
+    total.ambient += s.ambient;
+    total.followup += s.followup;
+    total.skip += s.skip;
+  }
+  return total;
+}
+
+export function speakTriggerTotal(bucket: SpeakPerceptionBucket): number {
+  return bucket.mention + bucket.ambient + bucket.followup;
+}
+
+export type ToolCallBucket = {
+  callOk: number;
+  callFail: number;
+  sessionCalled: number;
+  sessionNoCall: number;
+};
+
+export function emptyToolCallBucket(): ToolCallBucket {
+  return { callOk: 0, callFail: 0, sessionCalled: 0, sessionNoCall: 0 };
+}
+
+export function toolsFromBotSlice(bot: LlmTaskMetricsSlice | null | undefined): ToolCallBucket {
+  return {
+    callOk: botEventSum(bot, "tool_call_ok"),
+    callFail: botEventSum(bot, "tool_call_fail"),
+    sessionCalled: botEventSum(bot, "tool_session_called"),
+    sessionNoCall: botEventSum(bot, "tool_session_no_call"),
+  };
+}
+
+export function aggregateHistoryTools(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): ToolCallBucket {
+  const total = emptyToolCallBucket();
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const t = toolsFromBotSlice(row.bot ?? null);
+    total.callOk += t.callOk;
+    total.callFail += t.callFail;
+    total.sessionCalled += t.sessionCalled;
+    total.sessionNoCall += t.sessionNoCall;
+  }
+  return total;
+}
+
+export function toolCallTotal(bucket: ToolCallBucket): number {
+  return bucket.callOk + bucket.callFail;
+}
+
 export type DailyTokenPoint = { date: string; totalTokens: number; cacheHitRate: number };
 
 export function dailyTokenTrend(
@@ -962,7 +1065,12 @@ export function hourlyTokenIoTrendSeries(
   rows: TokenRow[],
   dayIso: string,
   endHour?: number,
-): Array<{ id: string; label: string; points: Array<{ at: number; total: number }> }> {
+): Array<{
+  id: string;
+  label: string;
+  axis: "left" | "right";
+  points: Array<{ at: number; total: number }>;
+}> {
   const day = String(dayIso || "").slice(0, 10);
   if (!day) return [];
   const promptRaw: TrendPoint[] = [];
@@ -979,11 +1087,13 @@ export function hourlyTokenIoTrendSeries(
     {
       id: "prompt",
       label: AI_TOKEN_METRIC_LABELS.prompt,
+      axis: "left" as const,
       points: padHourlyTrendPoints(promptRaw, day, endHour),
     },
     {
       id: "completion",
       label: AI_TOKEN_METRIC_LABELS.completion,
+      axis: "right" as const,
       points: padHourlyTrendPoints(completionRaw, day, endHour),
     },
   ];
@@ -995,6 +1105,8 @@ export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {
   const rag = ragFromSlice(ai?.rag);
   const memoryRag = ragFromSlice(ai?.memory_rag);
   const gates = gatesFromSlice(ai?.gates);
+  const speak = speakFromBotSlice(bot);
+  const tools = toolsFromBotSlice(bot);
   const cacheDenom = Number(ai?.tokens?.prompt_tokens ?? 0) + Number(ai?.tokens?.cache_read_tokens ?? 0);
   const cacheHitRate =
     cacheDenom > 0
@@ -1024,6 +1136,8 @@ export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {
 
     ragDocumentRows: ragDocumentRows(rag.byDocument),
     gates,
+    speak,
+    tools,
     providerRows: dimensionRows(ai?.provider_stats),
     modelRows: dimensionRows(ai?.model_stats),
   };
