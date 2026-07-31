@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.12] - 2026-07-31
 
 相对 **0.8.11** 至本版的控制台更新。
 
@@ -33,6 +33,28 @@
 
 - 接话路径与任务路由文案（现编非 @ 对话等）
 - 思考强度说明与 DeepSeek 提示
+
+### 提交明细
+
+### Added
+
+* feat(ai): 统计双纵轴与发言感知/工具占比 ([2ac0ca0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2ac0ca04d89ba3f794bec83e7d58ca4893d22006))
+* feat(console): 切页后恢复异步 job 进度 ([0a7a2f0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0a7a2f0e05f1e6d0d5f4c3a473cf35955c5336ae))
+* feat(ai): 回调端口状态、一键对齐与高级表单 ([e3a2c5a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e3a2c5a92b12506665f13e9583c228378279ee4a))
+
+### Fixed
+
+* fix(logs): 运行日志定宽布局与级别/scope 着色 ([0c416cf](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0c416cf88974f4ab0528d172822f4df616dac4a1))
+* fix(ai): 隐藏未接入的音频与视频能力勾选 ([edfa3b5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/edfa3b53f81de0ad464e6189401c6eef390d8090))
+* fix(ai): 对齐音频映射分区标题并改用语 ([643e20c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/643e20c3ca6b8e67437867c6840dc8bf0d6c9075))
+
+### Changed
+
+* docs(ai): 补充思考强度中性说明与 DeepSeek 提示 ([352e8c4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/352e8c477c8c8ac72141f58e92b949fb2febdff7))
+* docs(agents): 同步面向用户用语约定 ([1d119cd](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1d119cd4ff2bdadd5621a5ac222585b4d03da0b3))
+
+**完整变更**: [`v0.8.11...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.11...HEAD)
+
 
 ## [0.8.11] - 2026-07-30
 
@@ -92,7 +114,6 @@
 * chore(api): 同步 Embedding 诊断 OpenAPI 类型 ([34ee9dd](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/34ee9ddeeec3b0cdb1d588d7fb270dd59851a116))
 
 **完整变更**: [`v0.8.10...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.10...HEAD)
-
 
 ## [0.8.10] - 2026-07-29
 
