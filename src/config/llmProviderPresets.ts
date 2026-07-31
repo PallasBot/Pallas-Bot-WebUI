@@ -140,6 +140,11 @@ export const LLM_PROVIDER_CAPABILITIES = [
   { id: "video", label: "视频" },
 ] as const;
 
+/** 编辑表单可勾选；音频/视频管线未接入前不展示 */
+export const LLM_PROVIDER_CAPABILITIES_EDITABLE = LLM_PROVIDER_CAPABILITIES.filter(
+  (cap) => cap.id === "text" || cap.id === "image",
+);
+
 export const LLM_PROVIDER_MODEL_EFFORTS = [
   { id: "", label: "默认" },
   { id: "enable", label: "开启思考" },

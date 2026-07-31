@@ -51,6 +51,7 @@ import {
   LLM_BASE_URL_SUGGESTIONS,
   LLM_LOCAL_BASE_URL_SUGGESTIONS,
   LLM_PROVIDER_CAPABILITIES,
+  LLM_PROVIDER_CAPABILITIES_EDITABLE,
   LLM_PROVIDER_MODEL_EFFORTS,
   LLM_PROVIDER_REQUEST_METHODS,
   LLM_PROVIDER_PRESETS,
@@ -1435,7 +1436,7 @@ export default function LlmProvidersForm() {
                       模型支持能力
                     </Label>
                     <div className="flex flex-wrap gap-2">
-                      {LLM_PROVIDER_CAPABILITIES.map((cap) => {
+                      {LLM_PROVIDER_CAPABILITIES_EDITABLE.map((cap) => {
                         const active = (draft.capabilities || []).includes(cap.id);
                         return (
                           <Button
