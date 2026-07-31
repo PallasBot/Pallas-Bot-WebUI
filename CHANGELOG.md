@@ -4,6 +4,25 @@
 
 <!-- entries -->
 
+## [0.8.13] - 2026-07-31
+
+### Added
+
+* feat(protocol): 外置断开、实例卡选中与头像展示 ([aa8410d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/aa8410d81e1e5c28a21102ba0060ae06ce58ab85))
+* feat(webui): 加载态三态消闪与壳层预取 ([0aa2e73](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0aa2e739e339114d6a976d43c7c277bbf5a26859))
+
+### Fixed
+
+* fix(console): 社区页进页加速与数值级加载态 ([26ae8d5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/26ae8d5697a0c6fcbf6bfc68bf11611e346e5369))
+* fix(logs): 窄屏日志 meta 贴紧与正文换行 ([33e25b6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/33e25b60993b46115a03c2b5f14f31395d3f45e9))
+
+### Changed
+
+* refactor(instances): 全选等批量操作迁入工具条 ([3347add](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3347add2802038acf3d6e31bfb1a098896306b7d))
+
+**完整变更**: [`v0.8.12...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.12...HEAD)
+
+
 ## [0.8.13] - 2026-08-01
 
 相对 **0.8.12** 至本版的控制台更新。
