@@ -12,7 +12,7 @@ import {
   fetchTtsVoices, fetchTtsTranslator, openAiInstallJobEventSource, postAiExtensionTest, postAiInstall,
   postAiNcmLogout, postAiNcmSendSms, postAiNcmVerifySms, postMediaAssetsDelete,
   postMediaAssetsDownload, postAiRuntimeStart, postAiRuntimeStop, putAiExtensionConfig,
-  putSingDefaults, putTtsDefaults, putTtsTranslator,
+  putAiRuntimeCallback, putSingDefaults, putTtsDefaults, putTtsTranslator,
 } from "@/api/console";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField from "@/components/ai/AiConfigField";
@@ -244,6 +244,9 @@ export default function AiConfigMediaSection() {
   const [phone, setPhone] = useState("");
   const [ctcode, setCtcode] = useState(String(AI_NCM_DEFAULTS.countryCode));
   const [captcha, setCaptcha] = useState("");
+  const [callbackHost, setCallbackHost] = useState("");
+  const [callbackPort, setCallbackPort] = useState("");
+  const [callbackAdvancedOpen, setCallbackAdvancedOpen] = useState(false);
 
   const installSwitchState = {
     useGpu: { checked: useGpu, set: setUseGpu },
@@ -257,6 +260,18 @@ export default function AiConfigMediaSection() {
       setBearerToken(aiCfgQ.data.token || "");
     }
   }, [aiCfgQ.data]);
+  useEffect(() => {
+    const cb = runtimeQ.data?.callback;
+    if (!cb) return;
+    setCallbackHost(cb.host || cb.expected_host || "");
+    setCallbackPort(
+      cb.port != null
+        ? String(cb.port)
+        : cb.expected_port != null
+          ? String(cb.expected_port)
+          : "",
+    );
+  }, [runtimeQ.data?.callback]);
   useEffect(() => {
     const sp = singQ.data?.speakers; if (sp?.default_speaker) setDefaultSpeaker(sp.default_speaker);
     if (sp?.preferred_backend) setPreferredBackend(sp.preferred_backend);
@@ -332,6 +347,19 @@ export default function AiConfigMediaSection() {
   const stopMut = useMutation({
     mutationFn: postAiRuntimeStop,
     onSuccess: async () => { notifyOk("媒体服务已停止"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
+  });
+  const callbackMut = useMutation({
+    mutationFn: (body: { host?: string; port?: number; align?: boolean }) =>
+      putAiRuntimeCallback({ ...body, restart_media: true }),
+    onSuccess: async (r) => {
+      if (r.ok === false) {
+        notifyErr(r.error || "回调配置失败");
+        return;
+      }
+      notifyOk(r.callback?.aligned ? "回调已对齐并重启 media" : "回调已保存并重启 media");
+      await invalidate();
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const installMut = useMutation({
     mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap" | "update") => {
@@ -510,6 +538,7 @@ export default function AiConfigMediaSection() {
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const busy = saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || installMut.isPending ||
+    callbackMut.isPending ||
     downloadMut.isPending || assetDlActive || deleteMut.isPending || singMut.isPending || ttsMut.isPending ||
     ttsTranslatorMut.isPending ||
     sendMut.isPending || verifyMut.isPending || logoutMut.isPending;
@@ -923,6 +952,111 @@ export default function AiConfigMediaSection() {
                 {dockerOrRemoteHint || "当前无法在此安装或启停，请改用连接配置。"}
               </pre>
             )}
+          </PluginConfigFormSection>
+
+          <PluginConfigFormSection
+            title="回调（AI → Bot）"
+            subtitle="唱歌 / TTS 完成后媒体服务会把结果 POST 回 Bot。端口须与 Bot 监听一致（默认 8088）。"
+            bodyClassName="!grid-cols-1 gap-3"
+          >
+            {(() => {
+              const cb = runtimeQ.data?.callback;
+              const probeOk = cb?.probe?.ok === true;
+              const aligned = cb?.aligned === true;
+              const target =
+                cb?.host && cb.port != null
+                  ? `${cb.host}:${cb.port}`
+                  : "未配置";
+              const expected =
+                cb?.expected_host && cb.expected_port != null
+                  ? `${cb.expected_host}:${cb.expected_port}`
+                  : "—";
+              return (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant={aligned ? "success" : "warn"}>
+                      {aligned ? "已对齐" : "未对齐"}
+                    </Badge>
+                    <Badge variant={probeOk ? "success" : "warn"}>
+                      探活 {probeOk ? "可达" : "不可达"}
+                    </Badge>
+                    <Badge variant="outline">当前 {target}</Badge>
+                    <Badge variant="outline">期望 {expected}</Badge>
+                  </div>
+                  {cb?.error || cb?.probe?.error ? (
+                    <p className="text-xs text-muted-foreground">
+                      {cb.error || cb.probe?.error}
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      disabled={busy || !cb?.can_edit || aligned}
+                      title={aligned ? "已与 Bot 监听端口一致" : "写入 Bot 监听地址并重启 media"}
+                      onClick={() => { void callbackMut.mutateAsync({ align: true }); }}
+                    >
+                      一键对齐
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy || !cb?.can_edit}
+                      onClick={() => setCallbackAdvancedOpen((v) => !v)}
+                    >
+                      {callbackAdvancedOpen ? "收起高级" : "高级"}
+                    </Button>
+                  </div>
+                  {callbackAdvancedOpen ? (
+                    <div className="space-y-3 rounded-[var(--radius-control,8px)] border p-3">
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        Docker / 跨机时把 Host 改成 Bot 容器名或可达地址；保存后会重启 media worker。
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <AiConfigField label="CALLBACK_HOST" description="AI 回调 Bot 的主机名">
+                          <Input
+                            value={callbackHost}
+                            disabled={!cb?.can_edit}
+                            onChange={(e) => setCallbackHost(e.target.value)}
+                            placeholder="127.0.0.1"
+                          />
+                        </AiConfigField>
+                        <AiConfigField label="CALLBACK_PORT" description="须等于 Bot 监听端口">
+                          <Input
+                            type="number"
+                            value={callbackPort}
+                            disabled={!cb?.can_edit}
+                            onChange={(e) => setCallbackPort(e.target.value)}
+                            placeholder="8088"
+                          />
+                        </AiConfigField>
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={busy || !cb?.can_edit}
+                        onClick={() => {
+                          const portNum = Number(callbackPort);
+                          if (!callbackHost.trim() || !Number.isFinite(portNum) || portNum < 1 || portNum > 65535) {
+                            notifyErr("请填写合法的 Host 与端口");
+                            return;
+                          }
+                          void callbackMut.mutateAsync({
+                            host: callbackHost.trim(),
+                            port: portNum,
+                          });
+                        }}
+                      >
+                        保存并重启 media
+                      </Button>
+                    </div>
+                  ) : null}
+                  {!cb?.can_edit ? (
+                    <p className="text-xs text-muted-foreground">
+                      当前无法在此改回调（无本地 Runtime 时请改 compose / 远端 .env）。
+                    </p>
+                  ) : null}
+                </>
+              );
+            })()}
           </PluginConfigFormSection>
 
           <PluginConfigFormSection
