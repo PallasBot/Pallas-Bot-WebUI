@@ -1,25 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchCommunityStats,
   fetchCorpusStatus,
   fetchFederationOnboarding,
   peekCommunityStatsCache,
+  peekHomeOverviewCache,
   probeCommunityConnectivity,
 } from "@/api/fullConsole";
 import type {
   CommunityConnectivityCheckData,
   CommunityHotTab,
+  CommunityStatsData,
   CommunityVersionCountData,
   CorpusSourceStatusData,
+  HomeOverviewData,
 } from "@/api/pallasTypes";
 import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import CorpusWordCloud, { COMMUNITY_HOT_TAB_OPTIONS } from "@/components/CorpusWordCloud";
 import ConsoleHint from "@/components/ConsoleHint";
-import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import PageMasthead from "@/components/PageMasthead";
+import PendingValue from "@/components/PendingValue";
+import StatusTone from "@/components/StatusTone";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, { CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import RefreshIconButton from "@/components/RefreshIconButton";
@@ -36,7 +40,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
+import { freezeShellMainScroll, preserveShellMainScroll } from "@/utils/preserveShellScroll";
+import { querySettled } from "@/utils/querySettled";
+import type { ReactNode } from "react";
 import {
   Activity,
   Bot,
@@ -106,6 +112,13 @@ function shortProbeHost(url: string): string {
 function formatCommunityStatNum(n: number | undefined | null): string {
   if (n == null || !Number.isFinite(n)) return "—";
   return Math.floor(n).toLocaleString();
+}
+
+/** 中心是否开放共享语料：优先 corpus_enabled；/v1/stats 无该字段时用 corpus 块推断 */
+function hubCorpusEnabled(stats: CommunityStatsData): boolean | null {
+  if (typeof stats.corpus_enabled === "boolean") return stats.corpus_enabled;
+  if (stats.corpus != null) return true;
+  return null;
 }
 
 function formatUnixSec(ts: number | null | undefined): string {
@@ -179,6 +192,7 @@ function ingressEnabledLabel(raw: string | undefined): string {
 export default function CommunityPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const redirectToGallery = location.hash.replace(/^#/, "").trim() === "community-gallery";
   const [section, setSection] = useState<CommunitySectionId>(
     () => communitySectionFromHash(typeof window !== "undefined" ? window.location.hash : "") ?? "deploy",
@@ -190,24 +204,40 @@ export default function CommunityPage() {
   const [connectivityBusy, setConnectivityBusy] = useState(false);
   const [connectivityResult, setConnectivityResult] = useState<CommunityConnectivityCheckData | null>(null);
 
+  const statsSeed = useMemo((): CommunityStatsData | undefined => {
+    const peek = peekCommunityStatsCache();
+    if (peek) return peek;
+    const fromQc = qc.getQueryData<HomeOverviewData>(["home-overview"])?.community_stats;
+    if (fromQc) return fromQc;
+    return peekHomeOverviewCache()?.community_stats ?? undefined;
+  }, [qc]);
+
   const statsQ = useQuery({
     queryKey: ["community-stats"],
     queryFn: () => fetchCommunityStats({}),
-    initialData: () => peekCommunityStatsCache() ?? undefined,
+    initialData: statsSeed,
+    initialDataUpdatedAt: statsSeed ? Date.now() - 1_000 : undefined,
+    staleTime: 30_000,
   });
-  const corpusStatusQ = useQuery({ queryKey: ["corpus-status"], queryFn: fetchCorpusStatus });
+  const corpusStatusQ = useQuery({
+    queryKey: ["corpus-status"],
+    queryFn: fetchCorpusStatus,
+    staleTime: 15_000,
+  });
   const federationQ = useQuery({
     queryKey: ["federation-onboarding"],
     queryFn: fetchFederationOnboarding,
     retry: false,
+    staleTime: 60_000,
   });
 
   const communityStats = statsQ.data ?? null;
+  const statsPending = !querySettled(statsQ);
   const corpusStatus = corpusStatusQ.data ?? null;
+  const corpusStatusPending = !querySettled(corpusStatusQ);
   const federationOnboarding = federationQ.data ?? null;
   const federationOnboardingUnavailable = federationQ.isFetched && federationOnboarding == null;
-  // 须等社区统计结束再进页，避免语料先返回时误显「无法获取数据」
-  const pageReady = statsQ.isFetched && corpusStatusQ.isFetched;
+  // 默认「全网部署」不依赖 corpus-status；勿挡整页骨架
   const statsUnavailable = statsQ.isFetched && !communityStats;
 
   const onlineHint = useMemo(() => {
@@ -272,6 +302,10 @@ export default function CommunityPage() {
   const onlineVersionsTotal = useMemo(
     () => onlineVersions.reduce((sum, row) => sum + (row.count || 0), 0),
     [onlineVersions],
+  );
+  const hubCorpusTone = useMemo(
+    () => (communityStats ? hubCorpusEnabled(communityStats) : null),
+    [communityStats],
   );
 
   const statsAsOfText = (communityStats?.as_of || "").trim() ? `快照 ${communityStats?.as_of}` : "";
@@ -416,25 +450,26 @@ export default function CommunityPage() {
     return <Navigate to="/community-gallery" replace />;
   }
 
-  if (!pageReady) {
-    return (
-      <div className="community-page console-hub-page">
-        <ConsolePageSkeleton panels={3} />
-      </div>
-    );
-  }
-
   return (
     <div className="community-page console-hub-page">
       <PageMasthead title="统计与语料" description="社区统计、语料与多机协同（只读）。" />
 
       <ChromeTools>
         <ChromeField label="选择" icon={Layers} className="shrink-0">
-          <Select value={section} onValueChange={(v) => selectSection(v as CommunitySectionId)}>
+          <Select
+            value={section}
+            onValueChange={(v) => selectSection(v as CommunitySectionId)}
+            onOpenChange={(open) => {
+              if (open) freezeShellMainScroll(160);
+            }}
+          >
             <SelectTrigger className={CHROME_SELECT_TRIGGER} aria-label="面板分类">
               <SelectValue placeholder="选择面板" />
             </SelectTrigger>
-            <SelectContent align="start">
+            <SelectContent
+              align="start"
+              onCloseAutoFocus={(e) => e.preventDefault()}
+            >
               {COMMUNITY_SECTIONS.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   <ChromeOptionLabel icon={s.icon}>{s.label}</ChromeOptionLabel>
@@ -493,7 +528,7 @@ export default function CommunityPage() {
       ) : null}
 
       {section === "deploy" ? (
-      <section id="community-deploy" className="community-page__section">
+      <section className="community-page__section community-page__section--deploy">
         <div className="panel community-page__panel">
           <div className="panel__hd panel__hd--split community-page__panel-hd community-page__deploy-panel-hd">
             <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
@@ -545,30 +580,64 @@ export default function CommunityPage() {
             ) : null}
 
             <div className="community-page__kpi-bar home-kpi-bar community-page__deploy-grid">
-              <MetricTile icon={Globe2} label="活跃安装" value={formatCommunityStatNum(communityStats?.deployments_online)} hint={deploymentsOnlineHint} />
-              <MetricTile icon={Bot} label="在线牛牛" value={formatCommunityStatNum(communityStats?.bots_online_sum)} hint={botsOnlineHint} />
+              <MetricTile
+                icon={Globe2}
+                label="活跃安装"
+                value={statsPending ? <PendingValue pending /> : formatCommunityStatNum(communityStats?.deployments_online)}
+                hint={deploymentsOnlineHint}
+              />
+              <MetricTile
+                icon={Bot}
+                label="在线牛牛"
+                value={statsPending ? <PendingValue pending /> : formatCommunityStatNum(communityStats?.bots_online_sum)}
+                hint={botsOnlineHint}
+              />
               <MetricTile
                 icon={Layers}
                 label="分片安装"
-                value={`${formatCommunityStatNum(communityStats?.deployments_online_sharded)} / ${formatCommunityStatNum(communityStats?.shard_workers_online_sum)}`}
+                value={
+                  statsPending ? (
+                    <PendingValue pending />
+                  ) : (
+                    `${formatCommunityStatNum(communityStats?.deployments_online_sharded)} / ${formatCommunityStatNum(communityStats?.shard_workers_online_sum)}`
+                  )
+                }
                 hint="采用分片架构的安装数 / 在线工作进程数"
               />
-              <MetricTile icon={Activity} label="近 24 小时" value={formatCommunityStatNum(communityStats?.active_recent_24h)} hint={activeRecentHint} />
+              <MetricTile
+                icon={Activity}
+                label="近 24 小时"
+                value={statsPending ? <PendingValue pending /> : formatCommunityStatNum(communityStats?.active_recent_24h)}
+                hint={activeRecentHint}
+              />
             </div>
 
             <dl className="home-dl community-page__detail-dl community-page__meta-dl">
               <dt>历史安装</dt>
-              <dd>{formatCommunityStatNum(communityStats?.deployments_total)} 套</dd>
+              <dd>
+                {statsPending ? <PendingValue pending /> : <>{formatCommunityStatNum(communityStats?.deployments_total)} 套</>}
+              </dd>
               <dt>在线名册</dt>
-              <dd>{formatCommunityStatNum(communityStats?.catalog_bots_online_sum)} 只牛牛</dd>
+              <dd>
+                {statsPending ? (
+                  <PendingValue pending />
+                ) : (
+                  <>{formatCommunityStatNum(communityStats?.catalog_bots_online_sum)} 只牛牛</>
+                )}
+              </dd>
               <dt>共享语料</dt>
               <dd>
-                {communityStats != null ? (
-                  <span className={`badge ${communityStats.corpus_enabled ? "badge--ok" : ""}`}>
-                    {communityStats.corpus_enabled ? "已接入" : "未接入"}
-                  </span>
-                ) : (
+                {statsPending ? (
+                  <StatusTone pending pendingLabel="加载中" okLabel="已接入" offLabel="未接入" />
+                ) : hubCorpusTone == null ? (
                   "—"
+                ) : (
+                  <StatusTone
+                    ok={hubCorpusTone}
+                    pendingLabel="加载中"
+                    okLabel="已接入"
+                    offLabel="未接入"
+                  />
                 )}
               </dd>
               {statsAsOfText || statsUrl ? (
@@ -633,7 +702,7 @@ export default function CommunityPage() {
       ) : null}
 
       {section === "federation" ? (
-      <section id="community-federation" className="community-page__section">
+      <section className="community-page__section community-page__section--federation">
         <div className="panel community-page__panel community-page__federation-panel">
           <div className="panel__hd panel__hd--split community-page__panel-hd">
             <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
@@ -774,7 +843,7 @@ export default function CommunityPage() {
 
       {section === "corpus" ? (
         <>
-          <section id="community-corpus" className="community-page__section">
+          <section className="community-page__section community-page__section--corpus">
             <div className="panel community-page__panel">
               <div className="panel__hd panel__hd--split community-page__panel-hd">
                 <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
@@ -789,18 +858,78 @@ export default function CommunityPage() {
               </div>
               <div className="panel__bd">
                 <div className="community-page__kpi-bar home-kpi-bar community-page__corpus-grid">
-                  <MetricTile icon={List} label="词条规模" value={corpusPoolValue} hint={corpusPoolHint} />
-                  <MetricTile icon={Globe2} label="在线接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_online)} hint={corpusOnlineEnrollHint} />
-                  <MetricTile icon={Users} label="累计接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_total)} hint={corpusTotalEnrollHint} />
-                  <MetricTile icon={Activity} label="允许上传" value={formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)} hint="已接入且允许把本机新回复同步到共享池的安装数" />
-                  <MetricTile icon={Sparkles} label="回复被引用" value={formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)} hint="共享池中各回复条目被接话引用的累计次数" />
-                  <MetricTile icon={Database} label="允许读取" value={formatCommunityStatNum(communityStats?.corpus?.read_enabled_total)} hint="已接入且允许从共享池读取语料的安装数" />
+                  <MetricTile
+                    icon={List}
+                    label="词条规模"
+                    value={statsPending ? <PendingValue pending /> : corpusPoolValue}
+                    hint={corpusPoolHint}
+                  />
+                  <MetricTile
+                    icon={Globe2}
+                    label="在线接入"
+                    value={
+                      statsPending ? (
+                        <PendingValue pending />
+                      ) : (
+                        formatCommunityStatNum(communityStats?.corpus?.enrollments_online)
+                      )
+                    }
+                    hint={corpusOnlineEnrollHint}
+                  />
+                  <MetricTile
+                    icon={Users}
+                    label="累计接入"
+                    value={
+                      statsPending ? (
+                        <PendingValue pending />
+                      ) : (
+                        formatCommunityStatNum(communityStats?.corpus?.enrollments_total)
+                      )
+                    }
+                    hint={corpusTotalEnrollHint}
+                  />
+                  <MetricTile
+                    icon={Activity}
+                    label="允许上传"
+                    value={
+                      statsPending ? (
+                        <PendingValue pending />
+                      ) : (
+                        formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)
+                      )
+                    }
+                    hint="已接入且允许把本机新回复同步到共享池的安装数"
+                  />
+                  <MetricTile
+                    icon={Sparkles}
+                    label="回复被引用"
+                    value={
+                      statsPending ? (
+                        <PendingValue pending />
+                      ) : (
+                        formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)
+                      )
+                    }
+                    hint="共享池中各回复条目被接话引用的累计次数"
+                  />
+                  <MetricTile
+                    icon={Database}
+                    label="允许读取"
+                    value={
+                      statsPending ? (
+                        <PendingValue pending />
+                      ) : (
+                        formatCommunityStatNum(communityStats?.corpus?.read_enabled_total)
+                      )
+                    }
+                    hint="已接入且允许从共享池读取语料的安装数"
+                  />
                 </div>
               </div>
             </div>
           </section>
 
-          <section id="community-local" className="community-page__section">
+          <section className="community-page__section community-page__section--local">
             <div className="panel community-page__panel">
               <div className="panel__hd panel__hd--split community-page__panel-hd">
                 <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
@@ -813,7 +942,11 @@ export default function CommunityPage() {
                   </Link>
                 </div>
               </div>
-              {corpusStatus ? (
+              {corpusStatusPending && !corpusStatus ? (
+                <div className="panel__bd muted community-page__empty">
+                  <PendingValue pending narrow={false} />
+                </div>
+              ) : corpusStatus ? (
                 <div className="panel__bd community-page__local-bd">
                   <div className="community-page__corpus-board">
                     <div className="community-page__corpus-summary">
@@ -903,7 +1036,7 @@ export default function CommunityPage() {
 
       {section === "hot" ? (
         <>
-          <section id="community-hot" className="community-page__section">
+          <section className="community-page__section community-page__section--hot">
             <div className="panel community-page__panel">
               <div className="panel__hd panel__hd--split community-page__panel-hd">
                 <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
@@ -924,7 +1057,7 @@ export default function CommunityPage() {
             </div>
           </section>
 
-          <section id="community-local-hot" className="community-page__section">
+          <section className="community-page__section community-page__section--local-hot">
             <div className="panel community-page__panel">
               <div className="panel__hd panel__hd--split community-page__panel-hd">
                 <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
@@ -952,7 +1085,7 @@ function MetricTile({
 }: {
   icon?: LucideIcon;
   label: string;
-  value: string;
+  value: ReactNode;
   hint: string;
 }) {
   return (

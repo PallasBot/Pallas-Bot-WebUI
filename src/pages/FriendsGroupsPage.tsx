@@ -163,7 +163,10 @@ export default function FriendsGroupsPage() {
   const listsBusy = friendsQ.isFetching || groupsQ.isFetching;
   const reqsBusy = reqQ.isFetching;
   const pageRefreshBusy = busy || listsBusy || reqsBusy;
-  const fgListsSkeleton = Boolean(selfIdStr.trim()) && listsBusy;
+  const fgListsSkeleton =
+    Boolean(selfIdStr.trim()) &&
+    (listsBusy || !friendsQ.isFetched || !groupsQ.isFetched) &&
+    !(friendsQ.data && groupsQ.data);
 
   const friends = friendsQ.data as FriendListData | undefined;
   const groups = groupsQ.data as GroupListData | undefined;
@@ -730,7 +733,7 @@ export default function FriendsGroupsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className={FG_PANEL_BD}>
-              {reqsBusy ? (
+              {reqsBusy || (Boolean(selfIdStr.trim()) && !reqQ.isFetched) ? (
                 <p className="muted">
                   {listsBusy
                     ? "正在加载好友/群列表，随后拉取审批数据…"
@@ -940,7 +943,7 @@ export default function FriendsGroupsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className={FG_PANEL_BD}>
-              {reqsBusy ? (
+              {reqsBusy || (Boolean(selfIdStr.trim()) && !reqQ.isFetched) ? (
                 <p className="muted">正在拉取入群审批与概览，请稍候；也可点击工具条刷新重试。</p>
               ) : !selfIdStr.trim() ? (
                 <p className="muted">请选择 Bot 后查看与处理本账号的入群请求。</p>

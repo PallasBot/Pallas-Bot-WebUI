@@ -56,12 +56,13 @@ export function ConsoleBlockSkeleton({
   );
 }
 
-/** 数值位脉冲条，替代字段里的「…」 */
+/** 数值位脉冲条；新代码优先 PendingValue */
 export function SkelValue({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
-      className={cn("skel-value skel-pulse", className)}
+      className={cn("skel-value skel-pulse pending-value pending-value--skel pending-value--narrow", className)}
       aria-hidden="true"
+      aria-busy="true"
       {...props}
     />
   );

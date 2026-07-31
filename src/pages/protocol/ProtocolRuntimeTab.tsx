@@ -12,7 +12,9 @@ import {
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
+import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import ProtocolRuntimeConfigDialog from "@/components/ProtocolRuntimeConfigDialog";
+import StatusTone from "@/components/StatusTone";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,7 @@ import { pushConsoleToast } from "@/utils/consoleToast";
 import { botAccountFavoriteRank } from "@/utils/botDisplay";
 import { slicePage } from "@/utils/paginate";
 import { snowlumaRuntimeWebUiHref } from "@/utils/protocolLinks";
+import { querySettled } from "@/utils/querySettled";
 import { cn } from "@/lib/utils";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { useConfirmAgain } from "@/hooks/useConfirmAgain";
@@ -130,6 +133,7 @@ export default function ProtocolRuntimeTab() {
   });
 
   const snowlumaRuntimes = runtimesQ.data ?? [];
+  const runtimesPending = Boolean(mountUrl) && !querySettled(runtimesQ);
   const accounts = accountsQ.data ?? [];
 
   const accountById = useMemo(() => {
@@ -453,8 +457,8 @@ export default function ProtocolRuntimeTab() {
           </div>
         </CardHeader>
         <CardContent className={PROTO_PANEL_BD}>
-          {runtimesQ.isLoading ? (
-            <p className="muted">加载中…</p>
+          {runtimesPending ? (
+            <ConsoleBlockSkeleton lines={4} label="Runtime 加载中" />
           ) : !snowlumaRuntimes.length ? (
             <p className="muted">暂无 SnowLuma Runtime。可在「创建账号」里新建或选用已有 Runtime。</p>
           ) : !filteredRuntimes.length ? (
@@ -508,15 +512,12 @@ export default function ProtocolRuntimeTab() {
                             >
                               {rt.display_name || rt.id}
                             </button>
-                            <span
-                              className={
-                                rt.process_running
-                                  ? "data-conn-capsule data-conn-capsule--run"
-                                  : "data-conn-capsule data-conn-capsule--off"
-                              }
-                            >
-                              {rt.process_running ? "运行中" : "已停止"}
-                            </span>
+                            <StatusTone
+                              className="data-conn-capsule"
+                              ok={Boolean(rt.process_running)}
+                              okLabel="运行中"
+                              offLabel="已停止"
+                            />
                             {!members.length ? (
                               <span className="data-conn-capsule data-conn-capsule--off">空闲</span>
                             ) : null}

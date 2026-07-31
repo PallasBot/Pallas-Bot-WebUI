@@ -2884,6 +2884,17 @@ export async function deleteBotConfig(account: number): Promise<{ deleted: boole
   return r;
 }
 
+/** 关闭本进程对该 QQ 的 OneBot WS（不停止外置协议端进程） */
+export async function disconnectBotWs(qq: number): Promise<{ qq: number; closed: boolean }> {
+  const out = (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/bots/{qq}/disconnect-ws"]["post"]
+  >(`/bots/${qq}/disconnect-ws`, {})) as { qq: number; closed: boolean };
+  invalidateInstancesCache();
+  invalidateBotsCache();
+  notifyInstancesCatalogUpdated();
+  return out;
+}
+
 export async function fetchGroupConfigs(limit: number, selfId?: number): Promise<GroupConfigPublic[]> {
   const params: Record<string, unknown> = { limit };
   if (selfId !== undefined) params.self_id = selfId;

@@ -1665,6 +1665,12 @@ export interface BotRow {
   adapter: string;
   /** 当前进程内最近一次接入 Unix 秒（仅在线 Bot；来自控制台扩展 API） */
   connected_at_unix?: number | null;
+  /** 本连接所在 Bot 进程 OneBot 反向 WS 监听端口（分片时可区分 worker） */
+  ws_port?: number | null;
+  /** 分片 worker 编号；非分片或 hub 本地列表可能缺省 */
+  shard_id?: number | null;
+  nickname?: string | null;
+  online?: boolean;
 }
 
 /** GET /logs?scope= 与后端一致 */

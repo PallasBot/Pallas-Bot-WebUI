@@ -3,24 +3,32 @@ import { useQuery } from "@tanstack/react-query";
 import { deleteBotConfig, fetchInstances, fetchPlugins } from "@/api/fullConsole";
 import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
 import { accountHasNonebotBot } from "@/utils/botConnection";
+import { qqAvatarUrl } from "@/utils/botDisplay";
 import { formatDisabledPluginIds } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
 import BotConfigModal from "@/components/BotConfigModal";
-import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
-import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
-import ChromeTools, { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
+import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
+import PendingValue from "@/components/PendingValue";
 import RefreshIconButton from "@/components/RefreshIconButton";
+import StatusTone from "@/components/StatusTone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { Search, Database, Cable } from "lucide-react";
+import { ChevronDown, Search, Database, Cable } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 
@@ -240,6 +248,10 @@ export default function InstancesPage() {
     });
   }
 
+  function toggleDbSelected(account: number) {
+    setDbSelected(account, !selectedAccounts.has(account));
+  }
+
   function toggleSelectAllDbOnPage() {
     setSelectedAccounts((prev) => {
       const next = new Set(prev);
@@ -293,11 +305,51 @@ export default function InstancesPage() {
 
       <PageMasthead
         title="数据库实例"
-        description="Bot 账号配置与连接状态。"
+        description="点击卡片选中；点击昵称进入编辑。"
       />
 
       {q.isLoading && !data ? (
-        <ConsolePageSkeleton panels={4} />
+        <>
+          <ChromeTools>
+            <div className="relative min-w-[8rem] flex-1">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <Input
+                type="search"
+                className={CHROME_SEARCH_INPUT}
+                placeholder="搜索账号…"
+                aria-label="搜索账号"
+                autoComplete="off"
+                disabled
+                value=""
+              />
+            </div>
+            <div className={CHROME_TOOLS_TRAILING}>
+              <RefreshIconButton busy label="刷新" showLabel disabled />
+            </div>
+          </ChromeTools>
+          <Card className={cn(INST_PANEL, "inst-db-panel")}>
+            <CardHeader className={INST_PANEL_HD}>
+              <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
+                <PanelTitleIcon icon={Database} />
+                数据库中的实例
+              </CardTitle>
+              <div className="inst-db-panel__hd-side">
+                <span className="inst-db-stat muted">
+                  当前已连接 <PendingValue pending /> / <PendingValue pending /> 账号
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className={INST_PANEL_BD}>
+              <p className="muted" role="status" aria-busy="true">
+                实例列表加载中
+              </p>
+            </CardContent>
+          </Card>
+        </>
       ) : data ? (
         <>
           <ChromeTools>
@@ -320,6 +372,53 @@ export default function InstancesPage() {
                 }}
               />
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0 gap-1"
+                  disabled={deleteBusy || filteredDbBotConfigs.length === 0}
+                  aria-label="选项"
+                >
+                  {deleteBusy
+                    ? "处理中…"
+                    : `选项${selectedAccounts.size > 0 ? `（${selectedAccounts.size}）` : ""}`}
+                  <ChevronDown className="size-3.5 opacity-70" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-0 w-max">
+                <DropdownMenuItem
+                  disabled={pagedDbAccountIds.length === 0}
+                  onSelect={() => toggleSelectAllDbOnPage()}
+                >
+                  {dbCardsPageAllSelected ? "取消全选" : "全选本页"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={selectedAccounts.size === 0}
+                  onSelect={() => setSelectedAccounts(new Set())}
+                >
+                  清除选择
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  disabled={selectedAccounts.size === 0 || deleteBusy}
+                  onSelect={() => openDeleteModal()}
+                >
+                  删除选中
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className={CHROME_TOOLS_TRAILING}>
+              <RefreshIconButton
+                busy={reloadBusy}
+                label="刷新"
+                showLabel
+                onClick={() => void reloadFromUser()}
+              />
+            </div>
           </ChromeTools>
 
           <Card className={cn(INST_PANEL, "inst-db-panel")}>
@@ -331,13 +430,6 @@ export default function InstancesPage() {
                   expanded={expDbBots}
                   label="数据库中的实例"
                   onToggle={() => setExpDbBots((v) => !v)}
-                />
-                <RefreshIconButton
-                  embedded
-                  showLabel={false}
-                  busy={reloadBusy}
-                  label="刷新实例数据"
-                  onClick={() => void reloadFromUser()}
                 />
               </CardTitle>
               <div className="inst-db-panel__hd-side">
@@ -369,24 +461,46 @@ export default function InstancesPage() {
                     {pagedDbBotConfigs.map((c) => (
                       <div
                         key={`card-${c.account}`}
-                        className="data-summary-card data-summary-card--kv data-summary-card--bot"
+                        className={cn(
+                          "data-summary-card data-summary-card--kv data-summary-card--bot data-summary-card--selectable",
+                          selectedAccounts.has(c.account) && "data-summary-card--selected",
+                        )}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={selectedAccounts.has(c.account)}
+                        aria-label={`${selectedAccounts.has(c.account) ? "取消选择" : "选择"}账号 ${c.account}`}
+                        onClick={() => toggleDbSelected(c.account)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleDbSelected(c.account);
+                          }
+                        }}
                       >
                         <div className="data-summary-card__head data-summary-card__head--bot">
-                          <label className="inst-db-card-select" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selectedAccounts.has(c.account)}
-                              aria-label={`选择账号 ${c.account}`}
-                              onChange={(e) => setDbSelected(c.account, e.target.checked)}
+                          <div className="data-summary-card__avatar">
+                            <img
+                              src={qqAvatarUrl(c.account)}
+                              alt=""
+                              width={36}
+                              height={36}
+                              decoding="async"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.visibility = "hidden";
+                              }}
                             />
-                          </label>
+                          </div>
                           <div className="data-summary-card__head-main">
                             <div className="data-summary-card__title-line">
                               <div className="data-summary-card__primary">
                                 <button
                                   type="button"
                                   className="data-summary-card__title-link"
-                                  onClick={() => startEdit(c)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEdit(c);
+                                  }}
                                 >
                                   {botNickname(c.account) || "BOT"}
                                 </button>
@@ -396,7 +510,10 @@ export default function InstancesPage() {
                                 className="data-card-fav-star"
                                 aria-pressed={favorites.has(c.account)}
                                 title={favorites.has(c.account) ? "取消收藏" : "收藏"}
-                                onClick={() => toggleFavorite(c.account)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(c.account);
+                                }}
                               >
                                 ★
                               </button>
@@ -404,15 +521,17 @@ export default function InstancesPage() {
                             <div className="data-summary-card__secondary muted">{c.account}</div>
                           </div>
                           <div className="data-summary-card__head-badges">
-                            <span
+                            <StatusTone
                               className={
                                 isBotConnected(c.account)
                                   ? "data-conn-capsule data-conn-capsule--on"
                                   : "data-conn-capsule data-conn-capsule--off"
                               }
-                            >
-                              {isBotConnected(c.account) ? "已连接" : "未连接"}
-                            </span>
+                              ok={isBotConnected(c.account)}
+                              pendingLabel="探测中"
+                              okLabel="已连接"
+                              offLabel="未连接"
+                            />
                           </div>
                         </div>
                         <div className="data-summary-card__body">
@@ -468,17 +587,6 @@ export default function InstancesPage() {
                     total={filteredDbBotConfigs.length}
                     onPageChange={setInstDbPage}
                     onPageSizeChange={prefs.setTablePageSize}
-                  />
-                ) : null}
-
-                {filteredDbBotConfigs.length > 0 ? (
-                  <ConsoleCardBulkBar
-                    pageAllSelected={dbCardsPageAllSelected}
-                    selectedCount={selectedAccounts.size}
-                    deleteBusy={deleteBusy}
-                    onToggleSelectAll={toggleSelectAllDbOnPage}
-                    onClearSelection={() => setSelectedAccounts(new Set())}
-                    onDelete={openDeleteModal}
                   />
                 ) : null}
               </CardContent>

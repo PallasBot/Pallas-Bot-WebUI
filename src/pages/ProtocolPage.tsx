@@ -56,7 +56,10 @@ export default function ProtocolPage() {
   return (
     <ProtocolChromeProvider>
       <div className="protocol-page console-hub-page">
-        <PageMasthead title="协议连接" description="协议账号启停与批量操作。" />
+        <PageMasthead
+          title="协议连接"
+          description="点击卡片选中；点击昵称打开详情。外置连接可查看与断开；使用全部功能需安装协议插件。"
+        />
 
         {err ? <p className="alert alert--err">{err}</p> : null}
 
