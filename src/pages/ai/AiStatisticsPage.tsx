@@ -27,6 +27,7 @@ import IconStatCard from "@/components/IconStatCard";
 import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import StatsSectionLabel from "@/components/StatsSectionLabel";
+import PendingValue from "@/components/PendingValue";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   addDaysIso,
@@ -135,13 +136,15 @@ function RangeMetricCard({
         </div>
         <div className="text-xs tabular-nums text-muted-foreground">
           费用{currency ? ` (${currency})` : ""}{" "}
-          {loading
-            ? "…"
-            : data.costTotal > 0
-              ? data.costTotal.toFixed(4)
-              : data.totalTokens > 0
-                ? "未配置单价"
-                : "—"}
+          {loading ? (
+            <PendingValue pending narrow />
+          ) : data.costTotal > 0 ? (
+            data.costTotal.toFixed(4)
+          ) : data.totalTokens > 0 ? (
+            "未配置单价"
+          ) : (
+            "—"
+          )}
         </div>
         {hint ? <div className="text-[11px] text-muted-foreground">{hint}</div> : null}
       </CardContent>
@@ -844,13 +847,15 @@ export default function AiStatisticsPage() {
                     费用{costCurrency ? ` (${costCurrency})` : ""}
                   </div>
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
-                    {loading
-                      ? "…"
-                      : combinedCost > 0
-                        ? combinedCost.toFixed(4)
-                        : selectedRange.totalTokens > 0 || hasDrawInRange
-                          ? "未配置单价"
-                          : "—"}
+                    {loading ? (
+                      <PendingValue pending />
+                    ) : combinedCost > 0 ? (
+                      combinedCost.toFixed(4)
+                    ) : selectedRange.totalTokens > 0 || hasDrawInRange ? (
+                      "未配置单价"
+                    ) : (
+                      "—"
+                    )}
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     {loading

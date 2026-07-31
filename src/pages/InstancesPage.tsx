@@ -14,12 +14,14 @@ import ChromeTools, { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import RefreshIconButton from "@/components/RefreshIconButton";
+import StatusTone from "@/components/StatusTone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { querySettled } from "@/utils/querySettled";
 import { Search, Database, Cable } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
@@ -73,6 +75,7 @@ export default function InstancesPage() {
   });
 
   const data = q.data as InstancesData | undefined;
+  const instancesSettled = querySettled(q);
   const plugins = (pluginsQ.data ?? []) as PluginRow[];
   const pluginLoadErr = pluginsQ.error ? String(pluginsQ.error) : "";
 
@@ -404,15 +407,20 @@ export default function InstancesPage() {
                             <div className="data-summary-card__secondary muted">{c.account}</div>
                           </div>
                           <div className="data-summary-card__head-badges">
-                            <span
+                            <StatusTone
                               className={
-                                isBotConnected(c.account)
+                                instancesSettled && isBotConnected(c.account)
                                   ? "data-conn-capsule data-conn-capsule--on"
-                                  : "data-conn-capsule data-conn-capsule--off"
+                                  : instancesSettled
+                                    ? "data-conn-capsule data-conn-capsule--off"
+                                    : "data-conn-capsule"
                               }
-                            >
-                              {isBotConnected(c.account) ? "已连接" : "未连接"}
-                            </span>
+                              pending={!instancesSettled}
+                              ok={isBotConnected(c.account)}
+                              pendingLabel="探测中"
+                              okLabel="已连接"
+                              offLabel="未连接"
+                            />
                           </div>
                         </div>
                         <div className="data-summary-card__body">

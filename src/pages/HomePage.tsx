@@ -47,6 +47,9 @@ import { readSavedHomeAccount, writeSavedHomeAccount } from "@/utils/chartsPageH
 import RefreshIconButton from "@/components/RefreshIconButton";
 import ConsolePageSkeleton, { SkelValue } from "@/components/ConsolePageSkeleton";
 import HomeLazyReveal from "@/components/HomeLazyReveal";
+import PendingValue from "@/components/PendingValue";
+import StatusTone from "@/components/StatusTone";
+import { querySettled } from "@/utils/querySettled";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -216,7 +219,7 @@ export default function HomePage() {
     initialData: overviewPeek ?? undefined,
     initialDataUpdatedAt: overviewPeek ? Date.now() - 1_000 : undefined,
   });
-  const overviewSettled = Boolean(overviewQ.data) || overviewQ.isFetched;
+  const overviewSettled = querySettled(overviewQ);
 
   const botUpdateQ = useQuery({
     queryKey: BOT_UPDATE_CHECK_QUERY_KEY,
@@ -373,14 +376,19 @@ export default function HomePage() {
 
   const selectedAdmins = selectedBotConfig?.admins?.map((id) => String(id)) ?? [];
   const selectedAdminsLabel =
-    !selectedAdmins.length
-      ? "未配置管理员"
-      : selectedAdmins.length > 2 || selectedAdmins.join(" · ").length > 28
-        ? `管理员 · ${selectedAdmins.length}`
-        : `管理员 · ${selectedAdmins.join(" · ")}`;
-  const selectedAdminsTitle = selectedAdmins.length
-    ? `管理员 · ${selectedAdmins.join(" · ")}`
-    : "未配置管理员";
+    !overviewSettled
+      ? null
+      : !selectedAdmins.length
+        ? "未配置管理员"
+        : selectedAdmins.length > 2 || selectedAdmins.join(" · ").length > 28
+          ? `管理员 · ${selectedAdmins.length}`
+          : `管理员 · ${selectedAdmins.join(" · ")}`;
+  const selectedAdminsTitle =
+    !overviewSettled
+      ? "管理员加载中"
+      : selectedAdmins.length
+        ? `管理员 · ${selectedAdmins.join(" · ")}`
+        : "未配置管理员";
 
   const clusterStats = throughputQ.data ?? stats;
   const statsScoped = accountStatsQ.data?.ms;
@@ -845,13 +853,16 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="home-acct__hd-actions">
-                  {selectedAccount != null && selectedConnected ? (
-                    <span className="home-acct__conn home-acct__conn--on">
-                      <span className="home-acct__conn-dot" aria-hidden="true" />
-                      已连接
-                    </span>
-                  ) : selectedAccount != null ? (
-                    <span className="home-acct__conn home-acct__conn--off">未连接</span>
+                  {selectedAccount != null ? (
+                    <StatusTone
+                      className="home-acct__conn"
+                      pending={!overviewSettled}
+                      ok={selectedConnected}
+                      showDot
+                      pendingLabel="探测中"
+                      okLabel="已连接"
+                      offLabel="未连接"
+                    />
                   ) : null}
                   <RefreshIconButton
                     embedded
@@ -869,7 +880,11 @@ export default function HomePage() {
                       协议 · {accountAdapterDisplay}
                     </Link>
                     <span className="home-acct-meta__tag home-acct-meta__tag--muted" title={selectedAdminsTitle}>
-                      {selectedAdminsLabel}
+                      {selectedAdminsLabel == null ? (
+                        <PendingValue pending narrow />
+                      ) : (
+                        selectedAdminsLabel
+                      )}
                     </span>
                   </div>
                   <HomeLazyReveal

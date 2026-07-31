@@ -1,6 +1,6 @@
 import { Fragment, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import brandMarkAsset from "@/assets/brand-avatar.png?url";
 import { fetchHealth } from "@/api/health";
 import { fetchWebuiAutoUpdateStatus } from "@/api/fullConsole";
@@ -19,6 +19,8 @@ import {
 } from "@/state/botRestartSession";
 import { readSidebarCollapsed, writeSidebarCollapsed } from "@/theme/applyShellTheme";
 import { PALLAS_SHELL_EXTERNAL_LINKS } from "@/utils/pallasExternalLinks";
+import { prefetchConsoleShell } from "@/utils/prefetchConsoleShell";
+import { querySettled } from "@/utils/querySettled";
 import { consoleResourceVersionLabel } from "@/utils/versionDisplay";
 
 const brandMarkUrl = String(brandMarkAsset);
@@ -212,6 +214,7 @@ function NavTree({
 
 export default function AppShell() {
   const location = useLocation();
+  const qc = useQueryClient();
   const isNarrow = useIsShellNarrow();
   const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed());
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -246,11 +249,17 @@ export default function AppShell() {
     void ensureRestartContext();
   }, [ensureRestartContext]);
 
+  useEffect(() => {
+    prefetchConsoleShell(qc);
+  }, [qc]);
+
+  const healthSettled = querySettled(healthQ);
   const connOk = Boolean(healthQ.data?.ok);
-  const connText = connOk ? "已连接" : healthQ.isLoading ? "探测中" : "未连接";
+  const connPending = !healthSettled;
+  const connText = connPending ? "探测中" : connOk ? "已连接" : "未连接";
   const connCls = connOk
     ? "shell__sidebar-conn--ok"
-    : healthQ.isLoading
+    : connPending
       ? "shell__sidebar-conn--pending"
       : "shell__sidebar-conn--err";
   const brandVersionDisplay = useMemo(

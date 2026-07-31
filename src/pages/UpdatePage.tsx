@@ -241,6 +241,7 @@ export default function UpdatePage() {
   const [gitMirrorOpen, setGitMirrorOpen] = useState(false);
   const [ghTokenInput, setGhTokenInput] = useState("");
   const [ghTokenHadValue, setGhTokenHadValue] = useState(false);
+  const [ghTokenHintLoaded, setGhTokenHintLoaded] = useState(false);
   const [ghTokenBusy, setGhTokenBusy] = useState(false);
   const [ghTokenErr, setGhTokenErr] = useState("");
   const [changelog, setChangelog] = useState<ChangelogView | null>(null);
@@ -540,6 +541,7 @@ export default function UpdatePage() {
 
   async function loadGithubTokenHint() {
     setGhTokenErr("");
+    setGhTokenHintLoaded(false);
     try {
       const data = await fetchPluginConfig(PB_PROTOCOL_PLUGIN);
       const f = data.fields.find((x) => x.name === GITHUB_TOKEN_FIELD);
@@ -550,6 +552,8 @@ export default function UpdatePage() {
     } catch (e) {
       setGhTokenErr(e instanceof Error ? e.message : String(e));
       setGhTokenHadValue(false);
+    } finally {
+      setGhTokenHintLoaded(true);
     }
   }
 
@@ -1380,7 +1384,11 @@ export default function UpdatePage() {
       <details id="console-update-github" className="update-page__gh-fold">
         <summary className="update-page__gh-fold-summary">
           GitHub 令牌
-          <span className="muted"> · {ghTokenHadValue ? "已配置" : "未配置"}</span>
+          <span className="muted">
+            {" "}
+            ·{" "}
+            {!ghTokenHintLoaded ? "加载中…" : ghTokenHadValue ? "已配置" : "未配置"}
+          </span>
         </summary>
         <div className="update-page__gh-fold-body muted update-page__bd">
           <p>

@@ -31,6 +31,7 @@ import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialog";
 import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal";
+import StatusTone from "@/components/StatusTone";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Cable, ChevronDown, Loader2, Play, QrCode, RefreshCw, Search, Square } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
+import { querySettled } from "@/utils/querySettled";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConfirmAgain } from "@/hooks/useConfirmAgain";
@@ -98,18 +100,6 @@ function isProcessRunning(a: NapcatAccountRow): boolean {
     return coerceBoolean(a.process_running) === true;
   }
   return coerceBoolean(a.running) === true;
-}
-
-function runningCapsuleClass(a: NapcatAccountRow): string {
-  if (isExternalProtocolAccount(a)) return "muted";
-  return isProcessRunning(a)
-    ? "data-conn-capsule data-conn-capsule--run"
-    : "data-conn-capsule data-conn-capsule--off";
-}
-
-function processStateLabel(a: NapcatAccountRow): string {
-  if (isExternalProtocolAccount(a)) return "—";
-  return isProcessRunning(a) ? "运行中" : "未运行";
 }
 
 function cardKey(a: NapcatAccountRow, index: number): string {
@@ -224,12 +214,13 @@ export default function ProtocolAccountsTab() {
 
   const pluginAccounts = accountsQ.data ?? [];
   const snowlumaRuntimes = runtimesQ.data ?? [];
+  const accountsSettled = querySettled(accountsQ);
   /** 首屏：勿用 nonebot 在线连接冒充账号卡片；手动刷新只用工具条 busy，勿整表骨架 */
-  const showAccountsSkeleton = Boolean(mountUrl) && accountsQ.isLoading && !accountsQ.isFetched;
+  const showAccountsSkeleton = Boolean(mountUrl) && !accountsSettled;
 
   const protocolAccountsSorted = useMemo(() => {
     // 协议账号列表未拉到前不合并 nonebot，否则会短暂只显示「已连接」外部卡片
-    if (!accountsQ.isFetched) return [];
+    if (!accountsSettled) return [];
     const list = mergeProtocolDisplayAccounts(instances, pluginAccounts);
     list.sort((a, b) => {
       const fa = protocolAccountNumber(a);
@@ -250,7 +241,7 @@ export default function ProtocolAccountsTab() {
       return String(a.qq ?? a.id ?? "").localeCompare(String(b.qq ?? b.id ?? ""), "zh-CN", { numeric: true });
     });
     return list;
-  }, [accountsQ.isFetched, instances, pluginAccounts, favorites]);
+  }, [accountsSettled, instances, pluginAccounts, favorites]);
 
   const filteredProtocolAccounts = useMemo(() => {
     const q = protoSearchQ.trim().toLowerCase();
@@ -860,16 +851,22 @@ export default function ProtocolAccountsTab() {
                           <div className="data-summary-card__secondary muted">{a.qq ?? a.id ?? "—"}</div>
                         </div>
                         <div className="data-summary-card__head-badges">
-                          <span
-                            className={
-                              a.connected === true
-                                ? "data-conn-capsule data-conn-capsule--on"
-                                : "data-conn-capsule data-conn-capsule--off"
-                            }
-                          >
-                            {a.connected === true ? "已连接" : "未连接"}
-                          </span>
-                          <span className={runningCapsuleClass(a)}>{processStateLabel(a)}</span>
+                          <StatusTone
+                            className="data-conn-capsule"
+                            pending={!accountsSettled}
+                            ok={a.connected === true}
+                            pendingLabel="探测中"
+                            okLabel="已连接"
+                            offLabel="未连接"
+                          />
+                          <StatusTone
+                            className={isExternalProtocolAccount(a) ? "muted" : "data-conn-capsule"}
+                            pending={!accountsSettled}
+                            ok={isProcessRunning(a)}
+                            pendingLabel="探测中"
+                            okLabel="运行中"
+                            offLabel={isExternalProtocolAccount(a) ? "—" : "未运行"}
+                          />
                         </div>
                       </div>
                       <div className="data-summary-card__body">

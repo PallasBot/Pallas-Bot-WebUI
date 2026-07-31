@@ -20,6 +20,8 @@ import CorpusWordCloud, { COMMUNITY_HOT_TAB_OPTIONS } from "@/components/CorpusW
 import ConsoleHint from "@/components/ConsoleHint";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import PageMasthead from "@/components/PageMasthead";
+import PendingValue from "@/components/PendingValue";
+import StatusTone from "@/components/StatusTone";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, { CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import RefreshIconButton from "@/components/RefreshIconButton";
@@ -37,6 +39,8 @@ import {
 } from "@/components/ui/select";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
+import { querySettled } from "@/utils/querySettled";
+import type { ReactNode } from "react";
 import {
   Activity,
   Bot,
@@ -203,6 +207,7 @@ export default function CommunityPage() {
   });
 
   const communityStats = statsQ.data ?? null;
+  const statsPending = !querySettled(statsQ);
   const corpusStatus = corpusStatusQ.data ?? null;
   const federationOnboarding = federationQ.data ?? null;
   const federationOnboardingUnavailable = federationQ.isFetched && federationOnboarding == null;
@@ -545,28 +550,62 @@ export default function CommunityPage() {
             ) : null}
 
             <div className="community-page__kpi-bar home-kpi-bar community-page__deploy-grid">
-              <MetricTile icon={Globe2} label="活跃安装" value={formatCommunityStatNum(communityStats?.deployments_online)} hint={deploymentsOnlineHint} />
-              <MetricTile icon={Bot} label="在线牛牛" value={formatCommunityStatNum(communityStats?.bots_online_sum)} hint={botsOnlineHint} />
+              <MetricTile
+                icon={Globe2}
+                label="活跃安装"
+                value={statsPending ? <PendingValue pending /> : formatCommunityStatNum(communityStats?.deployments_online)}
+                hint={deploymentsOnlineHint}
+              />
+              <MetricTile
+                icon={Bot}
+                label="在线牛牛"
+                value={statsPending ? <PendingValue pending /> : formatCommunityStatNum(communityStats?.bots_online_sum)}
+                hint={botsOnlineHint}
+              />
               <MetricTile
                 icon={Layers}
                 label="分片安装"
-                value={`${formatCommunityStatNum(communityStats?.deployments_online_sharded)} / ${formatCommunityStatNum(communityStats?.shard_workers_online_sum)}`}
+                value={
+                  statsPending ? (
+                    <PendingValue pending />
+                  ) : (
+                    `${formatCommunityStatNum(communityStats?.deployments_online_sharded)} / ${formatCommunityStatNum(communityStats?.shard_workers_online_sum)}`
+                  )
+                }
                 hint="采用分片架构的安装数 / 在线工作进程数"
               />
-              <MetricTile icon={Activity} label="近 24 小时" value={formatCommunityStatNum(communityStats?.active_recent_24h)} hint={activeRecentHint} />
+              <MetricTile
+                icon={Activity}
+                label="近 24 小时"
+                value={statsPending ? <PendingValue pending /> : formatCommunityStatNum(communityStats?.active_recent_24h)}
+                hint={activeRecentHint}
+              />
             </div>
 
             <dl className="home-dl community-page__detail-dl community-page__meta-dl">
               <dt>历史安装</dt>
-              <dd>{formatCommunityStatNum(communityStats?.deployments_total)} 套</dd>
+              <dd>
+                {statsPending ? <PendingValue pending /> : <>{formatCommunityStatNum(communityStats?.deployments_total)} 套</>}
+              </dd>
               <dt>在线名册</dt>
-              <dd>{formatCommunityStatNum(communityStats?.catalog_bots_online_sum)} 只牛牛</dd>
+              <dd>
+                {statsPending ? (
+                  <PendingValue pending />
+                ) : (
+                  <>{formatCommunityStatNum(communityStats?.catalog_bots_online_sum)} 只牛牛</>
+                )}
+              </dd>
               <dt>共享语料</dt>
               <dd>
-                {communityStats != null ? (
-                  <span className={`badge ${communityStats.corpus_enabled ? "badge--ok" : ""}`}>
-                    {communityStats.corpus_enabled ? "已接入" : "未接入"}
-                  </span>
+                {statsPending ? (
+                  <StatusTone pending pendingLabel="加载中" okLabel="已接入" offLabel="未接入" />
+                ) : communityStats != null ? (
+                  <StatusTone
+                    ok={Boolean(communityStats.corpus_enabled)}
+                    pendingLabel="加载中"
+                    okLabel="已接入"
+                    offLabel="未接入"
+                  />
                 ) : (
                   "—"
                 )}
@@ -952,7 +991,7 @@ function MetricTile({
 }: {
   icon?: LucideIcon;
   label: string;
-  value: string;
+  value: ReactNode;
   hint: string;
 }) {
   return (

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { qqAvatarUrl } from "@/utils/botDisplay";
+import StatusTone from "@/components/StatusTone";
 
 const ACCOUNT_TABS = [
   { id: "overview" as const, label: "概览" },
@@ -56,6 +57,7 @@ export default function ProtocolAccountConfigDialog({
   const [headerProfile, setHeaderProfile] = useState<ProtocolAccountHeaderProfile>(EMPTY_PROFILE);
   const [saveBusy, setSaveBusy] = useState(false);
   const [loadBusy, setLoadBusy] = useState(false);
+  const [headerHydrated, setHeaderHydrated] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -63,7 +65,13 @@ export default function ProtocolAccountConfigDialog({
   }, [open, accountId, initialTab]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setHeaderHydrated(false);
+      setHeaderProfile(EMPTY_PROFILE);
+      return;
+    }
+    setHeaderHydrated(false);
+    setHeaderProfile(EMPTY_PROFILE);
     const tick = () => {
       const ws = workspaceRef.current;
       if (!ws) return;
@@ -72,6 +80,9 @@ export default function ProtocolAccountConfigDialog({
       setHeaderProfile(ws.headerProfile);
       setSaveBusy(ws.saveBusy);
       setLoadBusy(ws.loadBusy);
+      if (!ws.loadBusy && (ws.headerProfile.qq || ws.pageTitle)) {
+        setHeaderHydrated(true);
+      }
     };
     tick();
     const id = window.setInterval(tick, 200);
@@ -84,6 +95,7 @@ export default function ProtocolAccountConfigDialog({
   const metaBits = [headerProfile.backendLabel, headerProfile.runtimeModeLabel]
     .filter((x) => x && x !== "—")
     .join(" · ");
+  const headerPending = !headerHydrated || loadBusy;
 
   function requestClose() {
     if (saveBusy) return;
@@ -131,28 +143,24 @@ export default function ProtocolAccountConfigDialog({
                     {metaBits ? ` · ${metaBits}` : ""}
                   </p>
                   <div className="protocol-account-config-dialog__pills" aria-label="账号状态">
-                    <span
-                      className={cn(
-                        "protocol-account-config-dialog__pill",
-                        headerProfile.processRunning
-                          ? "protocol-account-config-dialog__pill--on"
-                          : "protocol-account-config-dialog__pill--off",
-                      )}
-                    >
-                      <span className="protocol-account-config-dialog__pill-dot" aria-hidden />
-                      {headerProfile.processRunning ? "运行中" : "已停止"}
-                    </span>
-                    <span
-                      className={cn(
-                        "protocol-account-config-dialog__pill",
-                        headerProfile.connected
-                          ? "protocol-account-config-dialog__pill--on"
-                          : "protocol-account-config-dialog__pill--off",
-                      )}
-                    >
-                      <span className="protocol-account-config-dialog__pill-dot" aria-hidden />
-                      {headerProfile.connected ? "已连接" : "未连接"}
-                    </span>
+                    <StatusTone
+                      className="protocol-account-config-dialog__pill"
+                      pending={headerPending}
+                      ok={headerProfile.processRunning}
+                      showDot
+                      pendingLabel="探测中"
+                      okLabel="运行中"
+                      offLabel="已停止"
+                    />
+                    <StatusTone
+                      className="protocol-account-config-dialog__pill"
+                      pending={headerPending}
+                      ok={headerProfile.connected}
+                      showDot
+                      pendingLabel="探测中"
+                      okLabel="已连接"
+                      offLabel="未连接"
+                    />
                   </div>
                   {statusLine ? (
                     <DialogDescription className="sr-only">{statusLine}</DialogDescription>
