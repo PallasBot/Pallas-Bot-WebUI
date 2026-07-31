@@ -47,6 +47,18 @@ export function normalizeLogScope(scope: string): string {
   if (source) return source;
   return module;
 }
+
+/** 按 scope 文本稳定映射到色相，同名同色、与日志级别无关 */
+export function scopeBadgeHue(scopeKey: string): number {
+  const s = String(scopeKey ?? "").trim();
+  if (!s) return 210;
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) % 360;
+}
 /** 运行日志 feed 行首：仅 `HH:mm:ss`，缩短前置标签 */
 export function formatLogDisplayTime(raw: string | number): string {
   if (typeof raw === "number") {
@@ -360,7 +372,8 @@ export function isLogMessageContinuation(message: string): boolean {
   if (/^[\|└├╭╰─]/.test(body.trimStart())) return true;
   if (/^\|\s/.test(body) || body.includes(" L ") || body.startsWith("L ")) return true;
   if (body.startsWith("...")) return true;
-  if (/^\s+\S/.test(body)) return true;
+  // 仅 ≥2 个空白才当缩进续行；单空格前缀（loguru/NoneBot 事件正文）勿并入上条
+  if (/^[ \t]{2,}\S/.test(body)) return true;
   return false;
 }
 

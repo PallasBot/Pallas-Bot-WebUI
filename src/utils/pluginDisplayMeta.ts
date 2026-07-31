@@ -21,7 +21,16 @@ export function pluginDisplayTitle(plugin: PluginRow): string {
 export function pluginDisplaySubtitle(plugin: PluginRow): string {
   const id = pluginResolvedId(plugin);
   const title = pluginDisplayTitle(plugin);
-  if (!id || id === title || isTechnicalPluginModuleName(id)) return "";
+  if (!id || id === title) return "";
+
+  /* pip 外部包：始终展示包名/模块 id，避免卡片标题下空一行 */
+  if (plugin.plugin_source === "pip") {
+    const pkg = (plugin.extra_package || "").trim();
+    if (pkg && pkg !== title) return pkg;
+    return id;
+  }
+
+  if (isTechnicalPluginModuleName(id)) return "";
   const nb = (plugin.nb_plugin_name || "").trim();
   if (nb && id === nb && isTechnicalPluginModuleName(nb)) return "";
   return id;

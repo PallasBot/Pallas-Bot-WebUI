@@ -84,4 +84,25 @@ describe("mergeLogEntryContinuations worker isolation", () => {
     expect(merged[0].message).toContain("|  L {'k': 1}");
     expect(merged[0].message).toContain("|  L {'k': 2}");
   });
+
+  it("does not glue OneBot event line with leading space onto previous warn", () => {
+    const rows = [
+      entry({
+        scope: "pallas",
+        level: "warn",
+        message: "image cache capture failed: ",
+      }),
+      entry({
+        scope: "pallas",
+        level: "success",
+        message:
+          " OneBot V11 2927116873 | [message.group.normal]: Message 1 from 1@[群:1] '[CQ:image]'",
+      }),
+    ];
+    const merged = mergeLogEntryContinuations(rows);
+    expect(merged).toHaveLength(2);
+    expect(merged[0].message).toContain("image cache capture failed");
+    expect(merged[0].message).not.toContain("OneBot");
+    expect(merged[1].message).toContain("OneBot V11");
+  });
 });

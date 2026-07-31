@@ -4,6 +4,7 @@ import {
   logEntrySourceKey,
   normalizeLogEntryDisplay,
   normalizeLogScope,
+  scopeBadgeHue,
   splitLogScope,
 } from "@/utils/logDisplay";
 
@@ -48,5 +49,14 @@ describe("normalizeLogEntryDisplay embedded scope", () => {
     expect(out.scope).toBe("worker-2/nonebot");
     expect(out.message).toBe("ready");
     expect(logEntrySourceKey(out)).toBe("worker-2");
+  });
+});
+
+describe("scopeBadgeHue", () => {
+  it("is stable for the same scope and differs across scopes", () => {
+    expect(scopeBadgeHue("pallas")).toBe(scopeBadgeHue("pallas"));
+    expect(scopeBadgeHue("pallas")).not.toBe(scopeBadgeHue("pb_webui"));
+    expect(scopeBadgeHue("pallas")).toBeGreaterThanOrEqual(0);
+    expect(scopeBadgeHue("pallas")).toBeLessThan(360);
   });
 });
