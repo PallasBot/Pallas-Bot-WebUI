@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
   installCommunityPluginAsync,
@@ -20,6 +21,12 @@ import {
   refreshPluginStore,
   refreshPluginUpdateSnapshot,
 } from "@/api/fullConsole";
+import NoticeDot from "@/components/NoticeDot";
+import {
+  countNewPluginStoreIds,
+  ensurePluginStoreSeenBaseline,
+  markPluginStoreIdsSeen,
+} from "@/utils/pluginStoreNotice";
 import type {
   CommunityPluginActionResult,
   CommunityPluginRow,
@@ -144,6 +151,7 @@ const tabOptions: { value: StoreTab; label: string }[] = [
   { value: "all", label: "全部插件" },
   { value: "installed", label: "已安装" },
   { value: "available", label: "可安装" },
+  { value: "updates", label: "可更新" },
 ];
 
 function queueTaskDescriptor(entry: InstallUpdateQueueEntry): {
@@ -164,7 +172,9 @@ function queueEntryLabel(entry: InstallUpdateQueueEntry): string {
 
 export default function PluginStorePage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [pageReady, setPageReady] = useState(false);
+  const [seenTick, setSeenTick] = useState(0);
   const [loading, setLoading] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [storeSection, setStoreSection] = useState<StoreSection>("official");
@@ -267,11 +277,53 @@ export default function PluginStorePage() {
     [localPlugins],
   );
 
+  const catalogIds = useMemo(
+    () => [
+      ...communityRows.map((p) => `community:${p.plugin_id}`),
+      ...rows.map((p) => `official:${String(p.package || "").trim()}`).filter((x) => x !== "official:"),
+    ],
+    [communityRows, rows],
+  );
+
+  const storeNoticeFlags = useMemo(() => {
+    void seenTick;
+    const seen = ensurePluginStoreSeenBaseline(catalogIds);
+    const newCount = countNewPluginStoreIds(catalogIds, seen);
+    const officialUpdates = rows.filter((r) => r.has_update === true).length;
+    const communityUpdates = communityRows.filter((r) => r.has_update === true).length;
+    const officialNew = countNewPluginStoreIds(
+      rows.map((p) => `official:${String(p.package || "").trim()}`).filter((x) => x !== "official:"),
+      seen,
+    );
+    const communityNew = countNewPluginStoreIds(
+      communityRows.map((p) => `community:${p.plugin_id}`),
+      seen,
+    );
+    return {
+      newCount,
+      updateCount: officialUpdates + communityUpdates,
+      officialUpdates,
+      communityUpdates,
+      officialNew,
+      communityNew,
+      updatesTabNotice: officialUpdates + communityUpdates > 0,
+    };
+  }, [catalogIds, rows, communityRows, seenTick]);
+
+  useEffect(() => {
+    if (!pageReady || !catalogIds.length) return;
+    markPluginStoreIdsSeen(catalogIds);
+    setSeenTick((n) => n + 1);
+    void qc.invalidateQueries({ queryKey: ["plugins-community-store", "nav-notice"] });
+    void qc.invalidateQueries({ queryKey: ["plugins-official-extensions", "nav-notice"] });
+  }, [pageReady, catalogIds, qc]);
+
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     let list = rows;
     if (activeTab === "installed") list = list.filter((row) => extensionInstalled(row) || row.bundled_in_repo);
     else if (activeTab === "available") list = list.filter((row) => row.can_install);
+    else if (activeTab === "updates") list = list.filter((row) => row.has_update === true);
     if (!q) return list;
     return list.filter((row) => {
       const title = officialRowTitle(row).toLowerCase();
@@ -287,6 +339,7 @@ export default function PluginStorePage() {
     let list = communityRows;
     if (activeTab === "installed") list = list.filter((row) => communityInstalled(row));
     else if (activeTab === "available") list = list.filter((row) => row.can_install);
+    else if (activeTab === "updates") list = list.filter((row) => row.has_update === true);
     if (!q) return list;
     return list.filter((row) => {
       const id = row.plugin_id.toLowerCase();
@@ -300,7 +353,7 @@ export default function PluginStorePage() {
   const filteredLocalRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     let list = localRows;
-    if (activeTab === "available") return [];
+    if (activeTab === "available" || activeTab === "updates") return [];
     if (!q) return list;
     return list.filter((row) => {
       const name = (row.metadata?.name || row.name).toLowerCase();
@@ -1291,21 +1344,32 @@ export default function PluginStorePage() {
               </SelectValue>
             </SelectTrigger>
             <SelectContent align="end" className="min-w-[9rem]">
-              {sectionOptions.map((sec) => (
-                <SelectItem key={sec.value} value={sec.value}>
-                  <ChromeOptionLabel
-                    icon={
-                      sec.value === "official"
-                        ? BadgeCheck
-                        : sec.value === "community"
-                          ? Users
-                          : FolderOpen
-                    }
-                  >
-                    {sec.label}
-                  </ChromeOptionLabel>
-                </SelectItem>
-              ))}
+              {sectionOptions.map((sec) => {
+                const sectionNotice =
+                  sec.value === "official"
+                    ? storeNoticeFlags.officialUpdates > 0 || storeNoticeFlags.officialNew > 0
+                    : sec.value === "community"
+                      ? storeNoticeFlags.communityUpdates > 0 || storeNoticeFlags.communityNew > 0
+                      : false;
+                return (
+                  <SelectItem key={sec.value} value={sec.value}>
+                    <span className="inline-flex min-w-0 items-center">
+                      <ChromeOptionLabel
+                        icon={
+                          sec.value === "official"
+                            ? BadgeCheck
+                            : sec.value === "community"
+                              ? Users
+                              : FolderOpen
+                        }
+                      >
+                        {sec.label}
+                      </ChromeOptionLabel>
+                      {sectionNotice ? <NoticeDot /> : null}
+                    </span>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </ChromeField>
@@ -1316,13 +1380,19 @@ export default function PluginStorePage() {
               aria-label="列表筛选"
             >
               <SelectValue placeholder="筛选">
-                {tabOptions.find((t) => t.value === activeTab)?.label ?? "筛选"}
+                <span className="inline-flex items-center">
+                  {tabOptions.find((t) => t.value === activeTab)?.label ?? "筛选"}
+                  {activeTab === "updates" && storeNoticeFlags.updatesTabNotice ? <NoticeDot /> : null}
+                </span>
               </SelectValue>
             </SelectTrigger>
             <SelectContent align="end" className="min-w-[8.5rem]">
               {tabOptions.map((tab) => (
                 <SelectItem key={tab.value} value={tab.value}>
-                  <ChromeOptionLabel icon={Filter}>{tab.label}</ChromeOptionLabel>
+                  <span className="inline-flex min-w-0 items-center">
+                    <ChromeOptionLabel icon={Filter}>{tab.label}</ChromeOptionLabel>
+                    {tab.value === "updates" && storeNoticeFlags.updatesTabNotice ? <NoticeDot /> : null}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
