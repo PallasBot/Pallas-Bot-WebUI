@@ -176,33 +176,37 @@ export default function AiConfigMediaSection() {
     });
   };
   const qc = useQueryClient();
-  /** ctl 已成功但 media 冷启动未就绪时，徽章显示「启动中」并加快轮询 */
+  /** ctl 已成功但冷启动 / 健康探活未就绪时，徽章显示「启动中」并加快轮询 */
   const [awaitingRuntimeUp, setAwaitingRuntimeUp] = useState(false);
 
   const aiCfgQ = useQuery({ queryKey: ["ai-extension-config"], queryFn: fetchAiExtensionConfig });
   const runtimeQ = useQuery({
     queryKey: ["ai-runtime"],
     queryFn: fetchAiRuntimeStatus,
-    // 未运行时短轮询：启动后一次 invalidate 常落在冷启动窗口，否则徽章一直「未运行」
+    // 未运行 / 启动中 / 运行中但不健康：短轮询，避免僵死进程长时间显示「健康异常」
     refetchInterval: (q) => {
-      if (awaitingRuntimeUp && !q.state.data?.running) return 3_000;
-      return q.state.data?.running ? 15_000 : 6_000;
+      const running = Boolean(q.state.data?.running);
+      const healthy = q.state.data?.health?.ok === true;
+      if (awaitingRuntimeUp || (running && !healthy)) return 3_000;
+      return running ? 15_000 : 6_000;
     },
   });
   const installQ = useQuery({ queryKey: ["ai-install"], queryFn: fetchAiInstallStatus });
 
   useEffect(() => {
     if (!awaitingRuntimeUp) return;
-    if (runtimeQ.data?.running) {
+    if (runtimeQ.data?.health?.ok === true) {
       setAwaitingRuntimeUp(false);
       return;
     }
     const t = window.setTimeout(() => setAwaitingRuntimeUp(false), 90_000);
     return () => window.clearTimeout(t);
-  }, [awaitingRuntimeUp, runtimeQ.data?.running]);
+  }, [awaitingRuntimeUp, runtimeQ.data?.health?.ok]);
   /** 权重 / 唱歌 / TTS / 网易云都代理到 AI Runtime；未健康时不要打 :9099，避免与「安装与启动」脱节。 */
   const runtimeProbeDone = !runtimeQ.isLoading;
   const runtimeReady = runtimeQ.data?.health?.ok === true;
+  const runtimeUnhealthy =
+    Boolean(runtimeQ.data?.running) && runtimeQ.data?.health?.ok !== true && !awaitingRuntimeUp;
   const mediaQ = useQuery({
     queryKey: ["media-assets"],
     queryFn: fetchMediaAssetsStatus,
@@ -379,15 +383,18 @@ export default function AiConfigMediaSection() {
     mutationFn: () => postAiRuntimeStart(),
     onSuccess: async (data) => {
       applyRuntimeFromControl(data);
-      const running = Boolean(
-        data?.runtime && typeof data.runtime === "object" && (data.runtime as { running?: boolean }).running,
-      );
-      if (running) {
+      const runtime =
+        data?.runtime && typeof data.runtime === "object"
+          ? (data.runtime as { running?: boolean; health?: { ok?: boolean } })
+          : undefined;
+      const healthy = runtime?.health?.ok === true;
+      const healed = data?.healed === true;
+      if (healthy) {
         setAwaitingRuntimeUp(false);
-        notifyOk("媒体服务已启动");
+        notifyOk(healed ? "媒体服务已重启并恢复健康" : "媒体服务已启动");
       } else {
         setAwaitingRuntimeUp(true);
-        notifyOk("启动已下发，等待服务就绪…");
+        notifyOk(healed ? "已重启不健康实例，等待健康就绪…" : "启动已下发，等待服务就绪…");
       }
       await invalidate();
     },
@@ -399,6 +406,28 @@ export default function AiConfigMediaSection() {
       setAwaitingRuntimeUp(false);
       applyRuntimeFromControl(data);
       notifyOk("媒体服务已停止");
+      await invalidate();
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
+  });
+  const restartMut = useMutation({
+    mutationFn: async () => {
+      await postAiRuntimeStop();
+      return postAiRuntimeStart();
+    },
+    onSuccess: async (data) => {
+      applyRuntimeFromControl(data);
+      const healthy =
+        data?.runtime &&
+        typeof data.runtime === "object" &&
+        (data.runtime as { health?: { ok?: boolean } }).health?.ok === true;
+      if (healthy) {
+        setAwaitingRuntimeUp(false);
+        notifyOk("媒体服务已重启");
+      } else {
+        setAwaitingRuntimeUp(true);
+        notifyOk("重启已下发，等待健康就绪…");
+      }
       await invalidate();
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
@@ -698,7 +727,7 @@ export default function AiConfigMediaSection() {
     onSuccess: async (r) => { if (r.ok) notifyOk("已登出"); else notifyErr(r.error || "登出失败"); await statusQ.refetch(); },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
-  const busy = saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || installMut.isPending ||
+  const busy = saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || restartMut.isPending || installMut.isPending ||
     callbackMut.isPending ||
     downloadMut.isPending || assetDlActive || deleteMut.isPending || singMut.isPending || ttsMut.isPending ||
     ttsTranslatorMut.isPending ||
@@ -1053,9 +1082,14 @@ export default function AiConfigMediaSection() {
               <Badge variant="outline">{aiRuntimeLayoutLabel(runtimeLayout)}</Badge>
               {inDocker ? <Badge variant="outline">Bot · Docker</Badge> : null}
               <Badge variant={runtimeQ.data?.health?.ok ? "success" : "warn"}>
-                健康 {runtimeQ.data?.health?.ok ? "正常" : "异常"}
+                健康 {runtimeQ.data?.health?.ok ? "正常" : awaitingRuntimeUp ? "检查中" : "异常"}
               </Badge>
             </div>
+            {runtimeUnhealthy ? (
+              <p className="text-xs leading-snug text-amber-700 dark:text-amber-400">
+                进程在跑但健康检查失败（常见于僵死实例）。可点「启动」自动修复，或「重启」强制停再起。
+              </p>
+            ) : null}
             <p className="break-all font-mono text-xs text-muted-foreground">
               {runtimeQ.data?.ai_root || installQ.data?.ai_root || "—"}
             </p>
@@ -1089,7 +1123,15 @@ export default function AiConfigMediaSection() {
                     disabled={busy || !canManageRuntime}
                     onClick={() => { void startMut.mutateAsync(); }}
                   >
-                    启动
+                    {runtimeUnhealthy ? "启动（修复）" : "启动"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || !canManageRuntime}
+                    onClick={() => { void restartMut.mutateAsync(); }}
+                  >
+                    重启
                   </Button>
                   <Button size="sm" variant="outline" disabled={busy || !canManageRuntime} onClick={() => { void stopMut.mutateAsync(); }}>停止</Button>
                   {installPrimary.visible !== false ? (
