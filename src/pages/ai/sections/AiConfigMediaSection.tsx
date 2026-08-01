@@ -1540,7 +1540,7 @@ export default function AiConfigMediaSection() {
         </StateBlock>
         <PluginConfigFormSection
           title="音频映射"
-          subtitle="命令里的名字对应到媒体服务里的音色 id。"
+          subtitle="左侧是命令前缀（如「一歌」→「一歌唱歌」），右侧是媒体服务音色 id。"
           bodyClassName="!grid-cols-1 gap-3"
           defaultOpen
         >
