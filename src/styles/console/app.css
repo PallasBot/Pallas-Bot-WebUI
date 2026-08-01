@@ -692,6 +692,7 @@ nav.shell__nav .shell__nav-link.is-router-active .shell__nav-ico {
   letter-spacing: 0;
 }
 
+.console-notice-dot,
 .shell__nav-notice-dot {
   display: inline-block;
   width: 7px;
@@ -701,6 +702,12 @@ nav.shell__nav .shell__nav-link.is-router-active .shell__nav-ico {
   border-radius: 999px;
   background: color-mix(in srgb, var(--ok, #3dd68c) 88%, white);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok, #3dd68c) 25%, transparent);
+  flex-shrink: 0;
+}
+
+.console-notice-dot--inline-start {
+  margin-left: 0;
+  margin-right: 6px;
 }
 
 .shell--sidebar-collapsed nav.shell__nav .shell__nav-link {
