@@ -3153,12 +3153,14 @@ export type SingSpeakerRow = {
   backends?: string[];
   model_files?: string[];
   ready?: boolean;
+  preferred_backend?: string;
 };
 
 export type SingSpeakersPayload = {
   speakers: SingSpeakerRow[];
   default_speaker: string;
   preferred_backend?: string;
+  speaker_backends?: Record<string, string>;
   sing_speakers_map?: Record<string, string>;
   writable?: boolean;
   deploy_mode?: string;
@@ -3337,12 +3339,28 @@ export async function fetchSingBackends(): Promise<SingBackendsPayload> {
 export async function putSingDefaults(body: {
   default_speaker?: string;
   preferred_backend?: string;
-}): Promise<{ default_speaker?: string; preferred_backend?: string; writable?: boolean }> {
+  speaker_backends?: Record<string, string>;
+}): Promise<{
+  default_speaker?: string;
+  preferred_backend?: string;
+  speaker_backends?: Record<string, string>;
+  writable?: boolean;
+}> {
   const res = (await consoleOpenapiPut("/common-config/llm/media-models/sing/defaults", body)) as {
     ok?: boolean;
-    data?: { default_speaker?: string; preferred_backend?: string; writable?: boolean };
+    data?: {
+      default_speaker?: string;
+      preferred_backend?: string;
+      speaker_backends?: Record<string, string>;
+      writable?: boolean;
+    };
   };
-  return (res?.data ?? res) as { default_speaker?: string; preferred_backend?: string; writable?: boolean };
+  return (res?.data ?? res) as {
+    default_speaker?: string;
+    preferred_backend?: string;
+    speaker_backends?: Record<string, string>;
+    writable?: boolean;
+  };
 }
 
 export async function fetchTtsVoices(): Promise<TtsVoicesPayload> {

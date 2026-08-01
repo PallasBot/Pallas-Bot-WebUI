@@ -1287,7 +1287,12 @@ export async function fetchSingBackends(): Promise<SingBackendsPayload> {
 export async function putSingDefaults(body: {
   default_speaker?: string;
   preferred_backend?: string;
-}): Promise<{ default_speaker?: string; preferred_backend?: string }> {
+  speaker_backends?: Record<string, string>;
+}): Promise<{
+  default_speaker?: string;
+  preferred_backend?: string;
+  speaker_backends?: Record<string, string>;
+}> {
   const { data: res } = await http.put("/common-config/llm/media-models/sing/defaults", body);
   return unwrapNestedEnvelope(res);
 }
