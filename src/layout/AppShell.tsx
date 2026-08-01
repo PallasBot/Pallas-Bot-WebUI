@@ -111,7 +111,7 @@ function NavItemLink({
         <Icon className="shell__nav-ico" width={18} height={18} aria-hidden />
         <span className="shell__nav-text">
           <span className="shell__nav-label">
-            {item.label}
+            <span className="shell__nav-label-text">{item.label}</span>
             {showNotice ? <span className="shell__nav-notice-dot" aria-hidden /> : null}
           </span>
         </span>
@@ -192,7 +192,7 @@ function NavTree({
                 <SectionIcon className="shell__nav-ico" width={18} height={18} aria-hidden />
                 <span className="shell__nav-text">
                   <span className="shell__nav-label">
-                    {entry.section}
+                    <span className="shell__nav-label-text">{entry.section}</span>
                     {groupHasNotice ? <span className="shell__nav-notice-dot" aria-hidden /> : null}
                   </span>
                 </span>
@@ -242,15 +242,17 @@ export default function AppShell() {
   });
   const communityStoreQ = useQuery({
     queryKey: ["plugins-community-store", "nav-notice"],
-    queryFn: () => fetchCommunityPluginStore(),
-    refetchInterval: 60_000,
-    staleTime: 30_000,
+    queryFn: () => fetchCommunityPluginStore({ skipAssets: true }),
+    refetchInterval: 180_000,
+    staleTime: 120_000,
+    retry: 1,
   });
   const officialStoreQ = useQuery({
     queryKey: ["plugins-official-extensions", "nav-notice"],
-    queryFn: () => fetchOfficialExtensions(),
-    refetchInterval: 60_000,
-    staleTime: 30_000,
+    queryFn: () => fetchOfficialExtensions({ skipAssets: true }),
+    refetchInterval: 180_000,
+    staleTime: 120_000,
+    retry: 1,
   });
   const updateNotice = pendingAutoUpdateLabel(autoUpdateQ.data?.pending_notice);
   const pluginStoreNotice = useMemo(() => {

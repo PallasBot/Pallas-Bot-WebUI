@@ -304,9 +304,18 @@ export async function fetchPlugins(opts?: FetchPluginsOptions): Promise<PluginRo
   return pluginsInflight;
 }
 
-export async function fetchOfficialExtensions(): Promise<OfficialExtensionRow[]> {
+/** 商店列表可能顺带刷新资源快照，冷启动时超过默认 20s */
+export const PLUGIN_STORE_READ_TIMEOUT_MS = 90_000;
+
+export async function fetchOfficialExtensions(options?: {
+  skipAssets?: boolean;
+}): Promise<OfficialExtensionRow[]> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/official-extensions"]["get"]>(
     "/plugins/official-extensions",
+    {
+      params: options?.skipAssets ? { skip_assets: 1 } : undefined,
+      timeout: PLUGIN_STORE_READ_TIMEOUT_MS,
+    },
   )) as OfficialExtensionRow[];
 }
 
@@ -407,10 +416,19 @@ export async function uninstallOfficialExtensionAsync(
   })) as ExtensionInstallJobData;
 }
 
-export async function fetchCommunityPluginStore(options?: { refresh?: boolean }): Promise<CommunityPluginStoreData> {
+export async function fetchCommunityPluginStore(options?: {
+  refresh?: boolean;
+  skipAssets?: boolean;
+}): Promise<CommunityPluginStoreData> {
+  const params: Record<string, number> = {};
+  if (options?.refresh) params.refresh = 1;
+  if (options?.skipAssets) params.skip_assets = 1;
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/community-store"]["get"]>(
     "/plugins/community-store",
-    { params: options?.refresh ? { refresh: 1 } : undefined },
+    {
+      params: Object.keys(params).length ? params : undefined,
+      timeout: PLUGIN_STORE_READ_TIMEOUT_MS,
+    },
   )) as CommunityPluginStoreData;
 }
 

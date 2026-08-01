@@ -38,6 +38,18 @@ export function ensurePluginStoreSeenBaseline(allIds: string[]): Set<string> {
   return new Set(allIds.map((x) => String(x || "").trim()).filter(Boolean));
 }
 
+/** 相对本机已见表尚未见过的 ID（无基线时返回空，避免首次进店整表标新）。 */
+export function listUnseenPluginStoreIds(allIds: string[]): string[] {
+  const seen = readSeenPluginStoreIds();
+  if (seen == null) return [];
+  const out: string[] = [];
+  for (const id of allIds) {
+    const key = String(id || "").trim();
+    if (key && !seen.has(key)) out.push(key);
+  }
+  return out;
+}
+
 /** 打开商店页：把当前条目记为已见（清除上新；可更新不因此消失）。 */
 export function markPluginStoreIdsSeen(allIds: string[]): void {
   const prev = readSeenPluginStoreIds() ?? new Set<string>();
