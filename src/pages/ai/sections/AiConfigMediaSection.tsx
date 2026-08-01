@@ -176,10 +176,30 @@ export default function AiConfigMediaSection() {
     });
   };
   const qc = useQueryClient();
+  /** ctl 已成功但 media 冷启动未就绪时，徽章显示「启动中」并加快轮询 */
+  const [awaitingRuntimeUp, setAwaitingRuntimeUp] = useState(false);
 
   const aiCfgQ = useQuery({ queryKey: ["ai-extension-config"], queryFn: fetchAiExtensionConfig });
-  const runtimeQ = useQuery({ queryKey: ["ai-runtime"], queryFn: fetchAiRuntimeStatus });
+  const runtimeQ = useQuery({
+    queryKey: ["ai-runtime"],
+    queryFn: fetchAiRuntimeStatus,
+    // 未运行时短轮询：启动后一次 invalidate 常落在冷启动窗口，否则徽章一直「未运行」
+    refetchInterval: (q) => {
+      if (awaitingRuntimeUp && !q.state.data?.running) return 3_000;
+      return q.state.data?.running ? 15_000 : 6_000;
+    },
+  });
   const installQ = useQuery({ queryKey: ["ai-install"], queryFn: fetchAiInstallStatus });
+
+  useEffect(() => {
+    if (!awaitingRuntimeUp) return;
+    if (runtimeQ.data?.running) {
+      setAwaitingRuntimeUp(false);
+      return;
+    }
+    const t = window.setTimeout(() => setAwaitingRuntimeUp(false), 90_000);
+    return () => window.clearTimeout(t);
+  }, [awaitingRuntimeUp, runtimeQ.data?.running]);
   /** 权重 / 唱歌 / TTS / 网易云都代理到 AI Runtime；未健康时不要打 :9099，避免与「安装与启动」脱节。 */
   const runtimeProbeDone = !runtimeQ.isLoading;
   const runtimeReady = runtimeQ.data?.health?.ok === true;
@@ -342,13 +362,39 @@ export default function AiConfigMediaSection() {
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
+  const applyRuntimeFromControl = (data: Record<string, unknown> | undefined) => {
+    const runtime = data?.runtime;
+    if (runtime && typeof runtime === "object") {
+      qc.setQueryData(["ai-runtime"], runtime);
+    }
+  };
   const startMut = useMutation({
     mutationFn: () => postAiRuntimeStart(),
-    onSuccess: async () => { notifyOk("媒体服务已启动"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
+    onSuccess: async (data) => {
+      applyRuntimeFromControl(data);
+      const running = Boolean(
+        data?.runtime && typeof data.runtime === "object" && (data.runtime as { running?: boolean }).running,
+      );
+      if (running) {
+        setAwaitingRuntimeUp(false);
+        notifyOk("媒体服务已启动");
+      } else {
+        setAwaitingRuntimeUp(true);
+        notifyOk("启动已下发，等待服务就绪…");
+      }
+      await invalidate();
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const stopMut = useMutation({
     mutationFn: postAiRuntimeStop,
-    onSuccess: async () => { notifyOk("媒体服务已停止"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
+    onSuccess: async (data) => {
+      setAwaitingRuntimeUp(false);
+      applyRuntimeFromControl(data);
+      notifyOk("媒体服务已停止");
+      await invalidate();
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const callbackMut = useMutation({
     mutationFn: (body: { host?: string; port?: number; align?: boolean }) =>
@@ -358,6 +404,8 @@ export default function AiConfigMediaSection() {
         notifyErr(r.error || "回调配置失败");
         return;
       }
+      if (r.runtime) qc.setQueryData(["ai-runtime"], r.runtime);
+      setAwaitingRuntimeUp(true);
       notifyOk(r.callback?.aligned ? "回调已对齐并重启 media" : "回调已保存并重启 media");
       await invalidate();
     },
@@ -391,6 +439,7 @@ export default function AiConfigMediaSection() {
       setInstallPercent(0);
       setInstallLogLines([]);
       setInstallFailTail("");
+      if (!noStart) setAwaitingRuntimeUp(true);
       await invalidate();
     },
     onError: (e) => {
@@ -970,8 +1019,20 @@ export default function AiConfigMediaSection() {
             bodyClassName="!grid-cols-1 gap-3"
           >
             <div className="flex flex-wrap gap-2">
-              <Badge variant={runtimeQ.data?.running ? "success" : "secondary"}>
-                {runtimeQ.data?.running ? "运行中" : "未运行"}
+              <Badge
+                variant={
+                  runtimeQ.data?.running
+                    ? "success"
+                    : awaitingRuntimeUp
+                      ? "warn"
+                      : "secondary"
+                }
+              >
+                {runtimeQ.data?.running
+                  ? "运行中"
+                  : awaitingRuntimeUp
+                    ? "启动中"
+                    : "未运行"}
               </Badge>
               <Badge variant="outline">{aiRuntimeLayoutLabel(runtimeLayout)}</Badge>
               {inDocker ? <Badge variant="outline">Bot · Docker</Badge> : null}
