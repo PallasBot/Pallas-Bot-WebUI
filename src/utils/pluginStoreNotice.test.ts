@@ -4,6 +4,7 @@ import {
   PLUGIN_STORE_SEEN_IDS_KEY,
   countNewPluginStoreIds,
   ensurePluginStoreSeenBaseline,
+  listUnseenPluginStoreIds,
   markPluginStoreIdsSeen,
   pluginStoreNoticeLabel,
   summarizePluginStoreNotice,
@@ -40,5 +41,11 @@ describe("pluginStoreNotice", () => {
     expect(s.newCount).toBe(0);
     expect(s.updateCount).toBe(1);
     expect(pluginStoreNoticeLabel(s)).toBe("有 1 个可更新");
+  });
+
+  it("listUnseen returns empty without baseline and unseen after baseline", () => {
+    expect(listUnseenPluginStoreIds(["a", "b"])).toEqual([]);
+    ensurePluginStoreSeenBaseline(["a"]);
+    expect(listUnseenPluginStoreIds(["a", "b"])).toEqual(["b"]);
   });
 });

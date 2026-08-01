@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
   installCommunityPluginAsync,
@@ -23,8 +23,7 @@ import {
 } from "@/api/fullConsole";
 import NoticeDot from "@/components/NoticeDot";
 import {
-  countNewPluginStoreIds,
-  ensurePluginStoreSeenBaseline,
+  listUnseenPluginStoreIds,
   markPluginStoreIdsSeen,
 } from "@/utils/pluginStoreNotice";
 import type {
@@ -174,7 +173,8 @@ export default function PluginStorePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [pageReady, setPageReady] = useState(false);
-  const [seenTick, setSeenTick] = useState(0);
+  /** 本次进店时捕获的上新 ID：侧栏 mark-seen 后仍用于 Select / 卡片圆点 */
+  const [visitNewIds, setVisitNewIds] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [storeSection, setStoreSection] = useState<StoreSection>("official");
@@ -277,30 +277,50 @@ export default function PluginStorePage() {
     [localPlugins],
   );
 
+  /** 与侧栏共用轻量缓存：列表拉取失败时仍可显示 Select 圆点，并用于进店清「上新」 */
+  const communityNavQ = useQuery({
+    queryKey: ["plugins-community-store", "nav-notice"],
+    queryFn: () => fetchCommunityPluginStore({ skipAssets: true }),
+    staleTime: 120_000,
+    retry: 1,
+  });
+  const officialNavQ = useQuery({
+    queryKey: ["plugins-official-extensions", "nav-notice"],
+    queryFn: () => fetchOfficialExtensions({ skipAssets: true }),
+    staleTime: 120_000,
+    retry: 1,
+  });
+
+  const noticeCommunityRows = useMemo(() => {
+    if (communityRows.length) return communityRows;
+    return communityNavQ.data?.plugins ?? [];
+  }, [communityRows, communityNavQ.data]);
+  const noticeOfficialRows = useMemo(() => {
+    if (rows.length) return rows;
+    return officialNavQ.data ?? [];
+  }, [rows, officialNavQ.data]);
+
   const catalogIds = useMemo(
     () => [
-      ...communityRows.map((p) => `community:${p.plugin_id}`),
-      ...rows.map((p) => `official:${String(p.package || "").trim()}`).filter((x) => x !== "official:"),
+      ...noticeCommunityRows.map((p) => `community:${p.plugin_id}`),
+      ...noticeOfficialRows
+        .map((p) => `official:${String(p.package || "").trim()}`)
+        .filter((x) => x !== "official:"),
     ],
-    [communityRows, rows],
+    [noticeCommunityRows, noticeOfficialRows],
   );
 
   const storeNoticeFlags = useMemo(() => {
-    void seenTick;
-    const seen = ensurePluginStoreSeenBaseline(catalogIds);
-    const newCount = countNewPluginStoreIds(catalogIds, seen);
-    const officialUpdates = rows.filter((r) => r.has_update === true).length;
-    const communityUpdates = communityRows.filter((r) => r.has_update === true).length;
-    const officialNew = countNewPluginStoreIds(
-      rows.map((p) => `official:${String(p.package || "").trim()}`).filter((x) => x !== "official:"),
-      seen,
-    );
-    const communityNew = countNewPluginStoreIds(
-      communityRows.map((p) => `community:${p.plugin_id}`),
-      seen,
-    );
+    const officialUpdates = noticeOfficialRows.filter((r) => r.has_update === true).length;
+    const communityUpdates = noticeCommunityRows.filter((r) => r.has_update === true).length;
+    let officialNew = 0;
+    let communityNew = 0;
+    for (const id of visitNewIds) {
+      if (id.startsWith("official:")) officialNew += 1;
+      else if (id.startsWith("community:")) communityNew += 1;
+    }
     return {
-      newCount,
+      newCount: officialNew + communityNew,
       updateCount: officialUpdates + communityUpdates,
       officialUpdates,
       communityUpdates,
@@ -308,15 +328,20 @@ export default function PluginStorePage() {
       communityNew,
       updatesTabNotice: officialUpdates + communityUpdates > 0,
     };
-  }, [catalogIds, rows, communityRows, seenTick]);
+  }, [noticeOfficialRows, noticeCommunityRows, visitNewIds]);
 
   useEffect(() => {
     if (!pageReady || !catalogIds.length) return;
+    const fresh = listUnseenPluginStoreIds(catalogIds);
+    if (fresh.length) {
+      setVisitNewIds((prev) => {
+        const next = new Set(prev);
+        for (const id of fresh) next.add(id);
+        return next;
+      });
+    }
     markPluginStoreIdsSeen(catalogIds);
-    setSeenTick((n) => n + 1);
-    void qc.invalidateQueries({ queryKey: ["plugins-community-store", "nav-notice"] });
-    void qc.invalidateQueries({ queryKey: ["plugins-official-extensions", "nav-notice"] });
-  }, [pageReady, catalogIds, qc]);
+  }, [pageReady, catalogIds]);
 
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -417,12 +442,23 @@ export default function PluginStorePage() {
   );
 
   const refreshOfficialStore = useCallback(async () => {
-    setRows(await fetchOfficialExtensions());
-  }, []);
+    const data = await fetchOfficialExtensions({ skipAssets: true });
+    setRows(data);
+    qc.setQueryData(["plugins-official-extensions", "nav-notice"], data);
+  }, [qc]);
 
-  const refreshCommunityStore = useCallback(async (force = false) => {
-    setCommunityStore(await fetchCommunityPluginStore({ refresh: force }));
-  }, []);
+  const refreshCommunityStore = useCallback(
+    async (force = false) => {
+      const data = await fetchCommunityPluginStore({
+        refresh: force,
+        // 常规进页跳过资源快照；强制刷新时走完整拉资源
+        skipAssets: !force,
+      });
+      setCommunityStore(data);
+      qc.setQueryData(["plugins-community-store", "nav-notice"], data);
+    },
+    [qc],
+  );
 
   const refreshLocalStore = useCallback(async () => {
     try {
@@ -1340,7 +1376,16 @@ export default function PluginStorePage() {
               aria-label="商店类型"
             >
               <SelectValue placeholder="类型">
-                {sectionOptions.find((s) => s.value === storeSection)?.label ?? "类型"}
+                <span className="inline-flex items-center">
+                  {sectionOptions.find((s) => s.value === storeSection)?.label ?? "类型"}
+                  {(storeSection === "official"
+                    ? storeNoticeFlags.officialUpdates > 0 || storeNoticeFlags.officialNew > 0
+                    : storeSection === "community"
+                      ? storeNoticeFlags.communityUpdates > 0 || storeNoticeFlags.communityNew > 0
+                      : false) ? (
+                    <NoticeDot />
+                  ) : null}
+                </span>
               </SelectValue>
             </SelectTrigger>
             <SelectContent align="end" className="min-w-[9rem]">
@@ -1507,6 +1552,9 @@ export default function PluginStorePage() {
                   installedVersionLabel={officialInstalledVersionLabel(row, result)}
                   progressPercent={cardProgress?.key === row.package ? cardProgress.percent : null}
                   progressMessage={cardProgress?.key === row.package ? cardProgress.message : ""}
+                  showNotice={
+                    visitNewIds.has(`official:${String(row.package || "").trim()}`) || row.has_update === true
+                  }
                   detailLabel="仓库"
                   canOpen={Boolean(row.repository_url)}
                   onOpen={() => void openOfficialReadme(row)}
@@ -1568,6 +1616,7 @@ export default function PluginStorePage() {
                   installedVersionLabel={communityInstalledVersionLabel(row, result)}
                   progressPercent={cardProgress?.key === row.plugin_id ? cardProgress.percent : null}
                   progressMessage={cardProgress?.key === row.plugin_id ? cardProgress.message : ""}
+                  showNotice={visitNewIds.has(`community:${row.plugin_id}`) || row.has_update === true}
                   detailLabel="仓库"
                   canOpen={Boolean(row.repository_url)}
                   onOpen={() => void openCommunityReadme(row)}
