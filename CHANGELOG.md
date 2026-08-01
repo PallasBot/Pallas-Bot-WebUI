@@ -6,6 +6,21 @@
 
 ## [0.8.15] - 2026-08-01
 
+### Added
+
+* feat(plugin-store): 商店更新/上新导航提醒与 Bot QQ Combobox ([ee4f131](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ee4f1310e9c36ecdc0d5072238c15f9a2a335ce8))
+
+### Fixed
+
+* fix(ai): 媒体服务不健康时可修复启动并支持重启 ([3dd0357](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3dd03570ce234d9e8b25b2b53f684a9918f9e5ae))
+* fix(plugin-store): 修复提醒圆点截断与社区店超时清点 ([2b2e46f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2b2e46fa7bad7a3cfa9f25789c31b845d829ea1f))
+* fix(ai): 补齐 SingSpeakers speaker_backends 类型 ([b807734](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b80773472cf8548cfcd86f74456864fd5b3bc95e))
+
+**完整变更**: [`v0.8.14...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.14...HEAD)
+
+
+## [0.8.15] - 2026-08-01
+
 ### 更新公告
 
 - 需要 Bot ≥ 4.1.22；请勿只升控制台
