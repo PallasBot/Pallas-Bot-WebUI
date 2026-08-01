@@ -251,6 +251,7 @@ export default function AiConfigMediaSection() {
   const pollRef = useRef<number | null>(null);
   const [defaultSpeaker, setDefaultSpeaker] = useState("");
   const [preferredBackend, setPreferredBackend] = useState("");
+  const [speakerBackends, setSpeakerBackends] = useState<Record<string, string>>({});
   const [ttsRef, setTtsRef] = useState("");
   const [ttsPrompt, setTtsPrompt] = useState("");
   const [ttsPromptLang, setTtsPromptLang] = useState("");
@@ -295,8 +296,14 @@ export default function AiConfigMediaSection() {
     );
   }, [runtimeQ.data?.callback]);
   useEffect(() => {
-    const sp = singQ.data?.speakers; if (sp?.default_speaker) setDefaultSpeaker(sp.default_speaker);
-    if (sp?.preferred_backend) setPreferredBackend(sp.preferred_backend);
+    const sp = singQ.data?.speakers;
+    if (sp?.default_speaker) setDefaultSpeaker(sp.default_speaker);
+    if (sp?.preferred_backend != null) setPreferredBackend(sp.preferred_backend || "");
+    const map: Record<string, string> = { ...(sp?.speaker_backends || {}) };
+    for (const row of sp?.speakers || []) {
+      if (row.preferred_backend) map[row.id] = row.preferred_backend;
+    }
+    setSpeakerBackends(map);
     const d = ttsQ.data?.defaults;
     if (d?.ref_audio_path) setTtsRef(d.ref_audio_path); if (d?.prompt_text) setTtsPrompt(d.prompt_text);
     if (d?.prompt_lang) setTtsPromptLang(d.prompt_lang); if (d?.text_lang) setTtsTextLang(d.text_lang);
@@ -628,8 +635,17 @@ export default function AiConfigMediaSection() {
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const singMut = useMutation({
-    mutationFn: () => putSingDefaults({ default_speaker: defaultSpeaker, preferred_backend: preferredBackend }),
-    onSuccess: () => notifyOk("唱歌默认已保存"), onError: (e) => notifyErr(axiosErrorDetail(e)),
+    mutationFn: () =>
+      putSingDefaults({
+        default_speaker: defaultSpeaker,
+        preferred_backend: preferredBackend,
+        speaker_backends: speakerBackends,
+      }),
+    onSuccess: async () => {
+      notifyOk("唱歌默认已保存");
+      await qc.invalidateQueries({ queryKey: ["sing-models"] });
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const ttsMut = useMutation({
     mutationFn: () => putTtsDefaults({ ref_audio_path: ttsRef, prompt_text: ttsPrompt, prompt_lang: ttsPromptLang, text_lang: ttsTextLang }),
@@ -1389,7 +1405,7 @@ export default function AiConfigMediaSection() {
           <div className="space-y-4">
             <PluginConfigFormSection
               title="运行概况"
-              subtitle="已探测到的音色目录与可用推理方式。"
+              subtitle="已探测到的音色目录与可用推理方式；可为每个音色指定优先后端（覆盖下方全局优先）。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="flex flex-wrap items-center gap-2">
@@ -1404,16 +1420,37 @@ export default function AiConfigMediaSection() {
                 {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "暂无推理方式"}
               </p>
               {(singQ.data?.speakers.speakers || []).length ? (
-                <ul className="space-y-1 rounded-[var(--radius-control,8px)] border bg-muted/20 px-3 py-2 text-[11px]">
+                <ul className="space-y-2 rounded-[var(--radius-control,8px)] border bg-muted/20 px-3 py-2 text-[11px]">
                   {(singQ.data?.speakers.speakers || []).map((row) => (
-                    <li key={row.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                      <span className="font-mono font-medium">{row.id}</span>
-                      <Badge variant={row.ready ? "success" : "secondary"} className="text-[10px]">
-                        {row.ready ? "就绪" : "未就绪"}
-                      </Badge>
-                      {row.path ? (
-                        <span className="break-all font-mono text-muted-foreground">{row.path}</span>
-                      ) : null}
+                    <li
+                      key={row.id}
+                      className="flex flex-col gap-1 border-b border-border/40 py-2 last:border-0 last:pb-0 first:pt-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2"
+                    >
+                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span className="font-mono font-medium">{row.id}</span>
+                        <Badge variant={row.ready ? "success" : "secondary"} className="text-[10px]">
+                          {row.ready ? "就绪" : "未就绪"}
+                        </Badge>
+                        {row.path ? (
+                          <span className="break-all font-mono text-muted-foreground">{row.path}</span>
+                        ) : null}
+                      </div>
+                      <div className="w-full min-w-[10rem] sm:ml-auto sm:w-48">
+                        <AiOptionSelect
+                          value={speakerBackends[row.id] || ""}
+                          options={backendOptions}
+                          placeholder="优先推理"
+                          emptyLabel="（用全局）"
+                          onValueChange={(v) =>
+                            setSpeakerBackends((prev) => {
+                              const next = { ...prev };
+                              if (!v) delete next[row.id];
+                              else next[row.id] = v;
+                              return next;
+                            })
+                          }
+                        />
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -1430,7 +1467,7 @@ export default function AiConfigMediaSection() {
 
             <PluginConfigFormSection
               title="默认设置"
-              subtitle="点歌时未指定音色或推理方式时使用。"
+              subtitle="点歌时未指定音色时用默认音色；未按音色指定推理方式时用全局优先。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="grid grid-cols-2 gap-3">
@@ -1443,7 +1480,10 @@ export default function AiConfigMediaSection() {
                     onValueChange={setDefaultSpeaker}
                   />
                 </AiConfigField>
-                <AiConfigField label="优先推理方式" description="首选的唱歌推理实现；失败时仍会自动尝试其它可用方式。">
+                <AiConfigField
+                  label="全局优先推理"
+                  description="未给该音色单独指定时使用；失败仍会尝试其它可用方式。"
+                >
                   <AiOptionSelect
                     value={preferredBackend}
                     options={backendOptions}
