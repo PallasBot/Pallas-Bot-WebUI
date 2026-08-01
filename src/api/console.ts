@@ -1080,11 +1080,18 @@ export type MediaAssetsDownloadJob = {
   progress_percent?: number;
 };
 
-export type SingSpeakerRow = { id: string; path?: string; ready?: boolean; backends?: string[] };
+export type SingSpeakerRow = {
+  id: string;
+  path?: string;
+  ready?: boolean;
+  backends?: string[];
+  preferred_backend?: string;
+};
 export type SingSpeakersPayload = {
   speakers?: SingSpeakerRow[];
   default_speaker?: string;
   preferred_backend?: string;
+  speaker_backends?: Record<string, string>;
   writable?: boolean;
 };
 export type SingBackendsPayload = {
