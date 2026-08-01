@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.17] - 2026-08-01
 
 ### 更新公告
 
@@ -14,6 +14,15 @@
 ### Changed
 
 - 音频映射副标题文案
+
+### 提交明细
+
+### Fixed
+
+* fix(ai): 音频映射说明标明命令前缀用法 ([1bf8efe](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1bf8efe896b3d8426a0f99fff15498b6788f5794))
+* fix(changelog): 补齐 0.8.16 更新公告 ([4108b0e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4108b0ef38d06b5eabcffab7fe1681c383b20894))
+
+**完整变更**: [`v0.8.16...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.16...HEAD)
 
 
 ## [0.8.16] - 2026-08-01
@@ -42,7 +51,6 @@
 * docs(agents): 补充 Unreleased 发版与 CHANGELOG 约定 ([034d57a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/034d57a7d0c2808c4efa71cd4cdd3bb531f6c440))
 
 **完整变更**: [`v0.8.15...v0.8.16`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.15...v0.8.16)
-
 
 ## [0.8.15] - 2026-08-01
 
@@ -77,7 +85,6 @@
 
 **完整变更**: [`v0.8.14...v0.8.15`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.14...v0.8.15)
 
-
 ## [0.8.14] - 2026-08-01
 
 ### 更新公告
@@ -106,7 +113,6 @@
 * fix(changelog): 合并重复的 0.8.13 段 ([77b9e30](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/77b9e307a929a499f9a90396640214efca4df8a0))
 
 **完整变更**: [`v0.8.13...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.13...HEAD)
-
 
 ## [0.8.13] - 2026-08-01
 
