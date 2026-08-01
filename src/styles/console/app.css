@@ -682,16 +682,26 @@ nav.shell__nav .shell__nav-link.is-router-active .shell__nav-ico {
 }
 
 .shell__nav-label {
-  line-height: 1.25;
+  display: inline-flex;
+  align-items: center;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  line-height: 1.25;
   font-weight: 500;
   font-size: var(--shell-nav-label-size);
   letter-spacing: 0;
+  /* 圆点在文案旁：勿对整段 label 做 ellipsis，否则绿点右侧会被裁成平边 */
+  overflow: visible;
 }
 
+.shell__nav-label-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.console-notice-dot,
 .shell__nav-notice-dot {
   display: inline-block;
   width: 7px;
@@ -701,6 +711,12 @@ nav.shell__nav .shell__nav-link.is-router-active .shell__nav-ico {
   border-radius: 999px;
   background: color-mix(in srgb, var(--ok, #3dd68c) 88%, white);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok, #3dd68c) 25%, transparent);
+  flex-shrink: 0;
+}
+
+.console-notice-dot--inline-start {
+  margin-left: 0;
+  margin-right: 6px;
 }
 
 .shell--sidebar-collapsed nav.shell__nav .shell__nav-link {
@@ -11216,8 +11232,24 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card {
 }
 
 .plugin-store-page--hub .plugin-store-card__title {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
   font-size: 0.9375rem;
   font-weight: 600;
+  overflow: visible;
+}
+
+.plugin-store-page--hub .plugin-store-card__title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plugin-store-page--hub .plugin-store-card__notice-dot {
+  flex-shrink: 0;
 }
 
 .plugin-store-page--hub .plugin-store-card__author,

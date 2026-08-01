@@ -1,12 +1,20 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Bot } from "lucide-react";
 import type { PluginConfigField } from "@/api/console";
+import { fetchInstances } from "@/api/fullConsole";
+import BotAccountCombobox from "@/components/BotAccountCombobox";
 import ConsoleSwitch from "@/components/ConsoleSwitch";
 import StringMapField, { tryParseStringMap } from "@/components/config/StringMapField";
 import PersonaOutputFirewallField from "@/components/config/PersonaOutputFirewallField";
 import ReplyStyleVariantsField from "@/components/config/ReplyStyleVariantsField";
 import TagsInput from "@/components/config/TagsInput";
+import { ChromeOptionLabel } from "@/components/ChromeField";
 import UiInput from "@/components/ui/UiInput";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { cn } from "@/lib/utils";
+import { botSelectDropdownLabel } from "@/utils/botDisplay";
 import {
   binaryEnumIsOn,
   binaryEnumOffChoice,
@@ -20,11 +28,14 @@ import {
 import {
   idTagsFromJsonText,
   idTagsToJsonText,
+  isBotIdField,
   isChipListField,
   isIdListField,
   tagsFromJsonText,
   tagsToJsonText,
 } from "@/utils/pluginConfigFieldModel";
+
+const BOT_ID_ANY = "__bot_id_any__";
 
 function fieldChoices(field: PluginConfigField): string[] {
   if (field.choices?.length) return field.choices;
@@ -50,9 +61,11 @@ export default function ConfigFieldRenderer({
 }) {
   const choices = fieldChoices(field);
   const fieldWithChoices = { ...field, choices };
+  const usesBotId = isBotIdField(field);
   const usesBoolSwitch = field.kind === "bool" || isBinaryBoolEnum(fieldWithChoices);
   const usesEnumSelect = field.kind === "enum" && choices.length > 0 && !isBinaryBoolEnum(fieldWithChoices);
-  const usesNumberInput = field.kind === "int" || field.kind === "float" || field.kind === "number";
+  const usesNumberInput =
+    !usesBotId && (field.kind === "int" || field.kind === "float" || field.kind === "number");
   const usesSecretInput = field.kind === "string" && Boolean(field.secret);
   const usesMultiline = field.kind === "string" && Boolean(field.multiline);
   const usesTags = isChipListField(field);
@@ -61,6 +74,41 @@ export default function ConfigFieldRenderer({
   const usesReplyStyleVariants = field.name === "llm_reply_style_variants";
   const usesPersonaOutputFirewall = field.name === "llm_persona_output_firewall";
   const usesStructuredJsonForm = usesReplyStyleVariants || usesPersonaOutputFirewall;
+
+  const { favorites } = useBotFavorites();
+  const instQ = useQuery({
+    queryKey: ["instances"],
+    queryFn: () => fetchInstances(),
+    enabled: usesBotId,
+    staleTime: 30_000,
+  });
+
+  const botOptions = useMemo(() => {
+    const data = instQ.data;
+    const seen = new Set<string>();
+    const out: Array<{ id: string; nickname: string }> = [];
+    if (data) {
+      for (const b of data.nonebot_bots ?? []) {
+        const id = String(b.self_id || "").trim();
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        out.push({ id, nickname: data.bot_profiles?.[id]?.nickname?.trim() || "" });
+      }
+      for (const cfg of data.db_bot_configs ?? []) {
+        const id = String(cfg.account ?? "").trim();
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        out.push({ id, nickname: data.bot_profiles?.[id]?.nickname?.trim() || "" });
+      }
+    }
+    const cur = Number(modelValue) > 0 ? String(Math.floor(Number(modelValue))) : "";
+    if (cur && !seen.has(cur)) {
+      out.push({ id: cur, nickname: data?.bot_profiles?.[cur]?.nickname?.trim() || "" });
+    }
+    return out;
+  }, [instQ.data, modelValue]);
+
+  const botSelected = botOptions.find((b) => b.id === String(Math.floor(Number(modelValue) || 0)));
 
   const boolOn =
     field.kind === "bool" ? modelValue === "true" : binaryEnumIsOn(fieldWithChoices, modelValue);
@@ -146,6 +194,39 @@ export default function ConfigFieldRenderer({
         </div>
       ) : null}
 
+      {usesBotId ? (
+        <div className="form-field__control w-full" style={{ maxWidth: inputMaxWidth }}>
+          <BotAccountCombobox
+            value={Number(modelValue) > 0 ? String(Math.floor(Number(modelValue))) : BOT_ID_ANY}
+            onValueChange={(v) => {
+              if (v === BOT_ID_ANY) {
+                onValueChange("0");
+                return;
+              }
+              const n = Math.max(0, Math.floor(Number(v) || 0));
+              onValueChange(String(n));
+            }}
+            bots={botOptions}
+            favorites={favorites}
+            leadingOption={{
+              value: BOT_ID_ANY,
+              label: <ChromeOptionLabel icon={Bot}>任选在线</ChromeOptionLabel>,
+              keywords: "任选在线 全部 0",
+            }}
+            placeholder="任选在线"
+            ariaLabel={fieldDisplayTitle(field)}
+            title={
+              botSelected
+                ? botSelectDropdownLabel(botSelected.nickname, botSelected.id)
+                : Number(modelValue) > 0
+                  ? String(Math.floor(Number(modelValue)))
+                  : undefined
+            }
+            triggerClassName="h-9 w-full min-w-0"
+          />
+        </div>
+      ) : null}
+
       {usesEnumSelect ? (
         <div className="form-field__control w-full" style={{ maxWidth: inputMaxWidth }}>
           <Combobox
@@ -193,7 +274,13 @@ export default function ConfigFieldRenderer({
         />
       ) : null}
 
-      {!usesBoolSwitch && !usesEnumSelect && !usesTags && field.kind === "json" && !usesStringMap && !usesStructuredJsonForm ? (
+      {!usesBoolSwitch &&
+      !usesBotId &&
+      !usesEnumSelect &&
+      !usesTags &&
+      field.kind === "json" &&
+      !usesStringMap &&
+      !usesStructuredJsonForm ? (
         <textarea
           className="textarea inp form-field__control config-field-renderer__textarea"
           rows={6}
@@ -239,6 +326,7 @@ export default function ConfigFieldRenderer({
       ) : null}
 
       {!usesBoolSwitch &&
+      !usesBotId &&
       !usesEnumSelect &&
       !usesTags &&
       field.kind !== "json" &&

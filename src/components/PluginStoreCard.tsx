@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import NoticeDot from "@/components/NoticeDot";
 import PluginIcon from "@/components/PluginIcon";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,8 @@ type Props = {
   installedVersionLabel?: string;
   progressPercent?: number | null;
   progressMessage?: string;
+  /** 上新 / 可更新提醒圆点（标题旁） */
+  showNotice?: boolean;
   onOpen?: () => void;
   onInstall?: () => void;
   onUninstall?: () => void;
@@ -83,6 +86,7 @@ export default function PluginStoreCard({
   installedVersionLabel = "",
   progressPercent = null,
   progressMessage = "",
+  showNotice = false,
   onOpen,
   onInstall,
   onUninstall,
@@ -211,7 +215,8 @@ export default function PluginStoreCard({
 
           <div className="plugin-store-card__info">
             <h3 className="plugin-store-card__title" title={title}>
-              {title}
+              <span className="plugin-store-card__title-text">{title}</span>
+              {showNotice ? <NoticeDot className="plugin-store-card__notice-dot" /> : null}
             </h3>
             {author ? (
               <p className="plugin-store-card__byline muted" title={author}>

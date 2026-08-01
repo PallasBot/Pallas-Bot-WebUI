@@ -3,10 +3,15 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import brandMarkAsset from "@/assets/brand-avatar.png?url";
 import { fetchHealth } from "@/api/health";
-import { fetchWebuiAutoUpdateStatus } from "@/api/fullConsole";
+import {
+  fetchCommunityPluginStore,
+  fetchOfficialExtensions,
+  fetchWebuiAutoUpdateStatus,
+} from "@/api/fullConsole";
 import { pendingAutoUpdateLabel } from "@/utils/autoUpdateNotice";
 import { MAIN_NAV_ITEMS, buildNavEntries, isNavActive, sectionIcon } from "@/config/mainNav";
 import type { MainNavItem } from "@/config/mainNav";
+import { PLUGIN_STORE_SEEN_EVENT, summarizePluginStoreNotice } from "@/utils/pluginStoreNotice";
 import BotRestartProgressDialog from "@/components/BotRestartProgressDialog";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import ConsoleToastHost from "@/components/ConsoleToastHost";
@@ -72,19 +77,20 @@ function NavItemLink({
   linkClass,
   child,
   onNavigate,
-  notice,
+  notices,
 }: {
   item: MainNavItem;
   linkClass: string;
   child?: boolean;
   onNavigate?: () => void;
-  notice?: string | null;
+  notices?: Partial<Record<string, string | null | undefined>>;
 }) {
   const location = useLocation();
   const Icon = item.icon;
   const active = isNavActive(location.pathname, item.to);
   const exact = navExact(location.pathname, item.to);
-  const showNotice = Boolean(notice) && item.to === "/update";
+  const notice = notices?.[item.to] || null;
+  const showNotice = Boolean(notice);
   return (
     <div className={cn("shell__nav-item", child && "shell__nav-item--child")}>
       <NavLink
@@ -105,7 +111,7 @@ function NavItemLink({
         <Icon className="shell__nav-ico" width={18} height={18} aria-hidden />
         <span className="shell__nav-text">
           <span className="shell__nav-label">
-            {item.label}
+            <span className="shell__nav-label-text">{item.label}</span>
             {showNotice ? <span className="shell__nav-notice-dot" aria-hidden /> : null}
           </span>
         </span>
@@ -118,13 +124,13 @@ function NavTree({
   onNavigate,
   mobile,
   railCollapsed,
-  updateNotice,
+  navNotices,
 }: {
   onNavigate?: () => void;
   mobile?: boolean;
   /** 桌面侧栏收起：扁平图标轨，隐藏分组折叠头 */
   railCollapsed?: boolean;
-  updateNotice?: string | null;
+  navNotices?: Partial<Record<string, string | null | undefined>>;
 }) {
   const location = useLocation();
   const entries = useMemo(() => buildNavEntries(MAIN_NAV_ITEMS), []);
@@ -165,13 +171,14 @@ function NavTree({
               item={entry.item}
               linkClass={linkClass}
               onNavigate={onNavigate}
-              notice={updateNotice}
+              notices={navNotices}
             />
           );
         }
 
         const open = isGroupOpen(entry.section, entry.items);
         const SectionIcon = sectionIcon(entry.section);
+        const groupHasNotice = entry.items.some((item) => Boolean(navNotices?.[item.to]));
         return (
           <div key={entry.section} className={cn("shell__nav-group", open && "shell__nav-group--open")}>
             {railCollapsed ? null : (
@@ -184,7 +191,10 @@ function NavTree({
               >
                 <SectionIcon className="shell__nav-ico" width={18} height={18} aria-hidden />
                 <span className="shell__nav-text">
-                  <span className="shell__nav-label">{entry.section}</span>
+                  <span className="shell__nav-label">
+                    <span className="shell__nav-label-text">{entry.section}</span>
+                    {groupHasNotice ? <span className="shell__nav-notice-dot" aria-hidden /> : null}
+                  </span>
                 </span>
                 <span className="shell__nav-group-chevron" aria-hidden="true">
                   ›
@@ -200,7 +210,7 @@ function NavTree({
                     linkClass={linkClass}
                     child={!mobile}
                     onNavigate={onNavigate}
-                    notice={updateNotice}
+                    notices={navNotices}
                   />
                 ))}
               </div>
@@ -218,13 +228,56 @@ export default function AppShell() {
   const isNarrow = useIsShellNarrow();
   const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed());
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pluginStoreSeenRev, setPluginStoreSeenRev] = useState(0);
+  useEffect(() => {
+    const onSeen = () => setPluginStoreSeenRev((n) => n + 1);
+    window.addEventListener(PLUGIN_STORE_SEEN_EVENT, onSeen);
+    return () => window.removeEventListener(PLUGIN_STORE_SEEN_EVENT, onSeen);
+  }, []);
   const healthQ = useQuery({ queryKey: ["health"], queryFn: () => fetchHealth(), refetchInterval: 15_000 });
   const autoUpdateQ = useQuery({
     queryKey: ["webui-auto-update-status"],
     queryFn: fetchWebuiAutoUpdateStatus,
     refetchInterval: 60_000,
   });
+  const communityStoreQ = useQuery({
+    queryKey: ["plugins-community-store", "nav-notice"],
+    queryFn: () => fetchCommunityPluginStore({ skipAssets: true }),
+    refetchInterval: 180_000,
+    staleTime: 120_000,
+    retry: 1,
+  });
+  const officialStoreQ = useQuery({
+    queryKey: ["plugins-official-extensions", "nav-notice"],
+    queryFn: () => fetchOfficialExtensions({ skipAssets: true }),
+    refetchInterval: 180_000,
+    staleTime: 120_000,
+    retry: 1,
+  });
   const updateNotice = pendingAutoUpdateLabel(autoUpdateQ.data?.pending_notice);
+  const pluginStoreNotice = useMemo(() => {
+    const community = communityStoreQ.data?.plugins || [];
+    const official = officialStoreQ.data || [];
+    const catalogIds = [
+      ...community.map((p) => `community:${p.plugin_id}`),
+      ...official.map((p) => `official:${String(p.package || "").trim()}`).filter((x) => x !== "official:"),
+    ];
+    let updateCount = 0;
+    for (const row of community) {
+      if (row.has_update === true) updateCount += 1;
+    }
+    for (const row of official) {
+      if (row.has_update === true) updateCount += 1;
+    }
+    return summarizePluginStoreNotice({ catalogIds, updateCount }).label;
+  }, [communityStoreQ.data, officialStoreQ.data, pluginStoreSeenRev]);
+  const navNotices = useMemo(
+    () => ({
+      "/update": updateNotice,
+      "/plugin-store": pluginStoreNotice,
+    }),
+    [updateNotice, pluginStoreNotice],
+  );
   const {
     restartBusy,
     restartInProgress,
@@ -384,7 +437,7 @@ export default function AppShell() {
 
         <div className="shell__nav-clip">
           <nav className="shell__nav" aria-label="主导航">
-            <NavTree railCollapsed={collapsed && !isNarrow} updateNotice={updateNotice} />
+            <NavTree railCollapsed={collapsed && !isNarrow} navNotices={navNotices} />
           </nav>
         </div>
 
@@ -503,7 +556,7 @@ export default function AppShell() {
               </button>
             </div>
             <nav className="shell-mobile-nav__links" aria-label="主导航">
-              <NavTree mobile onNavigate={() => setMobileOpen(false)} updateNotice={updateNotice} />
+              <NavTree mobile onNavigate={() => setMobileOpen(false)} navNotices={navNotices} />
             </nav>
             <div className="shell-mobile-nav__tools">
               {restartAvailable ? (

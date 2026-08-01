@@ -24,7 +24,7 @@ import {
 } from "@/utils/pluginIconUrl";
 
 export type StoreSection = "official" | "community" | "local";
-export type StoreTab = "all" | "installed" | "available";
+export type StoreTab = "all" | "installed" | "available" | "updates";
 
 export const COMMUNITY_INDEX_REPO_URL = "https://github.com/PallasBot/community-plugin-index";
 export const PLUGIN_ID_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;

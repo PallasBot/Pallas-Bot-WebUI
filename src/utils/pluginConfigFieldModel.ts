@@ -145,6 +145,18 @@ export function isChipListField(field: PluginConfigField): boolean {
   return isStringListField(field) || isIdListField(field);
 }
 
+/** Bot QQ / 发送用牛：用账号 Combobox（可声明 ui_widget=bot_id，或字段名 *_bot_id）。 */
+export function isBotIdField(field: PluginConfigField): boolean {
+  if (field.ui_widget === "bot_id") return true;
+  if (field.kind !== "int" && field.kind !== "number") return false;
+  const name = String(field.name || "").trim().toLowerCase();
+  if (!name) return false;
+  if (name === "bot_id" || name === "self_id") return true;
+  if (name.endsWith("_bot_id") || name.endsWith("_self_id")) return true;
+  if (name.includes("notify_bot")) return true;
+  return false;
+}
+
 export function tagsFromJsonText(raw: string): string[] {
   const text = String(raw ?? "").trim();
   if (!text) return [];

@@ -10125,6 +10125,8 @@ export interface operations {
     _plugins_official_extensions_pallas_api_plugins_official_extensions_get: {
         parameters: {
             query?: {
+                /** @description 为 true 时跳过商店资源快照刷新（侧栏提醒等轻量读取） */
+                skip_assets?: boolean;
                 token?: string | null;
             };
             header?: {
@@ -10555,6 +10557,8 @@ export interface operations {
             query?: {
                 /** @description 为 true 时跳过进程内读缓存并重新拉取索引 */
                 refresh?: boolean;
+                /** @description 为 true 时跳过商店资源快照刷新（侧栏提醒等轻量读取） */
+                skip_assets?: boolean;
                 token?: string | null;
             };
             header?: {
