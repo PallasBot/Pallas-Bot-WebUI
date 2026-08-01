@@ -176,10 +176,30 @@ export default function AiConfigMediaSection() {
     });
   };
   const qc = useQueryClient();
+  /** ctl 已成功但 media 冷启动未就绪时，徽章显示「启动中」并加快轮询 */
+  const [awaitingRuntimeUp, setAwaitingRuntimeUp] = useState(false);
 
   const aiCfgQ = useQuery({ queryKey: ["ai-extension-config"], queryFn: fetchAiExtensionConfig });
-  const runtimeQ = useQuery({ queryKey: ["ai-runtime"], queryFn: fetchAiRuntimeStatus });
+  const runtimeQ = useQuery({
+    queryKey: ["ai-runtime"],
+    queryFn: fetchAiRuntimeStatus,
+    // 未运行时短轮询：启动后一次 invalidate 常落在冷启动窗口，否则徽章一直「未运行」
+    refetchInterval: (q) => {
+      if (awaitingRuntimeUp && !q.state.data?.running) return 3_000;
+      return q.state.data?.running ? 15_000 : 6_000;
+    },
+  });
   const installQ = useQuery({ queryKey: ["ai-install"], queryFn: fetchAiInstallStatus });
+
+  useEffect(() => {
+    if (!awaitingRuntimeUp) return;
+    if (runtimeQ.data?.running) {
+      setAwaitingRuntimeUp(false);
+      return;
+    }
+    const t = window.setTimeout(() => setAwaitingRuntimeUp(false), 90_000);
+    return () => window.clearTimeout(t);
+  }, [awaitingRuntimeUp, runtimeQ.data?.running]);
   /** 权重 / 唱歌 / TTS / 网易云都代理到 AI Runtime；未健康时不要打 :9099，避免与「安装与启动」脱节。 */
   const runtimeProbeDone = !runtimeQ.isLoading;
   const runtimeReady = runtimeQ.data?.health?.ok === true;
@@ -231,6 +251,7 @@ export default function AiConfigMediaSection() {
   const pollRef = useRef<number | null>(null);
   const [defaultSpeaker, setDefaultSpeaker] = useState("");
   const [preferredBackend, setPreferredBackend] = useState("");
+  const [speakerBackends, setSpeakerBackends] = useState<Record<string, string>>({});
   const [ttsRef, setTtsRef] = useState("");
   const [ttsPrompt, setTtsPrompt] = useState("");
   const [ttsPromptLang, setTtsPromptLang] = useState("");
@@ -275,8 +296,14 @@ export default function AiConfigMediaSection() {
     );
   }, [runtimeQ.data?.callback]);
   useEffect(() => {
-    const sp = singQ.data?.speakers; if (sp?.default_speaker) setDefaultSpeaker(sp.default_speaker);
-    if (sp?.preferred_backend) setPreferredBackend(sp.preferred_backend);
+    const sp = singQ.data?.speakers;
+    if (sp?.default_speaker) setDefaultSpeaker(sp.default_speaker);
+    if (sp?.preferred_backend != null) setPreferredBackend(sp.preferred_backend || "");
+    const map: Record<string, string> = { ...(sp?.speaker_backends || {}) };
+    for (const row of sp?.speakers || []) {
+      if (row.preferred_backend) map[row.id] = row.preferred_backend;
+    }
+    setSpeakerBackends(map);
     const d = ttsQ.data?.defaults;
     if (d?.ref_audio_path) setTtsRef(d.ref_audio_path); if (d?.prompt_text) setTtsPrompt(d.prompt_text);
     if (d?.prompt_lang) setTtsPromptLang(d.prompt_lang); if (d?.text_lang) setTtsTextLang(d.text_lang);
@@ -342,13 +369,39 @@ export default function AiConfigMediaSection() {
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
+  const applyRuntimeFromControl = (data: Record<string, unknown> | undefined) => {
+    const runtime = data?.runtime;
+    if (runtime && typeof runtime === "object") {
+      qc.setQueryData(["ai-runtime"], runtime);
+    }
+  };
   const startMut = useMutation({
     mutationFn: () => postAiRuntimeStart(),
-    onSuccess: async () => { notifyOk("媒体服务已启动"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
+    onSuccess: async (data) => {
+      applyRuntimeFromControl(data);
+      const running = Boolean(
+        data?.runtime && typeof data.runtime === "object" && (data.runtime as { running?: boolean }).running,
+      );
+      if (running) {
+        setAwaitingRuntimeUp(false);
+        notifyOk("媒体服务已启动");
+      } else {
+        setAwaitingRuntimeUp(true);
+        notifyOk("启动已下发，等待服务就绪…");
+      }
+      await invalidate();
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const stopMut = useMutation({
     mutationFn: postAiRuntimeStop,
-    onSuccess: async () => { notifyOk("媒体服务已停止"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
+    onSuccess: async (data) => {
+      setAwaitingRuntimeUp(false);
+      applyRuntimeFromControl(data);
+      notifyOk("媒体服务已停止");
+      await invalidate();
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const callbackMut = useMutation({
     mutationFn: (body: { host?: string; port?: number; align?: boolean }) =>
@@ -358,6 +411,8 @@ export default function AiConfigMediaSection() {
         notifyErr(r.error || "回调配置失败");
         return;
       }
+      if (r.runtime) qc.setQueryData(["ai-runtime"], r.runtime);
+      setAwaitingRuntimeUp(true);
       notifyOk(r.callback?.aligned ? "回调已对齐并重启 media" : "回调已保存并重启 media");
       await invalidate();
     },
@@ -391,6 +446,7 @@ export default function AiConfigMediaSection() {
       setInstallPercent(0);
       setInstallLogLines([]);
       setInstallFailTail("");
+      if (!noStart) setAwaitingRuntimeUp(true);
       await invalidate();
     },
     onError: (e) => {
@@ -579,8 +635,17 @@ export default function AiConfigMediaSection() {
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const singMut = useMutation({
-    mutationFn: () => putSingDefaults({ default_speaker: defaultSpeaker, preferred_backend: preferredBackend }),
-    onSuccess: () => notifyOk("唱歌默认已保存"), onError: (e) => notifyErr(axiosErrorDetail(e)),
+    mutationFn: () =>
+      putSingDefaults({
+        default_speaker: defaultSpeaker,
+        preferred_backend: preferredBackend,
+        speaker_backends: speakerBackends,
+      }),
+    onSuccess: async () => {
+      notifyOk("唱歌默认已保存");
+      await qc.invalidateQueries({ queryKey: ["sing-models"] });
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const ttsMut = useMutation({
     mutationFn: () => putTtsDefaults({ ref_audio_path: ttsRef, prompt_text: ttsPrompt, prompt_lang: ttsPromptLang, text_lang: ttsTextLang }),
@@ -970,8 +1035,20 @@ export default function AiConfigMediaSection() {
             bodyClassName="!grid-cols-1 gap-3"
           >
             <div className="flex flex-wrap gap-2">
-              <Badge variant={runtimeQ.data?.running ? "success" : "secondary"}>
-                {runtimeQ.data?.running ? "运行中" : "未运行"}
+              <Badge
+                variant={
+                  runtimeQ.data?.running
+                    ? "success"
+                    : awaitingRuntimeUp
+                      ? "warn"
+                      : "secondary"
+                }
+              >
+                {runtimeQ.data?.running
+                  ? "运行中"
+                  : awaitingRuntimeUp
+                    ? "启动中"
+                    : "未运行"}
               </Badge>
               <Badge variant="outline">{aiRuntimeLayoutLabel(runtimeLayout)}</Badge>
               {inDocker ? <Badge variant="outline">Bot · Docker</Badge> : null}
@@ -1328,7 +1405,7 @@ export default function AiConfigMediaSection() {
           <div className="space-y-4">
             <PluginConfigFormSection
               title="运行概况"
-              subtitle="已探测到的音色目录与可用推理方式。"
+              subtitle="已探测到的音色目录与可用推理方式；可为每个音色指定优先后端（覆盖下方全局优先）。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="flex flex-wrap items-center gap-2">
@@ -1343,16 +1420,37 @@ export default function AiConfigMediaSection() {
                 {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "暂无推理方式"}
               </p>
               {(singQ.data?.speakers.speakers || []).length ? (
-                <ul className="space-y-1 rounded-[var(--radius-control,8px)] border bg-muted/20 px-3 py-2 text-[11px]">
+                <ul className="space-y-2 rounded-[var(--radius-control,8px)] border bg-muted/20 px-3 py-2 text-[11px]">
                   {(singQ.data?.speakers.speakers || []).map((row) => (
-                    <li key={row.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                      <span className="font-mono font-medium">{row.id}</span>
-                      <Badge variant={row.ready ? "success" : "secondary"} className="text-[10px]">
-                        {row.ready ? "就绪" : "未就绪"}
-                      </Badge>
-                      {row.path ? (
-                        <span className="break-all font-mono text-muted-foreground">{row.path}</span>
-                      ) : null}
+                    <li
+                      key={row.id}
+                      className="flex flex-col gap-1 border-b border-border/40 py-2 last:border-0 last:pb-0 first:pt-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2"
+                    >
+                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span className="font-mono font-medium">{row.id}</span>
+                        <Badge variant={row.ready ? "success" : "secondary"} className="text-[10px]">
+                          {row.ready ? "就绪" : "未就绪"}
+                        </Badge>
+                        {row.path ? (
+                          <span className="break-all font-mono text-muted-foreground">{row.path}</span>
+                        ) : null}
+                      </div>
+                      <div className="w-full min-w-[10rem] sm:ml-auto sm:w-48">
+                        <AiOptionSelect
+                          value={speakerBackends[row.id] || ""}
+                          options={backendOptions}
+                          placeholder="优先推理"
+                          emptyLabel="（用全局）"
+                          onValueChange={(v) =>
+                            setSpeakerBackends((prev) => {
+                              const next = { ...prev };
+                              if (!v) delete next[row.id];
+                              else next[row.id] = v;
+                              return next;
+                            })
+                          }
+                        />
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -1369,7 +1467,7 @@ export default function AiConfigMediaSection() {
 
             <PluginConfigFormSection
               title="默认设置"
-              subtitle="点歌时未指定音色或推理方式时使用。"
+              subtitle="点歌时未指定音色时用默认音色；未按音色指定推理方式时用全局优先。"
               bodyClassName="!grid-cols-1 gap-3"
             >
               <div className="grid grid-cols-2 gap-3">
@@ -1382,7 +1480,10 @@ export default function AiConfigMediaSection() {
                     onValueChange={setDefaultSpeaker}
                   />
                 </AiConfigField>
-                <AiConfigField label="优先推理方式" description="首选的唱歌推理实现；失败时仍会自动尝试其它可用方式。">
+                <AiConfigField
+                  label="全局优先推理"
+                  description="未给该音色单独指定时使用；失败仍会尝试其它可用方式。"
+                >
                   <AiOptionSelect
                     value={preferredBackend}
                     options={backendOptions}
