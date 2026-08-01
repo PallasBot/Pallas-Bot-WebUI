@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.14] - 2026-08-01
 
 ### 更新公告
 
@@ -19,6 +19,20 @@
 ### Fixed
 
 - 媒体 Runtime 启停后轮询刷新，避免界面仍显示已停止
+
+### 提交明细
+
+### Added
+
+* feat(ai): 音色列表可指定优先推理后端 ([d643cfb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d643cfb399d5b7a29905710e804a9c4d875f6936))
+
+### Fixed
+
+* fix(ai): 媒体服务启动后轮询刷新运行状态 ([97406a9](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/97406a9cd1bfca80a8e5b275a73481401dfbfb0b))
+* fix(changelog): 合并重复的 0.8.13 段 ([77b9e30](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/77b9e307a929a499f9a90396640214efca4df8a0))
+
+**完整变更**: [`v0.8.13...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.13...HEAD)
+
 
 ## [0.8.13] - 2026-08-01
 
@@ -118,7 +132,6 @@
 * docs(agents): 同步面向用户用语约定 ([1d119cd](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1d119cd4ff2bdadd5621a5ac222585b4d03da0b3))
 
 **完整变更**: [`v0.8.11...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.11...HEAD)
-
 
 ## [0.8.11] - 2026-07-30
 
