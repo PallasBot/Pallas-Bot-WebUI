@@ -4,6 +4,19 @@
 
 <!-- entries -->
 
+## [0.8.16] - 2026-08-01
+
+### Fixed
+
+* fix(changelog): 合并重复的 0.8.15 段并保留更新公告 ([7450a69](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7450a6949acd5fedf3915a1dd50f0c6c7c8e3f39))
+
+### Changed
+
+* docs(agents): 补充 Unreleased 发版与 CHANGELOG 约定 ([034d57a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/034d57a7d0c2808c4efa71cd4cdd3bb531f6c440))
+
+**完整变更**: [`v0.8.15...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.15...HEAD)
+
+
 ## [0.8.15] - 2026-08-01
 
 ### 更新公告
