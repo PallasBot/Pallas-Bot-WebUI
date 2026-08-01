@@ -67,3 +67,14 @@ npm run sync:console-openapi-types   # 从 ../Pallas-Bot/openspec 生成
 - **自动化 Agent 创建 git commit 前**：先给出提交信息草案，**得到确认后再提交**。
 - 不要擅自 `git push` 或做破坏性 Git 操作，除非维护者明确要求。
 - 需要 **minor/major** 发版时，给 PR 打上 `bump:minor` / `bump:major` 标签（默认 patch）。
+
+### 发版与 CHANGELOG（必读）
+
+合入 `main` 的 Release 会跑 `prepend_changelog_section.sh`，**只认** `## [Unreleased]`：
+
+1. 在 `dev` 的 `CHANGELOG.md` 里、`<!-- entries -->` 下写 **`## [Unreleased]`**（含 `### 更新公告`；**第一条写最低 Bot 版本**，如「需要 Bot ≥ x.y.z；请勿只升控制台」）。
+2. `chore(release): vX.Y.Z` 作 **`dev` tip** 时：把 Unreleased 升成正式段 **或** 仍保留 Unreleased 交给 Release 升版；**不要**在 tip 里手写已存在版本号的第二段 `## [X.Y.Z]`。
+3. **不要手改** `package.json` / `package-lock.json` 的 version（合入 `main` 后由 Release 递增并打 `v*` tag）。
+4. 若 tip 已是 `## [0.8.x]` 且无 Unreleased，Release 会再插一整段同版本 commit 列表 → **重复两段**；务必先 Unreleased。
+
+跨仓顺序与 Bot 发版见工作区 `pallas-release` 规则。
