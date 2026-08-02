@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Radio, Search } from "lucide-react";
+import { ClipboardCopy, Copy, FileText, Files, Radio, Search, Trash2 } from "lucide-react";
 import { fetchLogErrors, postLogErrorsCleanup } from "@/api/fullConsole";
 import type { MatcherErrorLogEntry } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
@@ -193,6 +193,7 @@ export default function LogErrorsPage() {
               variant="destructive"
               size="sm"
               className="shrink-0"
+              icon={Trash2}
               disabled={clearing || query.isFetching || !entries.length}
               title={entries.length ? "清空 log_errors 与分片 errors 归档" : "暂无记录可清理"}
               onClick={() => void clearLogErrors()}
@@ -253,6 +254,7 @@ export default function LogErrorsPage() {
                         <Button
                           variant="outline"
                           size="sm"
+                          icon={ClipboardCopy}
                           title="复制时间与摘要"
                           onClick={() => void copySummary(it)}
                         >
@@ -262,6 +264,7 @@ export default function LogErrorsPage() {
                           <Button
                             variant="outline"
                             size="sm"
+                            icon={Copy}
                             title="复制堆栈文本"
                             onClick={() => void copyTraceback(it)}
                           >
@@ -271,6 +274,7 @@ export default function LogErrorsPage() {
                         <Button
                           variant="outline"
                           size="sm"
+                          icon={Files}
                           title="复制时间与完整堆栈"
                           onClick={() => void copyFull(it)}
                         >

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchCommonConfig, putCommonConfig } from "@/api/console";
 import type { LlmToolCatalogPolicy } from "@/api/pallasTypes";
@@ -185,14 +185,17 @@ export default function McpServersCard({ policy }: { policy?: LlmToolCatalogPoli
             type="button"
             size="sm"
             variant="outline"
+            icon={Plus}
             onClick={() => setServers((prev) => [...prev, blankServer()])}
           >
-            <Plus className="size-3.5" aria-hidden />
             添加
           </Button>
           <Button
             type="button"
             size="sm"
+            icon={Save}
+            iconMotion="scale"
+            iconBusy={saveMut.isPending}
             disabled={!dirty || saveMut.isPending}
             onClick={() => void saveMut.mutateAsync()}
           >
@@ -229,9 +232,9 @@ export default function McpServersCard({ policy }: { policy?: LlmToolCatalogPoli
                   size="sm"
                   variant="ghost"
                   className="text-destructive"
+                  icon={Trash2}
                   onClick={() => setServers((prev) => prev.filter((_, i) => i !== index))}
                 >
-                  <Trash2 className="size-3.5" aria-hidden />
                   删除
                 </Button>
               </div>

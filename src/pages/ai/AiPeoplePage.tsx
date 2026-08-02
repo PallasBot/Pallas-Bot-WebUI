@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, CircleOff, PenLine, X } from "lucide-react";
 import {
   fetchAgentCatchphrases,
   fetchAgentObservations,
@@ -198,6 +199,7 @@ export default function AiPeoplePage() {
               onChange={(e) => setContent(e.target.value)}
             />
             <Button
+              icon={PenLine}
               disabled={!content.trim() || saveFact.isPending || scopeGroup == null || !userId.trim()}
               onClick={() => saveFact.mutate()}
             >
@@ -322,6 +324,7 @@ export default function AiPeoplePage() {
                         <Button
                           size="sm"
                           className="h-7 px-2"
+                          icon={Check}
                           disabled={resolveCatchphrase.isPending}
                           onClick={() =>
                             resolveCatchphrase.mutate({
@@ -336,6 +339,8 @@ export default function AiPeoplePage() {
                           size="sm"
                           variant="outline"
                           className="h-7 px-2"
+                          icon={X}
+                          iconMotion="close"
                           disabled={resolveCatchphrase.isPending}
                           onClick={() =>
                             resolveCatchphrase.mutate({
@@ -354,6 +359,7 @@ export default function AiPeoplePage() {
                           size="sm"
                           variant="outline"
                           className="h-7 px-2"
+                          icon={CircleOff}
                           disabled={resolveCatchphrase.isPending}
                           onClick={() =>
                             resolveCatchphrase.mutate({

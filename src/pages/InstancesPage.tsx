@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { ChevronDown, Search, Database, Cable } from "lucide-react";
+import { ChevronDown, Search, Database, Cable, Settings2, RefreshCw } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 
@@ -651,6 +651,8 @@ export default function InstancesPage() {
                                   type="button"
                                   size="sm"
                                   className="inst-nonebot-init-btn"
+                                  icon={Settings2}
+                                  iconMotion="settings"
                                   onClick={() => startInit(acc)}
                                 >
                                   初始化配置
@@ -682,7 +684,7 @@ export default function InstancesPage() {
         <Card className={INST_PANEL}>
           <CardContent className={INST_PANEL_BD}>
             <p className="muted mb-3">实例数据未加载，可尝试重新拉取。</p>
-            <Button type="button" disabled={reloadBusy} onClick={() => void reloadFromUser()}>
+            <Button type="button" icon={RefreshCw} iconMotion="spin" iconBusy={reloadBusy} disabled={reloadBusy} onClick={() => void reloadFromUser()}>
               重新加载
             </Button>
           </CardContent>

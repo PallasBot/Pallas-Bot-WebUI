@@ -1,3 +1,4 @@
+import { Calendar, CalendarRange } from "lucide-react";
 import { format, parse, isValid, addDays } from "date-fns";
 import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
@@ -100,6 +101,8 @@ export default function DateModeFilter({
           size="sm"
           disabled={disabled}
           className={cn(fieldH, "px-2.5")}
+          icon={Calendar}
+          iconMotion="scale"
           onClick={() => setRange(today, today)}
         >
           今日
@@ -110,6 +113,8 @@ export default function DateModeFilter({
           size="sm"
           disabled={disabled}
           className={cn(fieldH, "px-2.5")}
+          icon={CalendarRange}
+          iconMotion="scale"
           onClick={() => setRange(sevenStart, today)}
         >
           7天

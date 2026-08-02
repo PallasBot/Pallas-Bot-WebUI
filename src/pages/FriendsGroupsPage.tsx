@@ -34,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Bot, ClipboardCheck, Layers, Search, UserPlus, Users } from "lucide-react";
+import { Bot, Check, ClipboardCheck, Layers, Search, UserPlus, Users, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import {
@@ -797,6 +797,8 @@ export default function FriendsGroupsPage() {
                               <Button
                                 type="button"
                                 size="sm"
+                                icon={Check}
+                                iconMotion="scale"
                                 disabled={busy}
                                 onClick={() => void actFriend(row.self_id, row.user_id, "approve", row.source)}
                               >
@@ -806,6 +808,8 @@ export default function FriendsGroupsPage() {
                                 type="button"
                                 variant="destructive"
                                 size="sm"
+                                icon={X}
+                                iconMotion="close"
                                 disabled={busy}
                                 onClick={() => void actFriend(row.self_id, row.user_id, "reject", row.source)}
                               >
@@ -1003,6 +1007,8 @@ export default function FriendsGroupsPage() {
                               <Button
                                 type="button"
                                 size="sm"
+                                icon={Check}
+                                iconMotion="scale"
                                 disabled={busy}
                                 onClick={() => void actGroup(row.self_id, row.user_id, row.group_id, "approve")}
                               >
@@ -1012,6 +1018,8 @@ export default function FriendsGroupsPage() {
                                 type="button"
                                 variant="destructive"
                                 size="sm"
+                                icon={X}
+                                iconMotion="close"
                                 disabled={busy}
                                 onClick={() => void actGroup(row.self_id, row.user_id, row.group_id, "reject")}
                               >

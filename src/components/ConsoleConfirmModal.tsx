@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { AlertTriangle, Check } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -67,7 +68,14 @@ export default function ConsoleConfirmModal({
 
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>取消</AlertDialogCancel>
-          <Button type="button" variant={confirmVariant} disabled={busy} onClick={onConfirm}>
+          <Button
+            type="button"
+            variant={confirmVariant}
+            icon={confirmVariant === "destructive" ? AlertTriangle : Check}
+            iconMotion="scale"
+            disabled={busy}
+            onClick={onConfirm}
+          >
             {confirmText}
           </Button>
         </AlertDialogFooter>

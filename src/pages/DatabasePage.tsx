@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/select";
 import UiInput from "@/components/ui/UiInput";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
-import { Code2, ChevronDown, Database, Layers, Search, Table2, Users } from "lucide-react";
+import { Code2, ChevronDown, Database, Eye, Layers, Play, Plus, Search, Table2, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
@@ -846,6 +846,7 @@ export default function DatabasePage() {
             <Button
               type="button"
               size="sm"
+              icon={Play}
               disabled={aggLoading || !collection.trim()}
               onClick={() => void runAggregate()}
             >
@@ -1013,6 +1014,7 @@ export default function DatabasePage() {
                     type="button"
                     size="sm"
                     className="database-user-config-add__btn"
+                    icon={Plus}
                     disabled={socialConfigsBusy}
                     onClick={openAddUserConfig}
                   >
@@ -1233,6 +1235,7 @@ export default function DatabasePage() {
                               type="button"
                               size="sm"
                               variant="outline"
+                              icon={Eye}
                               onClick={() => selectStorageView(row.name)}
                             >
                               只读

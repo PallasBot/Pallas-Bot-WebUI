@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } from "react";
-import { Check, ChevronDown, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Loader2, RefreshCw } from "lucide-react";
 import {
   protocolApiErrorMessage,
   protocolListDockerImages,
@@ -199,7 +199,15 @@ export default function ProtocolDockerImageSelect({
             ) : listError ? (
               <div className="space-y-2 px-3 py-3">
                 <p className="text-sm text-destructive">{listError}</p>
-                <Button type="button" size="sm" variant="secondary" onClick={() => void loadImages()}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  icon={RefreshCw}
+                  iconMotion="spin"
+                  iconBusy={loading}
+                  onClick={() => void loadImages()}
+                >
                   重试
                 </Button>
               </div>
@@ -239,7 +247,7 @@ export default function ProtocolDockerImageSelect({
         </div>
         {draft.trim() && draft.trim() !== safeValue ? (
           <div className="shrink-0 border-t p-2">
-            <Button type="button" size="sm" className="w-full" onClick={commitDraft}>
+            <Button type="button" size="sm" className="w-full" icon={Check} iconMotion="scale" onClick={commitDraft}>
               使用「{draft.trim()}」
             </Button>
           </div>

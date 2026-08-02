@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Save, Undo2 } from "lucide-react";
 import type { BotConfigPublic, PersonaSeedPref, PluginRow } from "@/api/pallasTypes";
 import {
   PERSONA_SEED_PREF_OPTIONS,
@@ -342,7 +343,7 @@ export default function BotConfigModal({
                     {draft.seedManual ? (
                       <div className="bot-config-seed-status">
                         <span className="muted">当前：手改覆盖</span>
-                        <Button type="button" variant="outline" size="sm" onClick={clearSeedOverride}>
+                        <Button type="button" variant="outline" size="sm" icon={Undo2} iconMotion="undo" onClick={clearSeedOverride}>
                           恢复自动
                         </Button>
                       </div>
@@ -391,6 +392,8 @@ export default function BotConfigModal({
           <Button
             type="button"
             size="sm"
+            icon={Save}
+            iconMotion="scale"
             disabled={saveBusy}
             title="Ctrl+S"
             onClick={() => void saveBotConfig()}

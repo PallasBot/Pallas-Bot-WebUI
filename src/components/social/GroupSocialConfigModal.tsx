@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Save, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 import {
@@ -337,18 +338,21 @@ export default function GroupSocialConfigModal({
                 type="button"
                 variant="outline"
                 size="sm"
+                icon={X}
+                iconMotion="close"
                 disabled={busy}
                 onClick={() => onOpenChange(false)}
               >
                 取消
               </Button>
-              <Button type="button" size="sm" disabled={busy} onClick={() => void save()}>
+              <Button type="button" size="sm" icon={Save} iconMotion="scale" disabled={busy} onClick={() => void save()}>
                 {saveBusy ? "保存中…" : "保存"}
               </Button>
               <Button
                 type="button"
                 variant="destructive"
                 size="sm"
+                icon={Trash2}
                 disabled={busy}
                 onClick={() => {
                   setDeleteErr("");

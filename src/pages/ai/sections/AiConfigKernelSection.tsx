@@ -9,6 +9,7 @@ import {
   postConversationKernelMemoryDelete,
   postConversationKernelRelationshipNoteDelete,
 } from "@/api/console";
+import { Trash2 } from "lucide-react";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import SegTabs from "@/components/SegTabs";
@@ -142,6 +143,7 @@ export default function AiConfigKernelSection() {
                     <Button
                       size="sm"
                       variant="outline"
+                      icon={Trash2}
                       disabled={delMemoryMut.isPending}
                       onClick={() => {
                         void delMemoryMut.mutateAsync(id);
@@ -167,6 +169,7 @@ export default function AiConfigKernelSection() {
                     <Button
                       size="sm"
                       variant="outline"
+                      icon={Trash2}
                       disabled={delNoteMut.isPending}
                       onClick={() => {
                         void delNoteMut.mutateAsync(id);

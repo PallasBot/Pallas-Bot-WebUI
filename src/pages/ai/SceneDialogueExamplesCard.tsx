@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Pencil, Power, Save, Trash2, X } from "lucide-react";
 import {
   deleteSceneDialogueExample,
   fetchSceneDialogueExamples,
@@ -122,8 +123,8 @@ export default function SceneDialogueExamplesCard({ botId }: { botId: number | n
               <div className="flex flex-wrap items-center gap-2">
                 <Input className="w-24" type="number" value={draft.order} onChange={(e) => setDraft({ ...draft, order: Number(e.target.value) || 0 })} aria-label="排序" />
                 <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />启用</label>
-                <Button size="sm" onClick={() => void save()} disabled={actionPending || !draft.scene || !draft.user_cue || !draft.positive || !draft.negative}>保存</Button>
-                {editing ? <Button size="sm" variant="ghost" disabled={actionPending} onClick={() => { setEditing(null); setDraft(emptyDraft()); }}>取消</Button> : null}
+                <Button size="sm" icon={Save} onClick={() => void save()} disabled={actionPending || !draft.scene || !draft.user_cue || !draft.positive || !draft.negative}>保存</Button>
+                {editing ? <Button size="sm" variant="ghost" icon={X} iconMotion="close" disabled={actionPending} onClick={() => { setEditing(null); setDraft(emptyDraft()); }}>取消</Button> : null}
               </div>
             </div>
             {actionError ? <p className="text-sm text-destructive">{actionError}</p> : null}
@@ -134,9 +135,9 @@ export default function SceneDialogueExamplesCard({ botId }: { botId: number | n
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-medium">{item.scene} · {item.enabled ? "启用" : "停用"}</span>
                       <div className="flex flex-wrap gap-1.5">
-                        <Button size="sm" variant="outline" disabled={actionPending} onClick={() => void toggle(item)}>{item.enabled ? "停用" : "启用"}</Button>
-                        <Button size="sm" variant="outline" disabled={actionPending} onClick={() => { setEditing(item.example_id); setDraft(item); }}>编辑</Button>
-                        <Button size="sm" variant="destructive" disabled={actionPending} onClick={() => void remove(item.example_id)}>删除</Button>
+                        <Button size="sm" variant="outline" icon={Power} disabled={actionPending} onClick={() => void toggle(item)}>{item.enabled ? "停用" : "启用"}</Button>
+                        <Button size="sm" variant="outline" icon={Pencil} disabled={actionPending} onClick={() => { setEditing(item.example_id); setDraft(item); }}>编辑</Button>
+                        <Button size="sm" variant="destructive" icon={Trash2} disabled={actionPending} onClick={() => void remove(item.example_id)}>删除</Button>
                       </div>
                     </div>
                     <p className="text-muted-foreground">线索：{item.user_cue}</p>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { GripVertical, ImageIcon, Plus, X } from "lucide-react";
+import { GripVertical, ImageIcon, Link2, PenLine, Plus, Save, Star, Trash2, X } from "lucide-react";
 import { fetchLlmProviderModels, fetchLlmProvidersConfig } from "@/api/consoleApi";
 import type { LlmProviderConfigRow } from "@/api/pallasTypes";
 import AiConfigField, { AiModelSelect } from "@/components/ai/AiConfigField";
@@ -470,6 +470,8 @@ export default function ProviderGatewayPanel({
               type="button"
               size="sm"
               className="h-9 shrink-0"
+              icon={Save}
+              iconMotion="scale"
               disabled={busy || !currencyDirty}
               onClick={() => void saveCurrencyOnly()}
             >
@@ -614,6 +616,7 @@ export default function ProviderGatewayPanel({
                     type="button"
                     size="sm"
                     variant={mode === "inherit" ? "secondary" : "ghost"}
+                    icon={Link2}
                     className={cn(
                       "h-8 flex-1 text-xs",
                       mode === "inherit" ? "font-medium" : "text-muted-foreground",
@@ -626,6 +629,7 @@ export default function ProviderGatewayPanel({
                     type="button"
                     size="sm"
                     variant={mode === "manual" ? "secondary" : "ghost"}
+                    icon={PenLine}
                     className={cn(
                       "h-8 flex-1 text-xs",
                       mode === "manual" ? "font-medium" : "text-muted-foreground",
@@ -808,10 +812,10 @@ export default function ProviderGatewayPanel({
             </div>
 
             <div className="flex shrink-0 flex-wrap gap-2 border-t p-3">
-              <Button type="button" size="sm" disabled={busy} onClick={() => void saveDraft()}>
+              <Button type="button" size="sm" icon={Save} iconMotion="scale" disabled={busy} onClick={() => void saveDraft()}>
                 {busy ? "保存中…" : "保存"}
               </Button>
-              <Button type="button" size="sm" variant="outline" disabled={busy} onClick={closeEditor}>
+              <Button type="button" size="sm" variant="outline" icon={X} iconMotion="close" disabled={busy} onClick={closeEditor}>
                 取消
               </Button>
               {!isAdd && draft.role === "fallback" ? (
@@ -820,6 +824,7 @@ export default function ProviderGatewayPanel({
                     type="button"
                     size="sm"
                     variant="secondary"
+                    icon={Star}
                     disabled={busy}
                     onClick={() => void promoteDraft()}
                   >
@@ -829,6 +834,7 @@ export default function ProviderGatewayPanel({
                     type="button"
                     size="sm"
                     variant="destructive"
+                    icon={Trash2}
                     disabled={busy}
                     onClick={() => void removeDraft()}
                   >

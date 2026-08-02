@@ -27,9 +27,9 @@ import {
 import { useDbBackup } from "@/hooks/useDbBackup";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { formatBackupBytes, formatBackupElapsed } from "@/utils/dbBackupFormat";
-import { HardDrive, History, RefreshCw } from "lucide-react";
+import { ArrowLeft, FolderCheck, FolderOpen, HardDrive, History, RefreshCw } from "lucide-react";
+import BtnIco from "@/components/BtnIco";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
-import { cn } from "@/lib/utils";
 
 type DownloadState = {
   status: "idle" | "downloading" | "done" | "failed";
@@ -397,17 +397,22 @@ export default function DatabaseBackupsPage() {
         description="创建、下载与清理数据库备份。"
         actions={
           <div className="flex flex-nowrap items-center gap-1.5">
-            <Button asChild variant="secondary" size="sm">
-              <Link to="/database">返回数据库</Link>
+            <Button asChild variant="secondary" size="sm" className="group">
+              <Link to="/database">
+                <BtnIco icon={ArrowLeft} motion="back" />
+                返回数据库
+              </Link>
             </Button>
             <Button
               type="button"
               variant="secondary"
               size="sm"
+              icon={RefreshCw}
+              iconMotion="spin"
+              iconBusy={listBusy}
               disabled={listBusy}
               onClick={() => void loadRuns()}
             >
-              <RefreshCw className={cn("size-3.5", listBusy && "animate-spin")} />
               {listBusy ? "刷新中…" : "刷新"}
             </Button>
           </div>
@@ -526,6 +531,7 @@ export default function DatabaseBackupsPage() {
                       variant="secondary"
                       size="sm"
                       className="shrink-0"
+                      icon={FolderOpen}
                       disabled={listBusy || deleting || backup.busy}
                       onClick={() => setDirPickerOpen(true)}
                     >
@@ -536,6 +542,7 @@ export default function DatabaseBackupsPage() {
                       variant="secondary"
                       size="sm"
                       className="shrink-0"
+                      icon={FolderCheck}
                       disabled={listBusy || deleting || backup.busy}
                       onClick={() => void applyDirectoryAndRefresh()}
                     >

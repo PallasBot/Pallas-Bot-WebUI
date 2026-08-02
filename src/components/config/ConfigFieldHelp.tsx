@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
 
 function isMobileViewport(): boolean {
   return typeof window !== "undefined" && window.innerWidth <= 560;
@@ -216,7 +217,7 @@ export default function ConfigFieldHelp({
             <HelpBody title={title} description={description} />
           </div>
           <div className="flex justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>
+            <Button type="button" variant="outline" size="sm" icon={X} iconMotion="close" onClick={() => setDialogOpen(false)}>
               关闭
             </Button>
           </div>

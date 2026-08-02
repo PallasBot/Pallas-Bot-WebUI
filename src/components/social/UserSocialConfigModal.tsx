@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Save, Trash2, X } from "lucide-react";
 
 const SWITCH_CLASS = "data-[state=checked]:bg-[var(--accent)]";
 
@@ -211,12 +212,14 @@ export default function UserSocialConfigModal({
                 type="button"
                 variant="outline"
                 size="sm"
+                icon={X}
+                iconMotion="close"
                 disabled={busy}
                 onClick={() => onOpenChange(false)}
               >
                 取消
               </Button>
-              <Button type="button" size="sm" disabled={busy} onClick={() => void save()}>
+              <Button type="button" size="sm" icon={Save} iconMotion="scale" disabled={busy} onClick={() => void save()}>
                 {saveBusy ? "保存中…" : "保存"}
               </Button>
               {canDelete ? (
@@ -224,6 +227,7 @@ export default function UserSocialConfigModal({
                   type="button"
                   variant="destructive"
                   size="sm"
+                  icon={Trash2}
                   disabled={busy}
                   onClick={() => {
                     setDeleteErr("");

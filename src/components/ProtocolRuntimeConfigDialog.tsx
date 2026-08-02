@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { UserMinus, UserPlus } from "lucide-react";
+import { Power, UserMinus, UserPlus, X } from "lucide-react";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { coerceBoolean } from "@/utils/protocolUi";
 import { snowlumaRuntimeWebUiHref } from "@/utils/protocolLinks";
@@ -283,6 +283,7 @@ export default function ProtocolRuntimeConfigDialog({
                                 ? "outline"
                                 : "default"
                           }
+                          icon={Power}
                           title={
                             running
                               ? "停止该账号的 QQ 进程"
@@ -363,7 +364,7 @@ export default function ProtocolRuntimeConfigDialog({
         </div>
 
         <DialogFooter className="plugin-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
-          <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={requestClose}>
+          <Button type="button" size="sm" variant="secondary" icon={X} iconMotion="close" disabled={busy} onClick={requestClose}>
             关闭
           </Button>
         </DialogFooter>

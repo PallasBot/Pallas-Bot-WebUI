@@ -37,6 +37,7 @@ import {
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
 import CopyIconButton from "@/components/CopyIconButton";
+import BtnIco from "@/components/BtnIco";
 import ProtocolDockerImageSelect from "@/components/protocol/ProtocolDockerImageSelect";
 import SnowlumaRuntimeCombobox from "@/components/protocol/SnowlumaRuntimeCombobox";
 import FormSectionDivider from "@/components/config/FormSectionDivider";
@@ -61,6 +62,16 @@ import {
   protocolRuntimeModeLabel,
   protocolRuntimeVersionText,
 } from "@/utils/protocolUi";
+import {
+  ExternalLink,
+  Monitor,
+  Play,
+  QrCode,
+  RotateCw,
+  Square,
+  Syringe,
+  Trash2,
+} from "lucide-react";
 
 export type ProtocolAccountTab = "overview" | "settings";
 
@@ -825,6 +836,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                           <Button
                             type="button"
                             size="sm"
+                            icon={QrCode}
                             disabled={qrRefreshBusy}
                             onClick={() => void refreshQrcode(true)}
                           >
@@ -897,13 +909,21 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                     <div className="protocol-account-workspace__aside-group">
                       <p className="protocol-account-workspace__aside-label">生命周期</p>
                       <div className="protocol-account-workspace__aside-actions">
-                        <Button type="button" size="sm" variant="outline" disabled={actionBusy} onClick={() => void runAction("start")}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          icon={Play}
+                          disabled={actionBusy}
+                          onClick={() => void runAction("start")}
+                        >
                           启动
                         </Button>
                         <Button
                           type="button"
                           size="sm"
                           variant={again.isArmed("stop") ? "default" : "outline"}
+                          icon={Square}
                           disabled={actionBusy}
                           onClick={() => again.run("stop", () => void runAction("stop"))}
                         >
@@ -913,13 +933,24 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                           type="button"
                           size="sm"
                           variant={again.isArmed("restart") ? "default" : "outline"}
+                          icon={RotateCw}
+                          iconMotion="spin"
+                          iconBusy={actionBusy}
                           disabled={actionBusy}
                           onClick={() => again.run("restart", () => void runAction("restart"))}
                         >
                           {again.label("restart", "重启")}
                         </Button>
                         {isSnowluma ? (
-                          <Button type="button" size="sm" variant="outline" disabled={injectBusy} onClick={() => void injectHook()}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            icon={Syringe}
+                            iconMotion="settings"
+                            disabled={injectBusy}
+                            onClick={() => void injectHook()}
+                          >
                             注入
                           </Button>
                         ) : null}
@@ -930,21 +961,29 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                       <p className="protocol-account-workspace__aside-label">打开</p>
                       <div className="protocol-account-workspace__aside-actions">
                         {webUiHref ? (
-                          <Button type="button" size="sm" variant="secondary" asChild>
+                          <Button type="button" size="sm" variant="secondary" asChild className="group">
                             <a href={webUiHref} target="_blank" rel="noopener noreferrer" title={nativeWebUiAuthNote || undefined}>
+                              <BtnIco icon={ExternalLink} motion="external" />
                               {nativeWebUiLabel}
                             </a>
                           </Button>
                         ) : null}
                         {snowlumaNovncHref ? (
-                          <Button type="button" size="sm" variant="secondary" asChild>
+                          <Button type="button" size="sm" variant="secondary" asChild className="group">
                             <a href={snowlumaNovncHref} target="_blank" rel="noopener noreferrer" title={`VNC 密码 ${snowlumaNovncHint}`}>
+                              <BtnIco icon={Monitor} motion="external" />
                               SL 桌面
                             </a>
                           </Button>
                         ) : null}
                         {!showQrImage ? (
-                          <Button type="button" size="sm" disabled={qrRefreshBusy} onClick={() => void refreshQrcode(true)}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            icon={QrCode}
+                            disabled={qrRefreshBusy}
+                            onClick={() => void refreshQrcode(true)}
+                          >
                             {qrRefreshBusy ? "恢复中…" : "恢复登录"}
                           </Button>
                         ) : null}
@@ -952,7 +991,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                     </div>
 
                     <div className="protocol-account-workspace__aside-danger">
-                      <Button type="button" size="sm" variant="destructive" onClick={openDeleteModal}>
+                      <Button type="button" size="sm" variant="destructive" icon={Trash2} onClick={openDeleteModal}>
                         删除账号
                       </Button>
                     </div>
