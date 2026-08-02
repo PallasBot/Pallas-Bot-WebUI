@@ -1533,51 +1533,49 @@ export default function AiConfigMediaSection() {
                   : backendOptions.map((b) => b.value).join(", ")}
               </p>
               {(singQ.data?.speakers.speakers || []).length ? (
-                <ul className="space-y-2 rounded-[var(--radius-control,8px)] border bg-muted/20 px-3 py-2 text-[11px]">
+                <ul className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2 xl:grid-cols-3">
                   {(singQ.data?.speakers.speakers || []).map((row) => (
                     <li
                       key={row.id}
-                      className="flex flex-col gap-1 border-b border-border/40 py-2 last:border-0 last:pb-0 first:pt-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2"
+                      className="flex min-w-0 flex-col gap-2 rounded-[var(--radius-control,8px)] border bg-muted/20 px-3 py-2.5"
                     >
-                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
                         <span className="font-mono font-medium">{row.id}</span>
                         <Badge variant={row.ready ? "success" : "secondary"} className="text-[10px]">
                           {row.ready ? "就绪" : "未就绪"}
                         </Badge>
-                        {(row.backends || []).length ? (
-                          <span className="text-muted-foreground">
-                            适配 {(row.backends || []).join(", ")}
-                          </span>
-                        ) : null}
-                        {row.path ? (
-                          <span className="break-all font-mono text-muted-foreground">{row.path}</span>
-                        ) : null}
                       </div>
-                      <div className="flex w-full min-w-0 flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:items-center">
-                        <div className="w-full min-w-[10rem] sm:w-52">
-                          <AiOptionSelect
-                            value={speakerBackends[row.id] || ""}
-                            options={buildSvcBackendSelectOptions(
-                              singQ.data?.backends.backends || [],
-                              row.backends,
-                            )}
-                            placeholder="优先推理"
-                            emptyLabel="（用全局）"
-                            onValueChange={(v) =>
-                              setSpeakerBackends((prev) => {
-                                const next = { ...prev };
-                                if (!v) delete next[row.id];
-                                else next[row.id] = v;
-                                return next;
-                              })
-                            }
-                          />
-                        </div>
+                      {(row.backends || []).length ? (
+                        <p className="text-muted-foreground">
+                          适配 {(row.backends || []).join(", ")}
+                        </p>
+                      ) : null}
+                      {row.path ? (
+                        <p className="break-all font-mono text-muted-foreground">{row.path}</p>
+                      ) : null}
+                      <div className="mt-auto flex min-w-0 flex-col gap-2">
+                        <AiOptionSelect
+                          value={speakerBackends[row.id] || ""}
+                          options={buildSvcBackendSelectOptions(
+                            singQ.data?.backends.backends || [],
+                            row.backends,
+                          )}
+                          placeholder="优先推理"
+                          emptyLabel="（用全局）"
+                          onValueChange={(v) =>
+                            setSpeakerBackends((prev) => {
+                              const next = { ...prev };
+                              if (!v) delete next[row.id];
+                              else next[row.id] = v;
+                              return next;
+                            })
+                          }
+                        />
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="shrink-0"
+                          className="w-full"
                           icon={ListPlus}
                           disabled={!singPluginStatus.hasData || singPluginStatus.loading}
                           onClick={() => addSingAudioMapping(row.id)}
