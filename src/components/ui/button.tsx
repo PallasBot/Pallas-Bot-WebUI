@@ -68,17 +68,24 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref,
   ) => {
-    const Comp = asChild ? Slot : "button";
     const withIcon = Boolean(icon) && !asChild;
+    // asChild 时 Slot 只接受单一 React 元素子节点；勿再塞 null/图标旁路
+    if (asChild) {
+      return (
+        <Slot className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
+          {children}
+        </Slot>
+      );
+    }
     return (
-      <Comp
+      <button
         className={cn(buttonVariants({ variant, size, className }), withIcon && "group")}
         ref={ref}
         {...props}
       >
         {withIcon && icon ? <BtnIco icon={icon} motion={iconMotion} busy={iconBusy} /> : null}
         {children}
-      </Comp>
+      </button>
     );
   },
 );
