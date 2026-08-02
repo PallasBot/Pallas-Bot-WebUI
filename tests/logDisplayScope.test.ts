@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { LogEntry } from "@/api/pallasTypes";
 import {
+  formatLogScopeBadge,
   logEntrySourceKey,
   normalizeLogEntryDisplay,
   normalizeLogScope,
   scopeBadgeHue,
+  shortenLogScopeModule,
   splitLogScope,
 } from "@/utils/logDisplay";
 
@@ -58,5 +60,29 @@ describe("scopeBadgeHue", () => {
     expect(scopeBadgeHue("pallas")).not.toBe(scopeBadgeHue("pb_webui"));
     expect(scopeBadgeHue("pallas")).toBeGreaterThanOrEqual(0);
     expect(scopeBadgeHue("pallas")).toBeLessThan(360);
+  });
+});
+
+describe("formatLogScopeBadge", () => {
+  it("shortens pallas_plugin_* / nonebot_plugin_* to import id", () => {
+    expect(shortenLogScopeModule("pallas_plugin_sing")).toBe("sing");
+    expect(shortenLogScopeModule("pallas_plugin_sing.handlers")).toBe("sing");
+    expect(shortenLogScopeModule("nonebot_plugin_foo")).toBe("foo");
+    expect(formatLogScopeBadge("pallas_plugin_sing")).toEqual({
+      label: "sing",
+      title: "pallas_plugin_sing",
+    });
+  });
+
+  it("keeps worker source and shortens module", () => {
+    expect(formatLogScopeBadge("worker-1/pallas_plugin_sing")).toEqual({
+      label: "worker-1/sing",
+      title: "worker-1/pallas_plugin_sing",
+    });
+  });
+
+  it("leaves core / pb_* scopes unchanged", () => {
+    expect(formatLogScopeBadge("pallas")).toEqual({ label: "pallas", title: "pallas" });
+    expect(formatLogScopeBadge("pb_webui")).toEqual({ label: "pb_webui", title: "pb_webui" });
   });
 });

@@ -59,6 +59,38 @@ export function scopeBadgeHue(scopeKey: string): number {
   }
   return (h >>> 0) % 360;
 }
+
+const PLUGIN_SCOPE_PREFIXES = ["pallas_plugin_", "nonebot_plugin_"] as const;
+
+/**
+ * 日志 scope 插件段缩短为导入 id：`pallas_plugin_sing` → `sing`。
+ * 保留 worker/hub 来源前缀；完整原名留给 title。
+ */
+export function shortenLogScopeModule(module: string): string {
+  let s = String(module ?? "").trim();
+  if (!s) return "";
+  const lower = s.toLowerCase();
+  for (const prefix of PLUGIN_SCOPE_PREFIXES) {
+    const idx = lower.indexOf(prefix);
+    if (idx >= 0) {
+      s = s.slice(idx + prefix.length);
+      break;
+    }
+  }
+  // logger 名常带 `.子模块`，badge 只留首段导入 id
+  const head = s.split(/[.:/]/)[0]?.trim() || s;
+  return head;
+}
+
+/** 列表 / 固定面板 scope 徽章文案：短标签 + 悬停完整名 */
+export function formatLogScopeBadge(scope: string): { label: string; title: string } {
+  const raw = String(scope ?? "").trim();
+  const { source, module } = splitLogScope(raw);
+  const full = [source, module].filter(Boolean).join("/") || raw;
+  const shortMod = shortenLogScopeModule(module);
+  const label = [source, shortMod].filter(Boolean).join("/") || shortMod || source || "";
+  return { label, title: full || label };
+}
 /** 运行日志 feed 行首：仅 `HH:mm:ss`，缩短前置标签 */
 export function formatLogDisplayTime(raw: string | number): string {
   if (typeof raw === "number") {
