@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowUpToLine, Download, PackageX } from "lucide-react";
+import BtnIco from "@/components/BtnIco";
 import NoticeDot from "@/components/NoticeDot";
 import PluginIcon from "@/components/PluginIcon";
 import { cn } from "@/lib/utils";
@@ -284,28 +286,34 @@ export default function PluginStoreCard({
                 <button
                   type="button"
                   className={cn(
-                    "btn ui-btn plugin-store-card__foot-btn",
+                    "group btn ui-btn plugin-store-card__foot-btn",
                     showUpdate ? "ui-btn--primary btn--primary" : "plugin-store-card__foot-btn--latest ui-btn--latest",
                   )}
                   disabled={footLocked || !showUpdate || updateQueued}
                   onClick={() => showUpdate && !updateQueued && onUpdate?.()}
                 >
-                  <svg className="ui-btn__ico plugin-store-card__foot-ico" viewBox="0 0 24 24" width={15} height={15} aria-hidden="true">
-                    <path fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" />
-                  </svg>
+                  <BtnIco
+                    icon={ArrowUpToLine}
+                    motion="up"
+                    busy={updateBusy}
+                    className="plugin-store-card__foot-ico"
+                  />
                   <span>
                     {updateBusy ? "更新中…" : updateQueued ? "排队中" : showUpdate ? updateLabel : latestLabel}
                   </span>
                 </button>
                 <button
                   type="button"
-                  className="btn ui-btn ui-btn--destructive btn--danger plugin-store-card__foot-btn"
+                  className="group btn ui-btn ui-btn--destructive btn--danger plugin-store-card__foot-btn"
                   disabled={footLocked}
                   onClick={() => onUninstall?.()}
                 >
-                  <svg className="ui-btn__ico plugin-store-card__foot-ico" viewBox="0 0 24 24" width={15} height={15} aria-hidden="true">
-                    <path fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4h8v2m-1 14H9a2 2 0 0 1-2-2V8h10v10a2 2 0 0 1-2 2Z" />
-                  </svg>
+                  <BtnIco
+                    icon={PackageX}
+                    motion="scale"
+                    busy={uninstallBusy}
+                    className="plugin-store-card__foot-ico"
+                  />
                   <span>{uninstallBusy ? "卸载中…" : uninstallLabel}</span>
                 </button>
               </>
@@ -313,13 +321,16 @@ export default function PluginStoreCard({
               <>
                 <button
                   type="button"
-                  className="btn ui-btn ui-btn--primary btn--primary plugin-store-card__foot-btn"
+                  className="group btn ui-btn ui-btn--primary btn--primary plugin-store-card__foot-btn"
                   disabled={footLocked || installQueued}
                   onClick={() => !installQueued && onInstall?.()}
                 >
-                  <svg className="ui-btn__ico plugin-store-card__foot-ico" viewBox="0 0 24 24" width={15} height={15} aria-hidden="true">
-                    <path fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" />
-                  </svg>
+                  <BtnIco
+                    icon={Download}
+                    motion="down"
+                    busy={installBusy || busy}
+                    className="plugin-store-card__foot-ico"
+                  />
                   <span>{installBusy || busy ? "安装中…" : installQueued ? "排队中" : installLabel}</span>
                 </button>
                 {repoUrl ? (

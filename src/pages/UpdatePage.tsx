@@ -1270,7 +1270,7 @@ export default function UpdatePage() {
                       }}
                       placeholder="任选在线"
                       disabled={autoBusy || busy || !autoDraft.notify_superusers}
-                      triggerClassName="h-9 w-full min-w-0 flex-1"
+                      triggerClassName="h-9 w-full min-w-0 max-w-none flex-1"
                       ariaLabel="汇报用牛"
                       title={
                         notifyBotSelected

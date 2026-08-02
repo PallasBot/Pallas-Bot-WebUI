@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 /** 刷新：走 shadcn Button（扁平），勿再用太鼓的 `.ui-btn` 胶囊。
  * 默认 outline 实体按钮；仅面板标题旁图标刷新可传 `embedded` 用 ghost。
+ * 悬停用 `iconMotion="spin"`，忙碌时 `iconBusy` 持续转圈。
  */
 export default function RefreshIconButton({
   busy = false,
@@ -35,6 +36,9 @@ export default function RefreshIconButton({
       type="button"
       variant={embedded ? "ghost" : "outline"}
       size={showLabel ? "sm" : "icon"}
+      icon={RefreshCw}
+      iconMotion="spin"
+      iconBusy={busy}
       className={cn(
         "btn-refresh-action shrink-0",
         embedded && "btn-refresh-action--embedded",
@@ -48,10 +52,6 @@ export default function RefreshIconButton({
       title={label}
       onClick={handleClick}
     >
-      <RefreshCw
-        className={cn("btn-refresh-action__ico size-3.5", busy && "btn-refresh-action__ico--spin")}
-        aria-hidden
-      />
       {showLabel ? <span className="btn-refresh-action__text">{busy ? busyLabel : label}</span> : null}
     </Button>
   );
