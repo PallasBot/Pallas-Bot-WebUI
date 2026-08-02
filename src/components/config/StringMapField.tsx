@@ -89,7 +89,7 @@ export default function StringMapField({
   value,
   onValueChange,
   className,
-  maxWidth = "520px",
+  maxWidth = "100%",
   speakerPlaceholder = "Speaker id",
   aliasPlaceholder = "输入别名后回车…",
 }: Props) {

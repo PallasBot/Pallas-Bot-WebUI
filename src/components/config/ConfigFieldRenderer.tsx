@@ -268,7 +268,7 @@ export default function ConfigFieldRenderer({
         <StringMapField
           value={modelValue}
           onValueChange={onValueChange}
-          maxWidth={inputMaxWidth}
+          maxWidth="100%"
           speakerPlaceholder="Speaker id"
           aliasPlaceholder="输入别名后回车…"
         />
