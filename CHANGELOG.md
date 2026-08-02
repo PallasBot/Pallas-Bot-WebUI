@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.21] - 2026-08-02
 
 ### 更新公告
 
@@ -14,6 +14,15 @@
 ### Fixed
 
 - 按钮忙碌态：非刷新类图标改用 Loader2，避免 Download 等图标鬼畜旋转
+
+### 提交明细
+
+### Fixed
+
+* fix(ui): 忙碌态下载图标改用 Loader2 避免鬼畜旋转 ([8b5bf43](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8b5bf43ff290fc1fac97193d2a6f544da8081c2c))
+
+**完整变更**: [`v0.8.20...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.20...HEAD)
+
 
 ## [0.8.20] - 2026-08-02
 
@@ -45,7 +54,6 @@
 * fix(ai): 音色资产与音频映射改为多列布局 ([cf44122](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/cf4412208cd351be82716bbec17e6cbbd38972e4))
 
 **完整变更**: [`v0.8.19...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.19...HEAD)
-
 
 ## [0.8.19] - 2026-08-02
 
