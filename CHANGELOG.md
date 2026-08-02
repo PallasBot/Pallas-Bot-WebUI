@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.19] - 2026-08-02
 
 ### 更新公告
 
@@ -14,6 +14,15 @@
 ### Fixed
 
 - 更新页 Bot 历史提交表单元格不换行，窄屏可左右滑动
+
+### 提交明细
+
+### Fixed
+
+* fix(update): 历史提交表横向滚动不换行 ([7e2a51b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7e2a51b5e6d5cb2828083deb9f7f73ebf9a14c7d))
+
+**完整变更**: [`v0.8.18...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.18...HEAD)
+
 
 ## [0.8.18] - 2026-08-02
 
@@ -65,7 +74,6 @@
 * fix(plugin-store): 避免空基线把整店标成上新绿点 ([b581367](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b581367b7f453b09b97491b2b68f7547054195df))
 
 **完整变更**: [`v0.8.17...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.17...HEAD)
-
 
 ## [0.8.17] - 2026-08-01
 
