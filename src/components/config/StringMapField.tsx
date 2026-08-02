@@ -54,6 +54,27 @@ export function stringMapGroupsToJson(groups: StringMapGroup[]): string {
   return `${JSON.stringify(out, null, 2)}\n`;
 }
 
+/**
+ * 确保映射里有该 Speaker 一组；已存在则不动。
+ * 新建时默认用音色 id 作为一条命令前缀（空别名无法落盘进 JSON）。
+ */
+export function ensureStringMapSpeakerGroup(
+  raw: string,
+  speakerId: string,
+): { next: string; created: boolean } | null {
+  const id = speakerId.trim();
+  if (!id) return null;
+  const groups = tryParseStringMapGroups(raw);
+  if (groups == null) return null;
+  if (groups.some((g) => g.speakerId.trim() === id)) {
+    return { next: stringMapGroupsToJson(groups), created: false };
+  }
+  return {
+    next: stringMapGroupsToJson([...groups, { speakerId: id, aliases: [id] }]),
+    created: true,
+  };
+}
+
 type Props = {
   value: string;
   onValueChange: (value: string) => void;

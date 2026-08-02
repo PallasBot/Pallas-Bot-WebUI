@@ -11,6 +11,7 @@ import {
   HardDrive,
   Layers,
   LogOut,
+  ListPlus,
   Mail,
   Music2,
   Package,
@@ -47,8 +48,10 @@ import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
 import ConsoleHint from "@/components/ConsoleHint";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
+import { ensureStringMapSpeakerGroup } from "@/components/config/StringMapField";
 import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
+  type PluginConfigWorkspaceStatus,
 } from "@/components/PluginConfigWorkspace";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
@@ -793,7 +796,8 @@ export default function AiConfigMediaSection() {
   const contentPanel: SelectPanel = panel as SelectPanel;
   const drawWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
   const singWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
-  const emptyPluginStatus = {
+  const singMappingSectionRef = useRef<HTMLDivElement>(null);
+  const emptyPluginStatus: PluginConfigWorkspaceStatus = {
     saving: false,
     checking: false,
     loading: true,
@@ -806,7 +810,7 @@ export default function AiConfigMediaSection() {
   const onPluginStatusChange = useCallback(
     (
       setter: typeof setDrawStatus,
-    ) => (next: Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">) => {
+    ) => (next: PluginConfigWorkspaceStatus) => {
       setter((prev) => {
         if (
           prev.saving === next.saving
@@ -822,6 +826,28 @@ export default function AiConfigMediaSection() {
     },
     [],
   );
+
+  const addSingAudioMapping = useCallback((speakerId: string) => {
+    const id = speakerId.trim();
+    if (!id) return;
+    const workspace = singWorkspaceRef.current;
+    if (!workspace?.hasData) {
+      notifyErr("音频映射尚未加载，请稍后再试");
+      return;
+    }
+    const result = ensureStringMapSpeakerGroup(workspace.getFieldValue("sing_speakers"), id);
+    if (!result) {
+      notifyErr("当前音频映射无法解析，请先在下方手工整理后再试");
+      return;
+    }
+    if (result.created) {
+      workspace.setFieldValue("sing_speakers", result.next);
+      notifyOk(`已添加「${id}」的音频映射（默认前缀为音色 id），可改别名后保存`);
+    } else {
+      notifyOk(`「${id}」已在音频映射中`);
+    }
+    singMappingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
   const onDrawStatusChange = useMemo(() => onPluginStatusChange(setDrawStatus), [onPluginStatusChange]);
   const onSingPluginStatusChange = useMemo(
     () => onPluginStatusChange(setSingPluginStatus),
@@ -1527,24 +1553,37 @@ export default function AiConfigMediaSection() {
                           <span className="break-all font-mono text-muted-foreground">{row.path}</span>
                         ) : null}
                       </div>
-                      <div className="w-full min-w-[10rem] sm:ml-auto sm:w-52">
-                        <AiOptionSelect
-                          value={speakerBackends[row.id] || ""}
-                          options={buildSvcBackendSelectOptions(
-                            singQ.data?.backends.backends || [],
-                            row.backends,
-                          )}
-                          placeholder="优先推理"
-                          emptyLabel="（用全局）"
-                          onValueChange={(v) =>
-                            setSpeakerBackends((prev) => {
-                              const next = { ...prev };
-                              if (!v) delete next[row.id];
-                              else next[row.id] = v;
-                              return next;
-                            })
-                          }
-                        />
+                      <div className="flex w-full min-w-0 flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:items-center">
+                        <div className="w-full min-w-[10rem] sm:w-52">
+                          <AiOptionSelect
+                            value={speakerBackends[row.id] || ""}
+                            options={buildSvcBackendSelectOptions(
+                              singQ.data?.backends.backends || [],
+                              row.backends,
+                            )}
+                            placeholder="优先推理"
+                            emptyLabel="（用全局）"
+                            onValueChange={(v) =>
+                              setSpeakerBackends((prev) => {
+                                const next = { ...prev };
+                                if (!v) delete next[row.id];
+                                else next[row.id] = v;
+                                return next;
+                              })
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0"
+                          icon={ListPlus}
+                          disabled={!singPluginStatus.hasData || singPluginStatus.loading}
+                          onClick={() => addSingAudioMapping(row.id)}
+                        >
+                          添加映射
+                        </Button>
                       </div>
                     </li>
                   ))}
@@ -1591,27 +1630,29 @@ export default function AiConfigMediaSection() {
             </PluginConfigFormSection>
           </div>
         </StateBlock>
-        <PluginConfigFormSection
-          title="音频映射"
-          subtitle="左侧是命令前缀（如「一歌」→「一歌唱歌」），右侧是媒体服务音色 id。"
-          bodyClassName="!grid-cols-1 gap-3"
-          defaultOpen
-        >
-          <PluginConfigWorkspace
-            ref={singWorkspaceRef}
-            pluginName="sing"
-            presentation="dialog"
-            compact
-            includeFields={["sing_speakers"]}
-            hideGroupHeaders
-            onStatusChange={onSingPluginStatusChange}
-          />
-          <PluginConfigElsewhereHint
-            pluginName="sing"
-            label="唱歌"
-            extras="启停、默认合成时长、任务模式等其它项"
-          />
-        </PluginConfigFormSection>
+        <div ref={singMappingSectionRef}>
+          <PluginConfigFormSection
+            title="音频映射"
+            subtitle="左侧是命令前缀（如「一歌」→「一歌唱歌」），右侧是媒体服务音色 id。也可在上方音色列表点「添加映射」。"
+            bodyClassName="!grid-cols-1 gap-3"
+            defaultOpen
+          >
+            <PluginConfigWorkspace
+              ref={singWorkspaceRef}
+              pluginName="sing"
+              presentation="dialog"
+              compact
+              includeFields={["sing_speakers"]}
+              hideGroupHeaders
+              onStatusChange={onSingPluginStatusChange}
+            />
+            <PluginConfigElsewhereHint
+              pluginName="sing"
+              label="唱歌"
+              extras="启停、默认合成时长、任务模式等其它项"
+            />
+          </PluginConfigFormSection>
+        </div>
       </div>
       )
     ) : null}
