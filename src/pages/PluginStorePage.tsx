@@ -330,8 +330,11 @@ export default function PluginStorePage() {
     };
   }, [noticeOfficialRows, noticeCommunityRows, visitNewIds]);
 
+  const catalogNoticeReady = officialNavQ.isFetched && communityNavQ.isFetched;
+
   useEffect(() => {
-    if (!pageReady || !catalogIds.length) return;
+    // 与侧栏一致：两侧目录就绪后再捕获上新，避免半份 catalog 把另一侧整表点绿
+    if (!pageReady || !catalogNoticeReady || !catalogIds.length) return;
     const fresh = listUnseenPluginStoreIds(catalogIds);
     if (fresh.length) {
       setVisitNewIds((prev) => {
@@ -341,7 +344,7 @@ export default function PluginStorePage() {
       });
     }
     markPluginStoreIdsSeen(catalogIds);
-  }, [pageReady, catalogIds]);
+  }, [pageReady, catalogNoticeReady, catalogIds]);
 
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

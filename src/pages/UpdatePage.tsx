@@ -11,13 +11,14 @@ import {
   fetchWebuiAutoUpdateStatus,
   fetchInstances,
   openUpdateApplyJobEventSource,
-  postBotUpdateApply,
+  postBotGitApply,
   postUpdateApply,
   postWebuiAutoUpdateAck,
   postWebuiAutoUpdateRunOnce,
   type UpdateChangelogTarget,
   type WebuiAutoUpdateStatusData,
 } from "@/api/fullConsole";
+import BotGitUpdatePanel from "@/components/BotGitUpdatePanel";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
 import { waitForUpdateApplyJob } from "@/utils/updateApplyJobStream";
 import { InstallJobFailedError, InstallJobStreamInterruptedError } from "@/utils/installJobStream";
@@ -62,7 +63,19 @@ import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { botSelectDropdownLabel } from "@/utils/botDisplay";
 import { readPrefs, writePrefs } from "@/theme/applyShellTheme";
-import { ChevronRight, RefreshCw, LayoutDashboard, Bot, Timer } from "lucide-react";
+import {
+  Bot,
+  ChevronRight,
+  Download,
+  ExternalLink,
+  LayoutDashboard,
+  Play,
+  RefreshCw,
+  Save,
+  Server,
+  Timer,
+  Trash2,
+} from "lucide-react";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 
@@ -71,6 +84,7 @@ const PB_WEBUI_PLUGIN = "pb_webui";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
 const WEBUI_AUTO_ENABLED = "pallas_webui_auto_update_enabled";
 const BOT_AUTO_ENABLED = "pallas_bot_auto_update_enabled";
+const BOT_UPDATE_TRACK = "pallas_bot_update_track";
 const PLUGINS_AUTO_ENABLED = "pallas_plugins_auto_update_enabled";
 const AUTO_NOTIFY_SUPERUSERS = "pallas_auto_update_notify_superusers";
 const AUTO_NOTIFY_BOT_ID = "pallas_auto_update_notify_bot_id";
@@ -252,6 +266,7 @@ export default function UpdatePage() {
   const [autoDraft, setAutoDraft] = useState({
     webui_enabled: false,
     bot_enabled: false,
+    bot_update_track: "release" as "release" | "branch",
     plugins_enabled: false,
     notify_superusers: false,
     notify_bot_id: 0,
@@ -260,7 +275,6 @@ export default function UpdatePage() {
     cron_hour: 4,
     cron_minute: 0,
   });
-
   const q = useQuery({ queryKey: ["update-check-all"], queryFn: fetchUpdateCheckAll });
   const autoQ = useQuery({
     queryKey: ["webui-auto-update-status"],
@@ -314,8 +328,7 @@ export default function UpdatePage() {
 
   const checkedAtDisplay = formatCheckedAt(q.data?.checked_at);
   const webApplyDisabled = busy || !web?.has_update || !web?.latest_tag;
-  const botApplyDisabled =
-    busy || !bot?.has_update || !bot?.latest_tag || bot?.deployment_mode === "docker";
+  const botTrack = (bot?.update_track || autoDraft.bot_update_track || "release") === "branch" ? "branch" : "release";
 
   const botDocLinks = useMemo(() => {
     const isDocker = bot?.deployment_mode === "docker";
@@ -465,6 +478,7 @@ export default function UpdatePage() {
     setAutoDraft({
       webui_enabled: Boolean(data.webui?.enabled ?? data.enabled),
       bot_enabled: Boolean(data.bot?.enabled),
+      bot_update_track: data.bot?.update_track === "branch" ? "branch" : "release",
       plugins_enabled: Boolean(data.plugins?.enabled),
       notify_superusers: Boolean(data.notify_superusers),
       notify_bot_id: Math.max(0, Math.floor(Number(data.notify_bot_id) || 0)),
@@ -612,6 +626,7 @@ export default function UpdatePage() {
       await putPluginConfig(PB_WEBUI_PLUGIN, {
         [WEBUI_AUTO_ENABLED]: next.webui_enabled,
         [BOT_AUTO_ENABLED]: next.bot_enabled,
+        [BOT_UPDATE_TRACK]: next.bot_update_track,
         [PLUGINS_AUTO_ENABLED]: next.plugins_enabled,
         [AUTO_NOTIFY_SUPERUSERS]: next.notify_superusers,
         [AUTO_NOTIFY_BOT_ID]: next.notify_bot_id,
@@ -621,7 +636,10 @@ export default function UpdatePage() {
         [WEBUI_AUTO_CRON_MINUTE]: next.cron_minute,
       });
       setAutoDraft(next);
-      await qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] }),
+        qc.invalidateQueries({ queryKey: ["update-check-all"] }),
+      ]);
       const anyOn = next.webui_enabled || next.bot_enabled || next.plugins_enabled;
       pushConsoleToast(
         anyOn
@@ -790,38 +808,39 @@ export default function UpdatePage() {
     }
   }
 
-  async function applyBot(restart = false) {
-    if (!bot?.latest_tag) return;
-    if (
-      !(await confirm({
-        title: restart ? "更新并重启 Bot" : "更新 Bot",
-        subtitle: restart
-          ? `将 Bot 更新到 ${bot.latest_tag} 并重启进程？`
-          : `将 Bot 更新到 ${bot.latest_tag}？`,
-        confirmLabel: restart ? "更新并重启" : "更新",
-        confirmVariant: "default",
-      }))
-    )
-      return;
+  async function applyBotGit(opts: {
+    mode: "release" | "commit";
+    branch: string;
+    ref: string;
+    strategy: "safe" | "force";
+    restart: boolean;
+  }) {
     setApplyKind("bot");
     setApplyPercent(1);
     setApplyHint("排队中…");
     setErr("");
     setMsg("");
     try {
-      const started = await postBotUpdateApply({ restart });
+      const started = await postBotGitApply(opts);
       if (!started.job_id) throw new Error("未返回更新任务 ID");
       const done = await waitForUpdateApplyJob(started.job_id, openUpdateApplyJobEventSource, (p) => {
         setApplyPercent(p.percent);
         if (p.message) setApplyHint(p.message);
       }, { kind: "bot" });
       setApplyPercent(100);
-      setMsg(done.result?.message || done.message || (restart ? "已触发更新与重启。" : "已触发。"));
-      if (readPrefs().showUpdateChangelog) {
-        if (restart) writePendingChangelog({ kind: "bot", tag: bot.latest_tag });
-        else void openChangelogDialog("bot", bot.latest_tag);
+      setMsg(done.result?.message || done.message || (opts.restart ? "已触发更新与重启。" : "已触发。"));
+      const tagHint = String(done.result?.tag || opts.ref || bot?.latest_tag || "").trim();
+      if (tagHint && readPrefs().showUpdateChangelog) {
+        if (opts.restart) writePendingChangelog({ kind: "bot", tag: tagHint });
+        else void openChangelogDialog("bot", tagHint);
       }
-      if (!restart) await qc.invalidateQueries({ queryKey: ["update-check-all"] });
+      if (!opts.restart) {
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["update-check-all"] }),
+          qc.invalidateQueries({ queryKey: ["bot-git-status"] }),
+          qc.invalidateQueries({ queryKey: ["bot-git-history"] }),
+        ]);
+      }
       setApplyKind(null);
       setApplyPercent(0);
       setApplyHint("");
@@ -882,17 +901,34 @@ export default function UpdatePage() {
         }
         actions={
           <div className="flex flex-nowrap items-center gap-1.5">
-            <Button type="button" variant="secondary" size="sm" onClick={() => setGitMirrorOpen(true)}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="group"
+              onClick={() => setGitMirrorOpen(true)}
+            >
+              <Server
+                className="size-3.5 shrink-0 transition-transform duration-200 group-hover:scale-110"
+                aria-hidden
+              />
               镜像源
             </Button>
             <Button
               type="button"
               variant="secondary"
               size="sm"
+              className="group"
               disabled={q.isFetching || busy}
               onClick={() => void q.refetch()}
             >
-              <RefreshCw className={cn("size-3.5", (q.isFetching || busy) && "animate-spin")} />
+              <RefreshCw
+                className={cn(
+                  "size-3.5 shrink-0 transition-transform duration-300",
+                  q.isFetching || busy ? "animate-spin" : "group-hover:rotate-180",
+                )}
+                aria-hidden
+              />
               {q.isFetching || busy ? "检查中…" : "重新检查"}
             </Button>
           </div>
@@ -916,8 +952,12 @@ export default function UpdatePage() {
               )}
             </CardTitle>
             <div className="update-page__panel-hd-actions">
-              <Button asChild type="button" variant="secondary" size="sm">
+              <Button asChild type="button" variant="secondary" size="sm" className="group">
                 <a href={webReleaseHref} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink
+                    className="size-3.5 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                    aria-hidden
+                  />
                   GitHub Release
                 </a>
               </Button>
@@ -942,7 +982,19 @@ export default function UpdatePage() {
               <div className="update-page__release-actions">
                 <div className="update-page__release-primary">
                   {web?.has_update ? (
-                    <Button type="button" disabled={webApplyDisabled} onClick={() => void applyWeb()}>
+                    <Button
+                      type="button"
+                      className="group"
+                      disabled={webApplyDisabled}
+                      onClick={() => void applyWeb()}
+                    >
+                      <Download
+                        className={cn(
+                          "size-3.5 shrink-0 transition-transform duration-200",
+                          applyKind === "web" ? "animate-pulse" : "group-hover:translate-y-0.5",
+                        )}
+                        aria-hidden
+                      />
                       {applyKind === "web" ? "处理中…" : "应用 WebUI 更新"}
                     </Button>
                   ) : null}
@@ -1010,7 +1062,7 @@ export default function UpdatePage() {
                   <Badge className={UPDATE_STATUS_PILL} variant="warn">
                     有更新
                   </Badge>
-                ) : bot?.development_build ? (
+                ) : botTrack === "release" && bot?.development_build ? (
                   <Badge
                     className={UPDATE_STATUS_PILL}
                     variant="secondary"
@@ -1029,49 +1081,27 @@ export default function UpdatePage() {
               ) : null}
             </div>
             <div className="update-page__panel-hd-actions">
-              <Button asChild type="button" variant="secondary" size="sm">
+              <Button asChild type="button" variant="secondary" size="sm" className="group">
                 <a href={botReleaseHref} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink
+                    className="size-3.5 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                    aria-hidden
+                  />
                   GitHub Release
                 </a>
               </Button>
             </div>
           </CardHeader>
           <CardContent className={UPDATE_PANEL_BD}>
-            <div className="update-page__release-summary">
-              <div className="update-page__release-stat">
-                <span className="update-page__release-stat-label">当前</span>
-                <span className="update-page__release-stat-value">{botCurrentDisplay}</span>
-                {bot?.current_commit ? (
-                  <span className="update-page__release-stat-sub muted">{bot.current_commit.slice(0, 7)}</span>
-                ) : null}
-              </div>
-              <span className="update-page__release-stat-arrow muted" aria-hidden="true">
-                →
-              </span>
-              <div className="update-page__release-stat">
-                <span className="update-page__release-stat-label">远端</span>
-                <span className="update-page__release-stat-value">{bot?.latest_tag ?? "—"}</span>
-              </div>
-            </div>
-
-            {(bot?.has_update && bot?.deployment_mode !== "docker") || applyKind === "bot" ? (
-              <div className="update-page__release-actions">
-                <div className="update-page__release-primary">
-                  {bot?.has_update && bot?.deployment_mode !== "docker" ? (
-                    <Button type="button" disabled={botApplyDisabled} onClick={() => void applyBot(false)}>
-                      {applyKind === "bot" ? "处理中…" : "应用 Bot 更新"}
-                    </Button>
-                  ) : null}
-                  {bot?.has_update && bot?.deployment_mode !== "docker" && bot?.restart_available ? (
-                    <Button type="button" variant="outline" disabled={botApplyDisabled} onClick={() => void applyBot(true)}>
-                      更新并重启
-                    </Button>
-                  ) : null}
-                </div>
-                {applyKind === "bot" ? (
-                  <UpdateApplyProgress label={applyHint || "正在拉取并应用 Bot 更新…"} percent={applyPercent} />
-                ) : null}
-              </div>
+            {bot?.deployment_mode !== "docker" ? (
+              <BotGitUpdatePanel
+                disabled={busy && applyKind !== "bot"}
+                applyBusy={applyKind === "bot"}
+                applyPercent={applyPercent}
+                applyHint={applyHint}
+                confirm={confirm}
+                onApply={applyBotGit}
+              />
             ) : null}
 
             {bot?.error ? (
@@ -1178,8 +1208,10 @@ export default function UpdatePage() {
                   <div className="update-page__auto-copy min-w-0">
                     <div className="update-page__auto-title">Bot 本体</div>
                     <p className="update-page__auto-desc muted">
-                      仅干净正式版部署会自动升级并重启；当前为{" "}
-                      {botDeployLabel(autoQ.data?.bot?.deployment_mode || bot?.deployment_mode)}
+                      {botTrack === "branch"
+                        ? "分支轨道：git 工作副本可自动 pull 并重启"
+                        : "正式版轨道：仅干净 release_tag 会自动 checkout 新 tag 并重启"}
+                      ；当前为 {botDeployLabel(autoQ.data?.bot?.deployment_mode || bot?.deployment_mode)}
                       {autoQ.data?.bot?.auto_apply_eligible === false ? "，本机不会自动应用" : ""}
                     </p>
                     <p className="muted update-page__auto-status">{formatTargetStatus(autoQ.data, "bot")}</p>
@@ -1366,9 +1398,17 @@ export default function UpdatePage() {
                   type="button"
                   variant="secondary"
                   size="sm"
+                  className="group"
                   disabled={autoBusy || busy}
                   onClick={() => void runAutoOnce()}
                 >
+                  <Play
+                    className={cn(
+                      "size-3.5 shrink-0 transition-transform duration-200",
+                      applyKind === "auto" ? "animate-pulse" : "group-hover:scale-110",
+                    )}
+                    aria-hidden
+                  />
                   {applyKind === "auto" ? "执行中…" : "立即检查并应用"}
                 </Button>
               </div>
@@ -1407,11 +1447,35 @@ export default function UpdatePage() {
               value={ghTokenInput}
               onValueChange={setGhTokenInput}
             />
-            <Button type="button" size="sm" disabled={ghTokenBusy} onClick={() => void saveGithubToken()}>
+            <Button
+              type="button"
+              size="sm"
+              className="group"
+              disabled={ghTokenBusy}
+              onClick={() => void saveGithubToken()}
+            >
+              <Save
+                className={cn(
+                  "size-3.5 shrink-0 transition-transform duration-200",
+                  ghTokenBusy ? "animate-pulse" : "group-hover:scale-110",
+                )}
+                aria-hidden
+              />
               {ghTokenBusy ? "保存中…" : "保存"}
             </Button>
             {ghTokenHadValue ? (
-              <Button type="button" variant="outline" size="sm" disabled={ghTokenBusy} onClick={() => void clearGithubToken()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="group"
+                disabled={ghTokenBusy}
+                onClick={() => void clearGithubToken()}
+              >
+                <Trash2
+                  className="size-3.5 shrink-0 transition-transform duration-200 group-hover:scale-110"
+                  aria-hidden
+                />
                 清除
               </Button>
             ) : null}

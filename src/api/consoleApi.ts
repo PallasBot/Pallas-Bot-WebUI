@@ -3519,6 +3519,36 @@ export async function postBotUpdateApply(options?: { restart?: boolean }): Promi
   )) as UpdateApplyJobStartData;
 }
 
+export async function fetchBotGitStatus(): Promise<import("./pallasTypes").BotGitStatusData> {
+  return (await consoleOpenapiGet("/update/git/bot/status")) as import("./pallasTypes").BotGitStatusData;
+}
+
+export async function fetchBotGitHistory(options: {
+  mode: "release" | "commit" | string;
+  branch?: string;
+  limit?: number;
+}): Promise<import("./pallasTypes").BotGitHistoryData> {
+  return (await consoleOpenapiGet("/update/git/bot/history", {
+    params: {
+      mode: options.mode,
+      branch: options.branch || "",
+      limit: options.limit ?? 30,
+    },
+  })) as import("./pallasTypes").BotGitHistoryData;
+}
+
+export async function postBotGitApply(
+  body: import("./pallasTypes").BotGitApplyBody,
+): Promise<UpdateApplyJobStartData> {
+  return (await consoleOpenapiPost("/update/git/bot/apply", {
+    mode: body.mode,
+    branch: body.branch || "",
+    ref: body.ref || "",
+    strategy: body.strategy || "safe",
+    restart: Boolean(body.restart),
+  })) as UpdateApplyJobStartData;
+}
+
 export type UpdateChangelogTarget = "webui" | "bot";
 
 export type UpdateChangelogData = {
@@ -3590,6 +3620,8 @@ export type WebuiAutoUpdateTargetStatus = {
   updated?: string[] | null;
   failed?: Array<{ id?: string; error?: string }> | null;
   deployment_mode?: string;
+  update_track?: "release" | "branch" | string;
+  update_branch?: string;
   auto_apply_eligible?: boolean;
 };
 

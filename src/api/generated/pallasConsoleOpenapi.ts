@@ -4306,6 +4306,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/update/git/bot/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bot Git Status */
+        get: operations["_bot_git_status_pallas_api_update_git_bot_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/update/git/bot/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bot Git History */
+        get: operations["_bot_git_history_pallas_api_update_git_bot_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/update/git/bot/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bot Git Apply */
+        post: operations["_bot_git_apply_pallas_api_update_git_bot_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/update/bot/apply": {
         parameters: {
             query?: never;
@@ -4494,6 +4545,39 @@ export interface components {
             keywords: string;
             /** Image */
             image?: string | null;
+        };
+        /** BotGitApplyBody */
+        BotGitApplyBody: {
+            /**
+             * Mode
+             * @description release 或 commit
+             * @default release
+             */
+            mode: string;
+            /**
+             * Branch
+             * @description commit 模式跟踪分支
+             * @default
+             */
+            branch: string;
+            /**
+             * Ref
+             * @description 目标 tag 或 commit；空表示 tip/latest
+             * @default
+             */
+            ref: string;
+            /**
+             * Strategy
+             * @description safe 或 force
+             * @default safe
+             */
+            strategy: string;
+            /**
+             * Restart
+             * @description 更新后安排 Bot 重启
+             * @default false
+             */
+            restart: boolean;
         };
         /** ChangeConsoleLoginBody */
         ChangeConsoleLoginBody: {
@@ -16630,6 +16714,114 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _bot_git_status_pallas_api_update_git_bot_status_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _bot_git_history_pallas_api_update_git_bot_history_get: {
+        parameters: {
+            query?: {
+                /** @description commit 或 release */
+                mode?: string;
+                /** @description commit 模式分支名 */
+                branch?: string;
+                limit?: number;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _bot_git_apply_pallas_api_update_git_bot_apply_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BotGitApplyBody"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

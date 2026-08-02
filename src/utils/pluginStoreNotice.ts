@@ -8,13 +8,20 @@ export type PluginStoreNoticeCounts = {
   updateCount: number;
 };
 
+export function normalizePluginStoreIds(ids: Iterable<string>): string[] {
+  return [...new Set([...ids].map((x) => String(x || "").trim()).filter(Boolean))].sort();
+}
+
 export function readSeenPluginStoreIds(): Set<string> | null {
   try {
     const raw = localStorage.getItem(PLUGIN_STORE_SEEN_IDS_KEY);
     if (raw == null) return null;
     const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.map((x) => String(x || "").trim()).filter(Boolean));
+    if (!Array.isArray(parsed)) return null;
+    const ids = normalizePluginStoreIds(parsed.map((x) => String(x ?? "")));
+    // 空数组是历史误写入（目录未就绪时建基线）——当作无基线，避免整店标成上新
+    if (!ids.length) return null;
+    return new Set(ids);
   } catch {
     // 无 localStorage / 解析失败：视为尚未建立基线，避免把整店标成上新
     return null;
@@ -22,7 +29,7 @@ export function readSeenPluginStoreIds(): Set<string> | null {
 }
 
 export function writeSeenPluginStoreIds(ids: Iterable<string>): void {
-  const list = [...new Set([...ids].map((x) => String(x || "").trim()).filter(Boolean))].sort();
+  const list = normalizePluginStoreIds(ids);
   try {
     localStorage.setItem(PLUGIN_STORE_SEEN_IDS_KEY, JSON.stringify(list));
   } catch {
@@ -34,8 +41,11 @@ export function writeSeenPluginStoreIds(ids: Iterable<string>): void {
 export function ensurePluginStoreSeenBaseline(allIds: string[]): Set<string> {
   const existing = readSeenPluginStoreIds();
   if (existing != null) return existing;
-  writeSeenPluginStoreIds(allIds);
-  return new Set(allIds.map((x) => String(x || "").trim()).filter(Boolean));
+  const normalized = normalizePluginStoreIds(allIds);
+  // 目录尚未就绪时不要落盘空基线，否则随后整表会被当成「上新」
+  if (!normalized.length) return new Set();
+  writeSeenPluginStoreIds(normalized);
+  return new Set(normalized);
 }
 
 /** 相对本机已见表尚未见过的 ID（无基线时返回空，避免首次进店整表标新）。 */
