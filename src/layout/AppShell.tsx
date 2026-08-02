@@ -258,10 +258,6 @@ export default function AppShell() {
   const pluginStoreNotice = useMemo(() => {
     const community = communityStoreQ.data?.plugins || [];
     const official = officialStoreQ.data || [];
-    const catalogIds = [
-      ...community.map((p) => `community:${p.plugin_id}`),
-      ...official.map((p) => `official:${String(p.package || "").trim()}`).filter((x) => x !== "official:"),
-    ];
     let updateCount = 0;
     for (const row of community) {
       if (row.has_update === true) updateCount += 1;
@@ -269,8 +265,22 @@ export default function AppShell() {
     for (const row of official) {
       if (row.has_update === true) updateCount += 1;
     }
+    // 两侧目录都拉完再建「已见表」基线，避免先到一侧把另一侧整表标成上新
+    if (!communityStoreQ.isFetched || !officialStoreQ.isFetched) {
+      return summarizePluginStoreNotice({ catalogIds: [], updateCount }).label;
+    }
+    const catalogIds = [
+      ...community.map((p) => `community:${p.plugin_id}`),
+      ...official.map((p) => `official:${String(p.package || "").trim()}`).filter((x) => x !== "official:"),
+    ];
     return summarizePluginStoreNotice({ catalogIds, updateCount }).label;
-  }, [communityStoreQ.data, officialStoreQ.data, pluginStoreSeenRev]);
+  }, [
+    communityStoreQ.data,
+    communityStoreQ.isFetched,
+    officialStoreQ.data,
+    officialStoreQ.isFetched,
+    pluginStoreSeenRev,
+  ]);
   const navNotices = useMemo(
     () => ({
       "/update": updateNotice,
