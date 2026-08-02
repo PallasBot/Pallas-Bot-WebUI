@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  memo,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -7,9 +8,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import type { LogEntry } from "@/api/pallasTypes";
-import { formatLogDisplayTime, scopeBadgeHue, splitLogScope } from "@/utils/logDisplay";
+import {
+  formatLogDisplayTime,
+  formatLogScopeBadge,
+  scopeBadgeHue,
+} from "@/utils/logDisplay";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import "@/styles/log-virtual-feed.css";
@@ -21,6 +25,7 @@ export type LogVirtualFeedHandle = {
 type Props = {
   rows: LogEntry[];
   followTail?: boolean;
+  /** @deprecated 文档流列表不再虚拟化，保留以兼容调用方 */
   overscan?: number;
   onScrollState?: (nearBottom: boolean) => void;
 };
@@ -33,59 +38,72 @@ function stableRowKey(row: LogEntry, index: number): string {
 }
 
 function LogScopeChips({ scope }: { scope: string }) {
-  const { source, module } = splitLogScope(scope);
-  const text = [source, module].filter(Boolean).join("/") || "";
-  const hue = text ? scopeBadgeHue(text) : 0;
-  /* 始终占位，避免无 scope 时正文挤进定宽列 */
+  const { label, title } = formatLogScopeBadge(scope);
+  const hue = title ? scopeBadgeHue(title) : 0;
   return (
-    <span className="log-line__scope-group" title={text || scope || undefined}>
-      {text ? (
+    <span className="log-line__scope-group" title={title || undefined}>
+      {label ? (
         <Badge
           variant="outline"
           className="log-line__scope-badge"
           style={{ ["--scope-h" as string]: String(hue) }}
         >
-          {text}
+          {label}
         </Badge>
       ) : null}
     </span>
   );
 }
 
-const ESTIMATE_ROW_PX = 40;
-const LINE_PX = 18;
-const ROW_PAD_PX = 16;
-/** 窄屏 meta / 正文分行，估高需额外占一行 */
-const NARROW_META_PX = 22;
-const NARROW_LOG_MQ = "(max-width: 560px)";
-/** 与 CSS max-height 对齐，避免估高无限膨胀 */
-const MSG_MAX_PX = 480;
-
-function narrowLogLayout(): boolean {
-  return typeof window !== "undefined" && window.matchMedia(NARROW_LOG_MQ).matches;
+/** 裁掉首尾噪声换行，与 gsuid normalizeLogContent 同口径 */
+function normalizeLogMessage(content: unknown): string {
+  const text = typeof content === "string" ? content : String(content ?? "");
+  return text.replace(/^[\r\n]+|[\r\n]+$/g, "");
 }
 
-function estimateRowPx(row: LogEntry | undefined): number {
-  const narrow = narrowLogLayout();
-  const metaExtra = narrow ? NARROW_META_PX : 0;
-  if (!row) return ESTIMATE_ROW_PX + metaExtra;
-  const msg = String(row.message ?? "");
-  if (!msg) return ESTIMATE_ROW_PX + metaExtra;
-  const hardLines = msg.split("\n").length;
-  /* 窄屏正文另起一行，按可视宽度估软换行，略偏高避免虚拟行重叠 */
-  const cpl = narrow
-    ? Math.max(28, Math.floor((Math.min(window.innerWidth, 480) - 24) / 6.5))
-    : 100;
-  const softLines = Math.ceil(msg.length / cpl);
-  const lines = Math.max(1, hardLines, softLines);
-  const msgCap = narrow
-    ? Math.min(MSG_MAX_PX, Math.round(window.innerHeight * 0.4))
-    : MSG_MAX_PX;
-  return Math.min(msgCap + ROW_PAD_PX + metaExtra, ROW_PAD_PX + metaExtra + lines * LINE_PX);
-}
+const LogRow = memo(function LogRow({
+  row,
+  rowKey,
+  pinned,
+  onPin,
+}: {
+  row: LogEntry;
+  rowKey: string;
+  pinned: boolean;
+  onPin: (key: string, row: LogEntry) => void;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className={cn(
+        "log-line log-line--virtual",
+        `log-line--virtual-${row.level}`,
+        pinned && "log-line--virtual-pinned",
+      )}
+      title="点击固定到下方查看"
+      onClick={() => onPin(rowKey, row)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onPin(rowKey, row);
+        }
+      }}
+    >
+      <span className="log-line__time">{formatLogDisplayTime(row.time)}</span>
+      <span
+        className={cn("log-line__lv-tag", "log-line__lv-tag--dot", `log-line__lv-tag--${row.level}`)}
+        title={row.level}
+        aria-label={row.level}
+      />
+      <LogScopeChips scope={row.scope} />
+      <span className="log-line__msg log-line__msg--wrap">{normalizeLogMessage(row.message)}</span>
+    </div>
+  );
+});
 
 const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtualFeed(
-  { rows, followTail = true, overscan = 12, onScrollState },
+  { rows, followTail = true, onScrollState },
   ref,
 ) {
   const scrollElRef = useRef<HTMLDivElement | null>(null);
@@ -98,14 +116,6 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
     [rows],
   );
 
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => scrollElRef.current,
-    estimateSize: (index) => estimateRowPx(rows[index]),
-    overscan,
-    getItemKey: (index) => rowKeys[index] ?? index,
-  });
-
   const pinnedRow = useMemo(() => {
     if (!pinnedKey) return null;
     const liveIdx = rowKeys.indexOf(pinnedKey);
@@ -113,20 +123,11 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
     return pinnedSnapshot;
   }, [rows, rowKeys, pinnedKey, pinnedSnapshot]);
 
-  const scrollThreshold = useCallback((el: HTMLElement) => {
-    const h = el.clientHeight;
-    return Math.min(80, Math.max(24, Math.floor(h * 0.08)));
+  const isNearBottom = useCallback((el: HTMLElement) => {
+    if (el.clientHeight < 8) return false;
+    const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return gap <= Math.min(80, Math.max(24, Math.floor(el.clientHeight * 0.08)));
   }, []);
-
-  const isNearBottom = useCallback(
-    (el: HTMLElement) => {
-      if (el.clientHeight < 8) return false;
-      const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
-      const slack = Math.max(scrollThreshold(el), ESTIMATE_ROW_PX * 3);
-      return gap <= slack;
-    },
-    [scrollThreshold],
-  );
 
   const scrollToBottom = useCallback(
     async (force = false) => {
@@ -136,10 +137,9 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
       if (!el || rows.length === 0) return;
       const token = ++scrollBottomTokenRef.current;
       suppressScrollStateRef.current += 1;
-      const last = rows.length - 1;
       const apply = () => {
         if (token !== scrollBottomTokenRef.current) return;
-        rowVirtualizer.scrollToIndex(last, { align: "end" });
+        el.scrollTop = el.scrollHeight;
       };
       apply();
       let frames = 0;
@@ -152,7 +152,7 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
         frames += 1;
         const laidOut = el.clientHeight >= 8;
         const needRetry = !laidOut || !isNearBottom(el);
-        if (frames < (laidOut ? 8 : 16) && needRetry) {
+        if (frames < (laidOut ? 6 : 12) && needRetry) {
           window.requestAnimationFrame(tick);
           return;
         }
@@ -161,7 +161,7 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
       };
       window.requestAnimationFrame(tick);
     },
-    [followTail, isNearBottom, onScrollState, rowVirtualizer, rows.length],
+    [followTail, isNearBottom, onScrollState, rows.length],
   );
 
   useImperativeHandle(ref, () => ({ scrollToBottom }), [scrollToBottom]);
@@ -174,34 +174,6 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
   useEffect(() => {
     if (followTail) void scrollToBottom(true);
   }, [rows.length, followTail, scrollToBottom]);
-
-  useEffect(() => {
-    if (followTail) void scrollToBottom(true);
-  }, [rows, followTail, scrollToBottom]);
-
-  useEffect(() => {
-    rowVirtualizer.measure();
-  }, [rows.length, rowVirtualizer]);
-
-  useEffect(() => {
-    const el = scrollElRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => {
-      rowVirtualizer.measure();
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [rowVirtualizer]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-    const mq = window.matchMedia(NARROW_LOG_MQ);
-    const onChange = () => {
-      rowVirtualizer.measure();
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, [rowVirtualizer]);
 
   function onScroll() {
     const el = scrollElRef.current;
@@ -220,54 +192,20 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
     setPinnedSnapshot({ ...row });
   }
 
-  const virtualItems = rowVirtualizer.getVirtualItems();
-
   return (
     <div className="log-virtual-feed-wrap">
       <div ref={scrollElRef} className="log-feed log-virtual-feed" onScroll={onScroll}>
-        <div
-          className="log-virtual-feed__spacer"
-          style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}
-        >
-          {virtualItems.map((vRow) => {
-            const row = rows[vRow.index];
-            if (!row) return null;
-            const stableKey = rowKeys[vRow.index] ?? String(vRow.index);
-            const isPinned = pinnedKey === stableKey;
+        <div className="log-virtual-feed__list">
+          {rows.map((row, index) => {
+            const stableKey = rowKeys[index] ?? String(index);
             return (
-              <button
+              <LogRow
                 key={stableKey}
-                type="button"
-                data-index={vRow.index}
-                ref={rowVirtualizer.measureElement}
-                className={cn(
-                  "log-line log-line--virtual",
-                  `log-line--virtual-${row.level}`,
-                  isPinned && "log-line--virtual-pinned",
-                )}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${vRow.start}px)`,
-                }}
-                title="点击固定到下方查看"
-                onClick={() => pinRow(stableKey, row)}
-              >
-                <span className="log-line__meta-row">
-                  <span className="log-line__lead">
-                    <span className="log-line__time">{formatLogDisplayTime(row.time)}</span>
-                    <span
-                      className={cn("log-line__lv-tag", "log-line__lv-tag--dot", `log-line__lv-tag--${row.level}`)}
-                      title={row.level}
-                      aria-label={row.level}
-                    />
-                  </span>
-                  <LogScopeChips scope={row.scope} />
-                </span>
-                <span className="log-line__msg log-line__msg--wrap">{row.message}</span>
-              </button>
+                row={row}
+                rowKey={stableKey}
+                pinned={pinnedKey === stableKey}
+                onPin={pinRow}
+              />
             );
           })}
         </div>
@@ -294,7 +232,7 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
               取消固定
             </button>
           </div>
-          <pre className="log-virtual-feed__detail-body">{pinnedRow.message}</pre>
+          <pre className="log-virtual-feed__detail-body">{normalizeLogMessage(pinnedRow.message)}</pre>
         </div>
       ) : null}
     </div>

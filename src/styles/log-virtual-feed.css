@@ -1,4 +1,6 @@
-/* 运行日志虚拟列表：meta（时间+色点+scope）| 正文；窄屏 meta/正文分行 */
+/* 运行日志虚拟列表：time | level-dot | scope | message
+ * 对齐 gsuid ConsolePanel：固定列 + 正文 pre-wrap/break-all；
+ * 行高必须随正文软换行撑开（勿用 baseline，否则多行会溢出叠行）。 */
 
 .log-virtual-feed-wrap {
   display: flex;
@@ -18,33 +20,37 @@
   max-height: none;
   padding: 0;
 }
-.log-virtual-feed__spacer {
-  position: relative;
+/* 文档流列表：行高随正文软换行自然撑开，避免虚拟列表估高叠行 */
+.log-virtual-feed__list {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-width: 0;
 }
 
-/* meta 定宽贴紧 | 正文 minmax(0,1fr) 换行 —— 勿用 max-content 列，否则长正文会撑开整行 */
 .log-line.log-line--virtual {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: 4.75rem 0.75rem 5.5rem minmax(0, 1fr);
   column-gap: 6px;
   align-items: start;
+  position: relative;
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  height: auto;
+  flex: 0 0 auto;
   box-sizing: border-box;
-  padding: 3px 8px;
+  padding: 2px 8px;
   margin: 0;
   border: none;
   background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
-  overflow-x: hidden;
-  overflow-y: visible;
+  overflow: visible;
   cursor: pointer;
-  row-gap: 0;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .log-line--virtual:hover,
 .log-line--virtual-pinned {
@@ -55,45 +61,30 @@
   outline-offset: -1px;
 }
 
-.log-line--virtual .log-line__meta-row {
-  grid-column: 1;
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 6px;
-  min-width: 0;
-  max-width: 100%;
-}
-.log-line--virtual .log-line__lead {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 4px;
-  flex: none;
-  min-width: 0;
-}
 .log-line--virtual .log-line__time {
-  width: 4rem;
-  margin: 1px 0 0;
+  grid-column: 1;
+  min-width: 0;
+  margin: 0;
+  padding-top: 1px;
   color: var(--text-muted);
   white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
   font-variant-numeric: tabular-nums;
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.25rem;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.log-line--virtual .log-line__lv-tag {
-  flex: none;
-  min-width: 0;
-}
 .log-line--virtual .log-line__lv-tag--dot {
+  grid-column: 2;
   display: inline-block;
   width: 6px;
   height: 6px;
   min-width: 6px !important;
   max-width: 6px;
   padding: 0 !important;
-  margin-top: 6px;
-  margin-right: 0;
+  margin: 0.45rem 0 0;
   border-radius: 999px;
   border: none;
   font-size: 0;
@@ -101,8 +92,8 @@
   letter-spacing: 0;
   text-indent: -9999px;
   overflow: hidden;
-  vertical-align: middle;
   box-shadow: none;
+  justify-self: center;
 }
 .log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--debug {
   background: var(--text-muted);
@@ -121,27 +112,29 @@
 }
 
 .log-line--virtual .log-line__scope-group {
+  grid-column: 3;
   display: block;
   width: 5.5rem;
   min-width: 5.5rem;
   max-width: 5.5rem;
-  margin: 1px 0 0;
+  margin: 0;
+  padding-top: 1px;
   overflow: hidden;
-  flex: none;
 }
-/* scope 实心色：列表行与固定面板共用（色相 --scope-h） */
+
 .log-line__scope-badge {
   display: inline-flex;
   box-sizing: border-box;
+  width: 100%;
   max-width: 100%;
   min-width: 0;
-  justify-content: flex-start;
+  justify-content: center;
   padding: 0 4px !important;
   border-radius: 3px;
   border: none !important;
   font-size: 10px !important;
   font-weight: 600;
-  line-height: 1.45;
+  line-height: 1.25rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -153,15 +146,19 @@ html[data-theme="dark"] .log-line__scope-badge {
   background: hsl(var(--scope-h) 62% 42%) !important;
 }
 .log-line--virtual .log-line__scope-badge {
-  width: auto;
+  width: 100%;
   max-width: 100%;
 }
 
 .log-line--virtual .log-line__msg--clip,
 .log-line--virtual .log-line__msg--wrap {
-  grid-column: 2;
+  grid-column: 4;
+  display: block;
   min-width: 0;
   max-width: 100%;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.25rem;
 }
 .log-line--virtual .log-line__msg--clip {
   white-space: nowrap;
@@ -171,13 +168,11 @@ html[data-theme="dark"] .log-line__scope-badge {
 .log-line--virtual .log-line__msg--wrap {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  word-break: break-word;
-  line-height: 1.45;
-  max-height: min(40vh, 480px);
-  overflow-x: hidden;
-  overflow-y: auto;
+  word-break: break-all;
+  max-height: none;
+  overflow: visible;
 }
-/* 正文颜色与级别色点一致 */
+
 .log-line--virtual-debug .log-line__msg--wrap,
 .log-line--virtual-debug .log-line__msg--clip {
   color: var(--text-muted);
@@ -199,61 +194,69 @@ html[data-theme="dark"] .log-line__scope-badge {
   color: color-mix(in srgb, var(--danger) 90%, var(--text));
 }
 
-/* 窄屏 / 窄面板：meta 一行贴紧，正文整行换行 */
 @media (max-width: 560px) {
   .log-line.log-line--virtual {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: auto auto minmax(0, 1fr);
     grid-template-rows: auto auto;
-    column-gap: 0;
+    column-gap: 6px;
     row-gap: 2px;
     padding: 4px 6px;
   }
-  .log-line--virtual .log-line__meta-row {
-    grid-column: 1;
-    width: 100%;
-    gap: 6px;
-  }
   .log-line--virtual .log-line__time {
+    grid-column: 1;
+    grid-row: 1;
     width: auto;
     max-width: 4.5rem;
   }
+  .log-line--virtual .log-line__lv-tag--dot {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0.45rem 0 0;
+  }
   .log-line--virtual .log-line__scope-group {
-    width: auto;
-    min-width: 0;
-    max-width: min(52vw, 10rem);
+    grid-column: 3;
+    grid-row: 1;
+    width: 5.5rem;
+    min-width: 5.5rem;
+    max-width: 5.5rem;
   }
   .log-line--virtual .log-line__msg--wrap,
   .log-line--virtual .log-line__msg--clip {
-    grid-column: 1;
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 }
 
-/* 侧栏下内容区可 <560px 但视口仍 >560 */
 @container (max-width: 560px) {
   .log-line.log-line--virtual {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: auto auto minmax(0, 1fr);
     grid-template-rows: auto auto;
-    column-gap: 0;
+    column-gap: 6px;
     row-gap: 2px;
     padding: 4px 6px;
   }
-  .log-line--virtual .log-line__meta-row {
-    grid-column: 1;
-    width: 100%;
-    gap: 6px;
-  }
   .log-line--virtual .log-line__time {
+    grid-column: 1;
+    grid-row: 1;
     width: auto;
     max-width: 4.5rem;
   }
+  .log-line--virtual .log-line__lv-tag--dot {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0.45rem 0 0;
+  }
   .log-line--virtual .log-line__scope-group {
-    width: auto;
-    min-width: 0;
-    max-width: min(52vw, 10rem);
+    grid-column: 3;
+    grid-row: 1;
+    width: 5.5rem;
+    min-width: 5.5rem;
+    max-width: 5.5rem;
   }
   .log-line--virtual .log-line__msg--wrap,
   .log-line--virtual .log-line__msg--clip {
-    grid-column: 1;
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 }
 
@@ -274,15 +277,15 @@ html[data-theme="dark"] .log-line__scope-badge {
 }
 .log-virtual-feed__detail .log-line__scope-group {
   display: inline-flex;
-  width: auto;
-  min-width: 0;
-  max-width: 14rem;
+  width: 5.5rem;
+  min-width: 5.5rem;
+  max-width: 5.5rem;
   margin: 0;
 }
 .log-virtual-feed__detail .log-line__scope-badge {
-  width: auto;
-  min-width: 4.5rem;
-  padding: 1px 8px !important;
+  width: 100%;
+  min-width: 0;
+  padding: 1px 6px !important;
   font-size: 11px !important;
   line-height: 1.5;
 }
@@ -338,10 +341,10 @@ html[data-theme="dark"] .log-line__scope-badge {
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  word-break: break-word;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.45;
+  word-break: break-all;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.25rem;
   color: var(--text);
 }
 .log-virtual-feed__detail--debug .log-virtual-feed__detail-body {
