@@ -37,6 +37,7 @@ export interface SystemData {
     boot_time?: number | null;
     platform?: string;
     python?: string;
+    cpu_model?: string | null;
     cpu_percent?: number | null;
     /** 各逻辑核心占用 0–100；与 cpu_percent 同源采样（cpu_percent 为各核算术平均） */
     cpu_per_core?: number[] | null;
