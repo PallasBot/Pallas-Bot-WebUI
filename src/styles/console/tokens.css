@@ -57,11 +57,11 @@
   --success: #4ade80;
   --warn: #fbbf24;
   --danger: #f87171;
-  /* 圆角约 8px 基准；胶囊仅 Switch/Chip（--radius-pill） */
+  /* 圆角约 10px 基准；胶囊仅 Switch/Chip（--radius-pill） */
   --radius-lg: 12px;
   --radius-md: 10px;
   --radius-sm: 8px;
-  --radius-control: 8px;
+  --radius-control: 10px;
   --radius-pill: 999px;
   --radius-shell: 10px;
   /* 多行输入：勿用胶囊圆角，避免矮 textarea 被裁成半圆 */
@@ -227,11 +227,11 @@ html[data-radius="tight"] {
 }
 
 html[data-radius="default"] {
-  --radius-lg: 14px;
-  --radius-md: 12px;
+  --radius-lg: 12px;
+  --radius-md: 10px;
   --radius-sm: 8px;
   --radius-control: 10px;
-  --radius-shell: 12px;
+  --radius-shell: 10px;
   --radius-textarea: var(--radius-sm);
 }
 
