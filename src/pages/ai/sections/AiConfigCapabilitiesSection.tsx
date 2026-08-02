@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { buildSvcBackendIdList } from "@/utils/svcBackendOptions";
 
 function notifyOk(message: string) {
   pushConsoleToast(message, "ok");
@@ -92,7 +93,7 @@ export default function AiConfigCapabilitiesSection() {
     [singQ.data],
   );
   const backendOptions = useMemo(
-    () => (singQ.data?.backends.backends || []).map((b) => b.id).filter(Boolean),
+    () => buildSvcBackendIdList(singQ.data?.backends.backends || []),
     [singQ.data],
   );
   const voicePathOptions = useMemo(

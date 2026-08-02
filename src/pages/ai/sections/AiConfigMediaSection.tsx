@@ -66,6 +66,7 @@ import {
   showAiInstallBootstrapSecondary,
 } from "@/utils/aiInstallPrimary";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { buildSvcBackendSelectOptions } from "@/utils/svcBackendOptions";
 
 function notifyOk(message: string) {
   pushConsoleToast(message, "ok");
@@ -770,7 +771,7 @@ export default function AiConfigMediaSection() {
     [singQ.data],
   );
   const backendOptions = useMemo(
-    () => (singQ.data?.backends.backends || []).map((b) => b.id).filter(Boolean),
+    () => buildSvcBackendSelectOptions(singQ.data?.backends.backends || []),
     [singQ.data],
   );
   const voicePathOptions = useMemo(
@@ -1494,11 +1495,16 @@ export default function AiConfigMediaSection() {
                   音色 {singQ.data?.speakers.speakers?.length ?? 0} 个
                 </Badge>
                 <Badge variant="outline">
-                  推理方式 {singQ.data?.backends.backends?.length ?? 0} 个
+                  推理方式 {backendOptions.length} 个
                 </Badge>
               </div>
-              <p className="break-all font-mono text-[11px] text-muted-foreground">
-                {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "暂无推理方式"}
+              <p className="break-all text-[11px] text-muted-foreground">
+                {(singQ.data?.backends.backends || []).length
+                  ? (singQ.data?.backends.backends || [])
+                      .map((b) => b.id)
+                      .filter(Boolean)
+                      .join(", ")
+                  : backendOptions.map((b) => b.value).join(", ")}
               </p>
               {(singQ.data?.speakers.speakers || []).length ? (
                 <ul className="space-y-2 rounded-[var(--radius-control,8px)] border bg-muted/20 px-3 py-2 text-[11px]">
@@ -1512,14 +1518,22 @@ export default function AiConfigMediaSection() {
                         <Badge variant={row.ready ? "success" : "secondary"} className="text-[10px]">
                           {row.ready ? "就绪" : "未就绪"}
                         </Badge>
+                        {(row.backends || []).length ? (
+                          <span className="text-muted-foreground">
+                            适配 {(row.backends || []).join(", ")}
+                          </span>
+                        ) : null}
                         {row.path ? (
                           <span className="break-all font-mono text-muted-foreground">{row.path}</span>
                         ) : null}
                       </div>
-                      <div className="w-full min-w-[10rem] sm:ml-auto sm:w-48">
+                      <div className="w-full min-w-[10rem] sm:ml-auto sm:w-52">
                         <AiOptionSelect
                           value={speakerBackends[row.id] || ""}
-                          options={backendOptions}
+                          options={buildSvcBackendSelectOptions(
+                            singQ.data?.backends.backends || [],
+                            row.backends,
+                          )}
                           placeholder="优先推理"
                           emptyLabel="（用全局）"
                           onValueChange={(v) =>

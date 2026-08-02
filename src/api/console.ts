@@ -1095,7 +1095,14 @@ export type SingSpeakersPayload = {
   writable?: boolean;
 };
 export type SingBackendsPayload = {
-  backends?: Array<{ id: string; enabled?: boolean }>;
+  backends?: Array<{
+    id: string;
+    enabled?: boolean;
+    script_present?: boolean;
+    arg_style?: string;
+    model_glob?: string;
+  }>;
+  fallback_order?: string[];
   preferred_backend?: string;
   writable?: boolean;
 };
