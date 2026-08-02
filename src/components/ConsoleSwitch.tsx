@@ -1,5 +1,7 @@
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
+/** 带可选文案的开关；视觉与全站 `Switch`（console-bool-switch）一致。 */
 export default function ConsoleSwitch({
   checked,
   disabled = false,
@@ -7,6 +9,7 @@ export default function ConsoleSwitch({
   showLabel = true,
   tone = "default",
   ariaLabel,
+  className,
   onCheckedChange,
 }: {
   checked: boolean;
@@ -15,35 +18,21 @@ export default function ConsoleSwitch({
   showLabel?: boolean;
   tone?: "default" | "amber";
   ariaLabel?: string;
+  className?: string;
   onCheckedChange: (next: boolean) => void;
 }) {
   return (
-    <label
-      className={cn(
-        "console-bool-switch",
-        checked && "console-bool-switch--on",
-        tone === "amber" && "console-bool-switch--amber",
-      )}
-      onMouseDown={(e) => {
-        if (disabled) return;
-        // 避免聚焦时 scrollIntoView 滚到 transform 居中的 Dialog 上，把内容顶出可视区。
-        e.preventDefault();
-        const input = e.currentTarget.querySelector<HTMLInputElement>("input");
-        input?.focus({ preventScroll: true });
-      }}
-    >
-      <input
-        type="checkbox"
-        className="console-bool-switch__input"
+    <span className={cn("inline-flex items-center gap-2.5", className)}>
+      <Switch
         checked={checked}
         disabled={disabled}
+        tone={tone}
         aria-label={ariaLabel || label}
-        onChange={(e) => onCheckedChange(e.target.checked)}
+        onCheckedChange={onCheckedChange}
       />
-      <span className="console-bool-switch__track" aria-hidden="true">
-        <span className="console-bool-switch__thumb" />
-      </span>
-      {showLabel && label ? <span className="console-bool-switch__label">{label}</span> : null}
-    </label>
+      {showLabel && label ? (
+        <span className={cn("console-bool-switch__label", checked && "text-[var(--text)]")}>{label}</span>
+      ) : null}
+    </span>
   );
 }

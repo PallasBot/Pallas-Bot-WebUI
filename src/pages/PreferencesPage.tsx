@@ -28,8 +28,6 @@ import {
 const CONTROL_RADIUS_MIN = 4;
 const CONTROL_RADIUS_MAX = 20;
 
-const PREFS_SWITCH_CLASS = "data-[state=checked]:bg-[var(--accent)]";
-
 function PrefsResetButton({ onClick, label = "复原" }: { onClick: () => void; label?: string }) {
   return (
     <button type="button" className="prefs-setting-card__reset" onClick={onClick} aria-label={label}>
@@ -254,7 +252,6 @@ export default function PreferencesPage() {
               <span className="prefs-switch-row__label">应用更新后弹出 CHANGELOG</span>
               <div className="prefs-switch-row__control">
                 <Switch
-                  className={PREFS_SWITCH_CLASS}
                   checked={showUpdateChangelog}
                   onCheckedChange={(v) => {
                     const next = Boolean(v);
@@ -442,7 +439,6 @@ export default function PreferencesPage() {
                 checked={density === "compact"}
                 onCheckedChange={(on) => patchPrefs({ density: on ? "compact" : "comfortable" })}
                 aria-labelledby="prefs-density-label"
-                className={PREFS_SWITCH_CLASS}
               />
               <span className="prefs-switch-row__state" aria-hidden="true">
                 {density === "compact" ? "开" : "关"}
