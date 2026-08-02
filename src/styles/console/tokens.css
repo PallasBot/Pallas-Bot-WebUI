@@ -128,7 +128,7 @@
   --shell-brand-mark-inset: transparent;
   --shell-brand-mark-wrap-size: 44px;
   --shell-brand-mark-size: 32px;
-  --shell-brand-mark-wrap-radius: 10px;
+  --shell-brand-mark-wrap-radius: var(--radius-control, 10px);
   --shell-brand-mark-radius: 999px;
   --home-aside-min-w: 300px;
   --home-aside-max-w: 360px;

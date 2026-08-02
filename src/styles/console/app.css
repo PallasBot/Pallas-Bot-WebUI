@@ -113,7 +113,7 @@ html[data-theme="light"][data-ui-preset="shadcn"][data-surface="glass"] .shell__
   margin: 0;
   padding: 0;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-control, 10px);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -222,7 +222,7 @@ html[data-theme="light"][data-ui-preset="shadcn"][data-surface="glass"] .shell__
 .shell__brand-expand {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-control, 10px);
   background: color-mix(in srgb, var(--foreground) 5%, transparent);
 }
 
@@ -1003,7 +1003,7 @@ html[data-theme="light"] .shell__nav-grip-dropdown__item:hover {
   margin: 0;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-control, 10px);
   background: var(--bg-elev);
   color: var(--text-muted);
   cursor: pointer;
@@ -3455,7 +3455,7 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
     max-width: 36px;
     margin-inline: auto;
     padding: 0;
-    border-radius: 10px;
+    border-radius: var(--radius-control, 10px);
   }
 
   .shell--sidebar-collapsed .shell__nav-ico {
@@ -3519,7 +3519,7 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
     max-width: 36px;
     margin-inline: auto;
     padding: 0;
-    border-radius: 10px;
+    border-radius: var(--radius-control, 10px);
   }
 
   .shell--sidebar-collapsed .shell__sidebar-exit-label,
@@ -8744,7 +8744,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   max-height: min(28vh, 220px);
   overflow: auto;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-control, 10px);
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   background: color-mix(in srgb, var(--text) 3.5%, var(--bg-card, transparent));
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
@@ -11613,7 +11613,7 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   gap: 10px 12px;
   margin: 0 0 12px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-control, 12px);
   border: 1px solid color-mix(in srgb, var(--ok, #16a34a) 18%, var(--border));
   background: color-mix(in srgb, var(--ok, #16a34a) 8%, var(--bg-card, transparent));
 }
@@ -15204,7 +15204,7 @@ html[data-layout="hub"] .plugin-config-page__raw-toml.textarea {
   display: grid;
   gap: 8px;
   padding: 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-control, 12px);
   background: color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.02)) 99%, transparent);
   border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
   box-shadow: none;
@@ -15520,7 +15520,7 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-group-card {
 .community-page__probe-card {
   margin: 0 0 14px;
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--radius-control, 10px);
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   background: color-mix(in srgb, var(--panel) 92%, var(--bg));
 }

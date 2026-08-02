@@ -29,7 +29,7 @@ html[data-layout="hub"] {
   --shell-sidebar-w: 252px;
   --shell-brand-mark-wrap-size: 56px;
   --shell-brand-mark-size: 44px;
-  --shell-brand-mark-wrap-radius: 10px;
+  --shell-brand-mark-wrap-radius: var(--radius-control, 10px);
   --ui-btn-pad-y: 6px;
   --ui-btn-pad-x: 14px;
   --ui-btn-font: 13px;
@@ -2328,7 +2328,7 @@ html[data-layout="hub"][data-radius="round"] code:not(pre code):not(.pre-block c
   gap: 4px;
   height: 28px;
   padding: 0 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-control, 8px);
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   background: color-mix(in srgb, var(--bg-elev, var(--bg-card)) 88%, transparent);
   color: var(--text-muted, var(--muted-foreground, #64748b));
@@ -2497,7 +2497,7 @@ input.inp[type="range"]:focus-visible {
   min-height: 96px;
   padding: 16px 12px;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: var(--radius-control, 12px);
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   background: var(--bg-elev, var(--bg-card));
   color: var(--text);
@@ -2525,7 +2525,7 @@ input.inp[type="range"]:focus-visible {
   display: block;
   width: 2rem;
   height: 2rem;
-  border-radius: 10px;
+  border-radius: max(0px, calc(var(--radius-control, 10px) - 2px));
   flex-shrink: 0;
 }
 
@@ -2587,7 +2587,7 @@ html[data-theme="dark"] .prefs-style-tile--active {
   color: var(--text);
   background: var(--bg-elev, var(--bg-card));
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-control, 10px);
   box-shadow: none;
   cursor: pointer;
   transition:
@@ -2658,7 +2658,7 @@ html[data-theme="dark"] .prefs-segment__btn--active {
   min-width: 56px;
   padding: 8px 10px 7px;
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-control, 10px);
   background: var(--bg-elev, var(--bg-card));
   cursor: pointer;
   transition:
@@ -2680,7 +2680,7 @@ html[data-theme="light"] .prefs-accent-swatch {
 .prefs-accent-swatch__dot {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
   border: 2px solid color-mix(in srgb, var(--border) 70%, transparent);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
   transition:
@@ -2798,7 +2798,6 @@ html[data-theme="light"] .prefs-accent-swatch--on {
     min-height: 36px;
     padding: 7px 6px;
     font-size: 12px;
-    border-radius: 8px;
   }
 
   .prefs-style-tiles {
@@ -2808,13 +2807,11 @@ html[data-theme="light"] .prefs-accent-swatch--on {
   .prefs-style-tile {
     min-height: 84px;
     padding: 12px 8px;
-    border-radius: 10px;
   }
 
   .prefs-style-tile__swatch {
     width: 1.75rem;
     height: 1.75rem;
-    border-radius: 8px;
   }
 
   .prefs-style-tile__label {
@@ -3295,7 +3292,7 @@ html[data-layout="hub"] .shell--sidebar-collapsed nav.shell__nav .shell__nav-gro
   max-width: 36px;
   margin-inline: auto;
   padding: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-control, 10px);
   gap: 0;
 }
 
@@ -3326,7 +3323,7 @@ html[data-layout="hub"] .shell--sidebar-collapsed .shell__sidebar-top {
 html[data-layout="hub"] .shell--sidebar-collapsed .shell__brand-slot--avatar .shell__brand-mark-wrap {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-control, 8px);
 }
 
 @media (max-width: 560px) {
@@ -3655,7 +3652,7 @@ html[data-layout="hub"][data-surface="glass"] .ai-stat {
   gap: 12px;
   padding: 10px 14px;
   border: 1px solid var(--surface-edge, var(--border));
-  border-radius: 12px;
+  border-radius: var(--radius-control, 12px);
   background: var(--bg-card);
 }
 
