@@ -9,6 +9,9 @@ import { slicePage } from "@/utils/paginate";
 import BotConfigModal from "@/components/BotConfigModal";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
+import ChromeStatusFilter, {
+  type ChromeStatusFilterOption,
+} from "@/components/ChromeStatusFilter";
 import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
@@ -31,6 +34,14 @@ import { pushConsoleToast } from "@/utils/consoleToast";
 import { ChevronDown, Search, Database, Cable } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
+
+type InstStatusFilter = "all" | "connected" | "disconnected";
+
+const INST_STATUS_FILTER_OPTIONS: readonly ChromeStatusFilterOption<InstStatusFilter>[] = [
+  { value: "all", label: "全部" },
+  { value: "connected", label: "已连接" },
+  { value: "disconnected", label: "未连接" },
+];
 
 const INST_PANEL = "instances-page__panel flex flex-col overflow-hidden shadow-none";
 const INST_PANEL_HD =
@@ -60,6 +71,7 @@ export default function InstancesPage() {
   const [expNonebot, setExpNonebot] = useState(true);
   const [expDbBots, setExpDbBots] = useState(true);
   const [dbBotSearchQ, setDbBotSearchQ] = useState("");
+  const [dbBotStatusFilter, setDbBotStatusFilter] = useState<InstStatusFilter>("all");
   const [instNbPage, setInstNbPage] = useState(1);
   const [instDbPage, setInstDbPage] = useState(1);
   const [err, setErr] = useState("");
@@ -159,9 +171,13 @@ export default function InstancesPage() {
 
   const filteredDbBotConfigs = useMemo(() => {
     const qStr = dbBotSearchQ.trim().toLowerCase();
-    if (!qStr) return sortedDbBotConfigs;
-    return sortedDbBotConfigs.filter((c) => dbBotMatchesSearch(c, qStr));
-  }, [sortedDbBotConfigs, dbBotSearchQ, plugins]);
+    return sortedDbBotConfigs.filter((c) => {
+      if (qStr && !dbBotMatchesSearch(c, qStr)) return false;
+      if (dbBotStatusFilter === "connected") return isBotConnected(c.account);
+      if (dbBotStatusFilter === "disconnected") return !isBotConnected(c.account);
+      return true;
+    });
+  }, [sortedDbBotConfigs, dbBotSearchQ, dbBotStatusFilter, plugins, data?.nonebot_bots]);
 
   const dbBotsConnectedCount = sortedDbBotConfigs.filter((c) => isBotConnected(c.account)).length;
   const dbBotsTotalCount = sortedDbBotConfigs.length;
@@ -327,6 +343,12 @@ export default function InstancesPage() {
                 value=""
               />
             </div>
+            <ChromeStatusFilter
+              value={dbBotStatusFilter}
+              onValueChange={setDbBotStatusFilter}
+              options={INST_STATUS_FILTER_OPTIONS}
+              disabled
+            />
             <div className={CHROME_TOOLS_TRAILING}>
               <RefreshIconButton busy label="刷新" showLabel disabled />
             </div>
@@ -372,6 +394,14 @@ export default function InstancesPage() {
                 }}
               />
             </div>
+            <ChromeStatusFilter
+              value={dbBotStatusFilter}
+              onValueChange={(v) => {
+                setDbBotStatusFilter(v);
+                setInstDbPage(1);
+              }}
+              options={INST_STATUS_FILTER_OPTIONS}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -446,7 +476,11 @@ export default function InstancesPage() {
                     插件列表加载失败，禁用插件勾选不可用：{pluginLoadErr}
                   </p>
                 ) : null}
-                {!filteredDbBotConfigs.length && nonebotBotsNeedingInit.length ? (
+                {!filteredDbBotConfigs.length && sortedDbBotConfigs.length ? (
+                  <p className="muted" style={{ margin: "0 0 10px" }}>
+                    没有匹配的账号，试试调整搜索或筛选。
+                  </p>
+                ) : !filteredDbBotConfigs.length && nonebotBotsNeedingInit.length ? (
                   <p className="muted" style={{ margin: "0 0 10px" }}>
                     数据库中尚无 Bot 配置。下方「消息框架」中已连接但未入库的牛牛可点{" "}
                     <strong>初始化配置</strong> 写入号主与其它选项（不依赖协议端「创建牛牛」流程）。
