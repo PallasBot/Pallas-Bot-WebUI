@@ -30,7 +30,7 @@ export type PrefsSlice = {
 
 const DEFAULTS: PrefsSlice = {
   theme: "system",
-  controlRadius: 12,
+  controlRadius: 10,
   radius: "default",
   surfaceStyle: "glass",
   density: "comfortable",
@@ -50,7 +50,7 @@ export const PREFS_DEFAULTS: Readonly<PrefsSlice> = DEFAULTS;
 /** 分段「紧凑 / 默认 / 更圆」对应的控件圆角 px，与 DEFAULTS.controlRadius 对齐 */
 export const RADIUS_PRESET_PX: Record<RadiusMode, number> = {
   tight: 6,
-  default: 12,
+  default: 10,
   round: 16,
 };
 
@@ -167,7 +167,7 @@ export function writeSidebarCollapsed(collapsed: boolean): void {
 function applyRadiusCssVars(el: HTMLElement, controlPx: number): void {
   const r = clampControlRadius(controlPx);
   const sm = Math.max(2, r - 2);
-  /* 圆角基准约 8px */
+  /* 圆角基准约 10px（DEFAULTS.controlRadius） */
   const md = r;
   const lg = r + 2;
   const shell = r;

@@ -54,7 +54,25 @@ import PluginStoreCard, { type PluginStoreMenuItem } from "@/components/PluginSt
 import PluginStoreCardSkeleton from "@/components/PluginStoreCardSkeleton";
 import ReadmeMarkdown from "@/components/ReadmeMarkdown";
 import RefreshIconButton from "@/components/RefreshIconButton";
-import { BadgeCheck, Filter, FolderOpen, Package, Search, Users } from "lucide-react";
+import BtnIco from "@/components/BtnIco";
+import {
+  ArrowUpToLine,
+  BadgeCheck,
+  Download,
+  ExternalLink,
+  Filter,
+  FolderOpen,
+  GitBranch,
+  Package,
+  PackageX,
+  RefreshCw,
+  RotateCw,
+  Search,
+  Server,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -330,8 +348,11 @@ export default function PluginStorePage() {
     };
   }, [noticeOfficialRows, noticeCommunityRows, visitNewIds]);
 
+  const catalogNoticeReady = officialNavQ.isFetched && communityNavQ.isFetched;
+
   useEffect(() => {
-    if (!pageReady || !catalogIds.length) return;
+    // 与侧栏一致：两侧目录就绪后再捕获上新，避免半份 catalog 把另一侧整表点绿
+    if (!pageReady || !catalogNoticeReady || !catalogIds.length) return;
     const fresh = listUnseenPluginStoreIds(catalogIds);
     if (fresh.length) {
       setVisitNewIds((prev) => {
@@ -341,7 +362,7 @@ export default function PluginStorePage() {
       });
     }
     markPluginStoreIdsSeen(catalogIds);
-  }, [pageReady, catalogIds]);
+  }, [pageReady, catalogNoticeReady, catalogIds]);
 
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -1323,11 +1344,11 @@ export default function PluginStorePage() {
 
   const mastheadActions = (
     <div className="flex flex-nowrap items-center gap-1.5">
-      <Button type="button" variant="secondary" size="sm" onClick={() => setGitMirrorOpen(true)}>
+      <Button type="button" variant="secondary" size="sm" icon={Server} iconMotion="scale" onClick={() => setGitMirrorOpen(true)}>
         镜像源
       </Button>
       {storeSection === "community" && communityWebuiInstallEnabled ? (
-        <Button type="button" variant="secondary" size="sm" onClick={() => setGitInstallOpen(true)}>
+        <Button type="button" variant="secondary" size="sm" icon={GitBranch} iconMotion="settings" onClick={() => setGitInstallOpen(true)}>
           Git 安装
         </Button>
       ) : null}
@@ -1336,6 +1357,9 @@ export default function PluginStorePage() {
           type="button"
           variant="secondary"
           size="sm"
+          icon={RefreshCw}
+          iconMotion="spin"
+          iconBusy={checkingUpdate}
           disabled={checkingUpdate || loading}
           onClick={() => void checkUpdates()}
         >
@@ -1762,6 +1786,8 @@ export default function PluginStorePage() {
                     <Button
                       type="button"
                       size="sm"
+                      icon={Download}
+                      iconMotion="down"
                       disabled={
                         isOfficialInstallUpdateQueued(detailTarget.official.package, "install")
                         || (storeBusyPackage === detailTarget.official.package
@@ -1783,6 +1809,8 @@ export default function PluginStorePage() {
                     <Button
                       type="button"
                       size="sm"
+                      icon={ArrowUpToLine}
+                      iconMotion="up"
                       disabled={
                         isOfficialInstallUpdateQueued(detailTarget.official.package, "update")
                         || (storeBusyPackage === detailTarget.official.package
@@ -1805,6 +1833,8 @@ export default function PluginStorePage() {
                       type="button"
                       variant="destructive"
                       size="sm"
+                      icon={PackageX}
+                      iconMotion="scale"
                       disabled={
                         storeBusyPackage === detailTarget.official.package
                         && storeBusyOfficialAction === "uninstall"
@@ -1822,6 +1852,8 @@ export default function PluginStorePage() {
                     <Button
                       type="button"
                       size="sm"
+                      icon={Download}
+                      iconMotion="down"
                       disabled={
                         isCommunityInstallUpdateQueued(detailTarget.community.plugin_id, "install")
                         || (storeBusyPluginId === detailTarget.community.plugin_id
@@ -1846,6 +1878,8 @@ export default function PluginStorePage() {
                     <Button
                       type="button"
                       size="sm"
+                      icon={ArrowUpToLine}
+                      iconMotion="up"
                       disabled={
                         isCommunityInstallUpdateQueued(detailTarget.community.plugin_id, "update")
                         || (storeBusyPluginId === detailTarget.community.plugin_id
@@ -1868,6 +1902,8 @@ export default function PluginStorePage() {
                       type="button"
                       variant="destructive"
                       size="sm"
+                      icon={Trash2}
+                      iconMotion="scale"
                       disabled={
                         storeBusyPluginId === detailTarget.community.plugin_id
                         && storeBusyCommunityAction === "uninstall"
@@ -1880,8 +1916,9 @@ export default function PluginStorePage() {
                 </>
               ) : null}
               {detailTarget.repositoryUrl ? (
-                <Button asChild type="button" variant="outline" size="sm">
+                <Button asChild type="button" variant="outline" size="sm" className="group">
                   <a href={detailTarget.repositoryUrl} target="_blank" rel="noopener noreferrer">
+                    <BtnIco icon={ExternalLink} motion="external" />
                     打开仓库
                   </a>
                 </Button>
@@ -1952,12 +1989,14 @@ export default function PluginStorePage() {
           </div>
 
           <DialogFooter className="plugin-store-page__git-foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end sm:space-x-2">
-            <Button type="button" variant="outline" size="sm" disabled={gitInstallBusy} onClick={() => setGitInstallOpen(false)}>
+            <Button type="button" variant="outline" size="sm" icon={X} iconMotion="close" disabled={gitInstallBusy} onClick={() => setGitInstallOpen(false)}>
               取消
             </Button>
             <Button
               type="button"
               size="sm"
+              icon={Download}
+              iconMotion="down"
               disabled={!gitInstallValid || gitInstallBusy}
               onClick={() => void installCommunityFromGit(false)}
             >
@@ -1967,6 +2006,9 @@ export default function PluginStorePage() {
               <Button
                 type="button"
                 size="sm"
+                icon={RotateCw}
+                iconMotion="spin"
+                iconBusy={gitInstallBusy}
                 disabled={!gitInstallValid || gitInstallBusy}
                 onClick={() => void installCommunityFromGit(true)}
               >

@@ -223,7 +223,7 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .pl
   width: 36px;
   height: 36px;
   flex-shrink: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-control, 12px);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent);
 }
@@ -269,7 +269,6 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .pl
   .plugin-config-group-card__hero-icon {
     width: 32px;
     height: 32px;
-    border-radius: 10px;
   }
 }
 

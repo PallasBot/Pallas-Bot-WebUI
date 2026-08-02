@@ -10,6 +10,7 @@ import type {
 } from "@/api/pallasTypes";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
+import { Save, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -137,6 +138,7 @@ export default function PluginConfigDialog({
               type="button"
               variant="outline"
               size="sm"
+              icon={ShieldCheck}
               disabled={!canSave}
               onClick={() => void workspaceRef.current?.runConfigCheck()}
             >
@@ -146,6 +148,8 @@ export default function PluginConfigDialog({
           <Button
             type="button"
             size="sm"
+            icon={Save}
+            iconMotion="scale"
             disabled={!canSave}
             title="Ctrl+S"
             onClick={() => void workspaceRef.current?.save()}

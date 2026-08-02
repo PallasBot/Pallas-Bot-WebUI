@@ -44,7 +44,7 @@ import {
 } from "@/utils/llmProviderModels";
 import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
-import { AlertTriangle, Cloud, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Server, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Cloud, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Save, Server, SlidersHorizontal, Trash2, Unplug, X, type LucideIcon } from "lucide-react";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { normalizeDrawCostCurrency } from "@/utils/drawGateways";
 import {
@@ -959,6 +959,8 @@ export default function LlmProvidersForm() {
           type="button"
           size="sm"
           className="shrink-0"
+          icon={Save}
+          iconMotion="scale"
           disabled={!localDirty || localSaving}
           onClick={() => void saveLocal()}
         >
@@ -972,6 +974,8 @@ export default function LlmProvidersForm() {
           type="button"
           size="sm"
           className="shrink-0"
+          icon={Save}
+          iconMotion="scale"
           disabled={!dirty || saving}
           onClick={() => void saveProviders()}
         >
@@ -984,6 +988,7 @@ export default function LlmProvidersForm() {
         type="button"
         size="sm"
         className="shrink-0"
+        icon={Unplug}
         disabled={Boolean(testBusy) || doc.providers.length === 0}
         onClick={() => void testAllProviders()}
       >
@@ -1166,6 +1171,7 @@ export default function LlmProvidersForm() {
                         size="sm"
                         className="flex-1 gap-2"
                         variant={draft.kind !== "local" ? "default" : "outline"}
+                        icon={Cloud}
                         onClick={() =>
                           setDraft((d) =>
                             d.kind === "local"
@@ -1174,7 +1180,6 @@ export default function LlmProvidersForm() {
                           )
                         }
                       >
-                        <Cloud className="size-4" />
                         服务商
                       </Button>
                       <Button
@@ -1182,6 +1187,7 @@ export default function LlmProvidersForm() {
                         size="sm"
                         className="flex-1 gap-2"
                         variant={draft.kind === "local" ? "default" : "outline"}
+                        icon={HardDrive}
                         onClick={() =>
                           setDraft((d) => ({
                             ...d,
@@ -1191,7 +1197,6 @@ export default function LlmProvidersForm() {
                           }))
                         }
                       >
-                        <HardDrive className="size-4" />
                         本地
                       </Button>
                     </div>
@@ -1363,6 +1368,7 @@ export default function LlmProvidersForm() {
                                 size="sm"
                                 variant="ghost"
                                 className="h-7 shrink-0 px-2 text-xs text-muted-foreground"
+                                icon={Trash2}
                                 onClick={() => removePricingModel(modelName)}
                               >
                                 删除
@@ -1411,6 +1417,7 @@ export default function LlmProvidersForm() {
                         size="sm"
                         variant="outline"
                         className="h-8"
+                        icon={Plus}
                         onClick={() => addPricingModel(pricingModelDraft)}
                       >
                         添加
@@ -1422,6 +1429,7 @@ export default function LlmProvidersForm() {
                           size="sm"
                           variant="outline"
                           className="h-8"
+                          icon={Plus}
                           onClick={() => addPricingModel(draft.default_model)}
                         >
                           添加调用模型
@@ -1522,13 +1530,14 @@ export default function LlmProvidersForm() {
                           type="button"
                           variant="outline"
                           size="sm"
+                          icon={Unplug}
                           disabled={Boolean(testBusy)}
                           onClick={() => void testDraftProvider()}
                         >
                           {testBusy ? "测试中…" : "测试"}
                         </Button>
                         {editIndex !== null ? (
-                          <Button type="button" variant="destructive" size="sm" onClick={() => void removeProvider(editIndex)}>
+                          <Button type="button" variant="destructive" size="sm" icon={Trash2} onClick={() => void removeProvider(editIndex)}>
                             删除
                           </Button>
                         ) : null}
@@ -1538,6 +1547,8 @@ export default function LlmProvidersForm() {
                       type="button"
                       variant="outline"
                       size="sm"
+                      icon={X}
+                      iconMotion="close"
                       onClick={() => {
                         setEditing(false);
                         setEditIndex(null);
@@ -1549,6 +1560,8 @@ export default function LlmProvidersForm() {
                     <Button
                       type="button"
                       size="sm"
+                      icon={Save}
+                      iconMotion="scale"
                       disabled={saving}
                       onClick={() => void submitEdit()}
                     >
@@ -1597,7 +1610,7 @@ export default function LlmProvidersForm() {
                   />
                 </div>
               ) : tab === "tasks" ? (
-                <Button type="button" size="sm" variant="outline" onClick={() => setTab("upstream")}>
+                <Button type="button" size="sm" variant="outline" icon={SlidersHorizontal} iconMotion="settings" onClick={() => setTab("upstream")}>
                   管理提供方
                 </Button>
               ) : undefined
@@ -1611,8 +1624,7 @@ export default function LlmProvidersForm() {
                   <div className="min-w-0 space-y-2">
                     <p className="text-sm font-medium text-destructive">暂无可用提供方</p>
                     <p className="text-xs text-destructive/80">请先添加模型提供方，再进行任务编排。</p>
-                    <Button type="button" size="sm" variant="outline" onClick={() => setTab("upstream")}>
-                      <Plus className="size-3.5" />
+                    <Button type="button" size="sm" variant="outline" icon={Plus} onClick={() => setTab("upstream")}>
                       前往提供方
                     </Button>
                   </div>

@@ -215,10 +215,12 @@ export default function PluginsPage() {
               type="button"
               variant="secondary"
               size="sm"
+              icon={RefreshCw}
+              iconMotion="spin"
+              iconBusy={pluginsQ.isFetching}
               disabled={pluginsQ.isFetching}
               onClick={() => void pluginsQ.refetch()}
             >
-              <RefreshCw className={cn("size-3.5", pluginsQ.isFetching && "animate-spin")} />
               {pluginsQ.isFetching ? "刷新中…" : "刷新"}
             </Button>
           </div>

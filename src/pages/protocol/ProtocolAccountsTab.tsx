@@ -35,6 +35,9 @@ import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialo
 import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal";
 import StatusTone from "@/components/StatusTone";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
+import ChromeStatusFilter, {
+  type ChromeStatusFilterOption,
+} from "@/components/ChromeStatusFilter";
 import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,6 +89,21 @@ const PROTO_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
 
 const EMPTY_PROTOCOL_ACCOUNTS: NapcatAccountRow[] = [];
 const EMPTY_SNOWLUMA_RUNTIMES: SnowlumaRuntimeRow[] = [];
+
+type ProtoStatusFilter =
+  | "all"
+  | "connected"
+  | "disconnected"
+  | "process_running"
+  | "external";
+
+const PROTO_STATUS_FILTER_OPTIONS: readonly ChromeStatusFilterOption<ProtoStatusFilter>[] = [
+  { value: "all", label: "全部" },
+  { value: "connected", label: "已连接" },
+  { value: "disconnected", label: "未连接" },
+  { value: "process_running", label: "进程运行中" },
+  { value: "external", label: "外置账号" },
+];
 
 type ProtocolAccountAction = "power" | "restart" | "disconnect";
 type SelectedBatchKind = "restart" | "stop";
@@ -218,6 +236,7 @@ export default function ProtocolAccountsTab() {
 
   const [expProtocolAccounts, setExpProtocolAccounts] = useState(true);
   const [protoSearchQ, setProtoSearchQ] = useState("");
+  const [protoStatusFilter, setProtoStatusFilter] = useState<ProtoStatusFilter>("all");
   const [protoAccPage, setProtoAccPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [configAccountId, setConfigAccountId] = useState<string | null>(null);
@@ -303,21 +322,27 @@ export default function ProtocolAccountsTab() {
 
   const filteredProtocolAccounts = useMemo(() => {
     const q = protoSearchQ.trim().toLowerCase();
-    if (!q) return protocolAccountsSorted;
     return protocolAccountsSorted.filter((a) => {
-      const hay = [
-        String(a.qq ?? ""),
-        String(a.id ?? ""),
-        profileNick(a, instances),
-        primaryTitle(a, instances),
-        accountProtocolId(a) ?? "",
-        protocolBackendDisplayName(a),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
+      if (q) {
+        const hay = [
+          String(a.qq ?? ""),
+          String(a.id ?? ""),
+          profileNick(a, instances),
+          primaryTitle(a, instances),
+          accountProtocolId(a) ?? "",
+          protocolBackendDisplayName(a),
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (protoStatusFilter === "connected") return a.connected === true;
+      if (protoStatusFilter === "disconnected") return a.connected !== true;
+      if (protoStatusFilter === "process_running") return isProcessRunning(a);
+      if (protoStatusFilter === "external") return isExternalProtocolAccount(a);
+      return true;
     });
-  }, [protocolAccountsSorted, protoSearchQ, instances]);
+  }, [protocolAccountsSorted, protoSearchQ, protoStatusFilter, instances]);
 
   const pagedProtocolAccounts = useMemo(
     () => slicePage(filteredProtocolAccounts, protoAccPage, prefs.tablePageSize),
@@ -414,7 +439,7 @@ export default function ProtocolAccountsTab() {
 
   useEffect(() => {
     setProtoAccPage(1);
-  }, [protoSearchQ, prefs.tablePageSize]);
+  }, [protoSearchQ, protoStatusFilter, prefs.tablePageSize]);
 
   useEffect(() => {
     const known = new Set(
@@ -810,6 +835,11 @@ export default function ProtocolAccountsTab() {
             onChange={(e) => setProtoSearchQ(e.target.value)}
           />
         </div>
+        <ChromeStatusFilter
+          value={protoStatusFilter}
+          onValueChange={setProtoStatusFilter}
+          options={PROTO_STATUS_FILTER_OPTIONS}
+        />
         {protoActionsEnabled || protocolAccountsTotalCount > 0 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -899,6 +929,7 @@ export default function ProtocolAccountsTab() {
     ),
     [
       protoSearchQ,
+      protoStatusFilter,
       protoActionsEnabled,
       restartAllBusy,
       restartSelectedBusy,
@@ -982,7 +1013,11 @@ export default function ProtocolAccountsTab() {
             ) : null}
 
             {!showAccountsLoading && !filteredProtocolAccounts.length ? (
-              <p className="muted">没有匹配的协议账号</p>
+              <p className="muted">
+                {protocolAccountsSorted.length
+                  ? "没有匹配的协议账号，试试调整搜索或筛选。"
+                  : "没有匹配的协议账号"}
+              </p>
             ) : null}
 
             {!showAccountsLoading && filteredProtocolAccounts.length > 0 ? (

@@ -1,6 +1,6 @@
 import { type FormEvent, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, LogIn } from "lucide-react";
 import { postConsoleAuthLogin, sanitizeConsoleNext } from "@/api/consoleAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,7 +147,7 @@ export default function LoginPage() {
                 {showPwd ? "隐藏" : "显示"}
               </button>
             </div>
-            <Button type="submit" className="h-10 w-full font-semibold" disabled={busy}>
+            <Button type="submit" className="h-10 w-full font-semibold" icon={LogIn} iconMotion="forward" disabled={busy}>
               {busy ? "登录中…" : "进入"}
             </Button>
             <p className="m-0 text-center text-[0.75rem] leading-snug text-[var(--text-muted)]">

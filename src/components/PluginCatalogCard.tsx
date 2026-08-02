@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Settings2 } from "lucide-react";
 import type { PluginRow } from "@/api/pallasTypes";
 import {
   pluginDisplayDescription,
@@ -12,6 +13,7 @@ import {
   pluginLoadWhere,
 } from "@/utils/pluginLoadRoleLabel";
 import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
+import BtnIco from "@/components/BtnIco";
 import PluginIcon from "@/components/PluginIcon";
 import { usePluginFavorites } from "@/hooks/usePluginFavorites";
 import { cn } from "@/lib/utils";
@@ -141,10 +143,11 @@ export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, 
       <div className="ui-card__footer">
         <button
           type="button"
-          className="btn btn--primary ui-btn ui-btn--primary plugin-store-card__foot-btn"
+          className="group btn btn--primary ui-btn ui-btn--primary plugin-store-card__foot-btn"
           style={{ width: "100%" }}
           onClick={onSelect}
         >
+          <BtnIco icon={Settings2} motion="settings" className="plugin-store-card__foot-ico" />
           编辑配置
         </button>
       </div>

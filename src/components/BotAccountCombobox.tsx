@@ -3,7 +3,12 @@ import type { ReactNode } from "react";
 import BotSelectLabel from "@/components/BotSelectLabel";
 import { CHROME_BOT_ACCOUNT_SELECT } from "@/components/ChromeTools";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
-import { botAccountFavoriteRank, botSelectDropdownLabel } from "@/utils/botDisplay";
+import { cn } from "@/lib/utils";
+import {
+  botAccountFavoriteRank,
+  botSelectDropdownLabel,
+  botSelectTriggerLabel,
+} from "@/utils/botDisplay";
 
 export type BotAccountOption = {
   id: string;
@@ -45,13 +50,14 @@ export default function BotAccountCombobox({
   searchPlaceholder = "搜索昵称或账号…",
   emptyText = "无匹配账号",
   searchThreshold = 8,
-  triggerClassName = CHROME_BOT_ACCOUNT_SELECT,
+  triggerClassName,
   contentClassName,
   ariaLabel = "当前 Bot 账号",
   title,
   disabled,
   id,
 }: BotAccountComboboxProps) {
+  const resolvedTriggerClassName = cn(CHROME_BOT_ACCOUNT_SELECT, triggerClassName);
   const sortedBots = useMemo(() => {
     const rows = [...bots];
     rows.sort((a, b) => {
@@ -83,7 +89,7 @@ export default function BotAccountCombobox({
       out.push({
         value: idStr,
         label: <BotSelectLabel nickname={nick || undefined} account={idStr} />,
-        triggerLabel: <BotSelectLabel nickname={nick || undefined} account={idStr} />,
+        triggerLabel: botSelectTriggerLabel(nick, idStr),
         keywords: botSelectDropdownLabel(nick, idStr),
       });
     }
@@ -110,7 +116,7 @@ export default function BotAccountCombobox({
       emptyText={emptyText}
       searchThreshold={searchThreshold}
       searchCount={sortedBots.length}
-      triggerClassName={triggerClassName}
+      triggerClassName={resolvedTriggerClassName}
       contentClassName={contentClassName}
       ariaLabel={ariaLabel}
       title={resolvedTitle}

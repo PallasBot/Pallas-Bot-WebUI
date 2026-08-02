@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
+import { LogOut, Mail, ShieldCheck } from "lucide-react";
 import { fetchAiNcmStatus, postAiNcmLogout, postAiNcmSendSms, postAiNcmVerifySms } from "@/api/console";
 import AiConfigField from "@/components/ai/AiConfigField";
 import { AI_NCM_DEFAULTS } from "@/config/aiConstants";
@@ -93,13 +94,25 @@ export default function AiConfigNcmSection() {
             </AiConfigField>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" disabled={busy} onClick={() => void sendMut.mutateAsync()}>
+            <Button size="sm" icon={Mail} disabled={busy} onClick={() => void sendMut.mutateAsync()}>
               发送验证码
             </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => void verifyMut.mutateAsync()}>
+            <Button
+              size="sm"
+              variant="outline"
+              icon={ShieldCheck}
+              disabled={busy}
+              onClick={() => void verifyMut.mutateAsync()}
+            >
               验证登录
             </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => void logoutMut.mutateAsync()}>
+            <Button
+              size="sm"
+              variant="outline"
+              icon={LogOut}
+              disabled={busy}
+              onClick={() => void logoutMut.mutateAsync()}
+            >
               登出
             </Button>
           </div>

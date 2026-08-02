@@ -32,6 +32,16 @@ import {
 import UiBadge from "@/components/ui/UiBadge";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
+import {
+  ArrowLeftRight,
+  Check,
+  GitBranch,
+  RefreshCw,
+  Save,
+  Server,
+  Unplug,
+  X,
+} from "lucide-react";
 
 const INHERIT = "__inherit__";
 
@@ -381,6 +391,7 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
                             type="button"
                             variant="outline"
                             size="sm"
+                            icon={ArrowLeftRight}
                             disabled={Boolean(applyBusyKey)}
                             onClick={() => openSwitch(row)}
                           >
@@ -419,6 +430,7 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
                       variant="outline"
                       size="sm"
                       className="w-full"
+                      icon={Server}
                       disabled={Boolean(applyBusyKey)}
                       onClick={() => openSwitch(row)}
                     >
@@ -471,7 +483,15 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
             ) : loadErr ? (
               <div className="git-mirror-dialog__state" role="status">
                 <p className="git-mirror-dialog__err">{loadErr}</p>
-                <Button type="button" size="sm" variant="outline" onClick={() => void loadInfo()}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  icon={RefreshCw}
+                  iconMotion="spin"
+                  iconBusy={loading}
+                  onClick={() => void loadInfo()}
+                >
                   重试
                 </Button>
               </div>
@@ -575,13 +595,21 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
                   </div>
 
                   <div className="git-mirror-dialog__actions">
-                    <Button type="button" size="sm" disabled={saveBusy} onClick={() => void savePreferred()}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      icon={Save}
+                      iconMotion="scale"
+                      disabled={saveBusy}
+                      onClick={() => void savePreferred()}
+                    >
                       {saveBusy ? "保存中…" : "保存"}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
+                      icon={Unplug}
                       disabled={probeBusy}
                       onClick={() => void runProbe()}
                     >
@@ -601,6 +629,8 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
                         type="button"
                         variant="outline"
                         size="sm"
+                        icon={GitBranch}
+                        iconMotion="settings"
                         disabled={applyAllBusy}
                         onClick={() => setConfirmApplyBotOpen(true)}
                       >
@@ -620,6 +650,8 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
                             type="button"
                             variant="outline"
                             size="sm"
+                            icon={X}
+                            iconMotion="close"
                             disabled={applyAllBusy}
                             onClick={() => setConfirmApplyBotOpen(false)}
                           >
@@ -628,6 +660,8 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
                           <Button
                             type="button"
                             size="sm"
+                            icon={Check}
+                            iconMotion="scale"
                             disabled={applyAllBusy}
                             onClick={() => void applyBotRemote()}
                           >
@@ -656,6 +690,8 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
                       type="button"
                       variant="outline"
                       size="sm"
+                      icon={GitBranch}
+                      iconMotion="settings"
                       disabled={Boolean(applyBusyKey)}
                       onClick={() => void applyCommunityBatch()}
                     >
@@ -715,6 +751,8 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
                     type="button"
                     variant="outline"
                     size="sm"
+                    icon={X}
+                    iconMotion="close"
                     disabled={Boolean(applyBusyKey)}
                     onClick={() => setSwitchTarget(null)}
                   >
@@ -723,6 +761,8 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
                   <Button
                     type="button"
                     size="sm"
+                    icon={Check}
+                    iconMotion="scale"
                     disabled={Boolean(applyBusyKey)}
                     onClick={() => void confirmSwitch()}
                   >

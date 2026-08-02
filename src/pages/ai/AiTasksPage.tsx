@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { X } from "lucide-react";
 import { cancelAgentTask, fetchAgentPlatformOverview, fetchAgentTasks } from "@/api/agentPlatformApi";
 import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChromeContext";
 import {
@@ -189,6 +190,8 @@ export default function AiTasksPage() {
                         size="sm"
                         variant="outline"
                         className="h-7 shrink-0 px-2"
+                        icon={X}
+                        iconMotion="close"
                         disabled={cancelMutation.isPending}
                         onClick={() => cancelMutation.mutate(String(item.task_id))}
                       >

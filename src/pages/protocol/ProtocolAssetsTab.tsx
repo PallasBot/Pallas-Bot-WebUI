@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Boxes, Download, Package, Settings2 } from "lucide-react";
+import { Boxes, Container, Download, Eraser, HardDrive, Package, Save, Settings2 } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -582,6 +582,7 @@ export default function ProtocolAssetsTab() {
               type="button"
               variant="secondary"
               size="sm"
+              icon={Eraser}
               disabled={cleanupBusy || !mountUrl}
               onClick={() => void cleanupDist()}
             >
@@ -591,6 +592,8 @@ export default function ProtocolAssetsTab() {
             <Button
               type="button"
               size="sm"
+              icon={Save}
+              iconMotion="scale"
               disabled={saveBusy || !mountUrl}
               onClick={() => void saveProfile()}
             >
@@ -623,6 +626,7 @@ export default function ProtocolAssetsTab() {
               <Button
                 type="button"
                 size="sm"
+                icon={Download}
                 disabled={!mountUrl || napcatDownloadBusy}
                 onClick={() => void downloadNapcat()}
               >
@@ -645,6 +649,7 @@ export default function ProtocolAssetsTab() {
               <Button
                 type="button"
                 size="sm"
+                icon={Download}
                 disabled={!mountUrl || snowlumaDownloadBusy}
                 onClick={() => void downloadSnowluma()}
               >
@@ -685,6 +690,7 @@ export default function ProtocolAssetsTab() {
                   <Button
                     type="button"
                     size="sm"
+                    icon={Container}
                     disabled={!mountUrl || napcatPullBusy || snowlumaPullBusy}
                     onClick={() => void pullDocker("napcat")}
                   >
@@ -694,6 +700,7 @@ export default function ProtocolAssetsTab() {
                     type="button"
                     variant="secondary"
                     size="sm"
+                    icon={HardDrive}
                     disabled={!mountUrl || napcatListBusy}
                     onClick={() => void listDocker("napcat")}
                   >
@@ -724,6 +731,7 @@ export default function ProtocolAssetsTab() {
                   <Button
                     type="button"
                     size="sm"
+                    icon={Container}
                     disabled={!mountUrl || snowlumaPullBusy || napcatPullBusy}
                     onClick={() => void pullDocker("snowluma")}
                   >
@@ -733,6 +741,7 @@ export default function ProtocolAssetsTab() {
                     type="button"
                     variant="secondary"
                     size="sm"
+                    icon={HardDrive}
                     disabled={!mountUrl || snowlumaListBusy}
                     onClick={() => void listDocker("snowluma")}
                   >

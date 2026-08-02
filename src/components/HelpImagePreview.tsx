@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import SegTabs from "@/components/SegTabs";
+import BtnIco from "@/components/BtnIco";
+import { ExternalLink, RefreshCw } from "lucide-react";
 
 type Level = "menu" | "plugin" | "function";
 
@@ -202,12 +204,15 @@ export default function HelpImagePreview({ embedded = false, defaultPlugin = "he
             size="sm"
             variant="outline"
             className="text-[13px]"
+            icon={RefreshCw}
+            iconMotion="spin"
+            iconBusy={previewLoading}
             disabled={previewLoading}
             onClick={() => setCacheBust(Date.now())}
           >
             {previewLoading ? "加载中…" : "刷新预览"}
           </Button>
-          <Button size="sm" variant="outline" className="text-[13px]" asChild>
+          <Button size="sm" variant="outline" className="group text-[13px]" asChild>
             <a
               href={buildHelpPreviewUrl({
                 level,
@@ -219,6 +224,7 @@ export default function HelpImagePreview({ embedded = false, defaultPlugin = "he
               target="_blank"
               rel="noreferrer"
             >
+              <BtnIco icon={ExternalLink} motion="external" />
               新标签打开
             </a>
           </Button>

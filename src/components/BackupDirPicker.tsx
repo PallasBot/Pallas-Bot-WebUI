@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CornerLeftUp, FolderCheck, Home, X } from "lucide-react";
 
 /** 备份目录选择：shadcn Dialog，标题左对齐。 */
 export default function BackupDirPicker({
@@ -91,6 +92,8 @@ export default function BackupDirPicker({
               type="button"
               variant="secondary"
               size="sm"
+              icon={CornerLeftUp}
+              iconMotion="up"
               disabled={busy || !browse?.parent}
               onClick={() => void loadBrowse(browse?.parent || undefined)}
             >
@@ -100,6 +103,7 @@ export default function BackupDirPicker({
               type="button"
               variant="secondary"
               size="sm"
+              icon={Home}
               disabled={busy || !browse?.default_path}
               onClick={() => void loadBrowse(browse?.default_path || "")}
             >
@@ -133,10 +137,10 @@ export default function BackupDirPicker({
         </div>
 
         <DialogFooter className="backup-dir-picker__actions border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
-          <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onClose}>
+          <Button type="button" variant="outline" size="sm" icon={X} iconMotion="close" disabled={busy} onClick={onClose}>
             取消
           </Button>
-          <Button type="button" size="sm" disabled={busy || !browse?.current} onClick={chooseCurrent}>
+          <Button type="button" size="sm" icon={FolderCheck} disabled={busy || !browse?.current} onClick={chooseCurrent}>
             选择此目录
           </Button>
         </DialogFooter>

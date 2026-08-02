@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, type LucideIcon } from "lucide-react";
+import { ChevronRight, Save, type LucideIcon } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchCommonConfig, putCommonConfig, type PluginConfigField } from "@/api/console";
 import type { AiConfigSaveStateHandler } from "@/components/ai/aiConfigSaveState";
@@ -230,7 +230,15 @@ export default function AiLlmFieldPanel({
 
         {inlineSave ? (
           <div className="flex justify-end pt-1">
-            <Button type="button" size="sm" disabled={!dirty || saveMut.isPending} onClick={save}>
+            <Button
+              type="button"
+              size="sm"
+              icon={Save}
+              iconMotion="scale"
+              iconBusy={saveMut.isPending}
+              disabled={!dirty || saveMut.isPending}
+              onClick={save}
+            >
               {saveMut.isPending ? "保存中…" : dirty ? "保存" : "已是最新"}
             </Button>
           </div>

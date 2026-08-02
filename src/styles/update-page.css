@@ -1,3 +1,147 @@
+/* Bot git 管理台 */
+.bot-git-panel__toolbar {
+  margin-bottom: 10px;
+  padding: 0;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  background: var(--surface-muted, #f9fafb);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.bot-git-panel__toolbar-track {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 12px;
+  min-width: max-content;
+}
+
+.bot-git-panel__toolbar-track > .chrome-tools__field {
+  flex-shrink: 0;
+}
+
+.bot-git-panel__actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.bot-git-panel__btn-primary {
+  /* 与页内主色按钮一致，避免 secondary 灰掉主操作 */
+  background: var(--primary, hsl(var(--primary)));
+  color: var(--primary-foreground, hsl(var(--primary-foreground)));
+  border-color: transparent;
+}
+
+.bot-git-panel__btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.bot-git-panel__meta {
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+
+.bot-git-panel__progress {
+  margin-bottom: 10px;
+}
+
+.bot-git-panel__table-wrap {
+  overflow-x: auto;
+  margin-top: 4px;
+}
+
+.bot-git-panel__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.bot-git-panel__table th,
+.bot-git-panel__table td {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  vertical-align: top;
+}
+
+.bot-git-panel__table th {
+  color: var(--text-muted, #6b7280);
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.bot-git-panel__row--head {
+  background: color-mix(in srgb, var(--primary, #2563eb) 8%, transparent);
+}
+
+.bot-git-panel__ref {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.bot-git-panel__ref code {
+  font: inherit;
+}
+
+.bot-git-panel__badge {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.bot-git-panel__date {
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.bot-git-panel__msg {
+  max-width: 28rem;
+  word-break: break-word;
+}
+
+.bot-git-panel__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.bot-git-panel__note {
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .bot-git-panel__toolbar {
+    margin-left: -2px;
+    margin-right: -2px;
+  }
+
+  .bot-git-panel__toolbar-track {
+    gap: 8px 12px;
+    padding: 8px 10px;
+  }
+
+  .bot-git-panel__actions {
+    margin-left: 8px;
+  }
+
+  .bot-git-panel__msg {
+    max-width: 14rem;
+  }
+
+  .bot-git-panel__row-actions {
+    flex-wrap: nowrap;
+  }
+}
+
 /* Migrated from Vue UpdatePage.vue scoped styles (P1) */
 .update-page__panels {
   display: flex;

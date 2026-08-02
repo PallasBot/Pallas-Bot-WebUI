@@ -5,6 +5,7 @@ import type {
   KnowledgeSourceDetail,
   KnowledgeSourceRetrieveData,
 } from "@/api/pallasTypes";
+import { Search } from "lucide-react";
 import {
   fetchConversationKernelKnowledgeSourceDetail,
   postConversationKernelKnowledgeSourceRetrieve,
@@ -114,7 +115,13 @@ function KnowledgeSourceProbe({
           placeholder="输入试探问句，例如：怎么清空会话"
           className="min-w-0 flex-1"
         />
-        <Button type="submit" size="sm" className="shrink-0" disabled={!query.trim() || probeM.isPending}>
+        <Button
+          type="submit"
+          size="sm"
+          className="shrink-0"
+          icon={Search}
+          disabled={!query.trim() || probeM.isPending}
+        >
           {probeM.isPending ? "检索中…" : "试探"}
         </Button>
       </form>

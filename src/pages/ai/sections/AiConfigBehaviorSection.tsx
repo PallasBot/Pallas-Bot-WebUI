@@ -15,6 +15,7 @@ import {
   postLlmRepeaterFeedbackManage,
   postLlmRuntimeReplayRun,
 } from "@/api/console";
+import { Archive, Ban, Download, Eye, Play, Trash2, X } from "lucide-react";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import SegTabs from "@/components/SegTabs";
@@ -169,6 +170,7 @@ export default function AiConfigBehaviorSection() {
                     <Button
                       size="sm"
                       variant="outline"
+                      icon={Trash2}
                       onClick={() => {
                         void delPatternMut.mutateAsync(pid);
                       }}
@@ -199,6 +201,7 @@ export default function AiConfigBehaviorSection() {
                     <Button
                       size="sm"
                       variant="outline"
+                      icon={Ban}
                       onClick={() => entryId && void feedbackMut.mutateAsync({ entryId, action: "invalidate" })}
                     >
                       作废
@@ -206,6 +209,7 @@ export default function AiConfigBehaviorSection() {
                     <Button
                       size="sm"
                       variant="outline"
+                      icon={Trash2}
                       onClick={() => entryId && void feedbackMut.mutateAsync({ entryId, action: "delete" })}
                     >
                       删除
@@ -227,12 +231,18 @@ export default function AiConfigBehaviorSection() {
                   <pre className="min-w-0 flex-1">{JSON.stringify(row, null, 2)}</pre>
                   {cid ? (
                     <div className="flex gap-1">
-                      <Button size="sm" onClick={() => void promoMut.mutateAsync({ candidateId: cid, action: "promote" })}>
+                      <Button
+                        size="sm"
+                        icon={Archive}
+                        onClick={() => void promoMut.mutateAsync({ candidateId: cid, action: "promote" })}
+                      >
                         入库
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
+                        icon={X}
+                        iconMotion="close"
                         onClick={() => void promoMut.mutateAsync({ candidateId: cid, action: "reject" })}
                       >
                         拒绝
@@ -262,13 +272,31 @@ export default function AiConfigBehaviorSection() {
               onChange={(e) => setRequestId(e.target.value)}
               placeholder="输入请求 ID"
             />
-            <Button size="sm" variant="outline" disabled={debugMut.isPending} onClick={() => void debugMut.mutateAsync("fetch")}>
+            <Button
+              size="sm"
+              variant="outline"
+              icon={Download}
+              iconMotion="down"
+              disabled={debugMut.isPending}
+              onClick={() => void debugMut.mutateAsync("fetch")}
+            >
               拉取
             </Button>
-            <Button size="sm" variant="outline" disabled={debugMut.isPending} onClick={() => void debugMut.mutateAsync("replay")}>
+            <Button
+              size="sm"
+              variant="outline"
+              icon={Eye}
+              disabled={debugMut.isPending}
+              onClick={() => void debugMut.mutateAsync("replay")}
+            >
               预览 replay
             </Button>
-            <Button size="sm" disabled={debugMut.isPending} onClick={() => void debugMut.mutateAsync("run")}>
+            <Button
+              size="sm"
+              icon={Play}
+              disabled={debugMut.isPending}
+              onClick={() => void debugMut.mutateAsync("run")}
+            >
               执行 replay
             </Button>
           </div>

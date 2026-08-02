@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { FolderInput, ListChecks } from "lucide-react";
+import { FileInput, FolderInput, ListChecks } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -152,7 +152,14 @@ export default function ProtocolImportTab() {
             <Label htmlFor="import-skip-existing">跳过已存在账号</Label>
           </div>
           <div className="field field--full row-actions">
-            <Button type="button" size="sm" disabled={!mountUrl || busy} onClick={() => void submitImport()}>
+            <Button
+              type="button"
+              size="sm"
+              icon={FileInput}
+              iconMotion="down"
+              disabled={!mountUrl || busy}
+              onClick={() => void submitImport()}
+            >
               {busy ? "处理中…" : dryRun ? "开始预检" : "开始导入"}
             </Button>
           </div>

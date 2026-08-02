@@ -60,6 +60,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
+import BtnIco from "@/components/BtnIco";
 
 const allSourceKeys = ["local", "fed", "community"] as const;
 type SourceKey = (typeof allSourceKeys)[number];
@@ -490,9 +491,9 @@ export default function CommunityPage() {
         ) : null}
 
         <div className={CHROME_TOOLS_TRAILING}>
-          <Button type="button" variant="outline" size="sm" asChild>
+          <Button type="button" variant="outline" size="sm" asChild className="group">
             <a href={communityHubUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="size-3.5" />
+              <BtnIco icon={ExternalLink} motion="external" />
               社区主站
             </a>
           </Button>

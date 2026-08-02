@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ListFilter, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -63,13 +63,13 @@ export default function ChartsPluginFilter({
       {open ? (
         <div className="space-y-2 border-t border-border/50 px-2.5 py-2">
           <div className="flex flex-wrap gap-1.5">
-            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onSelectTop(6)}>
+            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" icon={ListFilter} iconMotion="scale" onClick={() => onSelectTop(6)}>
               Top 6
             </Button>
-            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onSelectTop(12)}>
+            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" icon={ListFilter} iconMotion="scale" onClick={() => onSelectTop(12)}>
               Top 12
             </Button>
-            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onResetAuto}>
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" icon={Undo2} iconMotion="undo" onClick={onResetAuto}>
               恢复自动
             </Button>
           </div>

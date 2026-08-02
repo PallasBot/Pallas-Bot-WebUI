@@ -5,7 +5,6 @@ import { changeConsoleLogin, fetchConsoleSetupStatus } from "@/api/fullConsole";
 import PageMasthead from "@/components/PageMasthead";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 function setupSatisfied(data: Awaited<ReturnType<typeof fetchConsoleSetupStatus>> | undefined): boolean {
   if (!data) return false;
@@ -76,10 +75,12 @@ export default function SetupWizardPage() {
             type="button"
             variant="secondary"
             size="sm"
+            icon={RefreshCw}
+            iconMotion="spin"
+            iconBusy={setupQ.isFetching}
             disabled={setupQ.isFetching}
             onClick={() => void setupQ.refetch()}
           >
-            <RefreshCw className={cn("size-3.5", setupQ.isFetching && "animate-spin")} />
             {setupQ.isFetching ? "检查中…" : "重新检查"}
           </Button>
         }

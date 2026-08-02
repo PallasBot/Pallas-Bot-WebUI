@@ -20,7 +20,7 @@ import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { botPickerRowsFromInstances, botSelectDropdownLabel, qqAvatarUrl } from "@/utils/botDisplay";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { Images, List, Trash2 } from "lucide-react";
+import { Images, ImageOff, List, Send, Trash2 } from "lucide-react";
 import type { CommunityGalleryPost } from "@/api/consoleApi";
 
 const GALLERY_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -275,14 +275,14 @@ export default function CommunityGallerySection() {
               )}
             </label>
             {image ? (
-              <Button type="button" variant="ghost" size="sm" onClick={() => setImage(null)}>
+              <Button type="button" variant="ghost" size="sm" icon={ImageOff} iconMotion="scale" onClick={() => setImage(null)}>
                 清除图片
               </Button>
             ) : null}
           </div>
         </CardContent>
         <CardFooter className="justify-end">
-          <Button type="button" disabled={busy} onClick={() => void onSubmit()}>
+          <Button type="button" icon={Send} iconMotion="forward" disabled={busy} onClick={() => void onSubmit()}>
             {busy ? "提交中…" : "投稿到社区中心"}
           </Button>
         </CardFooter>

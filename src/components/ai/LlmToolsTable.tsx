@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Eye, Pencil, Save } from "lucide-react";
 import { patchLlmToolOverride, previewLlmToolIntent } from "@/api/console";
 import type { LlmToolCatalogItem, LlmToolCatalogPolicy, LlmToolOverridePatch } from "@/api/pallasTypes";
 import { Badge } from "@/components/ui/badge";
@@ -140,6 +141,7 @@ function IntentPreviewBox() {
           type="button"
           size="sm"
           className="h-8 shrink-0"
+          icon={Eye}
           disabled={!text.trim() || mutation.isPending}
           onClick={() => mutation.mutate(text.trim())}
         >
@@ -241,6 +243,8 @@ function ToolOverrideEditor({
             type="button"
             size="sm"
             className="h-8"
+            icon={Save}
+            iconMotion="scale"
             disabled={mutation.isPending}
             onClick={() => {
               const hints = hintsText
@@ -340,6 +344,7 @@ export default function LlmToolsTable({
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs"
+                icon={editing === row.name ? Eye : Pencil}
                 onClick={() => setEditing((cur) => (cur === row.name ? null : row.name))}
               >
                 {editing === row.name ? "收起" : "覆盖"}
@@ -420,6 +425,7 @@ export default function LlmToolsTable({
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2 text-xs"
+                      icon={editing === row.name ? Eye : Pencil}
                       onClick={() => setEditing((cur) => (cur === row.name ? null : row.name))}
                     >
                       {editing === row.name ? "收起" : "覆盖"}

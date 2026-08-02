@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronDown, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Loader2, RefreshCw } from "lucide-react";
 import ConfigFieldHelp from "@/components/config/ConfigFieldHelp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -269,10 +269,12 @@ export function AiModelSelect({
                   size="sm"
                   variant="ghost"
                   className="h-7 gap-1 px-2 text-xs"
+                  icon={RefreshCw}
+                  iconMotion="spin"
+                  iconBusy={isFetching}
                   disabled={disabled || isFetching}
                   onClick={() => onDiscover()}
                 >
-                  {isFetching ? <Loader2 className="size-3 animate-spin" /> : null}
                   {isFetching ? "发现中…" : "刷新列表"}
                 </Button>
               </div>

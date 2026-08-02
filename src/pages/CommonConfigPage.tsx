@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { PenLine, Search } from "lucide-react";
+import { PenLine, Search, ArrowLeft } from "lucide-react";
 import { fetchCommonConfigSections } from "@/api/fullConsole";
 import CommonConfigForm from "@/components/CommonConfigForm";
 import ChromeTools, { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
@@ -76,7 +76,7 @@ export default function CommonConfigPage() {
         title={sectionId}
         description="通用配置段编辑"
         actions={
-          <Button type="button" variant="secondary" size="sm" onClick={() => navigate("/common-config")}>
+          <Button type="button" variant="secondary" size="sm" icon={ArrowLeft} iconMotion="back" onClick={() => navigate("/common-config")}>
             返回列表
           </Button>
         }

@@ -397,7 +397,7 @@ html[data-layout="hub"] .ui-btn--sm {
   min-width: 240px;
   min-height: 0;
   padding: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-lg, 12px);
   border: 1px solid color-mix(in srgb, var(--border, rgba(120, 120, 140, 0.28)) 90%, transparent);
   background: var(--popover, var(--bg-card, #1b1d27));
   color: var(--popover-foreground, var(--text, inherit));
