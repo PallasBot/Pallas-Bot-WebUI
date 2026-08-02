@@ -55,10 +55,13 @@
 .bot-git-panel__table-wrap {
   overflow-x: auto;
   margin-top: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .bot-git-panel__table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -68,7 +71,8 @@
   text-align: left;
   padding: 8px 6px;
   border-bottom: 1px solid var(--border, #e5e7eb);
-  vertical-align: top;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .bot-git-panel__table th {
@@ -102,13 +106,12 @@
 }
 
 .bot-git-panel__msg {
-  max-width: 28rem;
-  word-break: break-word;
+  white-space: nowrap;
 }
 
 .bot-git-panel__row-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   justify-content: flex-end;
 }
@@ -131,14 +134,6 @@
 
   .bot-git-panel__actions {
     margin-left: 8px;
-  }
-
-  .bot-git-panel__msg {
-    max-width: 14rem;
-  }
-
-  .bot-git-panel__row-actions {
-    flex-wrap: nowrap;
   }
 }
 
