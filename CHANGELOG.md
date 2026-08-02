@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.18] - 2026-08-02
 
 ### 更新公告
 
@@ -34,6 +34,28 @@
 - 开关统一走 `console-bool-switch`
 - 默认 `--radius-control` 10px；侧栏跟随控件圆角
 
+### 提交明细
+
+### Added
+
+* feat(ui): 操作按钮统一补图标与悬停动效 ([f30ccc3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f30ccc3f0f0f6f9215b5038df99f05e538ff530e))
+* feat(update): 更新页 Bot 工具条与版本历史面板 ([2a80227](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2a8022755af1155a50dc90d72f44aa771736be7b))
+* feat(instances): 工具条增加连接状态筛选 ([825f386](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/825f3869f389c047c10547880c521a2cb06dc80c))
+
+### Fixed
+
+* fix(prefs): 默认控件圆角改为 10px ([1c21645](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1c21645822d6110ac236007f07c51f953e29b2ef))
+* fix(logs): 日志改文档流布局并缩短 scope 徽章 ([511cee0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/511cee0415ddcf94cedf550387e8d288107ba41d))
+* fix(prefs): 侧栏选中圆角跟随控件半径并去掉加粗 ([e516cd4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e516cd4911d00aeabab98c7750da8711d713a26e))
+* fix(ui): 刷新/商店/编配图标与账号选择器展示 ([c5ef118](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c5ef1187958ccbd56f405b2196fc9ae64e7d52a2))
+* fix(ui): 开关统一走 console-bool-switch ([4dea86a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4dea86a1b06634532c2504b0e2b804debc6da0e8))
+* fix(ui): asChild 时避免 Slot 收到 null 图标子节点 ([76e988e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/76e988e558aab94a0a59f8cca9202d1e1df4af73))
+* fix(prefs): 分段与控件圆角跟随 --radius-control ([736c2b9](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/736c2b95c9e6b8f8d4b2a7dc6da9eb28366d48fc))
+* fix(plugin-store): 避免空基线把整店标成上新绿点 ([b581367](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b581367b7f453b09b97491b2b68f7547054195df))
+
+**完整变更**: [`v0.8.17...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.17...HEAD)
+
+
 ## [0.8.17] - 2026-08-01
 
 ### 更新公告
@@ -53,7 +75,6 @@
 * fix(changelog): 补齐 0.8.16 更新公告 ([4108b0e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4108b0ef38d06b5eabcffab7fe1681c383b20894))
 
 **完整变更**: [`v0.8.16...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.16...HEAD)
-
 
 ## [0.8.16] - 2026-08-01
 
