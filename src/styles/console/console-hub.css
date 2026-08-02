@@ -2934,7 +2934,7 @@ html[data-layout="hub"] .shell-mobile-nav__section {
 html[data-layout="hub"] nav.shell__nav .shell__nav-link {
   min-height: 40px;
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-control, 10px);
   border: 1px solid transparent;
   gap: 10px;
   font-size: var(--shell-nav-label-size);
@@ -2971,7 +2971,7 @@ html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active {
   border-color: color-mix(in srgb, var(--accent) 36%, transparent);
   color: color-mix(in srgb, var(--accent) 92%, var(--text));
   box-shadow: none;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link .shell__nav-label {
@@ -2979,7 +2979,7 @@ html[data-layout="hub"] nav.shell__nav .shell__nav-link .shell__nav-label {
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active .shell__nav-label {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 html[data-theme="light"][data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active {
@@ -3328,7 +3328,7 @@ html[data-layout="hub"] .shell--sidebar-collapsed .shell__brand-slot--avatar .sh
 
 @media (max-width: 560px) {
   html[data-layout="hub"] .shell-mobile-nav__link {
-    border-radius: 999px;
+    border-radius: var(--radius-control, 10px);
     min-height: 44px;
     align-items: center;
   }
