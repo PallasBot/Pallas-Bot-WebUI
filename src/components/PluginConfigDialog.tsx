@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
+  type PluginConfigWorkspaceStatus,
 } from "@/components/PluginConfigWorkspace";
 import type {
   CommunityPluginRow,
@@ -41,7 +42,7 @@ export default function PluginConfigDialog({
   onClose,
 }: Props) {
   const workspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
-  const [status, setStatus] = useState<Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">>({
+  const [status, setStatus] = useState<PluginConfigWorkspaceStatus>({
     saving: false,
     checking: false,
     loading: true,
@@ -49,7 +50,7 @@ export default function PluginConfigDialog({
     supportsConfigCheck: false,
   });
 
-  const onStatusChange = (next: Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">) => {
+  const onStatusChange = (next: PluginConfigWorkspaceStatus) => {
     setStatus((prev) => {
       if (
         prev.saving === next.saving &&

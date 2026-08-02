@@ -584,8 +584,8 @@ html[data-layout="hub"] .ui-btn--sm {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 10px;
 }
 
@@ -623,6 +623,10 @@ html[data-layout="hub"] .ui-btn--sm {
 }
 
 @media (max-width: 560px) {
+  .string-map-field__list {
+    grid-template-columns: 1fr;
+  }
+
   .string-map-field__add {
     width: 100%;
   }

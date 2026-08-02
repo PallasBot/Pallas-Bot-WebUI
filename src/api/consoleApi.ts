@@ -3190,6 +3190,8 @@ export type SvcBackendRow = {
   model_glob?: string;
   enabled?: boolean;
   output_suffix?: string;
+  script_present?: boolean;
+  auto_installable?: boolean;
 };
 
 export type SingBackendsPayload = {
