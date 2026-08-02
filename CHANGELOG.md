@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.20] - 2026-08-02
 
 ### 更新公告
 
@@ -21,6 +21,20 @@
 
 - 音色资产与音频映射改为多列布局
 - 唱歌推理下拉固定包含 RVC 并优化展示
+
+### 提交明细
+
+### Added
+
+* feat(ai): 音色列表支持一键添加音频映射 ([aa80ead](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/aa80ead019dead674c0271833bbe392a3e2f2634))
+* feat(ai): 唱歌推理下拉固定包含 RVC 并优化展示 ([a9538bf](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a9538bf661ea19f000a6395602a2772c1897e1c1))
+
+### Fixed
+
+* fix(ai): 音色资产与音频映射改为多列布局 ([cf44122](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/cf4412208cd351be82716bbec17e6cbbd38972e4))
+
+**完整变更**: [`v0.8.19...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.19...HEAD)
+
 
 ## [0.8.19] - 2026-08-02
 
@@ -40,7 +54,6 @@
 * fix(update): 历史提交表横向滚动不换行 ([7e2a51b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7e2a51b5e6d5cb2828083deb9f7f73ebf9a14c7d))
 
 **完整变更**: [`v0.8.18...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.18...HEAD)
-
 
 ## [0.8.18] - 2026-08-02
 
