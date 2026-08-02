@@ -5,6 +5,7 @@ import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext
 import ConfigFieldHelp from "@/components/config/ConfigFieldHelp";
 import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
+  type PluginConfigWorkspaceStatus,
 } from "@/components/PluginConfigWorkspace";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,9 +15,7 @@ import { aiConfigSectionPath } from "@/config/aiConfigSections";
 /** 旧独立画画段；现行入口为媒体 · 画画。 */
 export default function AiConfigDrawSection() {
   const workspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
-  const [status, setStatus] = useState<
-    Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">
-  >({
+  const [status, setStatus] = useState<PluginConfigWorkspaceStatus>({
     saving: false,
     checking: false,
     loading: true,
@@ -25,7 +24,7 @@ export default function AiConfigDrawSection() {
   });
 
   const onStatusChange = useCallback(
-    (next: Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">) => {
+    (next: PluginConfigWorkspaceStatus) => {
       setStatus((prev) => {
         if (
           prev.saving === next.saving &&

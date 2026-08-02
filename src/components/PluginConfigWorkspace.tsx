@@ -127,6 +127,8 @@ function collectDrawPluginValues(
 export type PluginConfigWorkspaceHandle = {
   save: () => Promise<void>;
   runConfigCheck: () => Promise<void>;
+  getFieldValue: (fieldName: string) => string;
+  setFieldValue: (fieldName: string, value: string) => void;
   saving: boolean;
   checking: boolean;
   loading: boolean;
@@ -134,12 +136,17 @@ export type PluginConfigWorkspaceHandle = {
   supportsConfigCheck: boolean;
 };
 
+export type PluginConfigWorkspaceStatus = Omit<
+  PluginConfigWorkspaceHandle,
+  "save" | "runConfigCheck" | "getFieldValue" | "setFieldValue"
+>;
+
 type Props = {
   pluginName: string;
   presentation?: "page" | "dialog";
   initialPluginRow?: PluginRow | null;
   readmeTarget?: PluginReadmeTarget | null;
-  onStatusChange?: (status: Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">) => void;
+  onStatusChange?: (status: PluginConfigWorkspaceStatus) => void;
   /** 仅展示这些表单字段；未传则展示全部（网关绑定键仍隐藏） */
   includeFields?: string[];
   /**
@@ -432,6 +439,13 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   useImperativeHandle(ref, () => ({
     save,
     runConfigCheck,
+    getFieldValue: (fieldName: string) => fieldValues[fieldName] ?? "",
+    setFieldValue: (fieldName: string, value: string) => {
+      setFieldValues((prev) => {
+        if (prev[fieldName] === value) return prev;
+        return { ...prev, [fieldName]: value };
+      });
+    },
     saving,
     checking,
     loading,
