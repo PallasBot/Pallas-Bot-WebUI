@@ -1,5 +1,6 @@
 import type { LlmPromotionCandidate } from "@/api/pallasTypes";
 import { formatTs } from "@/api/console";
+import { Archive, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { labelScene, labelWritebackMessage, labelWritebackStatus } from "@/utils/aiHistoryLabels";
@@ -71,10 +72,18 @@ export default function SessionPromotionCard({
       <p className="line-clamp-3 text-xs text-muted-foreground">触发：{item.trigger_text || "—"}</p>
       {pending ? (
         <div className="flex flex-wrap gap-1.5">
-          <Button size="sm" className="h-7" disabled={busy} onClick={() => onResolve("promote")}>
+          <Button size="sm" className="h-7" icon={Archive} disabled={busy} onClick={() => onResolve("promote")}>
             入库
           </Button>
-          <Button size="sm" variant="outline" className="h-7" disabled={busy} onClick={() => onResolve("reject")}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7"
+            icon={X}
+            iconMotion="close"
+            disabled={busy}
+            onClick={() => onResolve("reject")}
+          >
             拒绝
           </Button>
         </div>

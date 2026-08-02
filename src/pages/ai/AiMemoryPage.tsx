@@ -2,15 +2,24 @@ import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Brain,
+  Download,
   FolderTree,
   GitBranch,
+  GitBranchPlus,
   Globe,
+  Layers,
+  ListChecks,
   MessageSquare,
   Network,
+  Plus,
+  Save,
   Search,
-  ListChecks,
-  Layers,
+  Snowflake,
+  Sparkles,
   Trash2,
+  TrendingDown,
+  TrendingUp,
+  Undo2,
   Upload,
 } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
@@ -558,6 +567,8 @@ export default function AiMemoryPage() {
                 <Button
                   size="sm"
                   variant="outline"
+                  icon={Sparkles}
+                  iconMotion="scale"
                   disabled={!botReady || extractM.isPending}
                   onClick={() => extractM.mutate({ botId: bot, groupId: group, limit: 20 })}
                 >
@@ -565,6 +576,7 @@ export default function AiMemoryPage() {
                 </Button>
                 <Button
                   size="sm"
+                  icon={Layers}
                   disabled={!botReady || hierRebuildM.isPending}
                   onClick={() => hierRebuildM.mutate({ botId: bot, groupId: group })}
                 >
@@ -652,6 +664,7 @@ export default function AiMemoryPage() {
                 />
                 <Button
                   size="sm"
+                  icon={Search}
                   disabled={!botReady || !query.trim() || searchM.isPending}
                   onClick={() =>
                     searchM.mutate({ botId: bot, groupId: group, query: query.trim() })
@@ -723,6 +736,7 @@ export default function AiMemoryPage() {
               <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
+                  icon={Save}
                   disabled={!botReady || !draft.trim() || createEpisodeM.isPending}
                   onClick={() =>
                     createEpisodeM.mutate({
@@ -737,6 +751,8 @@ export default function AiMemoryPage() {
                 <Button
                   size="sm"
                   variant="outline"
+                  icon={Sparkles}
+                  iconMotion="scale"
                   disabled={!botReady || extractM.isPending}
                   onClick={() => extractM.mutate({ botId: bot, groupId: group, limit: 20 })}
                 >
@@ -745,6 +761,7 @@ export default function AiMemoryPage() {
                 <Button
                   size="sm"
                   variant="destructive"
+                  icon={Trash2}
                   disabled={!botReady || clearM.isPending}
                   onClick={() => clearM.mutate({ botId: bot, groupId: group })}
                 >
@@ -774,6 +791,8 @@ export default function AiMemoryPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 px-2 text-xs"
+                          icon={Sparkles}
+                          iconMotion="scale"
                           disabled={!item.content?.trim() || extractM.isPending}
                           onClick={() =>
                             extractM.mutate({
@@ -790,6 +809,8 @@ export default function AiMemoryPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 px-2 text-xs"
+                          icon={TrendingUp}
+                          iconMotion="up"
                           onClick={() =>
                             lifeM.mutate({ id: Number(item.id), action: "reinforce" })
                           }
@@ -800,6 +821,8 @@ export default function AiMemoryPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 px-2 text-xs"
+                          icon={TrendingDown}
+                          iconMotion="down"
                           onClick={() => lifeM.mutate({ id: Number(item.id), action: "weaken" })}
                         >
                           削弱
@@ -808,6 +831,7 @@ export default function AiMemoryPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 px-2 text-xs"
+                          icon={Snowflake}
                           onClick={() => lifeM.mutate({ id: Number(item.id), action: "freeze" })}
                         >
                           冻结
@@ -816,6 +840,7 @@ export default function AiMemoryPage() {
                           size="sm"
                           variant="destructive"
                           className="h-7 px-2 text-xs"
+                          icon={Trash2}
                           onClick={() =>
                             deleteEpisodeM.mutate({ id: Number(item.id), botId: bot })
                           }
@@ -849,6 +874,7 @@ export default function AiMemoryPage() {
               />
               <Button
                 size="sm"
+                icon={Plus}
                 disabled={!botReady || !entityName.trim() || entityM.isPending}
                 onClick={() =>
                   entityM.mutate({
@@ -886,6 +912,7 @@ export default function AiMemoryPage() {
                         size="sm"
                         variant="destructive"
                         className="mt-2 h-7 px-2 text-xs"
+                        icon={Trash2}
                         onClick={() => entityDelM.mutate({ id: ent.id, botId: bot })}
                       >
                         删除
@@ -927,6 +954,7 @@ export default function AiMemoryPage() {
               />
               <Button
                 size="sm"
+                icon={GitBranchPlus}
                 disabled={
                   !botReady ||
                   !edgeFact.trim() ||
@@ -988,6 +1016,8 @@ export default function AiMemoryPage() {
                               size="sm"
                               variant="outline"
                               className="h-7 px-2 text-xs"
+                              icon={Undo2}
+                              iconMotion="undo"
                               disabled={edgeRestoreM.isPending}
                               onClick={() => edgeRestoreM.mutate({ id: edge.id, botId: bot })}
                             >
@@ -998,6 +1028,7 @@ export default function AiMemoryPage() {
                               size="sm"
                               variant="destructive"
                               className="h-7 px-2 text-xs"
+                              icon={Trash2}
                               onClick={() => edgeDelM.mutate({ id: edge.id, botId: bot })}
                             >
                               删除
@@ -1026,6 +1057,7 @@ export default function AiMemoryPage() {
               <Button
                 size="sm"
                 variant="outline"
+                icon={Layers}
                 disabled={!botReady || hierRebuildM.isPending}
                 onClick={() => hierRebuildM.mutate({ botId: bot, groupId: group })}
               >
@@ -1050,6 +1082,7 @@ export default function AiMemoryPage() {
               />
               <Button
                 size="sm"
+                icon={Plus}
                 disabled={!botReady || !categoryName.trim() || categoryM.isPending}
                 onClick={() =>
                   categoryM.mutate({
@@ -1098,6 +1131,7 @@ export default function AiMemoryPage() {
                               size="sm"
                               variant="destructive"
                               className="mt-2 h-7 px-2 text-xs"
+                              icon={Trash2}
                               onClick={() => categoryDelM.mutate({ id: cat.id, botId: bot })}
                             >
                               删除
@@ -1144,6 +1178,8 @@ export default function AiMemoryPage() {
                               size="sm"
                               variant="outline"
                               className="h-7 px-2 text-xs"
+                              icon={Undo2}
+                              iconMotion="undo"
                               disabled={trashRestoreM.isPending}
                               onClick={() =>
                                 trashRestoreM.mutate({ kind: "entity", id: ent.id, botId: bot })
@@ -1155,6 +1191,7 @@ export default function AiMemoryPage() {
                               size="sm"
                               variant="destructive"
                               className="h-7 px-2 text-xs"
+                              icon={Trash2}
                               disabled={trashPurgeM.isPending}
                               onClick={() => void purgeTrash("entity", ent.id, ent.name)}
                             >
@@ -1186,6 +1223,8 @@ export default function AiMemoryPage() {
                             size="sm"
                             variant="outline"
                             className="h-7 px-2 text-xs"
+                            icon={Undo2}
+                            iconMotion="undo"
                             disabled={trashRestoreM.isPending}
                             onClick={() =>
                               trashRestoreM.mutate({ kind: "edge", id: edge.id, botId: bot })
@@ -1221,6 +1260,8 @@ export default function AiMemoryPage() {
                               size="sm"
                               variant="outline"
                               className="h-7 px-2 text-xs"
+                              icon={Undo2}
+                              iconMotion="undo"
                               disabled={trashRestoreM.isPending}
                               onClick={() =>
                                 trashRestoreM.mutate({
@@ -1236,6 +1277,7 @@ export default function AiMemoryPage() {
                               size="sm"
                               variant="destructive"
                               className="h-7 px-2 text-xs"
+                              icon={Trash2}
                               disabled={trashPurgeM.isPending}
                               onClick={() => void purgeTrash("category", cat.id, cat.name)}
                             >
@@ -1272,6 +1314,8 @@ export default function AiMemoryPage() {
               <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
+                  icon={Upload}
+                  iconMotion="up"
                   disabled={!botReady || !importJson.trim() || importM.isPending}
                   onClick={() => {
                     try {
@@ -1291,6 +1335,7 @@ export default function AiMemoryPage() {
                 <Button
                   size="sm"
                   variant="destructive"
+                  icon={Trash2}
                   disabled={!botReady || clearGraphM.isPending}
                   onClick={() => clearGraphM.mutate({ botId: bot, groupId: group, hard: false })}
                 >
@@ -1309,6 +1354,8 @@ export default function AiMemoryPage() {
                 <Button
                   size="sm"
                   variant="outline"
+                  icon={Download}
+                  iconMotion="down"
                   disabled={!botReady || exportM.isPending}
                   onClick={() => exportM.mutate({ botId: bot, groupId: group })}
                 >
@@ -1331,6 +1378,8 @@ export default function AiMemoryPage() {
                 <Button
                   size="sm"
                   variant="outline"
+                  icon={Download}
+                  iconMotion="down"
                   disabled={!exportJson}
                   onClick={() => {
                     const blob = new Blob([exportJson], { type: "application/json" });
@@ -1382,6 +1431,7 @@ export default function AiMemoryPage() {
                         size="sm"
                         variant="destructive"
                         className="h-7 px-2 text-xs"
+                        icon={Trash2}
                         disabled={clearGraphM.isPending}
                         onClick={() =>
                           clearGraphM.mutate({
@@ -1419,6 +1469,7 @@ export default function AiMemoryPage() {
                 />
                 <Button
                   size="sm"
+                  icon={Plus}
                   disabled={!botReady || !prefRule.trim() || prefM.isPending}
                   onClick={() =>
                     prefM.mutate({

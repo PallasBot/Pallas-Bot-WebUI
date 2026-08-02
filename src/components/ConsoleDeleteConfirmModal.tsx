@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Trash2 } from "lucide-react";
 
 export type ConsoleDeleteListItem = {
   key: string;
@@ -85,7 +86,7 @@ export default function ConsoleDeleteConfirmModal({
 
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>取消</AlertDialogCancel>
-          <Button type="button" variant={confirmVariant} disabled={busy} onClick={onConfirm}>
+          <Button type="button" variant={confirmVariant} icon={Trash2} disabled={busy} onClick={onConfirm}>
             {confirmText}
           </Button>
         </AlertDialogFooter>

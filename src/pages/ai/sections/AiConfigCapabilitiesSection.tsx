@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Download, Save, Trash2 } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchMediaAssetsDownloadActive,
@@ -284,6 +285,8 @@ export default function AiConfigCapabilitiesSection() {
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
                 size="sm"
+                icon={Download}
+                iconMotion="down"
                 disabled={busy || !mediaQ.data?.download_allowed}
                 onClick={() => void downloadMut.mutateAsync(undefined)}
               >
@@ -294,6 +297,7 @@ export default function AiConfigCapabilitiesSection() {
                   key={k}
                   size="sm"
                   variant="outline"
+                  icon={Trash2}
                   disabled={busy}
                   onClick={() => void deleteMut.mutateAsync([k])}
                 >
@@ -346,7 +350,7 @@ export default function AiConfigCapabilitiesSection() {
                 />
               </AiConfigField>
             </div>
-            <Button className="mt-3" size="sm" disabled={busy} onClick={() => void singMut.mutateAsync()}>
+            <Button className="mt-3" size="sm" icon={Save} disabled={busy} onClick={() => void singMut.mutateAsync()}>
               保存唱歌默认配置
             </Button>
           </StateBlock>
@@ -382,7 +386,7 @@ export default function AiConfigCapabilitiesSection() {
                 <Input value={ttsTextLang} onChange={(e) => setTtsTextLang(e.target.value)} />
               </AiConfigField>
             </div>
-            <Button className="mt-3" size="sm" disabled={busy} onClick={() => void ttsMut.mutateAsync()}>
+            <Button className="mt-3" size="sm" icon={Save} disabled={busy} onClick={() => void ttsMut.mutateAsync()}>
               保存 TTS 默认配置
             </Button>
           </StateBlock>

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Download } from "lucide-react";
 import {
   fetchInstances,
   fetchLlmPersonaExport,
@@ -449,7 +450,7 @@ function ExportCard({
           placeholder="可选：用于编译的原文或触发文本"
         />
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" disabled={!botReady || loading} onClick={onReload}>
+          <Button size="sm" variant="outline" icon={Download} iconMotion="down" disabled={!botReady || loading} onClick={onReload}>
             重新导出
           </Button>
         </div>

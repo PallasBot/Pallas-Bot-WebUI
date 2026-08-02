@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, MessageSquare, Ellipsis, Radio, Hash, Download, Layers } from "lucide-react";
+import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, MessageSquare, Ellipsis, Radio, Hash, Download, Layers, Filter } from "lucide-react";
 import { fetchLogs, openLogsEventSource } from "@/api/fullConsole";
 import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@/api/pallasTypes";
 import PageMasthead from "@/components/PageMasthead";
@@ -694,9 +694,10 @@ export default function LogsPage() {
             variant="secondary"
             size="sm"
             className="shrink-0"
+            icon={Download}
+            iconMotion="down"
             onClick={exportCurrentView}
           >
-            <Download className="size-3.5" strokeWidth={1.75} aria-hidden />
             导出
           </Button>
           <Button
@@ -704,6 +705,8 @@ export default function LogsPage() {
             variant={advancedOpen || activeFilterCount > 0 ? "default" : "secondary"}
             size="sm"
             className="shrink-0"
+            icon={Filter}
+            iconMotion="scale"
             aria-expanded={advancedOpen}
             onClick={() => setAdvancedOpen((v) => !v)}
           >

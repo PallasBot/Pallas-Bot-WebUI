@@ -1,6 +1,21 @@
 import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, MessageSquare, Search, User } from "lucide-react";
+import {
+  Ban,
+  ChevronLeft,
+  Eraser,
+  MessageSquare,
+  MessageSquareWarning,
+  RefreshCw,
+  Save,
+  Search,
+  SlidersHorizontal,
+  Syringe,
+  Trash2,
+  Undo2,
+  User,
+  Wrench,
+} from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import { formatTs } from "@/api/console";
 import {
@@ -757,6 +772,7 @@ export default function AiHistoryPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
+                          icon={Ban}
                           disabled={Boolean(feedbackBusy[busyKey])}
                           onClick={() => manageTurnFeedback(row, "invalidate")}
                         >
@@ -767,6 +783,8 @@ export default function AiHistoryPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
+                          icon={Undo2}
+                          iconMotion="undo"
                           disabled={Boolean(feedbackBusy[busyKey])}
                           onClick={() => manageTurnFeedback(row, "restore")}
                         >
@@ -778,6 +796,7 @@ export default function AiHistoryPage() {
                           size="sm"
                           variant="ghost"
                           className="h-7 text-xs"
+                          icon={Wrench}
                           onClick={() =>
                             setExpandedToolTrace((prev) => ({ ...prev, [maintKey]: !prev[maintKey] }))
                           }
@@ -789,6 +808,7 @@ export default function AiHistoryPage() {
                         size="sm"
                         variant="ghost"
                         className="h-7 text-xs"
+                        icon={MessageSquareWarning}
                         onClick={() =>
                           setExpandedMaintain((prev) => ({ ...prev, [maintKey]: !prev[maintKey] }))
                         }
@@ -836,6 +856,8 @@ export default function AiHistoryPage() {
             size="sm"
             variant="outline"
             className="mt-2 h-7"
+            icon={SlidersHorizontal}
+            iconMotion="settings"
             onClick={() => {
                             setRulesOpen(true);
             }}
@@ -920,6 +942,9 @@ export default function AiHistoryPage() {
             size="sm"
             variant="outline"
             className="h-7"
+            icon={RefreshCw}
+            iconMotion="spin"
+            iconBusy={promoQ.isFetching}
             disabled={promoQ.isFetching}
             onClick={() => void promoQ.refetch()}
           >
@@ -1155,6 +1180,7 @@ export default function AiHistoryPage() {
                         <Button
                           size="sm"
                           className="h-9 flex-1 sm:flex-none"
+                          icon={Syringe}
                           disabled={!injectDraft.trim() || injectMut.isPending || clearMut.isPending}
                           onClick={submitInject}
                         >
@@ -1164,6 +1190,7 @@ export default function AiHistoryPage() {
                           size="sm"
                           variant="destructive"
                           className="h-9 flex-1 sm:flex-none"
+                          icon={Trash2}
                           disabled={injectMut.isPending || clearMut.isPending}
                           onClick={() => void confirmClearSession()}
                         >
@@ -1262,6 +1289,7 @@ export default function AiHistoryPage() {
               <Button
                 size="sm"
                 variant="ghost"
+                icon={Eraser}
                 onClick={() => {
                   setPatternEditor(EMPTY_PATTERN);
                   setTriggerFeaturesText("[]");
@@ -1271,6 +1299,8 @@ export default function AiHistoryPage() {
               </Button>
               <Button
                 size="sm"
+                icon={Save}
+                iconMotion="scale"
                 disabled={patternMut.isPending || !patternEditor.pattern_id.trim()}
                 onClick={() => {
                   void patternMut.mutateAsync();

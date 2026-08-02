@@ -9,7 +9,7 @@ import {
   postLlmModelAdminSwitch,
   postLlmModelAdminUnload,
 } from "@/api/console";
-import { Server } from "lucide-react";
+import { ArrowLeftRight, Cpu, PackageX, RefreshCw, Server } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import StateBlock from "@/components/StateBlock";
 import AiConfigField, { AiModelSelect } from "@/components/ai/AiConfigField";
@@ -112,16 +112,41 @@ export default function AiModelAdminPanel({ embedded = false }: Props) {
           <span>切换时尝试拉取模型</span>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" disabled={busy || !model.trim()} onClick={() => void switchMut.mutateAsync()}>
+          <Button
+            size="sm"
+            icon={ArrowLeftRight}
+            disabled={busy || !model.trim()}
+            onClick={() => void switchMut.mutateAsync()}
+          >
             切换
           </Button>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => void reloadMut.mutateAsync()}>
+          <Button
+            size="sm"
+            variant="outline"
+            icon={RefreshCw}
+            iconMotion="spin"
+            iconBusy={busy}
+            disabled={busy}
+            onClick={() => void reloadMut.mutateAsync()}
+          >
             重载
           </Button>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => void unloadMut.mutateAsync()}>
+          <Button
+            size="sm"
+            variant="outline"
+            icon={PackageX}
+            disabled={busy}
+            onClick={() => void unloadMut.mutateAsync()}
+          >
             卸载
           </Button>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => void gpuMut.mutateAsync()}>
+          <Button
+            size="sm"
+            variant="outline"
+            icon={Cpu}
+            disabled={busy}
+            onClick={() => void gpuMut.mutateAsync()}
+          >
             应用 GPU
           </Button>
         </div>

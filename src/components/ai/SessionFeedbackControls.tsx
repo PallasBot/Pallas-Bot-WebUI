@@ -1,5 +1,6 @@
 import type { LlmRepeaterFeedbackEntry } from "@/api/pallasTypes";
 import { formatTs } from "@/api/console";
+import { Ban, Eraser, Save, Trash2, Undo2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,11 +40,26 @@ export function SessionTurnFeedbackControls({
       {entry ? (
         <div className="flex flex-wrap gap-1.5">
           {entry.eligible_for_bias ? (
-            <Button size="sm" variant="outline" className="h-7" disabled={busy} onClick={() => onManage("invalidate")}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7"
+              icon={Ban}
+              disabled={busy}
+              onClick={() => onManage("invalidate")}
+            >
               排除
             </Button>
           ) : (
-            <Button size="sm" variant="outline" className="h-7" disabled={busy} onClick={() => onManage("restore")}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7"
+              icon={Undo2}
+              iconMotion="undo"
+              disabled={busy}
+              onClick={() => onManage("restore")}
+            >
               恢复
             </Button>
           )}
@@ -51,6 +67,7 @@ export function SessionTurnFeedbackControls({
             size="sm"
             variant="ghost"
             className="h-7 text-destructive"
+            icon={Trash2}
             disabled={busy}
             onClick={() => onManage("delete")}
           >
@@ -75,13 +92,22 @@ export function SessionTurnFeedbackControls({
           <Button
             size="sm"
             className="h-7"
+            icon={Save}
+            iconMotion="scale"
             disabled={busy || !correctionDraft.trim()}
             onClick={onSaveCorrection}
           >
             保存期望回复
           </Button>
           {entry?.corrected_reply_text ? (
-            <Button size="sm" variant="ghost" className="h-7" disabled={busy} onClick={onClearCorrection}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7"
+              icon={Eraser}
+              disabled={busy}
+              onClick={onClearCorrection}
+            >
               清除校正
             </Button>
           ) : null}
@@ -143,11 +169,26 @@ export function SessionFeedbackCard({
       ) : null}
       <div className="flex flex-wrap gap-1.5">
         {item.eligible_for_bias ? (
-          <Button size="sm" variant="outline" className="h-7" disabled={busy} onClick={() => onManage("invalidate")}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7"
+            icon={Ban}
+            disabled={busy}
+            onClick={() => onManage("invalidate")}
+          >
             排除
           </Button>
         ) : (
-          <Button size="sm" variant="outline" className="h-7" disabled={busy} onClick={() => onManage("restore")}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7"
+            icon={Undo2}
+            iconMotion="undo"
+            disabled={busy}
+            onClick={() => onManage("restore")}
+          >
             恢复
           </Button>
         )}
@@ -155,6 +196,7 @@ export function SessionFeedbackCard({
           size="sm"
           variant="ghost"
           className="h-7 text-destructive"
+          icon={Trash2}
           disabled={busy}
           onClick={() => onManage("delete")}
         >
@@ -174,13 +216,22 @@ export function SessionFeedbackCard({
           <Button
             size="sm"
             className="h-7"
+            icon={Save}
+            iconMotion="scale"
             disabled={busy || !correctionDraft.trim()}
             onClick={onSaveCorrection}
           >
             保存期望
           </Button>
           {item.corrected_reply_text ? (
-            <Button size="sm" variant="ghost" className="h-7" disabled={busy} onClick={onClearCorrection}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7"
+              icon={Eraser}
+              disabled={busy}
+              onClick={onClearCorrection}
+            >
               清除
             </Button>
           ) : null}

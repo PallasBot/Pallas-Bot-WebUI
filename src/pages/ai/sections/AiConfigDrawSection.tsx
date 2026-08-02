@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { Save, ShieldCheck } from "lucide-react";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import ConfigFieldHelp from "@/components/config/ConfigFieldHelp";
 import PluginConfigWorkspace, {
@@ -80,6 +81,7 @@ export default function AiConfigDrawSection() {
               type="button"
               size="sm"
               variant="outline"
+              icon={ShieldCheck}
               disabled={!canSave}
               onClick={() => void workspaceRef.current?.runConfigCheck()}
             >
@@ -89,6 +91,8 @@ export default function AiConfigDrawSection() {
           <Button
             type="button"
             size="sm"
+            icon={Save}
+            iconMotion="scale"
             disabled={!canSave}
             onClick={() => void workspaceRef.current?.save()}
           >

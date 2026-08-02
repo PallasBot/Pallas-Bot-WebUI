@@ -1,6 +1,8 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { LucideIcon } from "lucide-react";
+import BtnIco, { type BtnIcoMotion } from "@/components/BtnIco";
 import { cn } from "@/lib/utils";
 
 /**
@@ -8,6 +10,7 @@ import { cn } from "@/lib/utils";
  * - default：扁实心 accent + accent-contrast 字（shadcn 黑白下为深底浅字 / 浅底深字）
  * - secondary / outline：control 实心底 + 浅边 + 正文色（常见操作，勿灰板）
  * hover 略压暗、active 更明确；勿胶囊 / 厚渐变 glow。
+ * - icon / iconMotion / iconBusy：为文案按钮补 Lucide 与悬停动效（asChild 时请在子节点内手写 BtnIco）
  */
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-[13px] font-medium transition-[background,border-color,box-shadow,transform,color] duration-150 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_12%,transparent)] disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 rounded-[var(--radius-control,8px)] active:scale-[0.97]",
@@ -44,12 +47,39 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /** 文案前 Lucide 图标（asChild 时忽略，请在子节点内放 BtnIco） */
+  icon?: LucideIcon;
+  iconMotion?: BtnIcoMotion;
+  iconBusy?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      icon,
+      iconMotion,
+      iconBusy,
+      children,
+      ...props
+    },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : "button";
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+    const withIcon = Boolean(icon) && !asChild;
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }), withIcon && "group")}
+        ref={ref}
+        {...props}
+      >
+        {withIcon && icon ? <BtnIco icon={icon} motion={iconMotion} busy={iconBusy} /> : null}
+        {children}
+      </Comp>
+    );
   },
 );
 Button.displayName = "Button";

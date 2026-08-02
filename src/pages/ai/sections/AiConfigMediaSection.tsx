@@ -3,7 +3,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import "@/styles/console/ai-hub.css";
 import {
-  AudioLines, Cloud, HardDrive, Layers, Music2, Palette, Server, type LucideIcon,
+  AlignHorizontalSpaceAround,
+  ArrowRight,
+  AudioLines,
+  Cloud,
+  Download,
+  HardDrive,
+  Layers,
+  LogOut,
+  Mail,
+  Music2,
+  Package,
+  Palette,
+  Play,
+  RotateCw,
+  Save,
+  Server,
+  Settings,
+  ShieldCheck,
+  Square,
+  Trash2,
+  Unplug,
+  type LucideIcon,
 } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -71,9 +92,9 @@ function AiRuntimeNotReadyBlock({
         媒体服务还没就绪。请先到「媒体服务」完成安装与启动，确认健康后再回来操作。
       </ConsoleHint>
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={onGoService}>前往媒体服务</Button>
+        <Button size="sm" icon={ArrowRight} iconMotion="forward" onClick={onGoService}>前往媒体服务</Button>
         {canManage ? (
-          <Button size="sm" variant="outline" disabled={busy} onClick={onStart}>
+          <Button size="sm" variant="outline" icon={Play} disabled={busy} onClick={onStart}>
             启动媒体服务
           </Button>
         ) : null}
@@ -840,6 +861,7 @@ export default function AiConfigMediaSection() {
           type="button"
           size="sm"
           className="shrink-0"
+          icon={Save}
           disabled={
             busy
             || singQ.isLoading
@@ -864,6 +886,7 @@ export default function AiConfigMediaSection() {
           type="button"
           size="sm"
           className="shrink-0"
+          icon={Save}
           disabled={busy || ttsQ.isLoading || ttsMut.isPending}
           onClick={() => { void ttsSaveRef.current(); }}
         >
@@ -880,6 +903,7 @@ export default function AiConfigMediaSection() {
             size="sm"
             variant="outline"
             className="shrink-0"
+            icon={ShieldCheck}
             disabled={
               !drawStatus.hasData
               || drawStatus.loading
@@ -895,6 +919,7 @@ export default function AiConfigMediaSection() {
           type="button"
           size="sm"
           className="shrink-0"
+          icon={Save}
           disabled={
             !drawStatus.hasData
             || drawStatus.loading
@@ -1120,6 +1145,7 @@ export default function AiConfigMediaSection() {
                   <Button
                     size="sm"
                     variant={canClone ? "outline" : "default"}
+                    icon={Play}
                     disabled={busy || !canManageRuntime}
                     onClick={() => { void startMut.mutateAsync(); }}
                   >
@@ -1128,15 +1154,18 @@ export default function AiConfigMediaSection() {
                   <Button
                     size="sm"
                     variant="outline"
+                    icon={RotateCw}
+                    iconMotion="spin"
                     disabled={busy || !canManageRuntime}
                     onClick={() => { void restartMut.mutateAsync(); }}
                   >
                     重启
                   </Button>
-                  <Button size="sm" variant="outline" disabled={busy || !canManageRuntime} onClick={() => { void stopMut.mutateAsync(); }}>停止</Button>
+                  <Button size="sm" variant="outline" icon={Square} disabled={busy || !canManageRuntime} onClick={() => { void stopMut.mutateAsync(); }}>停止</Button>
                   {installPrimary.visible !== false ? (
                     <Button
                       size="sm"
+                      icon={Package}
                       variant={
                         installPrimary.enabled && (canClone || hasUpdate === true || hasUpdate == null)
                           ? "default"
@@ -1153,6 +1182,7 @@ export default function AiConfigMediaSection() {
                     <Button
                       size="sm"
                       variant={installPrimary.visible === false ? "outline" : "ghost"}
+                      icon={Package}
                       disabled={busy || !canBootstrap}
                       title="只重跑 bootstrap（不 git pull），用于修复依赖或切换 GPU 开关后重装"
                       onClick={() => { void installMut.mutateAsync("bootstrap"); }}
@@ -1211,6 +1241,7 @@ export default function AiConfigMediaSection() {
                   <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
+                      icon={AlignHorizontalSpaceAround}
                       disabled={busy || !cb?.can_edit || aligned}
                       title={aligned ? "已与 Bot 监听端口一致" : "写入 Bot 监听地址并重启 media"}
                       onClick={() => { void callbackMut.mutateAsync({ align: true }); }}
@@ -1220,6 +1251,8 @@ export default function AiConfigMediaSection() {
                     <Button
                       size="sm"
                       variant="outline"
+                      icon={Settings}
+                      iconMotion="settings"
                       disabled={busy || !cb?.can_edit}
                       onClick={() => setCallbackAdvancedOpen((v) => !v)}
                     >
@@ -1252,6 +1285,7 @@ export default function AiConfigMediaSection() {
                       </div>
                       <Button
                         size="sm"
+                        icon={Save}
                         disabled={busy || !cb?.can_edit}
                         onClick={() => {
                           const portNum = Number(callbackPort);
@@ -1310,8 +1344,8 @@ export default function AiConfigMediaSection() {
               </AiConfigField>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy} onClick={() => { void saveMut.mutateAsync(); }}>保存</Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => { void testMut.mutateAsync(); }}>测试连通</Button>
+              <Button size="sm" icon={Save} disabled={busy} onClick={() => { void saveMut.mutateAsync(); }}>保存</Button>
+              <Button size="sm" variant="outline" icon={Unplug} disabled={busy} onClick={() => { void testMut.mutateAsync(); }}>测试连通</Button>
             </div>
           </PluginConfigFormSection>
         </div>
@@ -1376,6 +1410,8 @@ export default function AiConfigMediaSection() {
                     <Button
                       size="sm"
                       variant="outline"
+                      icon={Download}
+                      iconMotion="down"
                       disabled={busy || !mediaQ.data?.download_allowed}
                       onClick={() => { void downloadMut.mutateAsync([key]); }}
                     >
@@ -1384,6 +1420,7 @@ export default function AiConfigMediaSection() {
                     <Button
                       size="sm"
                       variant="outline"
+                      icon={Trash2}
                       disabled={busy || !asset?.ready || mediaQ.data?.delete_allowed === false}
                       onClick={() => { void deleteMut.mutateAsync([key]); }}
                     >
@@ -1398,6 +1435,8 @@ export default function AiConfigMediaSection() {
             <div className="flex flex-wrap gap-2 pt-1">
               <Button
                 size="sm"
+                icon={Download}
+                iconMotion="down"
                 disabled={busy || !mediaQ.data?.download_allowed}
                 onClick={() => { void downloadMut.mutateAsync(undefined); }}
               >
@@ -1722,6 +1761,7 @@ export default function AiConfigMediaSection() {
                   <Button
                     type="button"
                     size="sm"
+                    icon={Save}
                     disabled={busy || ttsTranslatorQ.isLoading || ttsTranslatorMut.isPending || ttsTranslatorQ.data?.writable === false}
                     onClick={() => void ttsTranslatorMut.mutateAsync()}
                   >
@@ -1839,6 +1879,7 @@ export default function AiConfigMediaSection() {
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
+              icon={Mail}
               disabled={busy || phone.trim().length < AI_NCM_DEFAULTS.phoneMinLength}
               onClick={() => { void sendMut.mutateAsync(); }}
             >
@@ -1847,6 +1888,7 @@ export default function AiConfigMediaSection() {
             <Button
               size="sm"
               variant="outline"
+              icon={ShieldCheck}
               disabled={
                 busy
                 || phone.trim().length < AI_NCM_DEFAULTS.phoneMinLength
@@ -1859,6 +1901,7 @@ export default function AiConfigMediaSection() {
             <Button
               size="sm"
               variant="outline"
+              icon={LogOut}
               disabled={busy || !loggedIn}
               onClick={() => { void logoutMut.mutateAsync(); }}
             >

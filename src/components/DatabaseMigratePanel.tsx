@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
+import { DatabaseZap } from "lucide-react";
 
 type Props = {
   onMessage?: (kind: "ok" | "err", text: string) => void;
@@ -149,7 +150,7 @@ export default function DatabaseMigratePanel({ onMessage }: Props) {
         </label>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" disabled={busy || running} onClick={() => void startJob()}>
+        <Button type="button" size="sm" icon={DatabaseZap} disabled={busy || running} onClick={() => void startJob()}>
           {running ? "进行中…" : dryRun ? "开始预演" : "开始迁移"}
         </Button>
         {info?.active_backend ? (

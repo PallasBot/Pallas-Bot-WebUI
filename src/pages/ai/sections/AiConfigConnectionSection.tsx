@@ -15,6 +15,7 @@ import {
   putAiExtensionConfig,
 } from "@/api/console";
 import { fetchAiInstallJobActive } from "@/api/consoleApi";
+import { Download, Package, Play, Save, Square, Unplug } from "lucide-react";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField from "@/components/ai/AiConfigField";
 import SegTabs from "@/components/SegTabs";
@@ -228,10 +229,22 @@ export default function AiConfigConnectionSection() {
               </AiConfigField>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy} onClick={() => void saveMut.mutateAsync()}>
+              <Button
+                size="sm"
+                icon={Save}
+                iconMotion="scale"
+                disabled={busy}
+                onClick={() => void saveMut.mutateAsync()}
+              >
                 保存
               </Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => void testMut.mutateAsync()}>
+              <Button
+                size="sm"
+                variant="outline"
+                icon={Unplug}
+                disabled={busy}
+                onClick={() => void testMut.mutateAsync()}
+              >
                 测试连通
               </Button>
             </div>
@@ -267,6 +280,7 @@ export default function AiConfigConnectionSection() {
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
                 size="sm"
+                icon={Play}
                 disabled={busy || !canManageRuntime}
                 onClick={() => void startMut.mutateAsync()}
               >
@@ -275,6 +289,7 @@ export default function AiConfigConnectionSection() {
               <Button
                 size="sm"
                 variant="outline"
+                icon={Square}
                 disabled={busy || !canManageRuntime}
                 onClick={() => void stopMut.mutateAsync()}
               >
@@ -283,6 +298,7 @@ export default function AiConfigConnectionSection() {
               {installPrimary.visible !== false ? (
                 <Button
                   size="sm"
+                  icon={Package}
                   variant={
                     installPrimary.enabled && (canClone || hasUpdate === true || hasUpdate == null)
                       ? "default"
@@ -299,6 +315,8 @@ export default function AiConfigConnectionSection() {
                 <Button
                   size="sm"
                   variant={installPrimary.visible === false ? "outline" : "ghost"}
+                  icon={Download}
+                  iconMotion="down"
                   disabled={busy || !canBootstrap}
                   title="只重跑 bootstrap（不 git pull），用于修复依赖或切换 GPU 开关后重装"
                   onClick={() => void installMut.mutateAsync("bootstrap")}

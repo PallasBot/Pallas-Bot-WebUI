@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { qqAvatarUrl } from "@/utils/botDisplay";
 import StatusTone from "@/components/StatusTone";
+import { Save } from "lucide-react";
 
 const ACCOUNT_TABS = [
   { id: "overview" as const, label: "概览" },
@@ -224,6 +225,8 @@ export default function ProtocolAccountConfigDialog({
             <Button
               type="button"
               size="sm"
+              icon={Save}
+              iconMotion="scale"
               disabled={!canSave}
               title="Ctrl+S"
               onClick={() => void workspaceRef.current?.saveSettings()}

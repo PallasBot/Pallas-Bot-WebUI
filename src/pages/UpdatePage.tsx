@@ -65,6 +65,7 @@ import { botSelectDropdownLabel } from "@/utils/botDisplay";
 import { readPrefs, writePrefs } from "@/theme/applyShellTheme";
 import {
   Bot,
+  Check,
   ChevronRight,
   Download,
   ExternalLink,
@@ -906,12 +907,10 @@ export default function UpdatePage() {
               variant="secondary"
               size="sm"
               className="group"
+              icon={Server}
+              iconMotion="settings"
               onClick={() => setGitMirrorOpen(true)}
             >
-              <Server
-                className="size-3.5 shrink-0 transition-transform duration-200 group-hover:scale-110"
-                aria-hidden
-              />
               镜像源
             </Button>
             <Button
@@ -919,16 +918,12 @@ export default function UpdatePage() {
               variant="secondary"
               size="sm"
               className="group"
+              icon={RefreshCw}
+              iconMotion="spin"
+              iconBusy={q.isFetching || busy}
               disabled={q.isFetching || busy}
               onClick={() => void q.refetch()}
             >
-              <RefreshCw
-                className={cn(
-                  "size-3.5 shrink-0 transition-transform duration-300",
-                  q.isFetching || busy ? "animate-spin" : "group-hover:rotate-180",
-                )}
-                aria-hidden
-              />
               {q.isFetching || busy ? "检查中…" : "重新检查"}
             </Button>
           </div>
@@ -985,16 +980,12 @@ export default function UpdatePage() {
                     <Button
                       type="button"
                       className="group"
+                      icon={Download}
+                      iconMotion="down"
+                      iconBusy={applyKind === "web"}
                       disabled={webApplyDisabled}
                       onClick={() => void applyWeb()}
                     >
-                      <Download
-                        className={cn(
-                          "size-3.5 shrink-0 transition-transform duration-200",
-                          applyKind === "web" ? "animate-pulse" : "group-hover:translate-y-0.5",
-                        )}
-                        aria-hidden
-                      />
                       {applyKind === "web" ? "处理中…" : "应用 WebUI 更新"}
                     </Button>
                   ) : null}
@@ -1399,16 +1390,12 @@ export default function UpdatePage() {
                   variant="secondary"
                   size="sm"
                   className="group"
+                  icon={Play}
+                  iconMotion="scale"
+                  iconBusy={applyKind === "auto"}
                   disabled={autoBusy || busy}
                   onClick={() => void runAutoOnce()}
                 >
-                  <Play
-                    className={cn(
-                      "size-3.5 shrink-0 transition-transform duration-200",
-                      applyKind === "auto" ? "animate-pulse" : "group-hover:scale-110",
-                    )}
-                    aria-hidden
-                  />
                   {applyKind === "auto" ? "执行中…" : "立即检查并应用"}
                 </Button>
               </div>
@@ -1451,16 +1438,12 @@ export default function UpdatePage() {
               type="button"
               size="sm"
               className="group"
+              icon={Save}
+              iconMotion="scale"
+              iconBusy={ghTokenBusy}
               disabled={ghTokenBusy}
               onClick={() => void saveGithubToken()}
             >
-              <Save
-                className={cn(
-                  "size-3.5 shrink-0 transition-transform duration-200",
-                  ghTokenBusy ? "animate-pulse" : "group-hover:scale-110",
-                )}
-                aria-hidden
-              />
               {ghTokenBusy ? "保存中…" : "保存"}
             </Button>
             {ghTokenHadValue ? (
@@ -1469,13 +1452,10 @@ export default function UpdatePage() {
                 variant="outline"
                 size="sm"
                 className="group"
+                icon={Trash2}
                 disabled={ghTokenBusy}
                 onClick={() => void clearGithubToken()}
               >
-                <Trash2
-                  className="size-3.5 shrink-0 transition-transform duration-200 group-hover:scale-110"
-                  aria-hidden
-                />
                 清除
               </Button>
             ) : null}
@@ -1548,7 +1528,7 @@ export default function UpdatePage() {
                 完整 CHANGELOG
               </a>
             ) : null}
-            <Button type="button" onClick={() => setChangelog(null)}>
+            <Button type="button" icon={Check} iconMotion="scale" onClick={() => setChangelog(null)}>
               知道了
             </Button>
           </DialogFooter>
