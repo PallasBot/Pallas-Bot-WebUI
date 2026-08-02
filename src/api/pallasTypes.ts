@@ -2220,6 +2220,8 @@ export interface UpdateCheckAllData {
 /** Bot 本体更新检查 */
 export type BotDeploymentMode = "docker" | "release_tag" | "release_tag_dirty" | "dev_clone";
 
+export type BotUpdateTrack = "release" | "branch";
+
 export interface BotUpdateCheckData {
   current_tag: string;
   current_commit: string;
@@ -2227,6 +2229,13 @@ export interface BotUpdateCheckData {
   has_update: boolean;
   /** 相对最新 release 超前或未打发行 tag，且无需更新 */
   development_build?: boolean;
+  /** release=正式版 tag；branch=git pull 跟踪分支 tip */
+  update_track?: BotUpdateTrack;
+  /** 分支轨道配置的分支名；空表示自动解析 */
+  update_branch?: string;
+  upstream_ref?: string;
+  latest_commit?: string;
+  commits_behind?: number;
   release_url: string;
   /** GitHub Release 正文（Markdown），网页兜底拉 tag 时可能为空 */
   release_notes?: string | null;
@@ -2241,6 +2250,58 @@ export interface BotUpdateCheckData {
   restart_available?: boolean;
   activation_policy?: ExtensionActivationPolicy | null;
 }
+
+/** Bot git 管理台：更新方式（UI：Release / Commit；配置 track 仍为 release / branch） */
+export type BotGitUiMode = "release" | "commit";
+
+export type BotGitHeadInfo = {
+  sha: string;
+  short_sha: string;
+  tag?: string;
+  date?: string;
+  message?: string;
+};
+
+export type BotGitStatusData = {
+  update_track?: BotUpdateTrack | string;
+  update_branch?: string;
+  branches?: string[];
+  head?: BotGitHeadInfo | null;
+  upstream_ref?: string;
+  latest_commit?: string;
+  commits_behind?: number;
+  git_available?: boolean;
+  dirty?: boolean;
+  dirty_file_count?: number;
+  current_branch?: string;
+  deployment_mode?: BotDeploymentMode | string;
+  restart_available?: boolean;
+};
+
+export type BotGitHistoryItem = {
+  kind: "commit" | "release" | string;
+  ref: string;
+  short_ref: string;
+  date: string;
+  message: string;
+  is_head?: boolean;
+  is_latest?: boolean;
+};
+
+export type BotGitHistoryData = {
+  mode: BotGitUiMode | string;
+  branch?: string;
+  head?: BotGitHeadInfo | null;
+  items: BotGitHistoryItem[];
+};
+
+export type BotGitApplyBody = {
+  mode: BotGitUiMode | string;
+  branch?: string;
+  ref?: string;
+  strategy?: "safe" | "force" | string;
+  restart?: boolean;
+};
 
 export interface BotUpdateApplyData extends Partial<UpdateApplyJobStartData> {
   tag?: string;
