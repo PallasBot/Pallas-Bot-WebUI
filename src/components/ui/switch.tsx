@@ -1,27 +1,92 @@
 import * as React from "react";
-import * as SwitchPrimitives from "@radix-ui/react-switch";
-
 import { cn } from "@/lib/utils";
 
-const Switch = React.forwardRef<
-  React.ElementRef<typeof SwitchPrimitives.Root>,
-  React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>
->(({ className, ...props }, ref) => (
-  <SwitchPrimitives.Root
-    className={cn(
-      "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input",
+export type SwitchProps = {
+  checked?: boolean;
+  defaultChecked?: boolean;
+  disabled?: boolean;
+  id?: string;
+  name?: string;
+  className?: string;
+  /** 开启态色调；默认跟 accent，amber 用于开发模式等警示项 */
+  tone?: "default" | "amber";
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
+  onCheckedChange?: (checked: boolean) => void;
+  /** 挂在外层 label 上，便于卡片行内 stopPropagation */
+  onClick?: React.MouseEventHandler<HTMLLabelElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLLabelElement>;
+};
+
+/**
+ * 全站通用开关：与偏好页「开发模式」同一套 `.console-bool-switch` 视觉。
+ * API 兼容原 Radix Switch 的 checked / onCheckedChange / disabled / id。
+ */
+const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
+  (
+    {
       className,
-    )}
-    {...props}
-    ref={ref}
-  >
-    <SwitchPrimitives.Thumb
-      className={cn(
-        "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform duration-200 ease-out will-change-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0",
-      )}
-    />
-  </SwitchPrimitives.Root>
-));
-Switch.displayName = SwitchPrimitives.Root.displayName;
+      checked,
+      defaultChecked,
+      disabled = false,
+      id,
+      name,
+      tone = "default",
+      onCheckedChange,
+      onClick,
+      onKeyDown,
+      "aria-label": ariaLabel,
+      "aria-labelledby": ariaLabelledBy,
+    },
+    ref,
+  ) => {
+    const isControlled = checked !== undefined;
+    const [uncontrolled, setUncontrolled] = React.useState(Boolean(defaultChecked));
+    const on = isControlled ? Boolean(checked) : uncontrolled;
+
+    return (
+      <label
+        className={cn(
+          "console-bool-switch",
+          on && "console-bool-switch--on",
+          tone === "amber" && "console-bool-switch--amber",
+          disabled && "pointer-events-none",
+          className,
+        )}
+        data-state={on ? "checked" : "unchecked"}
+        onClick={onClick}
+        onKeyDown={onKeyDown}
+        onMouseDown={(e) => {
+          if (disabled) return;
+          // 避免 Dialog 内 focus scrollIntoView 把内容顶出可视区
+          e.preventDefault();
+          const input = e.currentTarget.querySelector<HTMLInputElement>("input");
+          input?.focus({ preventScroll: true });
+        }}
+      >
+        <input
+          ref={ref}
+          id={id}
+          name={name}
+          type="checkbox"
+          className="console-bool-switch__input"
+          checked={on}
+          disabled={disabled}
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
+          onChange={(e) => {
+            const next = e.target.checked;
+            if (!isControlled) setUncontrolled(next);
+            onCheckedChange?.(next);
+          }}
+        />
+        <span className="console-bool-switch__track" aria-hidden="true">
+          <span className="console-bool-switch__thumb" />
+        </span>
+      </label>
+    );
+  },
+);
+Switch.displayName = "Switch";
 
 export { Switch };
