@@ -13,6 +13,51 @@ export const BOT_RESTART_PROGRESS_CAP = 99;
 export const BOT_RESTART_ESTIMATE_MS = 90_000;
 export const BOT_RESTART_POLL_MS = 500;
 
+const RESTART_PROGRESS_STEPS = [
+  { id: "scheduled", label: "已发送指令" },
+  { id: "disconnecting", label: "进程退出" },
+  { id: "reconnecting", label: "等待恢复" },
+  { id: "online", label: "恢复在线" },
+] as const;
+
+export type RestartProgressStepState = "hidden" | "done" | "active" | "current";
+
+export function restartProgressSteps(
+  phase: BotRestartPhase,
+  inProgress: boolean,
+): Array<(typeof RESTART_PROGRESS_STEPS)[number] & { state: RestartProgressStepState }> {
+  const activeIndex = (() => {
+    switch (phase) {
+      case "scheduled":
+        return 0;
+      case "disconnecting":
+        return 1;
+      case "reconnecting":
+      case "timeout":
+      case "failed":
+        return 2;
+      case "online":
+        return 3;
+      default:
+        return -1;
+    }
+  })();
+
+  return RESTART_PROGRESS_STEPS.map((step, index) => {
+    let state: RestartProgressStepState;
+    if (index > activeIndex) {
+      state = "hidden";
+    } else if (index < activeIndex || phase === "online") {
+      state = "done";
+    } else if (inProgress) {
+      state = "active";
+    } else {
+      state = "current";
+    }
+    return { ...step, state };
+  });
+}
+
 export function botRestartPhaseLabel(phase: BotRestartPhase): string {
   switch (phase) {
     case "scheduled":

@@ -604,6 +604,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       }
       const runtimeChanged = runtimeSettingsKey() !== savedRuntimeSettings;
       const connectionChanged = connectionSettingsKey() !== savedConnectionSettings;
+      let savedMessage = "已保存并重启协议进程";
       setSaveBusy(true);
       try {
         if (runtimeChanged) {
@@ -627,14 +628,21 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
           };
           const wp = parseInt(webuiPort.trim(), 10);
           if (webuiPort.trim() && !Number.isNaN(wp)) body.webui_port = wp;
-          await protocolUpdateAccount(mountUrl, accountId, body, true);
+          const result = await protocolUpdateAccount(mountUrl, accountId, body, true);
+          const hotReload = result.hot_reload;
+          if (hotReload?.reloaded) {
+            savedMessage = "已保存并热更新 WS 连接";
+          } else if (hotReload) {
+            const detail = hotReload.error || hotReload.message;
+            savedMessage = detail ? `已保存，但 WS 热更新未完成：${detail}` : "已保存，WS 将在下次连接时生效";
+          }
         }
         if (bypassEnabled !== savedBypassEnabled) {
           await protocolUpdateAccountConfigs(mountUrl, accountId, {
             napcat: { bypass_enabled: bypassEnabled },
           });
         }
-        notify("已保存并重启协议进程", "ok");
+        notify(savedMessage, "ok");
         await loadAccount(false);
       } catch (e) {
         notify(protocolApiErrorMessage(e, "保存失败"), "err");

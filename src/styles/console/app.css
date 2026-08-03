@@ -16101,6 +16101,41 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-group-card {
   font-size: 13px;
   line-height: 1.45;
 }
+.community-page__federation-deployment-name {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elev);
+}
+.community-page__federation-deployment-name-copy {
+  min-width: 0;
+}
+.community-page__federation-deployment-name-copy label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.community-page__federation-deployment-name-copy p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.community-page__federation-deployment-name-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 360px;
+  max-width: 520px;
+  min-width: 0;
+}
+.community-page__federation-deployment-name-controls input {
+  min-width: 0;
+}
 .community-page__federation-secret {
   padding: 12px 14px;
   border-radius: var(--radius-md);
@@ -16548,6 +16583,18 @@ html[data-theme="light"] .corpus-hot__pill-score {
   }
 }
 @media (max-width: 560px) {
+  .community-page__federation-deployment-name,
+  .community-page__federation-deployment-name-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .community-page__federation-deployment-name-controls {
+    max-width: none;
+    flex-basis: auto;
+  }
+  .community-page__federation-deployment-name-controls .ui-btn {
+    width: 100%;
+  }
   .community-page__federation-secret-hd .btn,
   .community-page__federation-secret-hd .ui-btn {
     width: 100%;
