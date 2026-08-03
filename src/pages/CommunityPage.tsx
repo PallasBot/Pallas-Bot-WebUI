@@ -361,8 +361,8 @@ export default function CommunityPage() {
   }, [communityStats, federationOnboarding]);
 
   useEffect(() => {
-    if (deploymentNameQ.data) setDeploymentNameDraft(configuredDeploymentName);
-  }, [configuredDeploymentName, deploymentNameQ.data]);
+    if (deploymentNameQ.isFetched) setDeploymentNameDraft(configuredDeploymentName);
+  }, [configuredDeploymentName, deploymentNameQ.isFetched]);
 
   const saveDeploymentName = useMutation({
     mutationFn: () => putPluginConfig("pb_core", { deployment_name: deploymentNameDraft.trim() }),
