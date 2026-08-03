@@ -56,7 +56,24 @@ export function protocolApiErrorMessage(err: unknown, fallback: string): string 
   return fallback;
 }
 
-type AccountActionBody = { account?: NapcatAccountRow };
+export type ProtocolHotReloadResult = {
+  attempted?: boolean;
+  reloaded?: boolean;
+  online?: boolean;
+  applied?: boolean;
+  error?: string;
+  message?: string;
+  [key: string]: unknown;
+};
+
+export type ProtocolAccountUpdateResult = {
+  account?: NapcatAccountRow;
+  restarted?: boolean;
+  needs_restart?: boolean;
+  hot_reload?: ProtocolHotReloadResult | null;
+};
+
+type AccountActionBody = ProtocolAccountUpdateResult;
 type AccountsListBody = { accounts?: NapcatAccountRow[] };
 
 export type ProtocolBatchJobPayload = {
@@ -503,8 +520,8 @@ export async function protocolUpdateAccount(
   accountId: string,
   payload: Record<string, unknown>,
   restart = true,
-): Promise<Record<string, unknown>> {
-  const { data } = await protocolHttp(mountUrl).put<Record<string, unknown>>(
+): Promise<ProtocolAccountUpdateResult> {
+  const { data } = await protocolHttp(mountUrl).put<ProtocolAccountUpdateResult>(
     `/api/accounts/${encodeURIComponent(accountId)}`,
     payload,
     { params: { restart: restart ? "true" : "false" } },
