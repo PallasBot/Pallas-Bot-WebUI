@@ -18,6 +18,8 @@ import {
   Images,
 } from "lucide-react";
 import { AI_OBSERVATION_DEFAULT_PATH } from "@/config/aiObservationSections";
+import { COMMUNITY_FEDERATION_NOTICE } from "@/config/navigationNotices";
+import type { NavigationNotice } from "@/config/navigationNotices";
 
 export type MainNavItem = {
   to: string;
@@ -27,6 +29,8 @@ export type MainNavItem = {
    */
   section: string;
   icon: LucideIcon;
+  /** 有用户可见更新时递增 revision；按声明的页面或分区标记已阅。 */
+  notice?: NavigationNotice;
 };
 
 /**
@@ -46,7 +50,13 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/ai/config/provider", label: "AI 配置", section: "AI", icon: Sparkles },
   { to: "/database", label: "数据库", section: "数据", icon: Database },
   { to: "/database/backups", label: "备份管理", section: "数据", icon: Archive },
-  { to: "/community", label: "统计与语料", section: "数据", icon: Globe2 },
+  {
+    to: "/community",
+    label: "统计与语料",
+    section: "数据",
+    icon: Globe2,
+    notice: COMMUNITY_FEDERATION_NOTICE,
+  },
   { to: "/community-gallery", label: "社区投稿", section: "", icon: Images },
   { to: "/preferences", label: "偏好", section: "", icon: Palette },
   { to: "/update", label: "更新", section: "", icon: Download },

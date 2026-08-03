@@ -12,6 +12,11 @@ import { pendingAutoUpdateLabel } from "@/utils/autoUpdateNotice";
 import { MAIN_NAV_ITEMS, buildNavEntries, isNavActive, sectionIcon } from "@/config/mainNav";
 import type { MainNavItem } from "@/config/mainNav";
 import { PLUGIN_STORE_SEEN_EVENT, summarizePluginStoreNotice } from "@/utils/pluginStoreNotice";
+import {
+  isNavigationNoticeUnseen,
+  markNavigationNoticeSeen,
+  NAVIGATION_NOTICE_SEEN_EVENT,
+} from "@/utils/navigationNotice";
 import BotRestartProgressDialog from "@/components/BotRestartProgressDialog";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import ConsoleToastHost from "@/components/ConsoleToastHost";
@@ -229,10 +234,16 @@ export default function AppShell() {
   const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed());
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pluginStoreSeenRev, setPluginStoreSeenRev] = useState(0);
+  const [navigationNoticeSeenRev, setNavigationNoticeSeenRev] = useState(0);
   useEffect(() => {
     const onSeen = () => setPluginStoreSeenRev((n) => n + 1);
     window.addEventListener(PLUGIN_STORE_SEEN_EVENT, onSeen);
     return () => window.removeEventListener(PLUGIN_STORE_SEEN_EVENT, onSeen);
+  }, []);
+  useEffect(() => {
+    const onSeen = () => setNavigationNoticeSeenRev((n) => n + 1);
+    window.addEventListener(NAVIGATION_NOTICE_SEEN_EVENT, onSeen);
+    return () => window.removeEventListener(NAVIGATION_NOTICE_SEEN_EVENT, onSeen);
   }, []);
   const healthQ = useQuery({ queryKey: ["health"], queryFn: () => fetchHealth(), refetchInterval: 15_000 });
   const autoUpdateQ = useQuery({
@@ -282,11 +293,19 @@ export default function AppShell() {
     pluginStoreSeenRev,
   ]);
   const navNotices = useMemo(
-    () => ({
-      "/update": updateNotice,
-      "/plugin-store": pluginStoreNotice,
-    }),
-    [updateNotice, pluginStoreNotice],
+    () => {
+      const notices: Partial<Record<string, string | null>> = {
+        "/update": updateNotice,
+        "/plugin-store": pluginStoreNotice,
+      };
+      for (const item of MAIN_NAV_ITEMS) {
+        if (item.notice && isNavigationNoticeUnseen(item.notice.key, item.notice.revision)) {
+          notices[item.to] = item.notice.label;
+        }
+      }
+      return notices;
+    },
+    [updateNotice, pluginStoreNotice, navigationNoticeSeenRev],
   );
   const {
     restartBusy,
@@ -307,6 +326,13 @@ export default function AppShell() {
       : "重启 Bot";
 
   useEffect(() => setMobileOpen(false), [location.pathname]);
+
+  useEffect(() => {
+    const item = MAIN_NAV_ITEMS.find((entry) => isNavActive(location.pathname, entry.to));
+    if (item?.notice?.seenOn === "route") {
+      markNavigationNoticeSeen(item.notice.key, item.notice.revision);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     void ensureRestartContext();

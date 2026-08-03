@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchPluginConfig, putPluginConfig } from "@/api/console";
+import { axiosErrorDetail } from "@/api/http";
 import {
   fetchCommunityStats,
   fetchCorpusStatus,
@@ -32,6 +34,7 @@ import SegTabs from "@/components/SegTabs";
 import UiBadge from "@/components/ui/UiBadge";
 import UiButton from "@/components/ui/UiButton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -42,6 +45,7 @@ import {
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { freezeShellMainScroll, preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import { querySettled } from "@/utils/querySettled";
+import { deploymentNameFromPluginConfig } from "@/utils/deploymentName";
 import type { ReactNode } from "react";
 import {
   Activity,
@@ -55,12 +59,20 @@ import {
   Library,
   List,
   Network,
+  Save,
   Sparkles,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import BtnIco from "@/components/BtnIco";
+import NoticeDot from "@/components/NoticeDot";
+import { COMMUNITY_FEDERATION_NOTICE } from "@/config/navigationNotices";
+import {
+  isNavigationNoticeUnseen,
+  markNavigationNoticeSeen,
+  NAVIGATION_NOTICE_SEEN_EVENT,
+} from "@/utils/navigationNotice";
 
 const allSourceKeys = ["local", "fed", "community"] as const;
 type SourceKey = (typeof allSourceKeys)[number];
@@ -204,6 +216,7 @@ export default function CommunityPage() {
   const [err, setErr] = useState("");
   const [connectivityBusy, setConnectivityBusy] = useState(false);
   const [connectivityResult, setConnectivityResult] = useState<CommunityConnectivityCheckData | null>(null);
+  const [deploymentNameDraft, setDeploymentNameDraft] = useState("");
 
   const statsSeed = useMemo((): CommunityStatsData | undefined => {
     const peek = peekCommunityStatsCache();
@@ -231,6 +244,11 @@ export default function CommunityPage() {
     retry: false,
     staleTime: 60_000,
   });
+  const deploymentNameQ = useQuery({
+    queryKey: ["plugin-config", "pb_core"],
+    queryFn: () => fetchPluginConfig("pb_core"),
+    enabled: section === "federation",
+  });
 
   const communityStats = statsQ.data ?? null;
   const statsPending = !querySettled(statsQ);
@@ -238,6 +256,7 @@ export default function CommunityPage() {
   const corpusStatusPending = !querySettled(corpusStatusQ);
   const federationOnboarding = federationQ.data ?? null;
   const federationOnboardingUnavailable = federationQ.isFetched && federationOnboarding == null;
+  const configuredDeploymentName = deploymentNameFromPluginConfig(deploymentNameQ.data);
   // 默认「全网部署」不依赖 corpus-status；勿挡整页骨架
   const statsUnavailable = statsQ.isFetched && !communityStats;
 
@@ -341,6 +360,25 @@ export default function CommunityPage() {
     return formatCommunityStatNum(n);
   }, [communityStats, federationOnboarding]);
 
+  useEffect(() => {
+    if (deploymentNameQ.data) setDeploymentNameDraft(configuredDeploymentName);
+  }, [configuredDeploymentName, deploymentNameQ.data]);
+
+  const saveDeploymentName = useMutation({
+    mutationFn: () => putPluginConfig("pb_core", { deployment_name: deploymentNameDraft.trim() }),
+    onSuccess: async () => {
+      pushConsoleToast("部署显示名已保存", "ok");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["plugin-config", "pb_core"] }),
+        qc.invalidateQueries({ queryKey: ["corpus-status"] }),
+        qc.invalidateQueries({ queryKey: ["federation-onboarding"] }),
+      ]);
+    },
+    onError: (e) => {
+      pushConsoleToast(axiosErrorDetail(e) || (e instanceof Error ? e.message : "保存失败"), "err");
+    },
+  });
+
   async function copyFederationSecret(): Promise<boolean> {
     if (!federationSecret) {
       pushConsoleToast("中心未提供入池密钥", "err");
@@ -407,6 +445,23 @@ export default function CommunityPage() {
 
   const controlPlane = corpusStatus?.control_plane;
   const federationPoolStats = federationOnboarding?.pool_stats ?? communityStats?.federation ?? null;
+  const [navigationNoticeSeenRev, setNavigationNoticeSeenRev] = useState(0);
+  const federationNoticeUnseen = useMemo(
+    () => isNavigationNoticeUnseen(COMMUNITY_FEDERATION_NOTICE.key, COMMUNITY_FEDERATION_NOTICE.revision),
+    [navigationNoticeSeenRev],
+  );
+
+  useEffect(() => {
+    const onSeen = () => setNavigationNoticeSeenRev((n) => n + 1);
+    window.addEventListener(NAVIGATION_NOTICE_SEEN_EVENT, onSeen);
+    return () => window.removeEventListener(NAVIGATION_NOTICE_SEEN_EVENT, onSeen);
+  }, []);
+
+  useEffect(() => {
+    if (section === "federation") {
+      markNavigationNoticeSeen(COMMUNITY_FEDERATION_NOTICE.key, COMMUNITY_FEDERATION_NOTICE.revision);
+    }
+  }, [section]);
 
   const refresh = useCallback(async () => {
     setRefreshBusy(true);
@@ -453,7 +508,7 @@ export default function CommunityPage() {
 
   return (
     <div className="community-page console-hub-page">
-      <PageMasthead title="统计与语料" description="社区统计、语料与多机协同（只读）。" />
+      <PageMasthead title="统计与语料" description="社区统计、语料与多机协同。" />
 
       <ChromeTools>
         <ChromeField label="选择" icon={Layers} className="shrink-0">
@@ -473,7 +528,10 @@ export default function CommunityPage() {
             >
               {COMMUNITY_SECTIONS.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  <ChromeOptionLabel icon={s.icon}>{s.label}</ChromeOptionLabel>
+                  <span className="inline-flex min-w-0 items-center">
+                    <ChromeOptionLabel icon={s.icon}>{s.label}</ChromeOptionLabel>
+                    {s.id === "federation" && federationNoticeUnseen ? <NoticeDot title={COMMUNITY_FEDERATION_NOTICE.label} /> : null}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -712,7 +770,7 @@ export default function CommunityPage() {
             </h2>
             <div className="row-actions community-page__hd-actions">
               <Link to="/plugins/pb_core" className="btn">
-                多机协同
+                完整配置
               </Link>
             </div>
           </div>
@@ -735,6 +793,30 @@ export default function CommunityPage() {
             <p className="muted community-page__federation-pool-note">
               左两列为已登记协同配置且近期上报在线统计的安装；右列为去重服务上仍有活跃标记的安装。
             </p>
+            <div className="community-page__federation-deployment-name">
+              <div className="community-page__federation-deployment-name-copy">
+                <label htmlFor="federation-deployment-name">部署显示名</label>
+                <p className="muted">用于“牛牛在吗”等协同命令中的本部署标识。</p>
+              </div>
+              <div className="community-page__federation-deployment-name-controls">
+                <Input
+                  id="federation-deployment-name"
+                  value={deploymentNameDraft}
+                  onChange={(event) => setDeploymentNameDraft(event.target.value)}
+                  disabled={!deploymentNameQ.data || saveDeploymentName.isPending}
+                  autoComplete="off"
+                />
+                <Button
+                  type="button"
+                  icon={Save}
+                  iconBusy={saveDeploymentName.isPending}
+                  disabled={!deploymentNameQ.data || saveDeploymentName.isPending}
+                  onClick={() => saveDeploymentName.mutate()}
+                >
+                  {saveDeploymentName.isPending ? "保存中" : "保存"}
+                </Button>
+              </div>
+            </div>
             <div className="community-page__kpi-bar home-kpi-bar community-page__federation-pool-grid">
               <MetricTile icon={Users} label="累计入池" value={formatCommunityStatNum(federationPoolStats?.members_total)} hint="曾成功从社区中心领取协同配置的安装套数" />
               <MetricTile icon={Network} label="在线入池" value={formatCommunityStatNum(federationPoolStats?.members_online)} hint="已入池且近期有在线统计上报的安装套数" />
