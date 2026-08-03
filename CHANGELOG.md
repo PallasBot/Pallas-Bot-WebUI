@@ -4,12 +4,21 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.25] - 2026-08-03
 
 ### 更新公告
 
 - 仍需 Bot >= 4.1.27；请勿只升控制台。
 - 协议账号保存操作改为「保存配置」，并单独反馈 SnowLuma WS 是否已热更新。
+
+### 提交明细
+
+### Fixed
+
+* fix(protocol): 保存配置不再误示重启 ([5859560](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/58595608d9823e3bd9f7cb5d095b254cb47ec6f5))
+
+**完整变更**: [`v0.8.24...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.24...HEAD)
+
 
 ## [0.8.24] - 2026-08-03
 
@@ -37,7 +46,6 @@
 * fix(ui): 修复配置开关开启态 ([d3ccec5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d3ccec5c268d7c1af4b799007e887a8a5a958bbc))
 
 **完整变更**: [`v0.8.23...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.23...HEAD)
-
 
 ## [0.8.23] - 2026-08-03
 
