@@ -16,8 +16,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Save, Trash2, X } from "lucide-react";
 
-const SWITCH_CLASS = "data-[state=checked]:bg-[var(--accent)]";
-
 type Props = {
   open: boolean;
   userId: number | null;
@@ -52,7 +50,6 @@ function BoolSwitchField({
             checked={checked}
             onCheckedChange={onChange}
             aria-labelledby={labelId}
-            className={SWITCH_CLASS}
           />
           <span className="prefs-switch-row__state" aria-hidden="true">
             {checked ? "开" : "关"}
