@@ -1035,14 +1035,7 @@ export default function HomePage() {
                   <div className="home-sys-grid">
                     <div className="home-sys-card">
                       <div className="home-sys-card__head">
-                        <div className="home-sys-card__label-group">
-                          <span className="home-sys-card__label">CPU</span>
-                          {runtime?.cpu_model ? (
-                            <span className="home-sys-card__model" title={runtime.cpu_model}>
-                              {runtime.cpu_model}
-                            </span>
-                          ) : null}
-                        </div>
+                        <span className="home-sys-card__label">CPU</span>
                         <span className="home-sys-card__value">{pct(runtime?.cpu_percent ?? null)}</span>
                       </div>
                       <div className="home-sys-card__viz">
@@ -1060,6 +1053,11 @@ export default function HomePage() {
                           </div>
                         ) : null}
                       </div>
+                      {runtime?.cpu_model ? (
+                        <p className="home-sys-card__hint" title={runtime.cpu_model}>
+                          {runtime.cpu_model}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="home-sys-card home-sys-card--uptime">
                       <div className="home-sys-card__head">
