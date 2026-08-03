@@ -6,6 +6,8 @@ import FormSectionDivider from "@/components/config/FormSectionDivider";
 import IdChipsInput from "@/components/config/IdChipsInput";
 import SettingsFormField from "@/components/config/SettingsFormField";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -24,8 +26,11 @@ import {
 import { cn } from "@/lib/utils";
 import { qqAvatarUrl } from "@/utils/botDisplay";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
-
-const BOT_SWITCH_CLASS = "data-[state=checked]:bg-[var(--accent)]";
+import {
+  readPersonaDisposition,
+  serializePersonaDisposition,
+  type PersonaDispositionDraft,
+} from "@/utils/personaDisposition";
 
 type Draft = {
   security: boolean;
@@ -36,6 +41,7 @@ type Draft = {
   admins: number[];
   seedPrefs: PersonaSeedPref[];
   seedManual: boolean;
+  disposition: PersonaDispositionDraft;
 };
 
 type Props = {
@@ -58,6 +64,7 @@ function defaultDraft(): Draft {
     admins: [],
     seedPrefs: [],
     seedManual: false,
+    disposition: readPersonaDisposition(null),
   };
 }
 
@@ -72,6 +79,7 @@ function draftFromConfig(c: BotConfigPublic): Draft {
     admins: [...(c.admins ?? [])],
     seedPrefs: [...seed.prefs],
     seedManual: seed.source === "manual",
+    disposition: readPersonaDisposition(c.persona ?? null),
   };
 }
 
@@ -99,7 +107,6 @@ function BoolSwitchField({
             checked={checked}
             onCheckedChange={onChange}
             aria-labelledby={labelId}
-            className={BOT_SWITCH_CLASS}
           />
           <span className="prefs-switch-row__state" aria-hidden="true">
             {checked ? "开" : "关"}
@@ -177,6 +184,10 @@ export default function BotConfigModal({
     setDraft((prev) => (prev ? { ...prev, seedPrefs: [], seedManual: false } : prev));
   }
 
+  function setDisposition(field: keyof PersonaDispositionDraft, value: string) {
+    setDraft((prev) => (prev ? { ...prev, disposition: { ...prev.disposition, [field]: value } } : prev));
+  }
+
   async function saveBotConfig() {
     if (account == null || !draft || saveBusy) return;
     if (isInit && !draft.admins.length) {
@@ -186,11 +197,12 @@ export default function BotConfigModal({
     setSaveBusy(true);
     setSaveErr("");
     try {
-      const { seedPrefs, seedManual, ...rest } = draft;
+      const { seedPrefs, seedManual, disposition, ...rest } = draft;
       const body: Parameters<typeof putBotConfig>[1] = { ...rest };
-      if (!isInit) {
-        body.persona = seedManual ? { seed_override: { prefs: seedPrefs } } : { seed_override: null };
-      }
+      body.persona = {
+        seed_override: seedManual ? { prefs: seedPrefs } : null,
+        disposition: serializePersonaDisposition(disposition),
+      };
       await putBotConfig(account, body);
       onSaved();
       onClose();
@@ -313,11 +325,66 @@ export default function BotConfigModal({
               </div>
 
               <div className="bot-config-dialog__block">
-                <FormSectionDivider title="牛格种子" />
+                <FormSectionDivider title="账号处事风格" />
                 <div className="bot-config-dialog__section-body">
+                  <div className="bot-config-edit__grid bot-config-edit__grid--pair">
+                    <SettingsFormField
+                      label="处事方式"
+                      hint="遇到提问、吐槽或求助时通常怎么接住和判断。"
+                    >
+                      <Input
+                        value={draft.disposition.approach}
+                        onChange={(event) => setDisposition("approach", event.target.value)}
+                        placeholder="例如：先接住再判断"
+                        aria-label="处事方式"
+                      />
+                    </SettingsFormField>
+                    <SettingsFormField
+                      label="主动程度"
+                      hint="什么时候主动补问、追进度或提醒，不填则随对话自然判断。"
+                    >
+                      <Input
+                        value={draft.disposition.initiative}
+                        onChange={(event) => setDisposition("initiative", event.target.value)}
+                        placeholder="例如：有明确线索再追问"
+                        aria-label="主动程度"
+                      />
+                    </SettingsFormField>
+                    <SettingsFormField
+                      label="分歧处理"
+                      hint="遇到不同意见时的表达方式，不填则不额外限制。"
+                    >
+                      <Input
+                        value={draft.disposition.conflict}
+                        onChange={(event) => setDisposition("conflict", event.target.value)}
+                        placeholder="例如：讲理由，不抢结论"
+                        aria-label="分歧处理"
+                      />
+                    </SettingsFormField>
+                  </div>
+                  <div className="bot-config-edit__grid bot-config-edit__grid--pair">
+                    <SettingsFormField label="偏好" hint="一行一项，最多保留 4 项。">
+                      <Textarea
+                        className="min-h-[84px]"
+                        value={draft.disposition.do}
+                        onChange={(event) => setDisposition("do", event.target.value)}
+                        placeholder={"例如：\n说重点\n留接话口"}
+                        aria-label="处事偏好"
+                      />
+                    </SettingsFormField>
+                    <SettingsFormField label="避免" hint="一行一项，最多保留 4 项。">
+                      <Textarea
+                        className="min-h-[84px]"
+                        value={draft.disposition.dont}
+                        onChange={(event) => setDisposition("dont", event.target.value)}
+                        placeholder={"例如：\n讲大道理\n替人下结论"}
+                        aria-label="处事避免项"
+                      />
+                    </SettingsFormField>
+                  </div>
                   <SettingsFormField
-                    label="偏好"
-                    hint="最多 2 项；自动按账号派生，点选后为手改覆盖。清空可恢复自动。"
+                    label="表达基调"
+                    hint="牛格种子影响选句和表达倾向；最多 2 项。清空可恢复账号自动派生。"
                   >
                     <div className="bot-config-seed-tiles" role="group" aria-label="牛格种子偏好">
                       {PERSONA_SEED_PREF_OPTIONS.map((opt) => {
