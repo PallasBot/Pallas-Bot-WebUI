@@ -89,15 +89,22 @@ export async function cancelAgentTask(taskId: string) {
   return unwrapData(http.post("/llm/agent-platform/tasks/cancel", { task_id: taskId }));
 }
 
-export async function fetchAgentCatchphrases(params?: { botId?: number | null; status?: string }) {
+export async function fetchAgentCatchphrases(params?: { botId?: number | null; status?: string; offset?: number; limit?: number }) {
   return unwrapData(
     http.get("/llm/agent-platform/catchphrases", {
       params: {
         bot_id: params?.botId || undefined,
         status: params?.status || undefined,
+        offset: params?.offset ?? 0,
+        limit: params?.limit ?? 50,
       },
     }),
-  ) as Promise<{ items: Array<Record<string, unknown>>; count: number }>;
+  ) as Promise<{
+    items: Array<Record<string, unknown>>;
+    count: number;
+    total: number;
+    counts: { candidate: number; active: number; all: number };
+  }>;
 }
 
 export async function resolveAgentCatchphrase(entryId: string, action: "approve" | "reject") {

@@ -4,6 +4,15 @@
 
 <!-- entries -->
 
+## [Unreleased]
+
+### 更新公告
+
+- 需要 Bot ≥ 4.1.26；请勿只升控制台
+- AI 人员页补齐 CPU 型号与口癖候选分页，长列表更易查看
+- 窄屏下优化唱歌音色配置布局
+- LLM 运行时调试不再展示已退役的人设塑形细节
+
 ## [0.8.21] - 2026-08-02
 
 ### 更新公告
@@ -1378,4 +1387,3 @@ CHANGELOG 弹窗更易扫读：标题层次、列表圆点与字号间距已调�
 * chore(ci): Keep a Changelog 并去掉发版类型脚注 ([a950bbb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a950bbb7a8587aa3899368a3236c34a84b4cb744))
 
 **完整变更**: [`v0.6.38...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.38...HEAD)
-

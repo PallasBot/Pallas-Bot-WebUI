@@ -1533,7 +1533,7 @@ export default function AiConfigMediaSection() {
                   : backendOptions.map((b) => b.value).join(", ")}
               </p>
               {(singQ.data?.speakers.speakers || []).length ? (
-                <ul className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2 xl:grid-cols-3">
+                <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2 text-[11px]">
                   {(singQ.data?.speakers.speakers || []).map((row) => (
                     <li
                       key={row.id}

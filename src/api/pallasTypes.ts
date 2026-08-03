@@ -37,6 +37,7 @@ export interface SystemData {
     boot_time?: number | null;
     platform?: string;
     python?: string;
+    cpu_model?: string | null;
     cpu_percent?: number | null;
     /** 各逻辑核心占用 0–100；与 cpu_percent 同源采样（cpu_percent 为各核算术平均） */
     cpu_per_core?: number[] | null;
@@ -1241,11 +1242,15 @@ export interface LlmPersonaShapingSummary {
   source_task?: string;
   persona_shaping_active?: boolean;
   affect_block?: string;
-  dynamic_expression?: string;
   variation_hint?: string;
   lines?: string[];
-  compare_note?: string;
-  corpus_ending?: string;
+}
+
+export interface LlmRuntimeDebugView {
+  retired_persona_cleanup?: {
+    system_prompt_sections?: string[];
+    persona_summary_fields?: string[];
+  };
 }
 
 export interface LlmRuntimeDebugData {
@@ -1254,6 +1259,7 @@ export interface LlmRuntimeDebugData {
   trace?: LlmHistoryBehaviorAgentTrace | null;
   persona_shaping?: LlmPersonaShapingSummary | null;
   tool_trace?: LlmToolTraceUi | null;
+  debug_view?: LlmRuntimeDebugView | null;
 }
 
 export interface LlmBehaviorPattern {

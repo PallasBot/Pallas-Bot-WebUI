@@ -18779,6 +18779,21 @@ a.home-action-strip__item:hover {
   color: var(--text-muted);
 }
 
+.home-sys-card__label-group {
+  min-width: 0;
+}
+
+.home-sys-card__model {
+  display: block;
+  max-width: 12rem;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.625rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .home-sys-card__value {
   font-size: 1.15rem;
   font-weight: 700;

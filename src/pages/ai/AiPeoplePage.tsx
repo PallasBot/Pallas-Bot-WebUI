@@ -24,6 +24,7 @@ import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 
 type CatchStatusFilter = "candidate" | "active" | "all";
+const CATCHPHRASE_PAGE_SIZE = 50;
 
 function truncateText(raw: string, max = 72): string {
   const text = String(raw || "").trim();
@@ -65,6 +66,7 @@ export default function AiPeoplePage() {
   const [userId, setUserId] = useState("");
   const [content, setContent] = useState("");
   const [catchFilter, setCatchFilter] = useState<CatchStatusFilter>("candidate");
+  const [catchOffset, setCatchOffset] = useState(0);
 
   useRegisterAiObservationChrome({ middle: null });
 
@@ -87,8 +89,14 @@ export default function AiPeoplePage() {
       }),
   });
   const catchphrasesQuery = useQuery({
-    queryKey: ["agent-catchphrases", scopeBot],
-    queryFn: () => fetchAgentCatchphrases({ botId: scopeBot }),
+    queryKey: ["agent-catchphrases", scopeBot, catchFilter, catchOffset],
+    queryFn: () =>
+      fetchAgentCatchphrases({
+        botId: scopeBot,
+        status: catchFilter === "all" ? undefined : catchFilter,
+        offset: catchOffset,
+        limit: CATCHPHRASE_PAGE_SIZE,
+      }),
   });
   const friendsQuery = useQuery({
     queryKey: ["friend-list", scopeBot],
@@ -149,20 +157,9 @@ export default function AiPeoplePage() {
     return out;
   }, [friends, userId]);
 
-  const filteredCatchphrases = useMemo(() => {
-    if (catchFilter === "all") return catchphrases;
-    return catchphrases.filter((item) => String(item.status || "") === catchFilter);
-  }, [catchFilter, catchphrases]);
-  const catchCounts = useMemo(() => {
-    let candidate = 0;
-    let active = 0;
-    for (const item of catchphrases) {
-      const status = String(item.status || "");
-      if (status === "candidate") candidate += 1;
-      else if (status === "active") active += 1;
-    }
-    return { candidate, active, all: catchphrases.length };
-  }, [catchphrases]);
+  const catchCounts = catchphrasesQuery.data?.counts ?? { candidate: 0, active: 0, all: 0 };
+  const catchTotal = catchphrasesQuery.data?.total ?? 0;
+  const catchPageEnd = catchOffset + catchphrases.length;
 
   if (!scopeBot) {
     return <AiScopeHint>请在顶栏指定 Bot QQ。</AiScopeHint>;
@@ -286,7 +283,10 @@ export default function AiPeoplePage() {
                   size="sm"
                   variant={catchFilter === key ? "secondary" : "ghost"}
                   className="h-7 px-2 text-xs"
-                  onClick={() => setCatchFilter(key)}
+                  onClick={() => {
+                    setCatchFilter(key);
+                    setCatchOffset(0);
+                  }}
                 >
                   {label}
                 </Button>
@@ -297,7 +297,7 @@ export default function AiPeoplePage() {
         <CardContent>
           <StateBlock loading={catchphrasesQuery.isLoading} error={catchphrasesQuery.error}>
             <ul className="max-h-[min(22rem,50vh)] divide-y overflow-y-auto overscroll-contain rounded-md border">
-              {filteredCatchphrases.map((item) => {
+              {catchphrases.map((item) => {
                 const status = String(item.status || "");
                 const saying = String(item.saying || "");
                 return (
@@ -375,10 +375,37 @@ export default function AiPeoplePage() {
                   </li>
                 );
               })}
-              {!filteredCatchphrases.length ? (
+              {!catchphrases.length ? (
                 <li className="px-2.5 py-3 text-sm text-muted-foreground">当前筛选下没有口癖。</li>
               ) : null}
             </ul>
+            {catchTotal > CATCHPHRASE_PAGE_SIZE ? (
+              <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>
+                  {catchOffset + 1}-{catchPageEnd} / {catchTotal}
+                </span>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    disabled={catchOffset === 0 || catchphrasesQuery.isFetching}
+                    onClick={() => setCatchOffset((offset) => Math.max(0, offset - CATCHPHRASE_PAGE_SIZE))}
+                  >
+                    上一页
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    disabled={catchPageEnd >= catchTotal || catchphrasesQuery.isFetching}
+                    onClick={() => setCatchOffset((offset) => offset + CATCHPHRASE_PAGE_SIZE)}
+                  >
+                    下一页
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </StateBlock>
         </CardContent>
       </Card>

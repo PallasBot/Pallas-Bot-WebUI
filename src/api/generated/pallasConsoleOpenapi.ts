@@ -9019,6 +9019,8 @@ export interface operations {
             query?: {
                 bot_id?: number | null;
                 status?: string | null;
+                offset?: number;
+                limit?: number;
                 token?: string | null;
             };
             header?: {

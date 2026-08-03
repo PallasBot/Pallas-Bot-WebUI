@@ -25,6 +25,7 @@ export type SystemData = {
   server_time: number;
   runtime?: {
     hostname?: string | null;
+    cpu_model?: string | null;
     cpu_percent?: number | null;
     memory?: { percent?: number | null; used?: number | null; total?: number | null };
     python?: string;

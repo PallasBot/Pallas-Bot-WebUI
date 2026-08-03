@@ -569,6 +569,7 @@ export default function HomePage() {
     if (!r) return false;
     const gpuOk = Boolean(r.gpu?.available && (r.gpu.devices?.length ?? 0) > 0);
     return (
+      Boolean(r.cpu_model) ||
       r.cpu_percent != null ||
       (Array.isArray(r.cpu_per_core) && r.cpu_per_core.length > 0) ||
       (Array.isArray(r.cpu_load_avg) && r.cpu_load_avg.length >= 3) ||
@@ -1034,7 +1035,14 @@ export default function HomePage() {
                   <div className="home-sys-grid">
                     <div className="home-sys-card">
                       <div className="home-sys-card__head">
-                        <span className="home-sys-card__label">CPU</span>
+                        <div className="home-sys-card__label-group">
+                          <span className="home-sys-card__label">CPU</span>
+                          {runtime?.cpu_model ? (
+                            <span className="home-sys-card__model" title={runtime.cpu_model}>
+                              {runtime.cpu_model}
+                            </span>
+                          ) : null}
+                        </div>
                         <span className="home-sys-card__value">{pct(runtime?.cpu_percent ?? null)}</span>
                       </div>
                       <div className="home-sys-card__viz">
