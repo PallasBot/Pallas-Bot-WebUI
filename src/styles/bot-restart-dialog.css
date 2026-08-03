@@ -1,22 +1,25 @@
-.bot-restart-dialog__status {
-  margin: 0 0 14px;
-  font-size: 0.95rem;
-}
-
 .bot-restart-dialog__steps {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.bot-restart-dialog__timeline {
+  position: relative;
+  padding-top: 1px;
 }
 
 .bot-restart-dialog__step {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  justify-items: center;
+  gap: 7px;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.76rem;
+  line-height: 1.3;
+  text-align: center;
+  transition: opacity 0.25s ease, transform 0.25s ease, color 0.25s ease;
 }
 
 .bot-restart-dialog__step-dot {
@@ -24,10 +27,18 @@
   height: 10px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--muted) 35%, transparent);
+  box-shadow: 0 0 0 3px var(--card);
   flex-shrink: 0;
 }
 
-.bot-restart-dialog__step--done {
+.bot-restart-dialog__step--hidden {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+.bot-restart-dialog__step--done,
+.bot-restart-dialog__step--current,
+.bot-restart-dialog__step--active {
   color: var(--text);
 }
 
@@ -35,7 +46,8 @@
   background: var(--accent);
 }
 
-.bot-restart-dialog__step--current {
+.bot-restart-dialog__step--current,
+.bot-restart-dialog__step--active {
   color: var(--text);
   font-weight: 600;
 }
@@ -46,7 +58,10 @@
 }
 
 .bot-restart-dialog__progress {
-  margin-top: 16px;
+  position: absolute;
+  top: 3px;
+  right: 0;
+  left: 0;
   height: 6px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--accent) 18%, transparent);
@@ -82,7 +97,7 @@
 }
 
 @media (max-width: 560px) {
-  .bot-restart-dialog__status {
-    font-size: 0.92rem;
+  .bot-restart-dialog__step {
+    font-size: 0.7rem;
   }
 }

@@ -3,6 +3,7 @@ import {
   botRestartPhaseLabel,
   healthBootFingerprint,
   isHealthRestartComplete,
+  restartProgressSteps,
   waitForBotRestartOnline,
 } from "@/utils/botRestartProgress";
 import { normalizeBundledReadmeMarkdown } from "@/utils/pluginReadme";
@@ -18,6 +19,33 @@ const fetchHealthMock = vi.mocked(fetchHealth);
 describe("botRestartPhaseLabel", () => {
   it("describes reconnecting phase", () => {
     expect(botRestartPhaseLabel("reconnecting")).toContain("探测");
+  });
+});
+
+describe("restartProgressSteps", () => {
+  it("reveals restart stages one by one and keeps the current stage active", () => {
+    expect(restartProgressSteps("scheduled", true)).toEqual([
+      { id: "scheduled", label: "已发送指令", state: "active" },
+      { id: "disconnecting", label: "进程退出", state: "hidden" },
+      { id: "reconnecting", label: "等待恢复", state: "hidden" },
+      { id: "online", label: "恢复在线", state: "hidden" },
+    ]);
+
+    expect(restartProgressSteps("reconnecting", true)).toEqual([
+      { id: "scheduled", label: "已发送指令", state: "done" },
+      { id: "disconnecting", label: "进程退出", state: "done" },
+      { id: "reconnecting", label: "等待恢复", state: "active" },
+      { id: "online", label: "恢复在线", state: "hidden" },
+    ]);
+  });
+
+  it("marks every stage done after the bot is online", () => {
+    expect(restartProgressSteps("online", false).map((step) => step.state)).toEqual([
+      "done",
+      "done",
+      "done",
+      "done",
+    ]);
   });
 });
 
