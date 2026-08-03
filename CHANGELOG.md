@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.23] - 2026-08-03
 
 ### 更新公告
 
@@ -14,6 +14,15 @@
 ### Fixed
 
 - 修正系统性能卡片中 CPU 型号位于核心使用率图上方的布局
+
+### 提交明细
+
+### Fixed
+
+* fix(home): 将 CPU 型号移至核心图下方 ([f25562b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f25562b1a0859f3dbcce41eb4a3682715e85644b))
+
+**完整变更**: [`v0.8.22...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.22...HEAD)
+
 
 ## [0.8.22] - 2026-08-03
 
@@ -36,7 +45,6 @@
 * refactor(api): 清理退役人设调试类型 ([b556617](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b55661793636a58c76ac1e482a35173cb9f764ef))
 
 **完整变更**: [`v0.8.21...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.21...HEAD)
-
 
 ## [0.8.21] - 2026-08-02
 
