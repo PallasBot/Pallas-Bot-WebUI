@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.24] - 2026-08-03
 
 ### 更新公告
 
@@ -14,6 +14,23 @@
 - 修复账号、群和用户配置中开关开启时整个控件外框被强调色覆盖的问题
 - 多机协同部署补充部署名配置提示，排查节点归属更直接
 - SnowLuma WS 配置保存后会明确显示连接是否已热更新
+
+### 提交明细
+
+### Added
+
+* feat(protocol): SnowLuma WS 配置支持热更新 ([7adb7a9](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7adb7a9feb1eac805ad973ab1740ec278caa6185))
+* feat(restart): 以阶段进度展示 Bot 重启状态 ([18af955](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/18af95560cbdd0b9e3710fcd8572b653ec006cee))
+* feat(persona): 支持控制台配置账号处事风格 ([13bbd2a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/13bbd2a2acaebfe00c2f859faa7ee10ef356341a))
+* feat(community): 支持多机协同部署名配置提示 ([5e510ad](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5e510adf2c17a0d6f7c1a3d7ce6bb588e7804941))
+
+### Fixed
+
+* fix(community): 修复部署显示名编辑被刷新覆盖 ([430077b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/430077bb62bc0950f1703400d91facaae202f606))
+* fix(ui): 修复配置开关开启态 ([d3ccec5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d3ccec5c268d7c1af4b799007e887a8a5a958bbc))
+
+**完整变更**: [`v0.8.23...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.23...HEAD)
+
 
 ## [0.8.23] - 2026-08-03
 
@@ -33,7 +50,6 @@
 * fix(home): 将 CPU 型号移至核心图下方 ([f25562b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f25562b1a0859f3dbcce41eb4a3682715e85644b))
 
 **完整变更**: [`v0.8.22...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.22...HEAD)
-
 
 ## [0.8.22] - 2026-08-03
 
