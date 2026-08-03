@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.22] - 2026-08-03
 
 ### 更新公告
 
@@ -12,6 +12,20 @@
 - AI 人员页补齐 CPU 型号与口癖候选分页，长列表更易查看
 - 窄屏下优化唱歌音色配置布局
 - LLM 运行时调试不再展示已退役的人设塑形细节
+
+### 提交明细
+
+### Fixed
+
+* fix(ai): 优化唱歌音色窄屏布局 ([311c022](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/311c022ad26b8f9ff44ca8f4cb52145637f3b829))
+* fix(ai): 分页加载口癖候选并展示 CPU 型号 ([c094513](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c09451314543c6c57d1de2b140a360fc972cd7b3))
+
+### Changed
+
+* refactor(api): 清理退役人设调试类型 ([b556617](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b55661793636a58c76ac1e482a35173cb9f764ef))
+
+**完整变更**: [`v0.8.21...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.21...HEAD)
+
 
 ## [0.8.21] - 2026-08-02
 
@@ -31,7 +45,6 @@
 * fix(ui): 忙碌态下载图标改用 Loader2 避免鬼畜旋转 ([8b5bf43](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8b5bf43ff290fc1fac97193d2a6f544da8081c2c))
 
 **完整变更**: [`v0.8.20...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.20...HEAD)
-
 
 ## [0.8.20] - 2026-08-02
 
