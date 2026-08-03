@@ -604,7 +604,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       }
       const runtimeChanged = runtimeSettingsKey() !== savedRuntimeSettings;
       const connectionChanged = connectionSettingsKey() !== savedConnectionSettings;
-      let savedMessage = "已保存并重启协议进程";
+      let savedMessage = "已保存配置";
       setSaveBusy(true);
       try {
         if (runtimeChanged) {
@@ -1612,7 +1612,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                       >
                         {saveBusy
                           ? "保存中…"
-                          : again.label("save-restart", "保存并重启")}
+                          : again.label("save-restart", "保存配置")}
                       </button>
                     </div>
                   </div>

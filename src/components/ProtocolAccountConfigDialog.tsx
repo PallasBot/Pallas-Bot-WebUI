@@ -231,7 +231,7 @@ export default function ProtocolAccountConfigDialog({
               title="Ctrl+S"
               onClick={() => void workspaceRef.current?.saveSettings()}
             >
-              {saveBusy ? "保存中…" : "保存并重启"}
+              {saveBusy ? "保存中…" : "保存配置"}
             </Button>
           </DialogFooter>
         ) : null}
