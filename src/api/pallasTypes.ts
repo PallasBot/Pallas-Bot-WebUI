@@ -2482,6 +2482,16 @@ export interface IngressDispatchHotpath {
   learn_dropped_shutdown?: number;
 }
 
+export interface IngressDispatchWorkAux {
+  available?: boolean;
+  heartbeat_age_sec?: number;
+  consumers?: number;
+  pending?: number;
+  leased?: number;
+  oldest_pending_age_sec?: number | null;
+  max_attempts?: number;
+}
+
 export interface IngressDispatchWorker {
   shard_id: number;
   updated_at?: number;
@@ -2510,6 +2520,7 @@ export interface IngressDispatchData {
   send_queue?: IngressDispatchSendQueueStatus;
   pool_budget?: IngressDispatchPoolBudget;
   hotpath?: IngressDispatchHotpath;
+  work_aux?: IngressDispatchWorkAux;
   alerts?: string[];
 }
 
