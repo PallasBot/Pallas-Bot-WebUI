@@ -426,8 +426,19 @@ export default function ChartsPage() {
     : `数据库池 ${Math.round(ingress.pool_budget.utilization * 100)}%`;
   const ingressAlerts = ingress?.alerts ?? [];
   const ingressUnavailable = Boolean(ingressQ.error);
-  const ingressStatusLabel = ingressUnavailable ? "数据暂不可用" : ingressAlerts.length ? "需关注" : "运行正常";
-  const ingressStatusVariant = ingressUnavailable || ingressAlerts.length ? "warn" : "success";
+  const ingressP95Critical = ingressAlerts.includes("ingress_p95_over_5000ms");
+  const ingressP95Warning = ingressAlerts.includes("ingress_p95_over_1000ms");
+  const ingressStatusLabel = ingressUnavailable ? "数据暂不可用" : ingressP95Critical ? "严重" : ingressAlerts.length ? "需关注" : "运行正常";
+  const ingressStatusVariant = ingressUnavailable || ingressAlerts.length ? (ingressP95Critical ? "destructive" : "warn") : "success";
+  const ingressAlertMessage = ingressUnavailable
+    ? "入站调度数据暂不可用。"
+    : ingressP95Critical
+      ? "入站 P95 超过 5 秒，消息处理链路出现严重拥塞。"
+      : ingressP95Warning
+        ? "入站 P95 超过 1 秒，请关注消息处理链路的延迟。"
+        : ingressAlerts.includes("pg_pool_over_85pct")
+          ? "数据库连接池占用超过 85%，请关注数据库连接压力。"
+          : "入站调度存在需要关注的状态。";
 
   const rangeBusy = dailyRangeQ.isFetching;
   const rangeTotalsPending = Boolean(selectedAccount) && rangeBusy && !dailyRangeQ.data;
@@ -548,7 +559,10 @@ export default function ChartsPage() {
 
           <section
             id="charts-ingress"
-            className={cn("charts-page__section charts-page__ingress", ingressAlerts.length && "charts-page__ingress--warn")}
+            className={cn(
+              "charts-page__section charts-page__ingress",
+              ingressP95Critical ? "charts-page__ingress--critical" : ingressAlerts.length && "charts-page__ingress--warn",
+            )}
             aria-label="入站调度状态"
           >
             <div className="charts-page__ingress-header">
@@ -589,12 +603,10 @@ export default function ChartsPage() {
               <MetricTile label="预处理丢弃" value={ingressMetric(ingress?.preprocessor_dropped)} hint={ingressPoolHint} />
             </div>
             {ingressAlerts.length || ingressUnavailable ? (
-              <div className="charts-page__ingress-alert" role="status">
+              <div className={cn("charts-page__ingress-alert", ingressP95Critical && "charts-page__ingress-alert--critical")} role="status">
                 <CircleAlert className="size-4 shrink-0" aria-hidden />
                 <span>
-                  {ingressUnavailable
-                    ? "入站调度数据暂不可用。"
-                    : "入站 P95 超过 100 ms，请关注消息处理链路的延迟。"}
+                  {ingressAlertMessage}
                 </span>
               </div>
             ) : null}
