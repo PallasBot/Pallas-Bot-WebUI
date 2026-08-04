@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.26] - 2026-08-04
 
 ### 更新公告
 
@@ -13,6 +13,23 @@
 - 日志支持查看消息主进程、work aux 与 embed aux 的独立来源。
 - SnowLuma Runtime 支持选择独立镜像，协议运行环境切换更清晰。
 - 插件商店进入后会清除更新提醒，避免已查看内容持续显示绿点。
+
+### 提交明细
+
+### Added
+
+* feat(logs): 支持辅进程日志来源 ([ff48525](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ff48525611216cee956d3f5f4130f07384481e52))
+* feat(protocol): 添加 Snowluma Runtime 独立镜像切换能力 ([dbd83c0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dbd83c05ce6619964220e2377686d2a905995032))
+* feat(charts): 增加入站调度面板 ([2da8a73](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2da8a7399ceaac81fd75acc2a8ecef9440311f8e))
+
+### Fixed
+
+* fix(charts): 区分入站 P95 告警等级 ([1938e96](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1938e96f8236ba9a0694a90f89904630eb8026c2))
+* fix(charts): 优化入站调度面板状态呈现 ([4800891](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4800891f7f9e727655280156dd75ae42df525f8e))
+* fix(plugin-store): 进入商店后清除更新提醒绿点 ([d3fac87](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d3fac872bc5749b6a3ffda8ca7ac7124fcfa9460))
+
+**完整变更**: [`v0.8.25...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.25...HEAD)
+
 
 ## [0.8.25] - 2026-08-03
 
@@ -28,7 +45,6 @@
 * fix(protocol): 保存配置不再误示重启 ([5859560](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/58595608d9823e3bd9f7cb5d095b254cb47ec6f5))
 
 **完整变更**: [`v0.8.24...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.24...HEAD)
-
 
 ## [0.8.24] - 2026-08-03
 
