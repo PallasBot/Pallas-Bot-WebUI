@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { Activity, BarChart3, Bot, LineChart, UsersRound } from "lucide-react";
+import { Activity, BarChart3, Bot, CircleAlert, LineChart, UsersRound } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import {
   fetchConsoleDailyStats,
@@ -22,6 +22,7 @@ import PendingValue from "@/components/PendingValue";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import BotAccountCombobox from "@/components/BotAccountCombobox";
 import StatsSectionLabel from "@/components/StatsSectionLabel";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAccountPluginCharts } from "@/hooks/useAccountPluginCharts";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
@@ -423,6 +424,10 @@ export default function ChartsPage() {
   const ingressPoolHint = ingress?.pool_budget?.utilization == null
     ? "数据库池占用"
     : `数据库池 ${Math.round(ingress.pool_budget.utilization * 100)}%`;
+  const ingressAlerts = ingress?.alerts ?? [];
+  const ingressUnavailable = Boolean(ingressQ.error);
+  const ingressStatusLabel = ingressUnavailable ? "数据暂不可用" : ingressAlerts.length ? "需关注" : "运行正常";
+  const ingressStatusVariant = ingressUnavailable || ingressAlerts.length ? "warn" : "success";
 
   const rangeBusy = dailyRangeQ.isFetching;
   const rangeTotalsPending = Boolean(selectedAccount) && rangeBusy && !dailyRangeQ.data;
@@ -541,40 +546,58 @@ export default function ChartsPage() {
             />
           </section>
 
-          <StatsSectionLabel>入站调度</StatsSectionLabel>
-          <section id="charts-ingress" className="charts-page__section" aria-label="入站调度状态">
-            <Card className={cn(CHART_PANEL, "charts-page__panel--secondary")}>
-              <CardHeader className={CHART_PANEL_HD}>
-                <CardTitle className="panel__title flex items-center gap-1.5">
-                  <PanelTitleIcon icon={Activity} />
-                  入站调度
-                </CardTitle>
-                <span className="home-panel__tag">15 秒刷新</span>
-              </CardHeader>
-              <CardContent className={CHART_PANEL_BD}>
-                <section className="charts-page__kpi home-kpi-bar" aria-label="入站调度指标">
-                  <MetricTile label="群消息" value={ingressMetric(ingress?.group_messages)} hint="今日累计" />
-                  <MetricTile
-                    label="命令 / 闲聊"
-                    value={`${ingressMetric(ingress?.command_traffic)} / ${ingressMetric(ingress?.chatter_traffic)}`}
-                    hint="入站构成"
-                  />
-                  <MetricTile
-                    label="Matcher"
-                    value={`${ingressMetric(ingress?.matchers_selected)} / ${ingressMetric(ingress?.matchers_considered)}`}
-                    hint="选中 / 候选"
-                  />
-                  <MetricTile label="筛选率" value={ingressMetric(ingressSelectedRatio, "%")} hint={`已执行 ${ingressMetric(ingress?.matchers_run)}`} />
-                  <MetricTile label="车道等待" value={ingressMetric(ingress?.lane_wait_ms_avg, " ms")} hint={`忙碌 ${ingressMetric(ingress?.lane_busy)}`} />
-                  <MetricTile label="入站 P95" value={ingressMetric(ingress?.ingress_duration_ms_p95, " ms")} hint={`背压 ${ingressMetric(ingress?.overload_signals)}`} />
-                  <MetricTile label="发送队列" value={ingressMetric(ingress?.send_queue?.depth_live ?? ingress?.send_queue?.depth)} hint={ingressQueueHint} />
-                  <MetricTile label="预处理丢弃" value={ingressMetric(ingress?.preprocessor_dropped)} hint={ingressPoolHint} />
-                </section>
-                <p className="muted charts-page__section-note mb-0" role="status">
-                  {ingress?.alerts?.length ? ingress.alerts.join(" · ") : ingressQ.error ? "入站调度数据暂不可用" : "暂无调度告警"}
-                </p>
-              </CardContent>
-            </Card>
+          <section
+            id="charts-ingress"
+            className={cn("charts-page__section charts-page__ingress", ingressAlerts.length && "charts-page__ingress--warn")}
+            aria-label="入站调度状态"
+          >
+            <div className="charts-page__ingress-header">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <PanelTitleIcon icon={Activity} />
+                <h2 className="panel__title">入站调度</h2>
+              </div>
+              <div className="charts-page__ingress-actions">
+                <Badge variant={ingressStatusVariant} role="status">
+                  {ingressAlerts.length ? <CircleAlert className="size-3" aria-hidden /> : null}
+                  {ingressStatusLabel}
+                </Badge>
+                <Badge variant="outline">每 15 秒刷新</Badge>
+                <RefreshIconButton
+                  embedded
+                  busy={ingressQ.isFetching}
+                  label="刷新入站调度"
+                  onClick={() => void ingressQ.refetch()}
+                />
+              </div>
+            </div>
+            <div className="charts-page__kpi home-kpi-bar" aria-label="入站调度指标">
+              <MetricTile label="群消息" value={ingressMetric(ingress?.group_messages)} hint="今日累计" />
+              <MetricTile
+                label="命令 / 闲聊"
+                value={`${ingressMetric(ingress?.command_traffic)} / ${ingressMetric(ingress?.chatter_traffic)}`}
+                hint="入站构成"
+              />
+              <MetricTile
+                label="Matcher"
+                value={`${ingressMetric(ingress?.matchers_selected)} / ${ingressMetric(ingress?.matchers_considered)}`}
+                hint="选中 / 候选"
+              />
+              <MetricTile label="筛选率" value={ingressMetric(ingressSelectedRatio, "%")} hint={`已执行 ${ingressMetric(ingress?.matchers_run)}`} />
+              <MetricTile label="车道等待" value={ingressMetric(ingress?.lane_wait_ms_avg, " ms")} hint={`忙碌 ${ingressMetric(ingress?.lane_busy)}`} />
+              <MetricTile label="入站 P95" value={ingressMetric(ingress?.ingress_duration_ms_p95, " ms")} hint={`背压 ${ingressMetric(ingress?.overload_signals)}`} />
+              <MetricTile label="发送队列" value={ingressMetric(ingress?.send_queue?.depth_live ?? ingress?.send_queue?.depth)} hint={ingressQueueHint} />
+              <MetricTile label="预处理丢弃" value={ingressMetric(ingress?.preprocessor_dropped)} hint={ingressPoolHint} />
+            </div>
+            {ingressAlerts.length || ingressUnavailable ? (
+              <div className="charts-page__ingress-alert" role="status">
+                <CircleAlert className="size-4 shrink-0" aria-hidden />
+                <span>
+                  {ingressUnavailable
+                    ? "入站调度数据暂不可用。"
+                    : "入站 P95 超过 100 ms，请关注消息处理链路的延迟。"}
+                </span>
+              </div>
+            ) : null}
           </section>
 
           <StatsSectionLabel>趋势</StatsSectionLabel>
