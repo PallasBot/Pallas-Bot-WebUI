@@ -16702,22 +16702,6 @@ html[data-theme="light"] .corpus-hot__pill-score {
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
-@media (max-width: 560px) {
-  .charts-page__ingress-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .charts-page__ingress-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .charts-page__ingress-actions .btn-refresh-action {
-    margin-left: auto;
-  }
-}
-
 @media (min-width: 900px) {
   .charts-page__kpi.home-kpi-bar {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -17050,6 +17034,22 @@ html[data-theme="light"] .corpus-hot__pill-score {
 .charts-page__ingress-alert--critical {
   border-color: color-mix(in srgb, var(--destructive) 50%, var(--border));
   background: color-mix(in srgb, var(--destructive) 10%, transparent);
+}
+
+@media (max-width: 560px) {
+  .charts-page__ingress-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .charts-page__ingress-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .charts-page__ingress-actions .btn-refresh-action {
+    margin-left: auto;
+  }
 }
 
 .charts-page__panel {
