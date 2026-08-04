@@ -14,6 +14,7 @@ import {
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import ProtocolRuntimeConfigDialog from "@/components/ProtocolRuntimeConfigDialog";
+import ProtocolRuntimeImageSwitchDialog from "@/components/ProtocolRuntimeImageSwitchDialog";
 import StatusTone from "@/components/StatusTone";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
@@ -118,6 +119,8 @@ export default function ProtocolRuntimeTab() {
   const [runtimePage, setRuntimePage] = useState(1);
   const [snowlumaRuntimeBusyId, setSnowlumaRuntimeBusyId] = useState<string | null>(null);
   const [configRuntimeId, setConfigRuntimeId] = useState<string | null>(null);
+  const [imageSwitchOpen, setImageSwitchOpen] = useState(false);
+  const [imageSwitchBusy, setImageSwitchBusy] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [batchBusy, setBatchBusy] = useState(false);
 
@@ -354,7 +357,7 @@ export default function ProtocolRuntimeTab() {
     }
   }
 
-  const actionsBusy = batchBusy || snowlumaRuntimeBusyId != null;
+  const actionsBusy = batchBusy || imageSwitchBusy || snowlumaRuntimeBusyId != null;
 
   const chromeMiddle = useMemo(
     () => (
@@ -406,6 +409,10 @@ export default function ProtocolRuntimeTab() {
               清除选择
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem disabled={!snowlumaRuntimes.length || actionsBusy} onSelect={() => setImageSwitchOpen(true)}>
+              批量切换镜像
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               disabled={selected.size === 0 || actionsBusy}
@@ -423,6 +430,7 @@ export default function ProtocolRuntimeTab() {
       actionsBusy,
       batchBusy,
       selected.size,
+      snowlumaRuntimes.length,
       pagedRuntimeIds.length,
       pageAllSelected,
       emptyRuntimeIds.length,
@@ -549,6 +557,11 @@ export default function ProtocolRuntimeTab() {
                               {rt.id}
                             </span>
                           </div>
+                          {rt.snowluma_docker_image ? (
+                            <p className="protocol-runtime-card__image muted text-xs" title={rt.snowluma_docker_image}>
+                              镜像：{rt.snowluma_docker_image}
+                            </p>
+                          ) : null}
                         </div>
                       </div>
 
@@ -657,6 +670,14 @@ export default function ProtocolRuntimeTab() {
         </CardContent>
       </Card>
 
+      <ProtocolRuntimeImageSwitchDialog
+        open={imageSwitchOpen}
+        mountUrl={mountUrl}
+        runtimeCount={snowlumaRuntimes.length}
+        onClose={() => setImageSwitchOpen(false)}
+        onFinished={refresh}
+        onBusyChange={setImageSwitchBusy}
+      />
       <ProtocolRuntimeConfigDialog
         open={Boolean(configRuntime)}
         runtime={configRuntime}

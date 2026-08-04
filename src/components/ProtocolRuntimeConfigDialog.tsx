@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   protocolApiErrorMessage,
   protocolStartAccount,
   protocolStopAccount,
+  protocolUpdateSnowlumaRuntime,
   protocolSwitchAccountRuntime,
   type NapcatAccountRow,
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import ProtocolDockerImageSelect from "@/components/protocol/ProtocolDockerImageSelect";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -61,8 +63,14 @@ export default function ProtocolRuntimeConfigDialog({
   const again = useConfirmAgain();
   const [memberBusyKey, setMemberBusyKey] = useState<string | null>(null);
   const [addAccountId, setAddAccountId] = useState("");
+  const [dockerImage, setDockerImage] = useState("");
+  const [imageSaving, setImageSaving] = useState(false);
 
   const runtimeId = runtime?.id ?? "";
+  useEffect(() => {
+    if (open) setDockerImage(String(runtime?.snowluma_docker_image ?? "").trim());
+  }, [open, runtime?.id, runtime?.snowluma_docker_image]);
+
   const members = useMemo(
     () => (runtime?.member_account_ids ?? []).map((id) => String(id || "").trim()).filter(Boolean),
     [runtime],
@@ -101,7 +109,33 @@ export default function ProtocolRuntimeConfigDialog({
       : "";
   const webuiHref = webuiPort ? snowlumaRuntimeWebUiHref(runtime, accounts, system) : null;
   const title = runtime ? runtimeTitle(runtime) : "Runtime";
-  const busy = memberBusyKey != null;
+  const busy = memberBusyKey != null || imageSaving;
+
+  async function saveDockerImage() {
+    if (!mountUrl || !runtimeId) return;
+    setImageSaving(true);
+    try {
+      await protocolUpdateSnowlumaRuntime(mountUrl, runtimeId, {
+        snowluma_docker_image: dockerImage.trim(),
+      });
+      const cleared = !dockerImage.trim();
+      pushConsoleToast(
+        runtime?.process_running
+          ? cleared
+            ? "已恢复默认镜像配置，当前容器不受影响；下次启动时使用。"
+            : "镜像配置已保存，当前容器不受影响；下次启动时使用。"
+          : cleared
+            ? "已恢复默认镜像配置，下次启动时使用。"
+            : "镜像配置已保存，下次启动时使用。",
+        "ok",
+      );
+      onChanged?.();
+    } catch (e) {
+      pushConsoleToast(protocolApiErrorMessage(e, "保存镜像配置失败"), "err");
+    } finally {
+      setImageSaving(false);
+    }
+  }
 
   async function attachAccount(accountId: string) {
     if (!mountUrl || !runtimeId || !accountId) return;
@@ -252,6 +286,28 @@ export default function ProtocolRuntimeConfigDialog({
         </DialogHeader>
 
         <div className="plugin-config-dialog__bd protocol-runtime-config-dialog__bd min-h-[200px] flex-1 space-y-4 overflow-auto px-4 py-3">
+          <section className="space-y-2">
+            <div className="space-y-1">
+              <h3 className="text-xs font-medium text-muted-foreground">Docker 镜像</h3>
+              <p className="text-xs text-muted-foreground">仅保存配置，不会重启或重建当前 Runtime；下次启动时使用。</p>
+            </div>
+            <div className="protocol-runtime-attach">
+              <div className="protocol-runtime-attach__picker">
+                <ProtocolDockerImageSelect
+                  mountUrl={mountUrl}
+                  protocol="snowluma"
+                  value={dockerImage}
+                  onValueChange={setDockerImage}
+                  disabled={busy}
+                  placeholder="使用默认 SnowLuma 镜像"
+                />
+              </div>
+              <Button type="button" size="sm" disabled={busy} onClick={() => void saveDockerImage()}>
+                {imageSaving ? "保存中…" : "保存镜像"}
+              </Button>
+            </div>
+          </section>
+
           <section className="space-y-2">
             <h3 className="text-xs font-medium text-muted-foreground">已挂载</h3>
             {members.length ? (
