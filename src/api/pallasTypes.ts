@@ -2475,6 +2475,13 @@ export interface IngressDispatchPoolBudget {
   cluster_pg?: Record<string, unknown>;
 }
 
+export interface IngressDispatchHotpath {
+  learn_buffered?: number;
+  learn_persisted?: number;
+  learn_skipped_full?: number;
+  learn_dropped_shutdown?: number;
+}
+
 export interface IngressDispatchWorker {
   shard_id: number;
   updated_at?: number;
@@ -2502,6 +2509,7 @@ export interface IngressDispatchData {
   ingress_duration_ms_p95?: number | null;
   send_queue?: IngressDispatchSendQueueStatus;
   pool_budget?: IngressDispatchPoolBudget;
+  hotpath?: IngressDispatchHotpath;
   alerts?: string[];
 }
 

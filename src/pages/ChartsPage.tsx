@@ -47,6 +47,7 @@ import {
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 import { querySettled } from "@/utils/querySettled";
+import { ingressWorkQueueMetrics } from "@/utils/ingressDispatchWorkQueue";
 import type { ReactNode } from "react";
 
 const CHART_PANEL = "charts-page__panel flex flex-col overflow-hidden shadow-none";
@@ -424,6 +425,7 @@ export default function ChartsPage() {
   const ingressPoolHint = ingress?.pool_budget?.utilization == null
     ? "数据库池占用"
     : `数据库池 ${Math.round(ingress.pool_budget.utilization * 100)}%`;
+  const workQueue = ingressWorkQueueMetrics(ingress?.hotpath);
   const ingressAlerts = ingress?.alerts ?? [];
   const ingressUnavailable = Boolean(ingressQ.error);
   const ingressP95Critical = ingressAlerts.includes("ingress_p95_over_5000ms");
@@ -601,6 +603,8 @@ export default function ChartsPage() {
               <MetricTile label="入站 P95" value={ingressMetric(ingress?.ingress_duration_ms_p95, " ms")} hint={`背压 ${ingressMetric(ingress?.overload_signals)}`} />
               <MetricTile label="发送队列" value={ingressMetric(ingress?.send_queue?.depth_live ?? ingress?.send_queue?.depth)} hint={ingressQueueHint} />
               <MetricTile label="预处理丢弃" value={ingressMetric(ingress?.preprocessor_dropped)} hint={ingressPoolHint} />
+              <MetricTile label="学习缓冲" value={ingressMetric(workQueue.buffered)} hint={`已落库 ${ingressMetric(workQueue.persisted)}`} />
+              <MetricTile label="学习丢弃" value={ingressMetric(workQueue.droppedFull)} hint={`退出 ${ingressMetric(workQueue.droppedShutdown)}`} />
             </div>
             {ingressAlerts.length || ingressUnavailable ? (
               <div className={cn("charts-page__ingress-alert", ingressP95Critical && "charts-page__ingress-alert--critical")} role="status">
