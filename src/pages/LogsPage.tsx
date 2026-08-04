@@ -88,6 +88,14 @@ function downloadTextFile(filename: string, text: string) {
   URL.revokeObjectURL(url);
 }
 
+function formatLogSource(source: string): string {
+  if (source === "all") return "全部来源";
+  if (source === "hub") return "主进程";
+  if (source === "work") return "work aux";
+  if (source === "embed") return "embed aux";
+  return source;
+}
+
 export default function LogsPage() {
   const [err, setErr] = useState("");
   const [pageReady, setPageReady] = useState(false);
@@ -600,7 +608,7 @@ export default function LogsPage() {
                     </SelectContent>
                   </Select>
                 </ChromeField>
-                {payload?.sharded_logs ? (
+                {payload?.sharded_logs || logSources.length > 1 ? (
                   <ChromeField label="来源" icon={Radio}>
                     <Select value={logSource} onValueChange={setLogSource}>
                       <SelectTrigger className={CHROME_SELECT_TRIGGER} aria-label="日志来源">
@@ -610,7 +618,7 @@ export default function LogsPage() {
                         {sourceOptions.map((s) => (
                           <SelectItem key={`src-${s}`} value={s}>
                             <ChromeOptionLabel icon={s === "all" ? Radio : FileText}>
-                              {s === "all" ? "全部来源" : s}
+                              {formatLogSource(s)}
                             </ChromeOptionLabel>
                           </SelectItem>
                         ))}
