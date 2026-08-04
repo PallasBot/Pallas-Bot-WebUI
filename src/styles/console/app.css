@@ -16998,6 +16998,10 @@ html[data-theme="light"] .corpus-hot__pill-score {
   border-bottom: 1px solid var(--border);
 }
 
+.charts-page__ingress-header > :first-child {
+  flex: 1 1 auto;
+}
+
 .charts-page__ingress-actions {
   display: flex;
   flex-wrap: wrap;
@@ -17038,17 +17042,17 @@ html[data-theme="light"] .corpus-hot__pill-score {
 
 @media (max-width: 560px) {
   .charts-page__ingress-header {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
+    gap: 8px;
+    padding: 10px 12px;
   }
 
   .charts-page__ingress-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .charts-page__ingress-actions .btn-refresh-action {
-    margin-left: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 4px;
+    justify-content: flex-end;
   }
 }
 
