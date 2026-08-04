@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { Activity, BarChart3, Bot, LineChart, UsersRound } from "lucide-react";
+import { Activity, BarChart3, Bot, CircleAlert, LineChart, UsersRound } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import {
   fetchConsoleDailyStats,
   fetchInstances,
   fetchPluginRunStats,
 } from "@/api/fullConsole";
+import { fetchIngressDispatch } from "@/api/consoleApi";
 import type { BotConfigPublic, ConsoleDailyStatRow } from "@/api/pallasTypes";
 import ChartsHorizontalRankBars from "@/components/ChartsHorizontalRankBars";
 import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart";
@@ -21,6 +22,7 @@ import PendingValue from "@/components/PendingValue";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import BotAccountCombobox from "@/components/BotAccountCombobox";
 import StatsSectionLabel from "@/components/StatsSectionLabel";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAccountPluginCharts } from "@/hooks/useAccountPluginCharts";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
@@ -53,6 +55,7 @@ const CHART_PANEL_HD =
 const CHART_PANEL_BD = "panel__bd space-y-3 px-4 pb-4 pt-3";
 /** 与区间趋势 Matcher 序列同色，柱图不跟主题走 */
 const PLUGIN_TODAY_BAR_ACCENT = "#7c3aed";
+const INGRESS_POLL_MS = 15_000;
 
 function MetricTile({
   label,
@@ -105,6 +108,13 @@ export default function ChartsPage() {
   const { favorites } = useBotFavorites();
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
   const pluginRunGlobalQ = useQuery({ queryKey: ["plugin-run-stats-global"], queryFn: () => fetchPluginRunStats() });
+  const ingressQ = useQuery({
+    queryKey: ["ingress-dispatch"],
+    queryFn: fetchIngressDispatch,
+    refetchInterval: INGRESS_POLL_MS,
+    refetchIntervalInBackground: false,
+    staleTime: INGRESS_POLL_MS,
+  });
 
   const queryRange = useMemo(() => {
     const bounds = monthBounds(currentMonthIso());
@@ -397,14 +407,48 @@ export default function ChartsPage() {
     return String(Math.floor(Number(n)));
   })();
 
+  const ingressMetric = (value: number | null | undefined, suffix = ""): string => {
+    if (value == null || !Number.isFinite(value)) {
+      return ingressQ.isFetching && !ingressQ.data ? "…" : "—";
+    }
+    return `${Math.round(value).toLocaleString()}${suffix}`;
+  };
+  const ingress = ingressQ.data;
+  const ingressSelectedRatio =
+    ingress?.matchers_selected_ratio == null
+      ? null
+      : Math.min(1, Math.max(0, ingress.matchers_selected_ratio)) * 100;
+  const ingressQueueHint = ingress?.send_queue
+    ? `上限 ${ingressMetric(ingress.send_queue.max_depth)} · 丢弃 ${ingressMetric(ingress.send_queue.dropped)}`
+    : "发送队列";
+  const ingressPoolHint = ingress?.pool_budget?.utilization == null
+    ? "数据库池占用"
+    : `数据库池 ${Math.round(ingress.pool_budget.utilization * 100)}%`;
+  const ingressAlerts = ingress?.alerts ?? [];
+  const ingressUnavailable = Boolean(ingressQ.error);
+  const ingressP95Critical = ingressAlerts.includes("ingress_p95_over_5000ms");
+  const ingressP95Warning = ingressAlerts.includes("ingress_p95_over_1000ms");
+  const ingressStatusLabel = ingressUnavailable ? "数据暂不可用" : ingressP95Critical ? "严重" : ingressAlerts.length ? "需关注" : "运行正常";
+  const ingressStatusVariant = ingressUnavailable || ingressAlerts.length ? (ingressP95Critical ? "destructive" : "warn") : "success";
+  const ingressAlertMessage = ingressUnavailable
+    ? "入站调度数据暂不可用。"
+    : ingressP95Critical
+      ? "入站 P95 超过 5 秒，消息处理链路出现严重拥塞。"
+      : ingressP95Warning
+        ? "入站 P95 超过 1 秒，请关注消息处理链路的延迟。"
+        : ingressAlerts.includes("pg_pool_over_85pct")
+          ? "数据库连接池占用超过 85%，请关注数据库连接压力。"
+          : "入站调度存在需要关注的状态。";
+
   const rangeBusy = dailyRangeQ.isFetching;
   const rangeTotalsPending = Boolean(selectedAccount) && rangeBusy && !dailyRangeQ.data;
-  const refreshing = instQ.isFetching || pluginRunGlobalQ.isFetching || chartsBusy || rangeBusy;
+  const refreshing = instQ.isFetching || pluginRunGlobalQ.isFetching || ingressQ.isFetching || chartsBusy || rangeBusy;
 
   async function refreshAll() {
     await Promise.all([
       instQ.refetch(),
       pluginRunGlobalQ.refetch(),
+      ingressQ.refetch(),
       dailyRangeQ.refetch(),
       refreshChartStats(),
     ]);
@@ -511,6 +555,61 @@ export default function ChartsPage() {
                   : `日均 ${Math.round(rangeApiTotal / rangeDayCount).toLocaleString()}`
               }
             />
+          </section>
+
+          <section
+            id="charts-ingress"
+            className={cn(
+              "charts-page__section charts-page__ingress",
+              ingressP95Critical ? "charts-page__ingress--critical" : ingressAlerts.length && "charts-page__ingress--warn",
+            )}
+            aria-label="入站调度状态"
+          >
+            <div className="charts-page__ingress-header">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <PanelTitleIcon icon={Activity} />
+                <h2 className="panel__title">入站调度</h2>
+              </div>
+              <div className="charts-page__ingress-actions">
+                <Badge variant={ingressStatusVariant} role="status">
+                  {ingressAlerts.length ? <CircleAlert className="size-3" aria-hidden /> : null}
+                  {ingressStatusLabel}
+                </Badge>
+                <Badge variant="outline">每 15 秒刷新</Badge>
+                <RefreshIconButton
+                  embedded
+                  busy={ingressQ.isFetching}
+                  label="刷新入站调度"
+                  onClick={() => void ingressQ.refetch()}
+                />
+              </div>
+            </div>
+            <div className="charts-page__kpi home-kpi-bar" aria-label="入站调度指标">
+              <MetricTile label="群消息" value={ingressMetric(ingress?.group_messages)} hint="今日累计" />
+              <MetricTile
+                label="命令 / 闲聊"
+                value={`${ingressMetric(ingress?.command_traffic)} / ${ingressMetric(ingress?.chatter_traffic)}`}
+                hint="入站构成"
+              />
+              <MetricTile
+                label="Matcher"
+                value={`${ingressMetric(ingress?.matchers_selected)} / ${ingressMetric(ingress?.matchers_considered)}`}
+                hint="选中 / 候选"
+              />
+              <MetricTile label="筛选率" value={ingressMetric(ingressSelectedRatio, "%")} hint={`已执行 ${ingressMetric(ingress?.matchers_run)}`} />
+              <MetricTile label="车道等待" value={ingressMetric(ingress?.lane_wait_ms_avg, " ms")} hint={`忙碌 ${ingressMetric(ingress?.lane_busy)}`} />
+              <MetricTile label="入站 P95" value={ingressMetric(ingress?.ingress_duration_ms_p95, " ms")} hint={`背压 ${ingressMetric(ingress?.overload_signals)}`} />
+              <MetricTile label="发送队列" value={ingressMetric(ingress?.send_queue?.depth_live ?? ingress?.send_queue?.depth)} hint={ingressQueueHint} />
+              <MetricTile label="预处理丢弃" value={ingressMetric(ingress?.preprocessor_dropped)} hint={ingressPoolHint} />
+            </div>
+            {ingressAlerts.length || ingressUnavailable ? (
+              <div className={cn("charts-page__ingress-alert", ingressP95Critical && "charts-page__ingress-alert--critical")} role="status">
+                <CircleAlert className="size-4 shrink-0" aria-hidden />
+                <span>
+                  {ingressAlertMessage}
+                </span>
+              </div>
+            ) : null}
           </section>
 
           <StatsSectionLabel>趋势</StatsSectionLabel>

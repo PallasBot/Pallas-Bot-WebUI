@@ -19,7 +19,7 @@ const _nonebotBracketBodyRe =
 const _loguruBodyRe =
   /^(?<dt>\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\|\s+(?<lev>\S+)\s+\|\s+(?<scope>[^:]+):(?<lineno>\d+)\s+-\s+(?<msg>.*)$/;
 
-/** 分片 scope：``worker-N/module`` 或历史 ``[worker-N] module`` */
+/** 日志 scope：``worker-N/module``、``work/module`` 或历史 ``[worker-N] module``。 */
 export function splitLogScope(scope: string): { source: string; module: string } {
   const raw = String(scope ?? "").trim();
   if (!raw) return { source: "", module: "" };
@@ -33,7 +33,7 @@ export function splitLogScope(scope: string): { source: string; module: string }
   const slash = raw.indexOf("/");
   if (slash > 0) {
     const head = raw.slice(0, slash);
-    if (head.startsWith("worker-") || head === "hub" || head === "hub-file") {
+    if (head.startsWith("worker-") || head === "hub" || head === "hub-file" || head === "work" || head === "embed") {
       return { source: head === "hub-file" ? "hub" : head, module: raw.slice(slash + 1).trim() };
     }
   }
@@ -343,19 +343,22 @@ function stripShardPrefixBody(message: string): string {
   return peelShardPrefixes(message).body;
 }
 
-/** 分片来源键：worker-N / hub；无标签为空串 */
+/** 日志来源键：worker-N / hub / work / embed；无标签为空串 */
 export function logEntrySourceKey(row: Pick<LogEntry, "scope" | "message">): string {
   const { source } = splitLogScope(String(row.scope ?? ""));
   if (source.startsWith("worker-")) return source;
   if (source === "hub") return "hub";
+  if (source === "work" || source === "embed") return source;
   const primary = String(row.scope ?? "")
     .trim()
     .split("/")[0] ?? "";
   if (primary.startsWith("worker-")) return primary;
   if (primary === "hub" || primary === "hub-file") return "hub";
+  if (primary === "work" || primary === "embed") return primary;
   const tag = peelShardPrefixes(String(row.message ?? "")).sourceTag.split("/")[0] ?? "";
   if (tag.startsWith("worker-")) return tag;
   if (tag === "hub" || tag === "hub-file") return "hub";
+  if (tag === "work" || tag === "embed") return tag;
   return "";
 }
 

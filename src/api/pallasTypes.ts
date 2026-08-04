@@ -1705,7 +1705,7 @@ export interface LogsData {
   source?: string;
   /** 分片部署：已合并主节点与各节点日志落盘尾行 */
   sharded_logs?: boolean;
-  /** 分片时可选的日志来源列表 */
+  /** 可选的日志来源列表（分片 worker 与已启用的辅进程） */
   log_sources?: string[];
 }
 

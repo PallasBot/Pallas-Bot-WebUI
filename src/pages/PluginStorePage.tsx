@@ -327,6 +327,16 @@ export default function PluginStorePage() {
     ],
     [noticeCommunityRows, noticeOfficialRows],
   );
+  const updateIds = useMemo(
+    () => [
+      ...noticeCommunityRows.filter((p) => p.has_update === true).map((p) => `community:${p.plugin_id}`),
+      ...noticeOfficialRows
+        .filter((p) => p.has_update === true)
+        .map((p) => `official:${String(p.package || "").trim()}`)
+        .filter((x) => x !== "official:"),
+    ],
+    [noticeCommunityRows, noticeOfficialRows],
+  );
 
   const storeNoticeFlags = useMemo(() => {
     const officialUpdates = noticeOfficialRows.filter((r) => r.has_update === true).length;
@@ -361,8 +371,8 @@ export default function PluginStorePage() {
         return next;
       });
     }
-    markPluginStoreIdsSeen(catalogIds);
-  }, [pageReady, catalogNoticeReady, catalogIds]);
+    markPluginStoreIdsSeen(catalogIds, updateIds);
+  }, [pageReady, catalogNoticeReady, catalogIds, updateIds]);
 
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

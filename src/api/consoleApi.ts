@@ -117,6 +117,7 @@ import type {
   ConsoleDailyStatsData,
   PluginRunStatsData,
   HomeOverviewData,
+  IngressDispatchData,
   ShardObservabilityData,
   ConsoleLoginChangeResult,
   ConsoleSetupStatus,
@@ -2129,6 +2130,20 @@ export async function deleteCommunityGalleryPost(postId: string): Promise<void> 
 }
 
 let shardObsInflight: Promise<ShardObservabilityData> | null = null;
+
+let ingressDispatchInflight: Promise<IngressDispatchData> | null = null;
+
+export async function fetchIngressDispatch(): Promise<IngressDispatchData> {
+  if (!ingressDispatchInflight) {
+    ingressDispatchInflight = (async () =>
+      (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/ingress-dispatch"]["get"]>(
+        "/ingress-dispatch",
+      )) as IngressDispatchData)().finally(() => {
+      ingressDispatchInflight = null;
+    });
+  }
+  return ingressDispatchInflight;
+}
 
 export async function fetchShardObservability(): Promise<ShardObservabilityData> {
   if (!shardObsInflight) {

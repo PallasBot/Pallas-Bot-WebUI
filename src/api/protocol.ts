@@ -139,6 +139,28 @@ export type SnowlumaRuntimeRow = {
   [key: string]: unknown;
 };
 
+export type SnowlumaRuntimeImageSwitchMode = "rebuild_all" | "next_start";
+
+export type SnowlumaRuntimeImageSwitchResult = {
+  id: string;
+  was_running?: boolean;
+  config_saved?: boolean;
+  stopped?: boolean;
+  removed?: boolean;
+  started?: boolean;
+  final_state?: string;
+  error?: string;
+};
+
+export type SnowlumaRuntimeImageSwitchJob = {
+  job_id?: string;
+  status?: string;
+  message?: string;
+  image?: string;
+  apply_mode?: SnowlumaRuntimeImageSwitchMode;
+  results?: SnowlumaRuntimeImageSwitchResult[];
+};
+
 export type ProtocolAccountConfigs = {
   napcat?: {
     bypass_enabled?: boolean;
@@ -417,6 +439,18 @@ export async function protocolCreateSnowlumaRuntime(
   return data?.runtime ?? null;
 }
 
+export async function protocolUpdateSnowlumaRuntime(
+  mountUrl: string,
+  runtimeId: string,
+  payload: { snowluma_docker_image: string },
+): Promise<SnowlumaRuntimeRow | null> {
+  const { data } = await protocolHttp(mountUrl).put<{ runtime?: SnowlumaRuntimeRow }>(
+    `/api/snowluma/runtimes/${encodeURIComponent(runtimeId)}`,
+    payload,
+  );
+  return data?.runtime ?? null;
+}
+
 export async function protocolStartSnowlumaRuntime(
   mountUrl: string,
   runtimeId: string,
@@ -444,6 +478,35 @@ export async function protocolDeleteSnowlumaRuntime(
 ): Promise<void> {
   await protocolHttp(mountUrl).delete(`/api/snowluma/runtimes/${encodeURIComponent(runtimeId)}`, {
     params: force ? { force: "1" } : undefined,
+  });
+}
+
+export async function protocolStartSnowlumaRuntimeImageSwitch(
+  mountUrl: string,
+  body: { image: string; apply_mode: SnowlumaRuntimeImageSwitchMode },
+): Promise<{ ok?: boolean; job_id: string; job: SnowlumaRuntimeImageSwitchJob }> {
+  const { data } = await protocolHttp(mountUrl).post<{
+    ok?: boolean;
+    job_id: string;
+    job: SnowlumaRuntimeImageSwitchJob;
+  }>("/api/snowluma/runtimes/image-switch", body);
+  return data;
+}
+
+export async function protocolFetchSnowlumaRuntimeImageSwitchJob(
+  mountUrl: string,
+  jobId: string,
+): Promise<SnowlumaRuntimeImageSwitchJob> {
+  const { data } = await protocolHttp(mountUrl).get<{ job: SnowlumaRuntimeImageSwitchJob }>(
+    `/api/snowluma/runtimes/image-switch/${encodeURIComponent(jobId)}`,
+  );
+  return data.job;
+}
+
+export function protocolStreamSnowlumaRuntimeImageSwitchJob(mountUrl: string, jobId: string): EventSource {
+  const base = protocolApiBase(mountUrl);
+  return new EventSource(`${base}/api/snowluma/runtimes/image-switch/${encodeURIComponent(jobId)}/stream`, {
+    withCredentials: true,
   });
 }
 

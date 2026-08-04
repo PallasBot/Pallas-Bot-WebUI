@@ -1,6 +1,7 @@
-/** 插件商店侧栏提醒：上新（本机已见表）与可更新（快照 has_update）。 */
+/** 插件商店侧栏提醒：上新与可更新均在进入商店后视为已阅。 */
 
 export const PLUGIN_STORE_SEEN_IDS_KEY = "pallas.react.plugin-store.seen-ids";
+export const PLUGIN_STORE_SEEN_UPDATE_IDS_KEY = "pallas.react.plugin-store.seen-update-ids";
 export const PLUGIN_STORE_SEEN_EVENT = "pallas-plugin-store-seen";
 
 export type PluginStoreNoticeCounts = {
@@ -37,6 +38,26 @@ export function writeSeenPluginStoreIds(ids: Iterable<string>): void {
   }
 }
 
+function readSeenPluginStoreUpdateIds(): Set<string> | null {
+  try {
+    const raw = localStorage.getItem(PLUGIN_STORE_SEEN_UPDATE_IDS_KEY);
+    if (raw == null) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    return new Set(normalizePluginStoreIds(parsed.map((x) => String(x ?? ""))));
+  } catch {
+    return null;
+  }
+}
+
+function writeSeenPluginStoreUpdateIds(ids: Iterable<string>): void {
+  try {
+    localStorage.setItem(PLUGIN_STORE_SEEN_UPDATE_IDS_KEY, JSON.stringify(normalizePluginStoreIds(ids)));
+  } catch {
+    /* ignore quota */
+  }
+}
+
 /** 首次无基线时写入当前全部 ID，避免首次打开把整店标成「上新」。 */
 export function ensurePluginStoreSeenBaseline(allIds: string[]): Set<string> {
   const existing = readSeenPluginStoreIds();
@@ -60,14 +81,15 @@ export function listUnseenPluginStoreIds(allIds: string[]): string[] {
   return out;
 }
 
-/** 打开商店页：把当前条目记为已见（清除上新；可更新不因此消失）。 */
-export function markPluginStoreIdsSeen(allIds: string[]): void {
+/** 打开商店页：把当前条目及可更新条目记为已见，清除侧栏绿点。 */
+export function markPluginStoreIdsSeen(allIds: string[], updateIds: string[] = []): void {
   const prev = readSeenPluginStoreIds() ?? new Set<string>();
   for (const id of allIds) {
     const key = String(id || "").trim();
     if (key) prev.add(key);
   }
   writeSeenPluginStoreIds(prev);
+  writeSeenPluginStoreUpdateIds(updateIds);
   try {
     window.dispatchEvent(new Event(PLUGIN_STORE_SEEN_EVENT));
   } catch {
@@ -94,11 +116,12 @@ export function pluginStoreNoticeLabel(counts: PluginStoreNoticeCounts): string 
 
 export function summarizePluginStoreNotice(input: {
   catalogIds: string[];
-  updateCount: number;
+  updateIds: string[];
 }): PluginStoreNoticeCounts & { label: string | null } {
   const seen = ensurePluginStoreSeenBaseline(input.catalogIds);
   const newCount = countNewPluginStoreIds(input.catalogIds, seen);
-  const updateCount = Math.max(0, Math.floor(input.updateCount || 0));
+  const seenUpdates = readSeenPluginStoreUpdateIds();
+  const updateCount = input.updateIds.filter((id) => !seenUpdates?.has(String(id || "").trim())).length;
   const counts = { newCount, updateCount };
   return { ...counts, label: pluginStoreNoticeLabel(counts) };
 }

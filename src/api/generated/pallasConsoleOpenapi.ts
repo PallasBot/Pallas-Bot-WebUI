@@ -14338,9 +14338,9 @@ export interface operations {
         parameters: {
             query?: {
                 n?: number;
-                /** @description all=全部（分片 hub 时合并 hub 环与各 worker 落盘日志）；message=消息面（OneBot 消息事件 / 复读发送等）；console=控制台（pb_webui / [pallas-webui] / /pallas/ access）；other=其它（含无 facet 的旧日志） */
+                /** @description all=全部（合并主进程、分片 worker 与辅进程落盘日志）；message=消息面（OneBot 消息事件 / 复读发送等）；console=控制台（pb_webui / [pallas-webui] / /pallas/ access）；other=其它（含无 facet 的旧日志） */
                 scope?: "all" | "message" | "console" | "other";
-                /** @description 分片来源：all|hub|worker-0|worker-1…（默认 all，不含 bootstrap） */
+                /** @description 日志来源：all|hub|worker-N|work|embed（默认 all） */
                 source?: string | null;
                 token?: string | null;
             };
@@ -14378,7 +14378,7 @@ export interface operations {
                 n?: number;
                 /** @description all=全部；message=消息面；console=控制台；other=其它（与 GET /logs 一致） */
                 scope?: "all" | "message" | "console" | "other";
-                /** @description 分片来源：all|hub|worker-N（默认 all） */
+                /** @description 日志来源：all|hub|worker-N|work|embed（默认 all） */
                 source?: string | null;
                 token?: string | null;
             };
@@ -14415,7 +14415,7 @@ export interface operations {
             query?: {
                 /** @description all=全部；message=仅消息面；console=仅控制台；other=仅其它 */
                 scope?: "all" | "message" | "console" | "other";
-                /** @description 分片来源：all|hub|worker-N（与 GET /logs 一致） */
+                /** @description 日志来源：all|hub|worker-N|work|embed（与 GET /logs 一致） */
                 source?: string | null;
                 /** @description 断点续传：仅发送 id 大于该值的日志条目 */
                 last_event_id?: number | null;
