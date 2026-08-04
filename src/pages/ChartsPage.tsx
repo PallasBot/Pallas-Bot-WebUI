@@ -8,6 +8,7 @@ import {
   fetchInstances,
   fetchPluginRunStats,
 } from "@/api/fullConsole";
+import { fetchIngressDispatch } from "@/api/consoleApi";
 import type { BotConfigPublic, ConsoleDailyStatRow } from "@/api/pallasTypes";
 import ChartsHorizontalRankBars from "@/components/ChartsHorizontalRankBars";
 import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart";
@@ -53,6 +54,7 @@ const CHART_PANEL_HD =
 const CHART_PANEL_BD = "panel__bd space-y-3 px-4 pb-4 pt-3";
 /** 与区间趋势 Matcher 序列同色，柱图不跟主题走 */
 const PLUGIN_TODAY_BAR_ACCENT = "#7c3aed";
+const INGRESS_POLL_MS = 15_000;
 
 function MetricTile({
   label,
@@ -105,6 +107,13 @@ export default function ChartsPage() {
   const { favorites } = useBotFavorites();
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
   const pluginRunGlobalQ = useQuery({ queryKey: ["plugin-run-stats-global"], queryFn: () => fetchPluginRunStats() });
+  const ingressQ = useQuery({
+    queryKey: ["ingress-dispatch"],
+    queryFn: fetchIngressDispatch,
+    refetchInterval: INGRESS_POLL_MS,
+    refetchIntervalInBackground: false,
+    staleTime: INGRESS_POLL_MS,
+  });
 
   const queryRange = useMemo(() => {
     const bounds = monthBounds(currentMonthIso());
@@ -397,14 +406,33 @@ export default function ChartsPage() {
     return String(Math.floor(Number(n)));
   })();
 
+  const ingressMetric = (value: number | null | undefined, suffix = ""): string => {
+    if (value == null || !Number.isFinite(value)) {
+      return ingressQ.isFetching && !ingressQ.data ? "…" : "—";
+    }
+    return `${Math.round(value).toLocaleString()}${suffix}`;
+  };
+  const ingress = ingressQ.data;
+  const ingressSelectedRatio =
+    ingress?.matchers_selected_ratio == null
+      ? null
+      : Math.min(1, Math.max(0, ingress.matchers_selected_ratio)) * 100;
+  const ingressQueueHint = ingress?.send_queue
+    ? `上限 ${ingressMetric(ingress.send_queue.max_depth)} · 丢弃 ${ingressMetric(ingress.send_queue.dropped)}`
+    : "发送队列";
+  const ingressPoolHint = ingress?.pool_budget?.utilization == null
+    ? "数据库池占用"
+    : `数据库池 ${Math.round(ingress.pool_budget.utilization * 100)}%`;
+
   const rangeBusy = dailyRangeQ.isFetching;
   const rangeTotalsPending = Boolean(selectedAccount) && rangeBusy && !dailyRangeQ.data;
-  const refreshing = instQ.isFetching || pluginRunGlobalQ.isFetching || chartsBusy || rangeBusy;
+  const refreshing = instQ.isFetching || pluginRunGlobalQ.isFetching || ingressQ.isFetching || chartsBusy || rangeBusy;
 
   async function refreshAll() {
     await Promise.all([
       instQ.refetch(),
       pluginRunGlobalQ.refetch(),
+      ingressQ.refetch(),
       dailyRangeQ.refetch(),
       refreshChartStats(),
     ]);
@@ -511,6 +539,42 @@ export default function ChartsPage() {
                   : `日均 ${Math.round(rangeApiTotal / rangeDayCount).toLocaleString()}`
               }
             />
+          </section>
+
+          <StatsSectionLabel>入站调度</StatsSectionLabel>
+          <section id="charts-ingress" className="charts-page__section" aria-label="入站调度状态">
+            <Card className={cn(CHART_PANEL, "charts-page__panel--secondary")}>
+              <CardHeader className={CHART_PANEL_HD}>
+                <CardTitle className="panel__title flex items-center gap-1.5">
+                  <PanelTitleIcon icon={Activity} />
+                  入站调度
+                </CardTitle>
+                <span className="home-panel__tag">15 秒刷新</span>
+              </CardHeader>
+              <CardContent className={CHART_PANEL_BD}>
+                <section className="charts-page__kpi home-kpi-bar" aria-label="入站调度指标">
+                  <MetricTile label="群消息" value={ingressMetric(ingress?.group_messages)} hint="今日累计" />
+                  <MetricTile
+                    label="命令 / 闲聊"
+                    value={`${ingressMetric(ingress?.command_traffic)} / ${ingressMetric(ingress?.chatter_traffic)}`}
+                    hint="入站构成"
+                  />
+                  <MetricTile
+                    label="Matcher"
+                    value={`${ingressMetric(ingress?.matchers_selected)} / ${ingressMetric(ingress?.matchers_considered)}`}
+                    hint="选中 / 候选"
+                  />
+                  <MetricTile label="筛选率" value={ingressMetric(ingressSelectedRatio, "%")} hint={`已执行 ${ingressMetric(ingress?.matchers_run)}`} />
+                  <MetricTile label="车道等待" value={ingressMetric(ingress?.lane_wait_ms_avg, " ms")} hint={`忙碌 ${ingressMetric(ingress?.lane_busy)}`} />
+                  <MetricTile label="入站 P95" value={ingressMetric(ingress?.ingress_duration_ms_p95, " ms")} hint={`背压 ${ingressMetric(ingress?.overload_signals)}`} />
+                  <MetricTile label="发送队列" value={ingressMetric(ingress?.send_queue?.depth_live ?? ingress?.send_queue?.depth)} hint={ingressQueueHint} />
+                  <MetricTile label="预处理丢弃" value={ingressMetric(ingress?.preprocessor_dropped)} hint={ingressPoolHint} />
+                </section>
+                <p className="muted charts-page__section-note mb-0" role="status">
+                  {ingress?.alerts?.length ? ingress.alerts.join(" · ") : ingressQ.error ? "入站调度数据暂不可用" : "暂无调度告警"}
+                </p>
+              </CardContent>
+            </Card>
           </section>
 
           <StatsSectionLabel>趋势</StatsSectionLabel>
