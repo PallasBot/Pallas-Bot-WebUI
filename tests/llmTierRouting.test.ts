@@ -287,6 +287,30 @@ describe("llmTierRouting local tiers", () => {
 });
 
 describe("llmTierRouting per-task routes", () => {
+  it("keeps visual sticker selection out of text fallback routes", () => {
+    expect(ALL_ROUTABLE_TASKS).toContain("sticker_vision");
+    expect(TASK_ROUTE_META.sticker_vision).toMatchObject({
+      title: "视觉选图",
+      capability: "image",
+    });
+
+    const doc = {
+      providers: [
+        { id: "text", default_model: "text-model", task_models: {} },
+        { id: "vision", default_model: "vision-model", task_models: {} },
+      ],
+      routing: { chain_fallback: [], tasks: {} },
+    };
+    const routes = foldTaskRoutes(doc);
+    routes.llm_chat.primary = { providerId: "text", model: "text-model" };
+    routes.sticker_vision.primary = { providerId: "vision", model: "vision-model" };
+
+    const next = applyTaskRoutes(doc, routes);
+    expect(next.routing.tasks.sticker_vision).toBe("vision");
+    expect(next.providers.find((p) => p.id === "vision")?.task_models.sticker_vision).toBe("vision-model");
+    expect(next.routing.chain_fallback).not.toContain("vision");
+  });
+
   it("applies and folds per-task primary/backup including affect_refine", () => {
     const doc = {
       providers: [

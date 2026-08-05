@@ -839,7 +839,12 @@ export default function LlmProvidersForm() {
     modelPlaceholder: string;
     onProviderChange: (providerId: string) => void;
     onModelChange: (model: string) => void;
+    requiredCapability?: LlmProviderCapability;
   }) {
+    const requiredCapability = opts.requiredCapability;
+    const eligibleProviders = requiredCapability
+      ? doc.providers.filter((provider) => provider.capabilities?.includes(requiredCapability))
+      : doc.providers;
     return (
       <div className="grid gap-2">
         <AiOptionSelect
@@ -852,7 +857,7 @@ export default function LlmProvidersForm() {
             );
             loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
           }}
-          options={doc.providers.map((p) => ({
+          options={eligibleProviders.map((p) => ({
             value: p.id,
             label: p.enabled ? p.id : `${p.id} (停用)`,
           }))}
@@ -1691,12 +1696,14 @@ export default function LlmProvidersForm() {
                         kind={meta.kind}
                         title={meta.title}
                         description={meta.description}
+                        className={meta.kind === "vision" ? "col-span-full" : undefined}
                         primaryInvalid={!slot.primary.providerId}
                         primary={renderProviderModelSlot({
                           providerId: slot.primary.providerId,
                           model: slot.primary.model,
                           providerAria: `${meta.title}主提供方`,
                           modelPlaceholder: "任务模型（可空）",
+                          requiredCapability: meta.capability,
                           onProviderChange: (providerId) =>
                             updateRoutableTaskSlot(task, "primary", { providerId }),
                           onModelChange: (model) => updateRoutableTaskSlot(task, "primary", { model }),
@@ -1706,6 +1713,7 @@ export default function LlmProvidersForm() {
                           model: slot.backup.model,
                           providerAria: `${meta.title}备用提供方`,
                           modelPlaceholder: "备用模型（可空）",
+                          requiredCapability: meta.capability,
                           onProviderChange: (providerId) =>
                             updateRoutableTaskSlot(task, "backup", { providerId }),
                           onModelChange: (model) => updateRoutableTaskSlot(task, "backup", { model }),

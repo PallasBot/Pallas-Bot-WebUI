@@ -1,6 +1,7 @@
 /** 任务编排 / 本地路由：高低档门面 ↔ 现有多任务 / moe 字段 */
 
 export type RoutingTier = "high" | "low";
+export type TaskRouteKind = RoutingTier | "vision";
 
 export type TierProviderSlot = {
   providerId: string;
@@ -26,7 +27,9 @@ export const LOW_TIER_TASKS = [
   "turn_decision",
 ] as const;
 
-export const ALL_ROUTABLE_TASKS = [...HIGH_TIER_TASKS, ...LOW_TIER_TASKS] as const;
+export const VISION_TASKS = ["sticker_vision"] as const;
+
+export const ALL_ROUTABLE_TASKS = [...HIGH_TIER_TASKS, ...LOW_TIER_TASKS, ...VISION_TASKS] as const;
 
 export type RoutableTask = (typeof ALL_ROUTABLE_TASKS)[number];
 
@@ -37,7 +40,7 @@ export const TIER_TASKS: Record<RoutingTier, readonly string[]> = {
 
 export const TASK_ROUTE_META: Record<
   RoutableTask,
-  { title: string; description: string; kind: RoutingTier }
+  { title: string; description: string; kind: TaskRouteKind; capability?: "image" }
 > = {
   llm_chat: {
     title: "@ LLM 对话",
@@ -78,6 +81,12 @@ export const TASK_ROUTE_META: Record<
     title: "本轮动作决策",
     description: "回复前先判断：回、跳过，还是走工具；须在对话策略里开启才会请求",
     kind: "low",
+  },
+  sticker_vision: {
+    title: "视觉选图",
+    description: "选择表情的可选增强能力；仅在 LLM 决定贴图时调用",
+    kind: "vision",
+    capability: "image",
   },
 };
 
@@ -424,7 +433,7 @@ export function foldTaskRoutes<P extends ProviderLike>(doc: ProvidersDocLike<P>)
     if (hasTaskBackups) {
       backupId = String(taskBackups[task] || "").trim();
       backupModel = String(taskBackupModels[task] || "").trim();
-    } else {
+    } else if (kind !== "vision") {
       backupId = String(doc.routing.tier_backups?.[kind] || "").trim();
       backupModel = String(doc.routing.tier_backup_models?.[kind] || "").trim();
     }
@@ -483,7 +492,7 @@ export function applyTaskRoutes<P extends ProviderLike, D extends ProvidersDocLi
   }
 
   const chain_fallback = uniquePreserve(
-    ALL_ROUTABLE_TASKS.flatMap((task) => {
+    [...HIGH_TIER_TASKS, ...LOW_TIER_TASKS].flatMap((task) => {
       const slot = routes[task] || emptyTaskRouteSlot();
       return [slot.primary.providerId, slot.backup.providerId];
     }),

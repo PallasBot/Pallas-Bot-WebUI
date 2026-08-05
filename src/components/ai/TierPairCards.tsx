@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, Sparkles, Zap } from "lucide-react";
+import { AlertTriangle, Image, Sparkles, Zap } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-export type TierCardKind = "high" | "low";
+export type TierCardKind = "high" | "low" | "vision";
 
 type SlotProps = {
   label: string;
@@ -65,7 +65,7 @@ export function TierCard({
   backupDescription = "主配置失败或限流时自动切换；可同提供方换模型。",
   className,
 }: TierCardProps) {
-  const Icon = kind === "high" ? Sparkles : Zap;
+  const Icon = kind === "vision" ? Image : kind === "high" ? Sparkles : Zap;
   return (
     <div
       className={cn(
