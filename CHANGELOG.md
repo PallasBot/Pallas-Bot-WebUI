@@ -4,13 +4,26 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.28] - 2026-08-05
 
 ### 更新公告
 
 - 需要 Bot >= 4.1.29；请勿只升控制台。
 - 入站调度面板新增 LLM 预算高压指标，便于判断降级与跳过情况。
 - 托管协议账号优先显示实例名，多个账号更容易区分。
+
+### 提交明细
+
+### Added
+
+* feat(charts): 展示 LLM 预算高压指标 ([581f397](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/581f397e8790a555d2045c1f7d0d2d51016f4a24))
+
+### Fixed
+
+* fix(protocol): 托管账号优先显示实例名 ([6568ab9](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6568ab963a3b0b7e74595dbbb657e71e30a0437e))
+
+**完整变更**: [`v0.8.27...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.27...HEAD)
+
 
 ## [0.8.27] - 2026-08-05
 
@@ -32,7 +45,6 @@
 * fix(charts): 修复入站调度窄屏标题对齐 ([b2f31c5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b2f31c5d97a82d494afbe130187a543032a71ab6))
 
 **完整变更**: [`v0.8.26...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.26...HEAD)
-
 
 ## [0.8.26] - 2026-08-04
 
