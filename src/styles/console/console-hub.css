@@ -1062,10 +1062,12 @@ html[data-layout="hub"][data-surface="solid"] .chrome-tools {
   box-shadow: -10px 0 12px -10px color-mix(in srgb, var(--foreground) 18%, transparent);
 }
 
-/* 毛玻璃工具条本身已半透明：钉住区勿再叠一层，否则出现白块 */
+/* 毛玻璃下的钉住操作区保留自身底，避免左侧横滑内容穿透按钮。 */
 html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-row > .chrome-tools__trailing {
-  background: transparent;
-  box-shadow: none;
+  background: var(--surface-glass-fill);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  box-shadow: -10px 0 12px -10px color-mix(in srgb, var(--foreground) 18%, transparent);
 }
 
 /* 长配置页：只钉工具条（标题滚走）；滚动容器须为祖先 shell__main-inner */
