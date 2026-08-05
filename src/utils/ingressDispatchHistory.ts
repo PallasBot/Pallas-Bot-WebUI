@@ -1,7 +1,15 @@
 import type { IngressDispatchHistoryData } from "@/api/pallasTypes";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 
-export type IngressPressurePoint = { at: number; queue: number; concurrency: number; work: number };
+export type IngressPressurePoint = {
+  at: number;
+  ingressP95: number;
+  schedulerWaitP95: number;
+  queue: number;
+  concurrency: number;
+  learnEnqueued: number;
+  work: number;
+};
 
 export const INGRESS_HISTORY_WINDOWS = [
   { label: "15 分钟", seconds: 15 * 60 },
@@ -31,8 +39,11 @@ export function buildIngressHistoryView(history: IngressDispatchHistoryData | un
     ],
     pressure: points.map((p) => ({
       at: p.at,
+      ingressP95: p.ingress_p95_ms,
+      schedulerWaitP95: p.scheduler_wait_p95_ms,
       queue: p.scheduler_pending,
       concurrency: p.scheduler_capacity > 0 ? Math.round((p.scheduler_active / p.scheduler_capacity) * 100) : 0,
+      learnEnqueued: p.learn_enqueued,
       work: p.work_pending,
     })),
   };

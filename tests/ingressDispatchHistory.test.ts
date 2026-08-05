@@ -34,6 +34,16 @@ describe("buildIngressHistoryView", () => {
       { id: "scheduler", label: "调度等待 P95", axis: "left", points: [{ at: 100, total: 600 }] },
     ]);
     expect(view.learning.map((row) => row.points[0]?.total)).toEqual([6, 5, 4]);
-    expect(view.pressure).toEqual([{ at: 100, queue: 5, concurrency: 50, work: 2 }]);
+    expect(view.pressure).toEqual([
+      {
+        at: 100,
+        ingressP95: 1200,
+        schedulerWaitP95: 600,
+        queue: 5,
+        concurrency: 50,
+        learnEnqueued: 6,
+        work: 2,
+      },
+    ]);
   });
 });

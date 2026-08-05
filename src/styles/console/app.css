@@ -17039,17 +17039,17 @@ html[data-theme="light"] .corpus-hot__pill-score {
 
 .charts-page__ingress-board {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(220px, 0.7fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(360px, 0.95fr);
   gap: 12px;
   padding: 12px 16px 16px;
 }
 
-.ingress-pressure { display: grid; gap: 12px; padding: 14px 0; }
-.ingress-pressure__row { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem; align-items: center; gap: 8px; font-size: 12px; }
+.ingress-pressure { display: grid; gap: 10px; padding: 8px 0; }
+.ingress-pressure__row { display: grid; grid-template-columns: 5rem minmax(0, 1fr) 7.5rem; align-items: center; gap: 8px; font-size: 12px; }
 .ingress-pressure__label { color: var(--text-muted); }
-.ingress-pressure__cells { display: grid; grid-template-columns: repeat(96, minmax(1px, 1fr)); gap: 2px; min-width: 0; }
-.ingress-pressure__cell { height: 18px; border-radius: 2px; }
-.ingress-pressure__row strong { text-align: right; font-variant-numeric: tabular-nums; }
+.ingress-pressure__cells { display: grid; grid-template-columns: repeat(96, minmax(1px, 1fr)); gap: 2px; min-width: 0; overflow: hidden; }
+.ingress-pressure__cell { height: 16px; min-width: 0; border-radius: 2px; }
+.ingress-pressure__row strong { min-width: 0; overflow: hidden; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .charts-page__ingress-alert {
   display: flex;
