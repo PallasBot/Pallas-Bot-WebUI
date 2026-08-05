@@ -118,6 +118,7 @@ export type ProtocolRuntimeProfile = {
   docker_image?: string;
   snowluma_docker_image?: string;
   follow_bot_lifecycle?: boolean;
+  default_protocol_backend?: "napcat" | "snowluma";
 };
 
 export type ProtocolRuntimeJob = {
