@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   protocolApiErrorMessage,
   protocolCreateAccount,
+  protocolFetchRuntimeProfile,
   protocolListSnowlumaRuntimes,
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
@@ -48,7 +49,8 @@ export default function ProtocolCreateTab() {
   const navigate = useNavigate();
   const [qq, setQq] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [protocolBackend, setProtocolBackend] = useState("napcat");
+  const [defaultProtocolBackend, setDefaultProtocolBackend] = useState<"napcat" | "snowluma">("napcat");
+  const [protocolBackend, setProtocolBackend] = useState<"napcat" | "snowluma" | null>(null);
   const [webuiPort, setWebuiPort] = useState("");
   const [webuiToken, setWebuiToken] = useState("");
   const [wsUrl, setWsUrl] = useState("");
@@ -59,6 +61,7 @@ export default function ProtocolCreateTab() {
   const [snowlumaRuntimeMode, setSnowlumaRuntimeMode] = useState<"new" | "existing">("new");
   const [runtimesLoading, setRuntimesLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const selectedProtocolBackend = protocolBackend ?? defaultProtocolBackend;
 
   const chromeRefresh = useCallback(() => {
     void reload();
@@ -68,7 +71,20 @@ export default function ProtocolCreateTab() {
   );
 
   useEffect(() => {
-    if (protocolBackend !== "snowluma" || !mountUrl) {
+    if (!mountUrl) return;
+    let cancelled = false;
+    void protocolFetchRuntimeProfile(mountUrl).then((profile) => {
+      if (!cancelled && profile.default_protocol_backend) {
+        setDefaultProtocolBackend(profile.default_protocol_backend);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mountUrl]);
+
+  useEffect(() => {
+    if (selectedProtocolBackend !== "snowluma" || !mountUrl) {
       setSnowlumaRuntimes([]);
       setRuntimesLoading(false);
       return;
@@ -88,7 +104,7 @@ export default function ProtocolCreateTab() {
     return () => {
       cancelled = true;
     };
-  }, [protocolBackend, mountUrl]);
+  }, [selectedProtocolBackend, mountUrl]);
 
   async function submitCreate() {
     if (!mountUrl) {
@@ -100,7 +116,7 @@ export default function ProtocolCreateTab() {
       notifyWarn("请填写 QQ 号");
       return;
     }
-    if (protocolBackend === "snowluma" && snowlumaRuntimeMode === "existing" && !snowlumaRuntimeId.trim()) {
+    if (selectedProtocolBackend === "snowluma" && snowlumaRuntimeMode === "existing" && !snowlumaRuntimeId.trim()) {
       notifyWarn("请选择已有 SnowLuma Runtime");
       return;
     }
@@ -111,12 +127,12 @@ export default function ProtocolCreateTab() {
         qq: q,
         display_name: displayName.trim(),
         enabled: true,
-        protocol_backend: protocolBackend,
+        protocol_backend: selectedProtocolBackend,
       };
       const wp = parseInt(webuiPort.trim(), 10);
       if (webuiPort.trim() && !Number.isNaN(wp)) body.webui_port = wp;
-      if (protocolBackend !== "snowluma" && webuiToken.trim()) body.webui_token = webuiToken.trim();
-      if (protocolBackend === "snowluma") {
+      if (selectedProtocolBackend !== "snowluma" && webuiToken.trim()) body.webui_token = webuiToken.trim();
+      if (selectedProtocolBackend === "snowluma") {
         if (snowlumaRuntimeMode === "existing") {
           body.snowluma_runtime_id = snowlumaRuntimeId.trim();
           body.create_runtime = false;
@@ -179,7 +195,10 @@ export default function ProtocolCreateTab() {
           </div>
           <div className="field space-y-1.5">
             <Label htmlFor="create-protocol-backend">协议端类型</Label>
-            <Select value={protocolBackend} onValueChange={setProtocolBackend}>
+            <Select
+              value={selectedProtocolBackend}
+              onValueChange={(value) => setProtocolBackend(value as "napcat" | "snowluma")}
+            >
               <SelectTrigger id="create-protocol-backend" className="h-9 w-full" aria-label="协议端类型">
                 <SelectValue />
               </SelectTrigger>
@@ -189,7 +208,7 @@ export default function ProtocolCreateTab() {
               </SelectContent>
             </Select>
           </div>
-          {protocolBackend === "snowluma" ? (
+          {selectedProtocolBackend === "snowluma" ? (
             <>
               <div className="field space-y-1.5">
                 <Label htmlFor="create-snowluma-mode">SnowLuma Runtime</Label>
@@ -236,7 +255,7 @@ export default function ProtocolCreateTab() {
               onChange={(e) => setWebuiPort(e.target.value)}
             />
           </div>
-          {protocolBackend !== "snowluma" ? (
+          {selectedProtocolBackend !== "snowluma" ? (
             <div className="field space-y-1.5">
               <Label htmlFor="create-webui-token">WebUI token</Label>
               <Input

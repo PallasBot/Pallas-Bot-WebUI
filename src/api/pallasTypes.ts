@@ -2475,6 +2475,23 @@ export interface IngressDispatchPoolBudget {
   cluster_pg?: Record<string, unknown>;
 }
 
+export interface IngressDispatchHotpath {
+  learn_buffered?: number;
+  learn_persisted?: number;
+  learn_skipped_full?: number;
+  learn_dropped_shutdown?: number;
+}
+
+export interface IngressDispatchWorkAux {
+  available?: boolean;
+  heartbeat_age_sec?: number;
+  consumers?: number;
+  pending?: number;
+  leased?: number;
+  oldest_pending_age_sec?: number | null;
+  max_attempts?: number;
+}
+
 export interface IngressDispatchWorker {
   shard_id: number;
   updated_at?: number;
@@ -2502,6 +2519,8 @@ export interface IngressDispatchData {
   ingress_duration_ms_p95?: number | null;
   send_queue?: IngressDispatchSendQueueStatus;
   pool_budget?: IngressDispatchPoolBudget;
+  hotpath?: IngressDispatchHotpath;
+  work_aux?: IngressDispatchWorkAux;
   alerts?: string[];
 }
 
