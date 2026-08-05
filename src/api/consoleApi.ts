@@ -118,6 +118,7 @@ import type {
   PluginRunStatsData,
   HomeOverviewData,
   IngressDispatchData,
+  IngressDispatchHistoryData,
   ShardObservabilityData,
   ConsoleLoginChangeResult,
   ConsoleSetupStatus,
@@ -2143,6 +2144,23 @@ export async function fetchIngressDispatch(): Promise<IngressDispatchData> {
     });
   }
   return ingressDispatchInflight;
+}
+
+let ingressDispatchHistoryInflight: Promise<IngressDispatchHistoryData> | null = null;
+
+export async function fetchIngressDispatchHistory(windowSec = 7 * 24 * 60 * 60): Promise<IngressDispatchHistoryData> {
+  if (!ingressDispatchHistoryInflight) {
+    ingressDispatchHistoryInflight = (async () => {
+      const { data } = await http.get<{ ok?: boolean; data?: IngressDispatchHistoryData }>("/ingress-dispatch/history", {
+        params: { window_sec: windowSec },
+      });
+      if (!data?.data) throw new Error("入站历史响应无效");
+      return data.data;
+    })().finally(() => {
+      ingressDispatchHistoryInflight = null;
+    });
+  }
+  return ingressDispatchHistoryInflight;
 }
 
 export async function fetchShardObservability(): Promise<ShardObservabilityData> {

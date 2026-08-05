@@ -2520,6 +2520,27 @@ export interface IngressDispatchWorker {
   ingress_dispatch?: IngressDispatchData;
 }
 
+export interface IngressDispatchHistoryPoint {
+  at: number;
+  ingress_p95_ms: number;
+  scheduler_wait_p95_ms: number;
+  scheduler_pending: number;
+  scheduler_active: number;
+  scheduler_capacity: number;
+  work_pending: number;
+  work_leased: number;
+  group_messages: number;
+  learn_enqueued: number;
+  learn_persisted: number;
+  work_completed: number;
+}
+
+export interface IngressDispatchHistoryData {
+  retention_sec: number;
+  bucket_sec: number;
+  points: IngressDispatchHistoryPoint[];
+}
+
 /** GET /ingress-dispatch */
 export interface IngressDispatchData {
   sharded?: boolean;

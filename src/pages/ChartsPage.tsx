@@ -8,11 +8,12 @@ import {
   fetchInstances,
   fetchPluginRunStats,
 } from "@/api/fullConsole";
-import { fetchIngressDispatch } from "@/api/consoleApi";
+import { fetchIngressDispatch, fetchIngressDispatchHistory } from "@/api/consoleApi";
 import type { BotConfigPublic, ConsoleDailyStatRow } from "@/api/pallasTypes";
 import ChartsHorizontalRankBars from "@/components/ChartsHorizontalRankBars";
 import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart";
 import ChartsNamedSeriesTrend from "@/components/ChartsNamedSeriesTrend";
+import IngressPressureStrips from "@/components/IngressPressureStrips";
 import ChartsPluginFilter from "@/components/ChartsPluginFilter";
 import ChromeField from "@/components/ChromeField";
 import ChromeTools, { CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
@@ -47,7 +48,8 @@ import {
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 import { querySettled } from "@/utils/querySettled";
-import { ingressSchedulerMetrics, ingressWorkAuxMetrics, ingressWorkQueueMetrics } from "@/utils/ingressDispatchWorkQueue";
+import { ingressSchedulerMetrics, ingressWorkAuxMetrics } from "@/utils/ingressDispatchWorkQueue";
+import { buildIngressHistoryView } from "@/utils/ingressDispatchHistory";
 import type { ReactNode } from "react";
 
 const CHART_PANEL = "charts-page__panel flex flex-col overflow-hidden shadow-none";
@@ -112,6 +114,13 @@ export default function ChartsPage() {
   const ingressQ = useQuery({
     queryKey: ["ingress-dispatch"],
     queryFn: fetchIngressDispatch,
+    refetchInterval: INGRESS_POLL_MS,
+    refetchIntervalInBackground: false,
+    staleTime: INGRESS_POLL_MS,
+  });
+  const ingressHistoryQ = useQuery({
+    queryKey: ["ingress-dispatch-history"],
+    queryFn: () => fetchIngressDispatchHistory(),
     refetchInterval: INGRESS_POLL_MS,
     refetchIntervalInBackground: false,
     staleTime: INGRESS_POLL_MS,
@@ -415,28 +424,9 @@ export default function ChartsPage() {
     return `${Math.round(value).toLocaleString()}${suffix}`;
   };
   const ingress = ingressQ.data;
-  const ingressSelectedRatio =
-    ingress?.matchers_selected_ratio == null
-      ? null
-      : Math.min(1, Math.max(0, ingress.matchers_selected_ratio)) * 100;
-  const ingressQueueHint = ingress?.send_queue
-    ? `上限 ${ingressMetric(ingress.send_queue.max_depth)} · 丢弃 ${ingressMetric(ingress.send_queue.dropped)}`
-    : "发送队列";
-  const ingressPoolHint = ingress?.pool_budget?.utilization == null
-    ? "数据库池占用"
-    : `数据库池 ${Math.round(ingress.pool_budget.utilization * 100)}%`;
-  const workQueue = ingressWorkQueueMetrics(ingress?.hotpath);
   const workAux = ingressWorkAuxMetrics(ingress?.work_aux);
   const scheduler = ingressSchedulerMetrics(ingress?.conversation_scheduler);
-  const llmBudgetSkipped = [
-    ingress?.hotpath?.llm_budget_skipped_explicit,
-    ingress?.hotpath?.llm_budget_skipped_ambient,
-    ingress?.hotpath?.llm_budget_skipped_repeater_strong,
-    ingress?.hotpath?.llm_budget_skipped_repeater_weak,
-    ingress?.hotpath?.llm_budget_skipped_proactive,
-  ].reduce<number>((total, value) => total + (value ?? 0), 0);
-  const hasLlmBudgetMetrics =
-    (ingress?.hotpath?.llm_retained_under_shed ?? 0) > 0 || llmBudgetSkipped > 0;
+  const ingressHistory = buildIngressHistoryView(ingressHistoryQ.data);
   const ingressAlerts = ingress?.alerts ?? [];
   const ingressUnavailable = Boolean(ingressQ.error);
   const ingressP95Critical = ingressAlerts.includes("ingress_p95_over_5000ms");
@@ -455,13 +445,14 @@ export default function ChartsPage() {
 
   const rangeBusy = dailyRangeQ.isFetching;
   const rangeTotalsPending = Boolean(selectedAccount) && rangeBusy && !dailyRangeQ.data;
-  const refreshing = instQ.isFetching || pluginRunGlobalQ.isFetching || ingressQ.isFetching || chartsBusy || rangeBusy;
+  const refreshing = instQ.isFetching || pluginRunGlobalQ.isFetching || ingressQ.isFetching || ingressHistoryQ.isFetching || chartsBusy || rangeBusy;
 
   async function refreshAll() {
     await Promise.all([
       instQ.refetch(),
       pluginRunGlobalQ.refetch(),
       ingressQ.refetch(),
+      ingressHistoryQ.refetch(),
       dailyRangeQ.refetch(),
       refreshChartStats(),
     ]);
@@ -597,38 +588,25 @@ export default function ChartsPage() {
                 />
               </div>
             </div>
-            <div className="charts-page__kpi home-kpi-bar" aria-label="入站调度指标">
+            <div className="charts-page__kpi home-kpi-bar charts-page__kpi--ingress-key" aria-label="入站调度关键指标">
               <MetricTile label="群消息" value={ingressMetric(ingress?.group_messages)} hint="今日累计" />
-              <MetricTile
-                label="命令 / 闲聊"
-                value={`${ingressMetric(ingress?.command_traffic)} / ${ingressMetric(ingress?.chatter_traffic)}`}
-                hint="入站构成"
-              />
-              <MetricTile
-                label="Matcher"
-                value={`${ingressMetric(ingress?.matchers_selected)} / ${ingressMetric(ingress?.matchers_considered)}`}
-                hint="选中 / 候选"
-              />
-              <MetricTile label="筛选率" value={ingressMetric(ingressSelectedRatio, "%")} hint={`已执行 ${ingressMetric(ingress?.matchers_run)}`} />
-              <MetricTile label="车道等待" value={ingressMetric(ingress?.lane_wait_ms_avg, " ms")} hint={`忙碌 ${ingressMetric(ingress?.lane_busy)}`} />
               <MetricTile label="入站 P95" value={ingressMetric(ingress?.ingress_duration_ms_p95, " ms")} hint={`背压 ${ingressMetric(ingress?.overload_signals)}`} />
-              <MetricTile label="发送队列" value={ingressMetric(ingress?.send_queue?.depth_live ?? ingress?.send_queue?.depth)} hint={ingressQueueHint} />
-              <MetricTile label="预处理丢弃" value={ingressMetric(ingress?.preprocessor_dropped)} hint={ingressPoolHint} />
-              <MetricTile label="学习入队" value={ingressMetric(workQueue.enqueued)} hint={`缓冲 ${ingressMetric(workQueue.buffered)} · 落库 ${ingressMetric(workQueue.persisted)}`} />
-              <MetricTile label="学习丢弃" value={ingressMetric(workQueue.droppedFull)} hint={`退出 ${ingressMetric(workQueue.droppedShutdown)}`} />
-              {hasLlmBudgetMetrics ? (
-                <MetricTile
-                  label="LLM 预算"
-                  value={ingressMetric(llmBudgetSkipped)}
-                  hint={`高压保留 ${ingressMetric(ingress?.hotpath?.llm_retained_under_shed)}`}
-                />
-              ) : null}
-              <MetricTile label="学习完成" value={ingressMetric(workAux.completedSinceStart)} hint={`重试 ${ingressMetric(workAux.retriedSinceStart)} · 死信 ${ingressMetric(workAux.deadLetteredSinceStart)}`} />
-              <MetricTile label="调度并发" value={`${ingressMetric(scheduler.active)} / ${ingressMetric(scheduler.activePeak)}`} hint="当前 / 峰值" />
-              <MetricTile label="排队峰值" value={ingressMetric(scheduler.pendingPeak)} hint={`当前 ${ingressMetric(scheduler.pending)} · 就绪峰值 ${ingressMetric(scheduler.readyPeak)}`} />
               <MetricTile label="调度等待 P95" value={ingressMetric(scheduler.waitP95Ms, " ms")} hint={`背压 ${ingressMetric(scheduler.backpressureWaits)}`} />
               <MetricTile label="后台任务" value={ingressMetric(workAux.pending)} hint={`执行中 ${ingressMetric(workAux.leased)} · ${ingressMetric(workAux.consumers)} 路`} />
-              <MetricTile label="最老等待" value={ingressMetric(workAux.oldestPendingAgeSec, " s")} hint={`心跳 ${ingressMetric(workAux.heartbeatAgeSec, " s")}`} />
+            </div>
+            <div className="charts-page__ingress-board">
+              <Card className={CHART_PANEL}>
+                <CardHeader className={CHART_PANEL_HD}><CardTitle className="panel__title">延迟趋势</CardTitle></CardHeader>
+                <CardContent className={CHART_PANEL_BD}><ChartsNamedSeriesTrend series={ingressHistory.latency} busy={ingressHistoryQ.isFetching} chartUid="ingress-latency" showSummary={false} axisUnit=" ms" compact /></CardContent>
+              </Card>
+              <Card className={CHART_PANEL}>
+                <CardHeader className={CHART_PANEL_HD}><CardTitle className="panel__title">学习流水线</CardTitle></CardHeader>
+                <CardContent className={CHART_PANEL_BD}><ChartsNamedSeriesTrend series={ingressHistory.learning} busy={ingressHistoryQ.isFetching} chartUid="ingress-learning" showSummary={false} axisUnit=" 条" compact stacked /></CardContent>
+              </Card>
+              <Card className={CHART_PANEL}>
+                <CardHeader className={CHART_PANEL_HD}><CardTitle className="panel__title">近期压力</CardTitle></CardHeader>
+                <CardContent className={CHART_PANEL_BD}><IngressPressureStrips points={ingressHistory.pressure} /></CardContent>
+              </Card>
             </div>
             {ingressAlerts.length || ingressUnavailable ? (
               <div className={cn("charts-page__ingress-alert", ingressP95Critical && "charts-page__ingress-alert--critical")} role="status">
