@@ -427,6 +427,15 @@ export default function ChartsPage() {
     : `数据库池 ${Math.round(ingress.pool_budget.utilization * 100)}%`;
   const workQueue = ingressWorkQueueMetrics(ingress?.hotpath);
   const workAux = ingressWorkAuxMetrics(ingress?.work_aux);
+  const llmBudgetSkipped = [
+    ingress?.hotpath?.llm_budget_skipped_explicit,
+    ingress?.hotpath?.llm_budget_skipped_ambient,
+    ingress?.hotpath?.llm_budget_skipped_repeater_strong,
+    ingress?.hotpath?.llm_budget_skipped_repeater_weak,
+    ingress?.hotpath?.llm_budget_skipped_proactive,
+  ].reduce<number>((total, value) => total + (value ?? 0), 0);
+  const hasLlmBudgetMetrics =
+    (ingress?.hotpath?.llm_retained_under_shed ?? 0) > 0 || llmBudgetSkipped > 0;
   const ingressAlerts = ingress?.alerts ?? [];
   const ingressUnavailable = Boolean(ingressQ.error);
   const ingressP95Critical = ingressAlerts.includes("ingress_p95_over_5000ms");
@@ -606,6 +615,13 @@ export default function ChartsPage() {
               <MetricTile label="预处理丢弃" value={ingressMetric(ingress?.preprocessor_dropped)} hint={ingressPoolHint} />
               <MetricTile label="学习缓冲" value={ingressMetric(workQueue.buffered)} hint={`已落库 ${ingressMetric(workQueue.persisted)}`} />
               <MetricTile label="学习丢弃" value={ingressMetric(workQueue.droppedFull)} hint={`退出 ${ingressMetric(workQueue.droppedShutdown)}`} />
+              {hasLlmBudgetMetrics ? (
+                <MetricTile
+                  label="LLM 预算"
+                  value={ingressMetric(llmBudgetSkipped)}
+                  hint={`高压保留 ${ingressMetric(ingress?.hotpath?.llm_retained_under_shed)}`}
+                />
+              ) : null}
               <MetricTile label="后台任务" value={ingressMetric(workAux.pending)} hint={`执行中 ${ingressMetric(workAux.leased)} · ${ingressMetric(workAux.consumers)} 路`} />
               <MetricTile label="最老等待" value={ingressMetric(workAux.oldestPendingAgeSec, " s")} hint={`心跳 ${ingressMetric(workAux.heartbeatAgeSec, " s")}`} />
             </div>

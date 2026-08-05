@@ -7,6 +7,7 @@ import {
   isExternalProtocolAccount,
   isPluginManagedProtocolAccount,
   mergeProtocolDisplayAccounts,
+  protocolAccountDisplayName,
 } from "@/utils/protocolDisplayAccounts";
 import {
   accountConnectedWsPortLabel,
@@ -114,17 +115,8 @@ function protocolAccountNumber(a: NapcatAccountRow): number | null {
   return null;
 }
 
-function profileNick(a: NapcatAccountRow, instances: InstancesData | null): string {
-  const q = protocolAccountNumber(a);
-  const nick = q != null ? instances?.bot_profiles?.[String(q)]?.nickname?.trim() : "";
-  if (nick) return nick;
-  // 外置：只用 QQ 侧昵称，不用协议端 display_name
-  if (isExternalProtocolAccount(a)) return "";
-  return String(a.display_name ?? "").trim();
-}
-
 function primaryTitle(a: NapcatAccountRow, instances: InstancesData | null): string {
-  const nick = profileNick(a, instances);
+  const nick = protocolAccountDisplayName(a, instances);
   if (nick) return nick;
   return "BOT";
 }
@@ -311,8 +303,8 @@ export default function ProtocolAccountsTab() {
       const ra = isProcessRunning(a) ? 1 : 0;
       const rb = isProcessRunning(b) ? 1 : 0;
       if (ra !== rb) return rb - ra;
-      const na = profileNick(a, instances).toLowerCase();
-      const nb = profileNick(b, instances).toLowerCase();
+      const na = protocolAccountDisplayName(a, instances).toLowerCase();
+      const nb = protocolAccountDisplayName(b, instances).toLowerCase();
       const cmp = na.localeCompare(nb, "zh-CN");
       if (cmp !== 0) return cmp;
       return String(a.qq ?? a.id ?? "").localeCompare(String(b.qq ?? b.id ?? ""), "zh-CN", { numeric: true });
@@ -327,7 +319,7 @@ export default function ProtocolAccountsTab() {
         const hay = [
           String(a.qq ?? ""),
           String(a.id ?? ""),
-          profileNick(a, instances),
+          protocolAccountDisplayName(a, instances),
           primaryTitle(a, instances),
           accountProtocolId(a) ?? "",
           protocolBackendDisplayName(a),
