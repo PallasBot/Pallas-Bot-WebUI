@@ -11,6 +11,16 @@ export function isPluginManagedProtocolAccount(account: NapcatAccountRow): boole
   return !isExternalProtocolAccount(account);
 }
 
+export function protocolAccountDisplayName(
+  account: NapcatAccountRow,
+  instances: InstancesData | null,
+): string {
+  const accountId = String(account.qq ?? account.id ?? "").trim();
+  const nickname = instances?.bot_profiles?.[accountId]?.nickname?.trim() || "";
+  if (isExternalProtocolAccount(account)) return nickname;
+  return String(account.display_name ?? "").trim() || nickname;
+}
+
 function pluginAccountSelfIds(accounts: readonly NapcatAccountRow[]): Set<string> {
   const ids = new Set<string>();
   for (const a of accounts) {
