@@ -16976,7 +16976,7 @@ html[data-theme="light"] .corpus-hot__pill-score {
 
 .charts-page__ingress {
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--foreground) 18%, var(--border));
   border-radius: var(--radius);
   background: var(--card);
 }

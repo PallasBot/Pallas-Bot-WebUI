@@ -2480,6 +2480,12 @@ export interface IngressDispatchHotpath {
   learn_persisted?: number;
   learn_skipped_full?: number;
   learn_dropped_shutdown?: number;
+  llm_retained_under_shed?: number;
+  llm_budget_skipped_explicit?: number;
+  llm_budget_skipped_ambient?: number;
+  llm_budget_skipped_repeater_strong?: number;
+  llm_budget_skipped_repeater_weak?: number;
+  llm_budget_skipped_proactive?: number;
 }
 
 export interface IngressDispatchWorkAux {
