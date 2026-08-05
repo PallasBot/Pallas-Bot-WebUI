@@ -311,6 +311,46 @@ describe("llmTierRouting per-task routes", () => {
     expect(next.routing.chain_fallback).not.toContain("vision");
   });
 
+  it("preserves visual sticker selection when high and low tiers are saved", () => {
+    const doc = {
+      providers: [
+        { id: "text", default_model: "text-model", task_models: {} },
+        { id: "vision", default_model: "vision-model", task_models: {} },
+      ],
+      routing: {
+        chain_fallback: [],
+        tasks: { sticker_vision: "vision" },
+        task_backups: { sticker_vision: "vision" },
+        task_backup_models: { sticker_vision: "vision-backup" },
+      },
+    };
+    const withVisionModel = {
+      ...doc,
+      providers: [
+        doc.providers[0],
+        { ...doc.providers[1], task_models: { sticker_vision: "vision-primary" } },
+      ],
+    };
+
+    const next = applyTaskTiers(withVisionModel, {
+      high: {
+        primary: { providerId: "text", model: "text-high" },
+        backup: { providerId: "", model: "" },
+      },
+      low: {
+        primary: { providerId: "text", model: "text-low" },
+        backup: { providerId: "", model: "" },
+      },
+    });
+
+    expect(next.routing.tasks.sticker_vision).toBe("vision");
+    expect(next.routing.task_backups?.sticker_vision).toBe("vision");
+    expect(next.routing.task_backup_models?.sticker_vision).toBe("vision-backup");
+    expect(next.providers.find((provider) => provider.id === "vision")?.task_models.sticker_vision).toBe(
+      "vision-primary",
+    );
+  });
+
   it("applies and folds per-task primary/backup including affect_refine", () => {
     const doc = {
       providers: [

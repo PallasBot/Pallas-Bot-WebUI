@@ -330,6 +330,12 @@ export function applyTaskTiers<P extends ProviderLike, D extends ProvidersDocLik
   const tasks: Record<string, string> = { ...(doc.routing.tasks || {}) };
   const task_backups: Record<string, string> = {};
   const task_backup_models: Record<string, string> = {};
+  for (const task of VISION_TASKS) {
+    const backupId = String(doc.routing.task_backups?.[task] || "").trim();
+    const backupModel = String(doc.routing.task_backup_models?.[task] || "").trim();
+    if (backupId) task_backups[task] = backupId;
+    if (backupModel) task_backup_models[task] = backupModel;
+  }
   for (const task of HIGH_TIER_TASKS) {
     if (highPrimaryId) tasks[task] = highPrimaryId;
     else delete tasks[task];

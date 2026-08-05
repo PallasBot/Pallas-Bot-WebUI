@@ -876,6 +876,39 @@ export default function LlmProvidersForm() {
     );
   }
 
+  function renderRoutableTaskCard(task: RoutableTask, className?: string) {
+    const meta = TASK_ROUTE_META[task];
+    const slot = taskRoutes[task];
+    return (
+      <TierCard
+        key={task}
+        kind={meta.kind}
+        title={meta.title}
+        description={meta.description}
+        className={className}
+        primaryInvalid={!slot.primary.providerId}
+        primary={renderProviderModelSlot({
+          providerId: slot.primary.providerId,
+          model: slot.primary.model,
+          providerAria: `${meta.title}主提供方`,
+          modelPlaceholder: "任务模型（可空）",
+          requiredCapability: meta.capability,
+          onProviderChange: (providerId) => updateRoutableTaskSlot(task, "primary", { providerId }),
+          onModelChange: (model) => updateRoutableTaskSlot(task, "primary", { model }),
+        })}
+        backup={renderProviderModelSlot({
+          providerId: slot.backup.providerId,
+          model: slot.backup.model,
+          providerAria: `${meta.title}备用提供方`,
+          modelPlaceholder: "备用模型（可空）",
+          requiredCapability: meta.capability,
+          onProviderChange: (providerId) => updateRoutableTaskSlot(task, "backup", { providerId }),
+          onModelChange: (model) => updateRoutableTaskSlot(task, "backup", { model }),
+        })}
+      />
+    );
+  }
+
   function patchLocalTiers(patch: (prev: LocalTierState) => LocalTierState) {
     setLocalDoc((prev) => applyLocalTiers(prev, patch(foldLocalTiers(prev))));
   }
@@ -939,7 +972,7 @@ export default function LlmProvidersForm() {
               value={tasksViewMode}
               onValueChange={(value) => setTasksViewMode(value === "all" ? "all" : "tiers")}
             >
-              <TabsList aria-label="任务编排视图" className="h-9">
+              <TabsList aria-label="任务编排视图" className="task-route-view-tabs h-9">
                 <TabsTrigger value="tiers" className="px-2.5 text-xs sm:px-3 sm:text-sm">
                   高低档
                 </TabsTrigger>
@@ -1635,92 +1668,64 @@ export default function LlmProvidersForm() {
                   </div>
                 </div>
               ) : tasksViewMode === "tiers" ? (
-                <TierPairCards
-                  high={
-                    <TierCard
-                      kind="high"
-                      title="高级任务"
-                      description="对话、醉聊、完整润色"
-                      primaryInvalid={!taskTiers.high.primary.providerId}
-                      primary={renderProviderModelSlot({
-                        providerId: taskTiers.high.primary.providerId,
-                        model: taskTiers.high.primary.model,
-                        providerAria: "高级任务主提供方",
-                        modelPlaceholder: "任务模型（可空）",
-                        onProviderChange: (providerId) => updateTaskSlot("high", "primary", { providerId }),
-                        onModelChange: (model) => updateTaskSlot("high", "primary", { model }),
-                      })}
-                      backup={renderProviderModelSlot({
-                        providerId: taskTiers.high.backup.providerId,
-                        model: taskTiers.high.backup.model,
-                        providerAria: "高级任务备用提供方",
-                        modelPlaceholder: "备用模型（可空）",
-                        onProviderChange: (providerId) => updateTaskSlot("high", "backup", { providerId }),
-                        onModelChange: (model) => updateTaskSlot("high", "backup", { model }),
-                      })}
-                    />
-                  }
-                  low={
-                    <TierCard
-                      kind="low"
-                      title="低级任务"
-                      description="选句、轻润色、兜底、群情感与本轮动作决策"
-                      primaryInvalid={!taskTiers.low.primary.providerId}
-                      primary={renderProviderModelSlot({
-                        providerId: taskTiers.low.primary.providerId,
-                        model: taskTiers.low.primary.model,
-                        providerAria: "低级任务主提供方",
-                        modelPlaceholder: "任务模型（可空）",
-                        onProviderChange: (providerId) => updateTaskSlot("low", "primary", { providerId }),
-                        onModelChange: (model) => updateTaskSlot("low", "primary", { model }),
-                      })}
-                      backup={renderProviderModelSlot({
-                        providerId: taskTiers.low.backup.providerId,
-                        model: taskTiers.low.backup.model,
-                        providerAria: "低级任务备用提供方",
-                        modelPlaceholder: "备用模型（可空）",
-                        onProviderChange: (providerId) => updateTaskSlot("low", "backup", { providerId }),
-                        onModelChange: (model) => updateTaskSlot("low", "backup", { model }),
-                      })}
-                    />
-                  }
-                />
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  {ALL_ROUTABLE_TASKS.map((task) => {
-                    const meta = TASK_ROUTE_META[task];
-                    const slot = taskRoutes[task];
-                    return (
+                <>
+                  <TierPairCards
+                    high={
                       <TierCard
-                        key={task}
-                        kind={meta.kind}
-                        title={meta.title}
-                        description={meta.description}
-                        className={meta.kind === "vision" ? "col-span-full" : undefined}
-                        primaryInvalid={!slot.primary.providerId}
+                        kind="high"
+                        title="高级任务"
+                        description="对话、醉聊、完整润色"
+                        primaryInvalid={!taskTiers.high.primary.providerId}
                         primary={renderProviderModelSlot({
-                          providerId: slot.primary.providerId,
-                          model: slot.primary.model,
-                          providerAria: `${meta.title}主提供方`,
+                          providerId: taskTiers.high.primary.providerId,
+                          model: taskTiers.high.primary.model,
+                          providerAria: "高级任务主提供方",
                           modelPlaceholder: "任务模型（可空）",
-                          requiredCapability: meta.capability,
-                          onProviderChange: (providerId) =>
-                            updateRoutableTaskSlot(task, "primary", { providerId }),
-                          onModelChange: (model) => updateRoutableTaskSlot(task, "primary", { model }),
+                          onProviderChange: (providerId) => updateTaskSlot("high", "primary", { providerId }),
+                          onModelChange: (model) => updateTaskSlot("high", "primary", { model }),
                         })}
                         backup={renderProviderModelSlot({
-                          providerId: slot.backup.providerId,
-                          model: slot.backup.model,
-                          providerAria: `${meta.title}备用提供方`,
+                          providerId: taskTiers.high.backup.providerId,
+                          model: taskTiers.high.backup.model,
+                          providerAria: "高级任务备用提供方",
                           modelPlaceholder: "备用模型（可空）",
-                          requiredCapability: meta.capability,
-                          onProviderChange: (providerId) =>
-                            updateRoutableTaskSlot(task, "backup", { providerId }),
-                          onModelChange: (model) => updateRoutableTaskSlot(task, "backup", { model }),
+                          onProviderChange: (providerId) => updateTaskSlot("high", "backup", { providerId }),
+                          onModelChange: (model) => updateTaskSlot("high", "backup", { model }),
                         })}
                       />
-                    );
-                  })}
+                    }
+                    low={
+                      <TierCard
+                        kind="low"
+                        title="低级任务"
+                        description="选句、轻润色、兜底、群情感与本轮动作决策"
+                        primaryInvalid={!taskTiers.low.primary.providerId}
+                        primary={renderProviderModelSlot({
+                          providerId: taskTiers.low.primary.providerId,
+                          model: taskTiers.low.primary.model,
+                          providerAria: "低级任务主提供方",
+                          modelPlaceholder: "任务模型（可空）",
+                          onProviderChange: (providerId) => updateTaskSlot("low", "primary", { providerId }),
+                          onModelChange: (model) => updateTaskSlot("low", "primary", { model }),
+                        })}
+                        backup={renderProviderModelSlot({
+                          providerId: taskTiers.low.backup.providerId,
+                          model: taskTiers.low.backup.model,
+                          providerAria: "低级任务备用提供方",
+                          modelPlaceholder: "备用模型（可空）",
+                          onProviderChange: (providerId) => updateTaskSlot("low", "backup", { providerId }),
+                          onModelChange: (model) => updateTaskSlot("low", "backup", { model }),
+                        })}
+                      />
+                    }
+                  />
+                  <div className="mt-4">{renderRoutableTaskCard("sticker_vision")}</div>
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  {ALL_ROUTABLE_TASKS.map((task) =>
+                    renderRoutableTaskCard(task, task === "sticker_vision" ? "col-span-full" : undefined),
+                  )}
                 </div>
               )}
             </div>

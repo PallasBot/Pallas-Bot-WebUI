@@ -1460,6 +1460,17 @@ html[data-layout="hub"] .console-hub-page__chrome-tools button[class*="inline-fl
   min-height: 0 !important;
 }
 
+.chrome-tools .task-route-view-tabs[role="tablist"],
+.console-hub-page__chrome-tools .task-route-view-tabs[role="tablist"] {
+  padding: 4px !important;
+}
+
+.chrome-tools .task-route-view-tabs[role="tablist"] button[role="tab"],
+.console-hub-page__chrome-tools .task-route-view-tabs[role="tablist"] button[role="tab"] {
+  height: 100% !important;
+  padding-block: 0 !important;
+}
+
 .console-hub-page__chrome-toggle {
   flex: 0 0 auto;
   flex-shrink: 0;
