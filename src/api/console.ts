@@ -481,6 +481,7 @@ export type LlmProviderRow = {
   base_url: string;
   api_key?: string;
   api_keys?: string[];
+  api_key_hints?: string[];
   api_key_env: string;
   api_key_set?: boolean;
   api_keys_count?: number;

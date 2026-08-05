@@ -846,6 +846,8 @@ export interface LlmProviderConfigRow {
   base_url: string;
   /** 保存时填写；GET 不返回明文，留空表示不修改。 */
   api_key?: string;
+  /** GET：已保存 inline 密钥的不可逆尾号提示。 */
+  api_key_hints?: string[];
   api_key_env: string;
   /** GET：是否已配置可用密钥（inline 或环境变量）。 */
   api_key_set?: boolean;
@@ -1073,6 +1075,33 @@ export interface LlmTaskMetricsSlice {
   classification?: {
     totals: LlmClassificationTotals;
   };
+  sticker_vision?: LlmStickerVisionStats;
+}
+
+export interface LlmStickerVisionRecentRow {
+  job_id: string;
+  created_at: number;
+  state: string;
+  candidate_count: number;
+  provider: string;
+  model: string;
+  duration_ms?: number | null;
+  delivery_state: string;
+  error?: string | null;
+}
+
+export interface LlmStickerVisionStats {
+  requests: number;
+  selected: number;
+  failed: number;
+  skipped?: number;
+  no_match?: number;
+  sent?: number;
+  delivery_failed?: number;
+  candidate_total?: number;
+  avg_duration_ms?: number | null;
+  recent_error?: string | null;
+  recent: LlmStickerVisionRecentRow[];
 }
 
 export interface LlmRuntimeDimensionStatsRow {

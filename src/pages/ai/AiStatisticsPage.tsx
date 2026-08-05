@@ -517,6 +517,11 @@ export default function AiStatisticsPage() {
     () => aggregateHistoryTokenRows(historyRows, start, end, "by_task"),
     [end, historyRows, start],
   );
+  const stickerVision = taskStatsQ.data?.ai?.sticker_vision;
+  const stickerVisionTokens = useMemo(
+    () => rangeTokenTaskRows.find((row) => row.key === "sticker_vision"),
+    [rangeTokenTaskRows],
+  );
 
   const rangeCacheHitRate = useMemo(() => cacheHitRateFromBucket(selectedRange), [selectedRange]);
   const rangeAiTotal = selectedOutcomes.ok + selectedOutcomes.fail;
@@ -1813,6 +1818,110 @@ export default function AiStatisticsPage() {
                 }
               />
             </div>
+
+            {stickerVision ? (
+              <>
+                <StatsSectionLabel>表情视觉</StatsSectionLabel>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-base font-semibold">
+                      <PanelTitleIcon icon={ImageIcon} />
+                      VLM 选图
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      durable work 任务的当日实时状态；Token 与费用按当前日期区间汇总。
+                    </p>
+                  </div>
+                  <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">
+                    <IconStatCard
+                      title="调用 / 命中"
+                      value={`${stickerVision.requests} / ${stickerVision.selected}`}
+                      icon={ImageIcon}
+                      subtitle={`候选 ${stickerVision.candidate_total ?? 0} · 未匹配 ${stickerVision.no_match ?? 0}`}
+                    />
+                    <IconStatCard
+                      title="发送"
+                      value={formatCompactNumber(stickerVision.sent ?? 0)}
+                      icon={Send}
+                      subtitle={`投递失败 ${stickerVision.delivery_failed ?? 0}`}
+                    />
+                    <IconStatCard
+                      title="平均耗时"
+                      value={formatCallLatency(stickerVision.avg_duration_ms ?? null)}
+                      icon={LineChart}
+                      subtitle={`模型失败 ${stickerVision.failed} · 跳过 ${stickerVision.skipped ?? 0}`}
+                      valueClassName={
+                        stickerVision.failed > 0 ? "text-rose-600 dark:text-rose-400" : undefined
+                      }
+                    />
+                    <IconStatCard
+                      title="Token / 费用"
+                      value={formatCompactNumber(stickerVisionTokens?.totalTokens ?? 0)}
+                      icon={Coins}
+                      subtitle={
+                        stickerVisionTokens?.costTotal
+                          ? `${stickerVisionTokens.costTotal.toFixed(4)} ${costCurrency || ""}`.trim()
+                          : "Provider 未返回 usage 或未配置单价"
+                      }
+                    />
+                  </div>
+                  {stickerVision.recent.length ? (
+                    <Card>
+                      <CardHeader className="p-3 pb-0 sm:p-4 sm:pb-0">
+                        <CardTitle className="text-sm">最近任务</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[34rem] table-fixed text-sm">
+                        <colgroup>
+                          <col className="w-[18%]" />
+                          <col className="w-[15%]" />
+                          <col className="w-[25%]" />
+                          <col className="w-[12%]" />
+                          <col className="w-[12%]" />
+                          <col className="w-[18%]" />
+                        </colgroup>
+                        <thead className="text-xs text-muted-foreground">
+                          <tr>
+                            <th className="pb-2 pr-2 text-left font-medium">任务</th>
+                            <th className="pb-2 pr-2 text-left font-medium">结果</th>
+                            <th className="pb-2 pr-2 text-left font-medium">模型</th>
+                            <th className="pb-2 pr-2 text-right font-medium">候选</th>
+                            <th className="pb-2 pr-2 text-right font-medium">耗时</th>
+                            <th className="pb-2 text-left font-medium">发送 / 错误</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {stickerVision.recent.map((row) => (
+                            <tr key={row.job_id} className="border-t border-border/60">
+                              <td className="truncate py-2 pr-2 font-mono text-xs" title={row.job_id}>
+                                {row.job_id}
+                              </td>
+                              <td className="truncate py-2 pr-2 text-xs">{row.state}</td>
+                              <td className="truncate py-2 pr-2 font-mono text-xs" title={`${row.provider} / ${row.model}`}>
+                                {[row.provider, row.model].filter(Boolean).join(" / ") || "—"}
+                              </td>
+                              <td className="py-2 pr-2 text-right tabular-nums">{row.candidate_count}</td>
+                              <td className="py-2 pr-2 text-right tabular-nums">{formatCallLatency(row.duration_ms ?? null)}</td>
+                              <td className="truncate py-2 text-xs" title={row.error ?? row.delivery_state}>
+                                {row.error || row.delivery_state}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : null}
+                  {stickerVision.recent_error ? (
+                    <p className="text-xs text-rose-600 dark:text-rose-400">
+                      最近错误：{stickerVision.recent_error}
+                    </p>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
 
             <StatsSectionLabel>成功率趋势</StatsSectionLabel>
             <Card>

@@ -5939,6 +5939,8 @@ export interface components {
             api_key: string;
             /** Api Keys */
             api_keys?: string[];
+            /** Api Key Hints */
+            api_key_hints?: string[];
             /**
              * Api Key Env
              * @default

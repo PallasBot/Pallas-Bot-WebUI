@@ -1141,6 +1141,11 @@ export default function LlmProvidersForm() {
                     {p.kind !== "local" && !p.api_key_set && !String(p.api_key_env || "").trim() ? (
                       <Badge variant="warn">未配置密钥</Badge>
                     ) : null}
+                    {p.api_key_hints?.length ? (
+                      <Badge variant="outline" title={`已保存密钥：${p.api_key_hints.join(" · ")}`}>
+                        密钥 {p.api_key_hints.join(" · ")}
+                      </Badge>
+                    ) : null}
                     {testHint[p.id] ? (
                       <Badge
                         variant="outline"
@@ -1343,7 +1348,7 @@ export default function LlmProvidersForm() {
                           />
                           <p className="text-xs text-muted-foreground">
                             {keepStoredApiKey
-                              ? "已保存密钥，留空保存不会清空。"
+                              ? `已保存密钥${draft.api_key_hints?.length ? `（${draft.api_key_hints.join(" · ")}）` : ""}，留空保存不会清空。`
                               : "可添加多把密钥并拖拽排序；第一位为主用，调用失败时可按序换下一把。"}
                           </p>
                         </div>
