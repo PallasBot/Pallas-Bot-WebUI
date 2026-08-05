@@ -2476,6 +2476,7 @@ export interface IngressDispatchPoolBudget {
 }
 
 export interface IngressDispatchHotpath {
+  learn_enqueued?: number;
   learn_buffered?: number;
   learn_persisted?: number;
   learn_skipped_full?: number;
@@ -2496,6 +2497,21 @@ export interface IngressDispatchWorkAux {
   leased?: number;
   oldest_pending_age_sec?: number | null;
   max_attempts?: number;
+  completed_since_start?: number;
+  failed_since_start?: number;
+  retried_since_start?: number;
+  dead_lettered_since_start?: number;
+}
+
+export interface IngressDispatchConversationScheduler {
+  enabled?: boolean;
+  pending?: number;
+  pending_peak?: number;
+  active?: number;
+  active_peak?: number;
+  ready_peak?: number;
+  wait_ms_p95?: number | null;
+  backpressure_waits?: number;
 }
 
 export interface IngressDispatchWorker {
@@ -2527,6 +2543,7 @@ export interface IngressDispatchData {
   pool_budget?: IngressDispatchPoolBudget;
   hotpath?: IngressDispatchHotpath;
   work_aux?: IngressDispatchWorkAux;
+  conversation_scheduler?: IngressDispatchConversationScheduler;
   alerts?: string[];
 }
 

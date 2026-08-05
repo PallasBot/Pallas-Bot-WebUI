@@ -47,7 +47,7 @@ import {
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 import { querySettled } from "@/utils/querySettled";
-import { ingressWorkAuxMetrics, ingressWorkQueueMetrics } from "@/utils/ingressDispatchWorkQueue";
+import { ingressSchedulerMetrics, ingressWorkAuxMetrics, ingressWorkQueueMetrics } from "@/utils/ingressDispatchWorkQueue";
 import type { ReactNode } from "react";
 
 const CHART_PANEL = "charts-page__panel flex flex-col overflow-hidden shadow-none";
@@ -427,6 +427,7 @@ export default function ChartsPage() {
     : `数据库池 ${Math.round(ingress.pool_budget.utilization * 100)}%`;
   const workQueue = ingressWorkQueueMetrics(ingress?.hotpath);
   const workAux = ingressWorkAuxMetrics(ingress?.work_aux);
+  const scheduler = ingressSchedulerMetrics(ingress?.conversation_scheduler);
   const llmBudgetSkipped = [
     ingress?.hotpath?.llm_budget_skipped_explicit,
     ingress?.hotpath?.llm_budget_skipped_ambient,
@@ -613,7 +614,7 @@ export default function ChartsPage() {
               <MetricTile label="入站 P95" value={ingressMetric(ingress?.ingress_duration_ms_p95, " ms")} hint={`背压 ${ingressMetric(ingress?.overload_signals)}`} />
               <MetricTile label="发送队列" value={ingressMetric(ingress?.send_queue?.depth_live ?? ingress?.send_queue?.depth)} hint={ingressQueueHint} />
               <MetricTile label="预处理丢弃" value={ingressMetric(ingress?.preprocessor_dropped)} hint={ingressPoolHint} />
-              <MetricTile label="学习缓冲" value={ingressMetric(workQueue.buffered)} hint={`已落库 ${ingressMetric(workQueue.persisted)}`} />
+              <MetricTile label="学习入队" value={ingressMetric(workQueue.enqueued)} hint={`缓冲 ${ingressMetric(workQueue.buffered)} · 落库 ${ingressMetric(workQueue.persisted)}`} />
               <MetricTile label="学习丢弃" value={ingressMetric(workQueue.droppedFull)} hint={`退出 ${ingressMetric(workQueue.droppedShutdown)}`} />
               {hasLlmBudgetMetrics ? (
                 <MetricTile
@@ -622,6 +623,10 @@ export default function ChartsPage() {
                   hint={`高压保留 ${ingressMetric(ingress?.hotpath?.llm_retained_under_shed)}`}
                 />
               ) : null}
+              <MetricTile label="学习完成" value={ingressMetric(workAux.completedSinceStart)} hint={`重试 ${ingressMetric(workAux.retriedSinceStart)} · 死信 ${ingressMetric(workAux.deadLetteredSinceStart)}`} />
+              <MetricTile label="调度并发" value={`${ingressMetric(scheduler.active)} / ${ingressMetric(scheduler.activePeak)}`} hint="当前 / 峰值" />
+              <MetricTile label="排队峰值" value={ingressMetric(scheduler.pendingPeak)} hint={`当前 ${ingressMetric(scheduler.pending)} · 就绪峰值 ${ingressMetric(scheduler.readyPeak)}`} />
+              <MetricTile label="调度等待 P95" value={ingressMetric(scheduler.waitP95Ms, " ms")} hint={`背压 ${ingressMetric(scheduler.backpressureWaits)}`} />
               <MetricTile label="后台任务" value={ingressMetric(workAux.pending)} hint={`执行中 ${ingressMetric(workAux.leased)} · ${ingressMetric(workAux.consumers)} 路`} />
               <MetricTile label="最老等待" value={ingressMetric(workAux.oldestPendingAgeSec, " s")} hint={`心跳 ${ingressMetric(workAux.heartbeatAgeSec, " s")}`} />
             </div>

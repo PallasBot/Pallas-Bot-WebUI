@@ -1,4 +1,5 @@
 export interface IngressWorkQueueSource {
+  learn_enqueued?: number;
   learn_buffered?: number;
   learn_persisted?: number;
   learn_skipped_full?: number;
@@ -11,10 +12,25 @@ export interface IngressWorkAuxSource {
   oldest_pending_age_sec?: number | null;
   consumers?: number;
   heartbeat_age_sec?: number;
+  completed_since_start?: number;
+  failed_since_start?: number;
+  retried_since_start?: number;
+  dead_lettered_since_start?: number;
+}
+
+export interface IngressSchedulerSource {
+  pending?: number;
+  pending_peak?: number;
+  active?: number;
+  active_peak?: number;
+  ready_peak?: number;
+  wait_ms_p95?: number | null;
+  backpressure_waits?: number;
 }
 
 export function ingressWorkQueueMetrics(source: IngressWorkQueueSource | undefined) {
   return {
+    enqueued: source?.learn_enqueued ?? 0,
     buffered: source?.learn_buffered ?? 0,
     persisted: source?.learn_persisted ?? 0,
     droppedFull: source?.learn_skipped_full ?? 0,
@@ -29,5 +45,21 @@ export function ingressWorkAuxMetrics(source: IngressWorkAuxSource | undefined) 
     oldestPendingAgeSec: source?.oldest_pending_age_sec ?? 0,
     consumers: source?.consumers ?? 0,
     heartbeatAgeSec: source?.heartbeat_age_sec ?? 0,
+    completedSinceStart: source?.completed_since_start ?? 0,
+    failedSinceStart: source?.failed_since_start ?? 0,
+    retriedSinceStart: source?.retried_since_start ?? 0,
+    deadLetteredSinceStart: source?.dead_lettered_since_start ?? 0,
+  };
+}
+
+export function ingressSchedulerMetrics(source: IngressSchedulerSource | undefined) {
+  return {
+    pending: source?.pending ?? 0,
+    pendingPeak: source?.pending_peak ?? 0,
+    active: source?.active ?? 0,
+    activePeak: source?.active_peak ?? 0,
+    readyPeak: source?.ready_peak ?? 0,
+    waitP95Ms: source?.wait_ms_p95 ?? 0,
+    backpressureWaits: source?.backpressure_waits ?? 0,
   };
 }
