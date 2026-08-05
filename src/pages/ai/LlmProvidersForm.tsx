@@ -41,6 +41,7 @@ import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
 import {
   modelAfterProviderChange,
   modelOptionsForProvider as listModelsForProvider,
+  providerDefaultModel,
 } from "@/utils/llmProviderModels";
 import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
@@ -869,6 +870,7 @@ export default function LlmProvidersForm() {
           value={opts.model}
           disabled={!opts.providerId}
           options={modelOptionsForProvider(opts.providerId)}
+          presetOptions={[providerDefaultModel(opts.providerId, doc.providers)]}
           placeholder={opts.modelPlaceholder}
           onValueChange={opts.onModelChange}
         />

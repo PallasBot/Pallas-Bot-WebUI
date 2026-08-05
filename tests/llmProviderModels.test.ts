@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   modelAfterProviderChange,
+  providerDefaultModel,
   modelOptionsForProvider,
 } from "../src/utils/llmProviderModels";
 
@@ -49,6 +50,19 @@ describe("modelOptionsForProvider", () => {
   it("returns empty when provider is missing or blank", () => {
     expect(modelOptionsForProvider("", providers, fetched)).toEqual([]);
     expect(modelOptionsForProvider("ghost", providers, fetched)).toEqual([]);
+  });
+});
+
+describe("providerDefaultModel", () => {
+  it("returns only the selected provider default for common options", () => {
+    expect(providerDefaultModel("deepseek", providers)).toBe("deepseek-chat");
+    expect(providerDefaultModel("openai", providers)).toBe("gpt-4o-mini");
+  });
+
+  it("returns empty when the provider is missing or has no default model", () => {
+    expect(providerDefaultModel("ghost", providers)).toBe("");
+    expect(providerDefaultModel("", providers)).toBe("");
+    expect(providerDefaultModel("bare", [{ id: "bare" }])).toBe("");
   });
 });
 
