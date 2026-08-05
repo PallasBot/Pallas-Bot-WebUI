@@ -49,7 +49,11 @@ import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 import { querySettled } from "@/utils/querySettled";
 import { ingressSchedulerMetrics, ingressWorkAuxMetrics } from "@/utils/ingressDispatchWorkQueue";
-import { buildIngressHistoryView } from "@/utils/ingressDispatchHistory";
+import {
+  buildIngressHistoryView,
+  DEFAULT_INGRESS_HISTORY_WINDOW_SEC,
+  INGRESS_HISTORY_WINDOWS,
+} from "@/utils/ingressDispatchHistory";
 import type { ReactNode } from "react";
 
 const CHART_PANEL = "charts-page__panel flex flex-col overflow-hidden shadow-none";
@@ -92,6 +96,7 @@ export default function ChartsPage() {
   );
   const [rankFilterOpen, setRankFilterOpen] = useState(false);
   const [matcherFilterOpen, setMatcherFilterOpen] = useState(false);
+  const [ingressHistoryWindowSec, setIngressHistoryWindowSec] = useState(DEFAULT_INGRESS_HISTORY_WINDOW_SEC);
   const [rankFilter, setRankFilter] = useState<ChartsPluginFilterState>(() =>
     readChartsPluginFilter(accountFromQuery ?? readSavedHomeAccount(), "rank"),
   );
@@ -119,8 +124,8 @@ export default function ChartsPage() {
     staleTime: INGRESS_POLL_MS,
   });
   const ingressHistoryQ = useQuery({
-    queryKey: ["ingress-dispatch-history"],
-    queryFn: () => fetchIngressDispatchHistory(),
+    queryKey: ["ingress-dispatch-history", ingressHistoryWindowSec],
+    queryFn: () => fetchIngressDispatchHistory(ingressHistoryWindowSec),
     refetchInterval: INGRESS_POLL_MS,
     refetchIntervalInBackground: false,
     staleTime: INGRESS_POLL_MS,
@@ -580,6 +585,16 @@ export default function ChartsPage() {
                   {ingressStatusLabel}
                 </Badge>
                 <Badge variant="outline">每 15 秒刷新</Badge>
+                <select
+                  className="charts-page__ingress-window"
+                  aria-label="入站历史时间范围"
+                  value={ingressHistoryWindowSec}
+                  onChange={(event) => setIngressHistoryWindowSec(Number(event.target.value))}
+                >
+                  {INGRESS_HISTORY_WINDOWS.map((window) => (
+                    <option key={window.seconds} value={window.seconds}>{window.label}</option>
+                  ))}
+                </select>
                 <RefreshIconButton
                   embedded
                   busy={ingressQ.isFetching}

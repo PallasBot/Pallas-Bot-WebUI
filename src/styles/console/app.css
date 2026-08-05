@@ -17014,6 +17014,18 @@ html[data-theme="light"] .corpus-hot__pill-score {
   margin: -4px -6px -4px 0;
 }
 
+.charts-page__ingress-window {
+  height: 30px;
+  min-width: 5.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control, 8px);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+  padding: 0 24px 0 8px;
+}
+
 .charts-page__ingress > .charts-page__kpi.home-kpi-bar {
   border: 0;
   border-radius: 0;

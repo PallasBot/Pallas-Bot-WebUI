@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildIngressHistoryView } from "@/utils/ingressDispatchHistory";
+import { buildIngressHistoryView, DEFAULT_INGRESS_HISTORY_WINDOW_SEC, INGRESS_HISTORY_WINDOWS } from "@/utils/ingressDispatchHistory";
 
 describe("buildIngressHistoryView", () => {
+  it("defaults to one hour while retaining the seven-day review window", () => {
+    expect(DEFAULT_INGRESS_HISTORY_WINDOW_SEC).toBe(60 * 60);
+    expect(INGRESS_HISTORY_WINDOWS.map((window) => window.seconds)).toContain(7 * 24 * 60 * 60);
+  });
+
   it("builds latency, learning, and pressure series from persisted buckets", () => {
     const view = buildIngressHistoryView({
       retention_sec: 604800,
