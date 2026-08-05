@@ -4,12 +4,27 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.27] - 2026-08-05
 
 ### 更新公告
 
 - 仍需 Bot >= 4.1.28；请勿只升控制台。
 - 创建协议账号会读取并显示协议管理的默认后端，未手动修改时与私聊“创建牛牛”保持一致。
+
+### 提交明细
+
+### Added
+
+* feat(charts): 展示后台任务积压状态 ([951f9c0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/951f9c05c7a142ee273489972c4706d6a91fa4cb))
+* feat(charts): 展示学习队列运行指标 ([1061eba](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1061eba3d19cec43d3a8fdf7c582e51a3014de7d))
+
+### Fixed
+
+* fix(charts): 修复入站调度窄屏标题换行 ([7520b5a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7520b5a0405189343f78bf98843eec45de8d4952))
+* fix(charts): 修复入站调度窄屏标题对齐 ([b2f31c5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b2f31c5d97a82d494afbe130187a543032a71ab6))
+
+**完整变更**: [`v0.8.26...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.26...HEAD)
+
 
 ## [0.8.26] - 2026-08-04
 
@@ -36,7 +51,6 @@
 * fix(plugin-store): 进入商店后清除更新提醒绿点 ([d3fac87](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d3fac872bc5749b6a3ffda8ca7ac7124fcfa9460))
 
 **完整变更**: [`v0.8.25...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.25...HEAD)
-
 
 ## [0.8.25] - 2026-08-03
 
