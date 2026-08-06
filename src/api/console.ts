@@ -1587,6 +1587,40 @@ export async function postLlmRepeaterFeedbackManage(body: {
   return envelopeData(res) || res;
 }
 
+export type LlmRepeaterSemanticStyleOverrides = {
+  aggressive?: boolean;
+  nonsense?: boolean;
+  direct?: boolean;
+  image?: boolean;
+};
+
+export async function fetchLlmRepeaterSemanticStyle(params?: {
+  botId?: number;
+  groupId?: number;
+}): Promise<Record<string, unknown>> {
+  const { data: body } = await http.get("/llm/repeater-semantic-style", {
+    params:
+      params?.botId && params.groupId
+        ? { bot_id: params.botId, group_id: params.groupId }
+        : undefined,
+  });
+  return envelopeData(body) || {};
+}
+
+export async function postLlmRepeaterSemanticStyleManage(body: {
+  action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable";
+  overrides?: LlmRepeaterSemanticStyleOverrides;
+  botId?: number;
+  groupId?: number;
+}): Promise<Record<string, unknown>> {
+  const { data: res } = await http.post("/llm/repeater-semantic-style/manage", {
+    action: body.action,
+    ...(body.overrides ? { overrides: body.overrides } : {}),
+    ...(body.botId && body.groupId ? { bot_id: body.botId, group_id: body.groupId } : {}),
+  });
+  return envelopeData(res) || res;
+}
+
 export async function fetchLlmPromotionCandidates(params: {
   groupId: number;
   limit?: number;

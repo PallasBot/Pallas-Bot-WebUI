@@ -2888,6 +2888,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/llm/repeater-semantic-style": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Repeater Semantic Style Get */
+        get: operations["_repeater_semantic_style_get_pallas_api_llm_repeater_semantic_style_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/llm/repeater-semantic-style/manage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Repeater Semantic Style Manage */
+        post: operations["_repeater_semantic_style_manage_pallas_api_llm_repeater_semantic_style_manage_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/llm/repeater-feedback": {
         parameters: {
             query?: never;
@@ -13585,6 +13619,78 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _repeater_semantic_style_get_pallas_api_llm_repeater_semantic_style_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _repeater_semantic_style_manage_pallas_api_llm_repeater_semantic_style_manage_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
