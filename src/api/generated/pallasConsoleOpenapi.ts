@@ -1179,6 +1179,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/ingress-dispatch/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ingress Dispatch History */
+        get: operations["_ingress_dispatch_history_pallas_api_ingress_dispatch_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/bots": {
         parameters: {
             query?: never;
@@ -2865,6 +2882,40 @@ export interface paths {
         get: operations["_llm_persona_observe_get_pallas_api_common_config_llm_persona_observe_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/llm/repeater-semantic-style": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Repeater Semantic Style Get */
+        get: operations["_repeater_semantic_style_get_pallas_api_llm_repeater_semantic_style_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/llm/repeater-semantic-style/manage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Repeater Semantic Style Manage */
+        post: operations["_repeater_semantic_style_manage_pallas_api_llm_repeater_semantic_style_manage_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4647,6 +4698,42 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** IngressDispatchHistoryData */
+        IngressDispatchHistoryData: {
+            /** Retention Sec */
+            retention_sec: number;
+            /** Bucket Sec */
+            bucket_sec: number;
+            /** Points */
+            points?: components["schemas"]["IngressDispatchHistoryPoint"][];
+        };
+        /** IngressDispatchHistoryPoint */
+        IngressDispatchHistoryPoint: {
+            /** At */
+            at: number;
+            /** Ingress P95 Ms */
+            ingress_p95_ms: number;
+            /** Scheduler Wait P95 Ms */
+            scheduler_wait_p95_ms: number;
+            /** Scheduler Pending */
+            scheduler_pending: number;
+            /** Scheduler Active */
+            scheduler_active: number;
+            /** Scheduler Capacity */
+            scheduler_capacity: number;
+            /** Work Pending */
+            work_pending: number;
+            /** Work Leased */
+            work_leased: number;
+            /** Group Messages */
+            group_messages: number;
+            /** Learn Enqueued */
+            learn_enqueued: number;
+            /** Learn Persisted */
+            learn_persisted: number;
+            /** Work Completed */
+            work_completed: number;
+        };
         /** LlmReplayRunBody */
         LlmReplayRunBody: {
             /**
@@ -5114,6 +5201,18 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["IngressDispatchData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[IngressDispatchHistoryData] */
+        _ApiOkResponse_IngressDispatchHistoryData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["IngressDispatchHistoryData"];
             /** Error */
             error?: null;
         };
@@ -5874,6 +5973,8 @@ export interface components {
             api_key: string;
             /** Api Keys */
             api_keys?: string[];
+            /** Api Key Hints */
+            api_key_hints?: string[];
             /**
              * Api Key Env
              * @default
@@ -9346,6 +9447,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["_ApiOkResponse_IngressDispatchData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _ingress_dispatch_history_pallas_api_ingress_dispatch_history_get: {
+        parameters: {
+            query?: {
+                window_sec?: number;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse_IngressDispatchHistoryData_"];
                 };
             };
             /** @description Validation Error */
@@ -13484,6 +13619,80 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _repeater_semantic_style_get_pallas_api_llm_repeater_semantic_style_get: {
+        parameters: {
+            query?: {
+                bot_id?: number | null;
+                group_id?: number | null;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _repeater_semantic_style_manage_pallas_api_llm_repeater_semantic_style_manage_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

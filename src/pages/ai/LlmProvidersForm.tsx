@@ -41,6 +41,7 @@ import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
 import {
   modelAfterProviderChange,
   modelOptionsForProvider as listModelsForProvider,
+  providerDefaultModel,
 } from "@/utils/llmProviderModels";
 import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
@@ -839,7 +840,12 @@ export default function LlmProvidersForm() {
     modelPlaceholder: string;
     onProviderChange: (providerId: string) => void;
     onModelChange: (model: string) => void;
+    requiredCapability?: LlmProviderCapability;
   }) {
+    const requiredCapability = opts.requiredCapability;
+    const eligibleProviders = requiredCapability
+      ? doc.providers.filter((provider) => provider.capabilities?.includes(requiredCapability))
+      : doc.providers;
     return (
       <div className="grid gap-2">
         <AiOptionSelect
@@ -852,7 +858,7 @@ export default function LlmProvidersForm() {
             );
             loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
           }}
-          options={doc.providers.map((p) => ({
+          options={eligibleProviders.map((p) => ({
             value: p.id,
             label: p.enabled ? p.id : `${p.id} (停用)`,
           }))}
@@ -864,10 +870,44 @@ export default function LlmProvidersForm() {
           value={opts.model}
           disabled={!opts.providerId}
           options={modelOptionsForProvider(opts.providerId)}
+          presetOptions={[providerDefaultModel(opts.providerId, doc.providers)]}
           placeholder={opts.modelPlaceholder}
           onValueChange={opts.onModelChange}
         />
       </div>
+    );
+  }
+
+  function renderRoutableTaskCard(task: RoutableTask, className?: string) {
+    const meta = TASK_ROUTE_META[task];
+    const slot = taskRoutes[task];
+    return (
+      <TierCard
+        key={task}
+        kind={meta.kind}
+        title={meta.title}
+        description={meta.description}
+        className={className}
+        primaryInvalid={!slot.primary.providerId}
+        primary={renderProviderModelSlot({
+          providerId: slot.primary.providerId,
+          model: slot.primary.model,
+          providerAria: `${meta.title}主提供方`,
+          modelPlaceholder: "任务模型（可空）",
+          requiredCapability: meta.capability,
+          onProviderChange: (providerId) => updateRoutableTaskSlot(task, "primary", { providerId }),
+          onModelChange: (model) => updateRoutableTaskSlot(task, "primary", { model }),
+        })}
+        backup={renderProviderModelSlot({
+          providerId: slot.backup.providerId,
+          model: slot.backup.model,
+          providerAria: `${meta.title}备用提供方`,
+          modelPlaceholder: "备用模型（可空）",
+          requiredCapability: meta.capability,
+          onProviderChange: (providerId) => updateRoutableTaskSlot(task, "backup", { providerId }),
+          onModelChange: (model) => updateRoutableTaskSlot(task, "backup", { model }),
+        })}
+      />
     );
   }
 
@@ -934,7 +974,7 @@ export default function LlmProvidersForm() {
               value={tasksViewMode}
               onValueChange={(value) => setTasksViewMode(value === "all" ? "all" : "tiers")}
             >
-              <TabsList aria-label="任务编排视图" className="h-9">
+              <TabsList aria-label="任务编排视图" className="task-route-view-tabs h-9">
                 <TabsTrigger value="tiers" className="px-2.5 text-xs sm:px-3 sm:text-sm">
                   高低档
                 </TabsTrigger>
@@ -1102,6 +1142,11 @@ export default function LlmProvidersForm() {
                     ))}
                     {p.kind !== "local" && !p.api_key_set && !String(p.api_key_env || "").trim() ? (
                       <Badge variant="warn">未配置密钥</Badge>
+                    ) : null}
+                    {p.api_key_hints?.length ? (
+                      <Badge variant="outline" title={`已保存密钥：${p.api_key_hints.join(" · ")}`}>
+                        密钥 {p.api_key_hints.join(" · ")}
+                      </Badge>
                     ) : null}
                     {testHint[p.id] ? (
                       <Badge
@@ -1305,7 +1350,7 @@ export default function LlmProvidersForm() {
                           />
                           <p className="text-xs text-muted-foreground">
                             {keepStoredApiKey
-                              ? "已保存密钥，留空保存不会清空。"
+                              ? `已保存密钥${draft.api_key_hints?.length ? `（${draft.api_key_hints.join(" · ")}）` : ""}，留空保存不会清空。`
                               : "可添加多把密钥并拖拽排序；第一位为主用，调用失败时可按序换下一把。"}
                           </p>
                         </div>
@@ -1630,89 +1675,64 @@ export default function LlmProvidersForm() {
                   </div>
                 </div>
               ) : tasksViewMode === "tiers" ? (
-                <TierPairCards
-                  high={
-                    <TierCard
-                      kind="high"
-                      title="高级任务"
-                      description="对话、醉聊、完整润色"
-                      primaryInvalid={!taskTiers.high.primary.providerId}
-                      primary={renderProviderModelSlot({
-                        providerId: taskTiers.high.primary.providerId,
-                        model: taskTiers.high.primary.model,
-                        providerAria: "高级任务主提供方",
-                        modelPlaceholder: "任务模型（可空）",
-                        onProviderChange: (providerId) => updateTaskSlot("high", "primary", { providerId }),
-                        onModelChange: (model) => updateTaskSlot("high", "primary", { model }),
-                      })}
-                      backup={renderProviderModelSlot({
-                        providerId: taskTiers.high.backup.providerId,
-                        model: taskTiers.high.backup.model,
-                        providerAria: "高级任务备用提供方",
-                        modelPlaceholder: "备用模型（可空）",
-                        onProviderChange: (providerId) => updateTaskSlot("high", "backup", { providerId }),
-                        onModelChange: (model) => updateTaskSlot("high", "backup", { model }),
-                      })}
-                    />
-                  }
-                  low={
-                    <TierCard
-                      kind="low"
-                      title="低级任务"
-                      description="选句、轻润色、兜底、群情感与本轮动作决策"
-                      primaryInvalid={!taskTiers.low.primary.providerId}
-                      primary={renderProviderModelSlot({
-                        providerId: taskTiers.low.primary.providerId,
-                        model: taskTiers.low.primary.model,
-                        providerAria: "低级任务主提供方",
-                        modelPlaceholder: "任务模型（可空）",
-                        onProviderChange: (providerId) => updateTaskSlot("low", "primary", { providerId }),
-                        onModelChange: (model) => updateTaskSlot("low", "primary", { model }),
-                      })}
-                      backup={renderProviderModelSlot({
-                        providerId: taskTiers.low.backup.providerId,
-                        model: taskTiers.low.backup.model,
-                        providerAria: "低级任务备用提供方",
-                        modelPlaceholder: "备用模型（可空）",
-                        onProviderChange: (providerId) => updateTaskSlot("low", "backup", { providerId }),
-                        onModelChange: (model) => updateTaskSlot("low", "backup", { model }),
-                      })}
-                    />
-                  }
-                />
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  {ALL_ROUTABLE_TASKS.map((task) => {
-                    const meta = TASK_ROUTE_META[task];
-                    const slot = taskRoutes[task];
-                    return (
+                <>
+                  <TierPairCards
+                    high={
                       <TierCard
-                        key={task}
-                        kind={meta.kind}
-                        title={meta.title}
-                        description={meta.description}
-                        primaryInvalid={!slot.primary.providerId}
+                        kind="high"
+                        title="高级任务"
+                        description="对话、醉聊、完整润色"
+                        primaryInvalid={!taskTiers.high.primary.providerId}
                         primary={renderProviderModelSlot({
-                          providerId: slot.primary.providerId,
-                          model: slot.primary.model,
-                          providerAria: `${meta.title}主提供方`,
+                          providerId: taskTiers.high.primary.providerId,
+                          model: taskTiers.high.primary.model,
+                          providerAria: "高级任务主提供方",
                           modelPlaceholder: "任务模型（可空）",
-                          onProviderChange: (providerId) =>
-                            updateRoutableTaskSlot(task, "primary", { providerId }),
-                          onModelChange: (model) => updateRoutableTaskSlot(task, "primary", { model }),
+                          onProviderChange: (providerId) => updateTaskSlot("high", "primary", { providerId }),
+                          onModelChange: (model) => updateTaskSlot("high", "primary", { model }),
                         })}
                         backup={renderProviderModelSlot({
-                          providerId: slot.backup.providerId,
-                          model: slot.backup.model,
-                          providerAria: `${meta.title}备用提供方`,
+                          providerId: taskTiers.high.backup.providerId,
+                          model: taskTiers.high.backup.model,
+                          providerAria: "高级任务备用提供方",
                           modelPlaceholder: "备用模型（可空）",
-                          onProviderChange: (providerId) =>
-                            updateRoutableTaskSlot(task, "backup", { providerId }),
-                          onModelChange: (model) => updateRoutableTaskSlot(task, "backup", { model }),
+                          onProviderChange: (providerId) => updateTaskSlot("high", "backup", { providerId }),
+                          onModelChange: (model) => updateTaskSlot("high", "backup", { model }),
                         })}
                       />
-                    );
-                  })}
+                    }
+                    low={
+                      <TierCard
+                        kind="low"
+                        title="低级任务"
+                        description="选句、轻润色、兜底、群情感与本轮动作决策"
+                        primaryInvalid={!taskTiers.low.primary.providerId}
+                        primary={renderProviderModelSlot({
+                          providerId: taskTiers.low.primary.providerId,
+                          model: taskTiers.low.primary.model,
+                          providerAria: "低级任务主提供方",
+                          modelPlaceholder: "任务模型（可空）",
+                          onProviderChange: (providerId) => updateTaskSlot("low", "primary", { providerId }),
+                          onModelChange: (model) => updateTaskSlot("low", "primary", { model }),
+                        })}
+                        backup={renderProviderModelSlot({
+                          providerId: taskTiers.low.backup.providerId,
+                          model: taskTiers.low.backup.model,
+                          providerAria: "低级任务备用提供方",
+                          modelPlaceholder: "备用模型（可空）",
+                          onProviderChange: (providerId) => updateTaskSlot("low", "backup", { providerId }),
+                          onModelChange: (model) => updateTaskSlot("low", "backup", { model }),
+                        })}
+                      />
+                    }
+                  />
+                  <div className="mt-4">{renderRoutableTaskCard("sticker_vision")}</div>
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  {ALL_ROUTABLE_TASKS.map((task) =>
+                    renderRoutableTaskCard(task, task === "sticker_vision" ? "col-span-full" : undefined),
+                  )}
                 </div>
               )}
             </div>

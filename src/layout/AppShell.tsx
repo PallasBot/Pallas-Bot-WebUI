@@ -399,7 +399,7 @@ export default function AppShell() {
           <div className="shell__mobile-topbar-brand">
             <img className="shell__mobile-topbar-mark" src={brandMarkUrl} alt="" width={28} height={28} />
             <div className="shell__brand-title-row shell__mobile-topbar-title-row">
-              <span className="shell__mobile-topbar-title">Pallas Bot</span>
+              <span className="shell__mobile-topbar-title">Pallas-Bot</span>
               <span className="shell__brand-badge shell__mobile-topbar-version" title="控制台资源版本">
                 {brandVersionDisplay}
               </span>

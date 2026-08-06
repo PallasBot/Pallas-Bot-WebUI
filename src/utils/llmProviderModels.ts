@@ -6,6 +6,14 @@ export type ProviderModelSource = {
   task_models?: Record<string, string>;
 };
 
+/** 用于模型选择器「常用」列表的提供方默认模型。 */
+export function providerDefaultModel(providerId: string, providers: ProviderModelSource[]): string {
+  const id = (providerId || "").trim();
+  if (!id) return "";
+  const provider = providers.find((p) => p.id === id);
+  return String(provider?.default_model || "").trim();
+}
+
 export function modelOptionsForProvider(
   providerId: string,
   providers: ProviderModelSource[],

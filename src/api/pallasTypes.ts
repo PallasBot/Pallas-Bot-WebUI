@@ -846,6 +846,8 @@ export interface LlmProviderConfigRow {
   base_url: string;
   /** 保存时填写；GET 不返回明文，留空表示不修改。 */
   api_key?: string;
+  /** GET：已保存 inline 密钥的不可逆尾号提示。 */
+  api_key_hints?: string[];
   api_key_env: string;
   /** GET：是否已配置可用密钥（inline 或环境变量）。 */
   api_key_set?: boolean;
@@ -1073,6 +1075,33 @@ export interface LlmTaskMetricsSlice {
   classification?: {
     totals: LlmClassificationTotals;
   };
+  sticker_vision?: LlmStickerVisionStats;
+}
+
+export interface LlmStickerVisionRecentRow {
+  job_id: string;
+  created_at: number;
+  state: string;
+  candidate_count: number;
+  provider: string;
+  model: string;
+  duration_ms?: number | null;
+  delivery_state: string;
+  error?: string | null;
+}
+
+export interface LlmStickerVisionStats {
+  requests: number;
+  selected: number;
+  failed: number;
+  skipped?: number;
+  no_match?: number;
+  sent?: number;
+  delivery_failed?: number;
+  candidate_total?: number;
+  avg_duration_ms?: number | null;
+  recent_error?: string | null;
+  recent: LlmStickerVisionRecentRow[];
 }
 
 export interface LlmRuntimeDimensionStatsRow {
@@ -2476,6 +2505,7 @@ export interface IngressDispatchPoolBudget {
 }
 
 export interface IngressDispatchHotpath {
+  learn_enqueued?: number;
   learn_buffered?: number;
   learn_persisted?: number;
   learn_skipped_full?: number;
@@ -2496,12 +2526,53 @@ export interface IngressDispatchWorkAux {
   leased?: number;
   oldest_pending_age_sec?: number | null;
   max_attempts?: number;
+  completed_since_start?: number;
+  failed_since_start?: number;
+  retried_since_start?: number;
+  dead_lettered_since_start?: number;
+}
+
+export interface IngressDispatchConversationScheduler {
+  enabled?: boolean;
+  pending?: number;
+  pending_peak?: number;
+  active?: number;
+  active_peak?: number;
+  ready_peak?: number;
+  wait_ms_p95?: number | null;
+  backpressure_waits?: number;
 }
 
 export interface IngressDispatchWorker {
   shard_id: number;
   updated_at?: number;
   ingress_dispatch?: IngressDispatchData;
+}
+
+export interface IngressDispatchHistoryPoint {
+  at: number;
+  ingress_p95_ms: number;
+  scheduler_wait_p95_ms: number;
+  scheduler_pending: number;
+  scheduler_active: number;
+  scheduler_capacity: number;
+  work_pending: number;
+  work_leased: number;
+  group_messages: number;
+  learn_enqueued: number;
+  learn_persisted: number;
+  work_completed: number;
+}
+
+export interface IngressDispatchHistoryData {
+  retention_sec: number;
+  bucket_sec: number;
+  points: IngressDispatchHistoryPoint[];
+}
+
+export interface IngressDispatchLane {
+  limit?: number;
+  in_use?: number;
 }
 
 /** GET /ingress-dispatch */
@@ -2527,6 +2598,8 @@ export interface IngressDispatchData {
   pool_budget?: IngressDispatchPoolBudget;
   hotpath?: IngressDispatchHotpath;
   work_aux?: IngressDispatchWorkAux;
+  conversation_scheduler?: IngressDispatchConversationScheduler;
+  lanes?: Record<string, IngressDispatchLane>;
   alerts?: string[];
 }
 
