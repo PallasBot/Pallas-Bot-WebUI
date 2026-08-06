@@ -6,14 +6,11 @@ import {
   fetchLlmBehaviorRuns,
   fetchLlmPersonaObserve,
   fetchLlmPromotionCandidates,
-  fetchLlmRepeaterFeedback,
-  fetchLlmRepeaterFeedbackSummary,
   fetchLlmRepeaterSemanticStyle,
   fetchLlmRuntimeDebug,
   fetchLlmRuntimeReplay,
   postLlmBehaviorPatternDelete,
   postLlmPromotionCandidateResolve,
-  postLlmRepeaterFeedbackManage,
   postLlmRepeaterSemanticStyleManage,
   postLlmRuntimeReplayRun,
 } from "@/api/console";
@@ -91,16 +88,6 @@ export default function AiConfigBehaviorSection() {
     queryKey: ["llm-behavior-patterns", group],
     queryFn: () => fetchLlmBehaviorPatterns({ groupId: group || null }),
   });
-  const feedbackQ = useQuery({
-    queryKey: ["llm-repeater-feedback", group],
-    queryFn: () => fetchLlmRepeaterFeedback({ groupId: group, limit: 30 }),
-    enabled: group > 0,
-  });
-  const summaryQ = useQuery({
-    queryKey: ["llm-repeater-summary", group],
-    queryFn: () => fetchLlmRepeaterFeedbackSummary({ groupId: group, limit: 30 }),
-    enabled: group > 0,
-  });
   const promoQ = useQuery({
     queryKey: ["llm-promotion-candidates", group],
     queryFn: () => fetchLlmPromotionCandidates({ groupId: group, includeResolved: true }),
@@ -133,16 +120,6 @@ export default function AiConfigBehaviorSection() {
     onSuccess: async () => {
       notifyOk("行为模式已删除");
       await qc.invalidateQueries({ queryKey: ["llm-behavior-patterns"] });
-    },
-    onError: (e) => notifyErr(axiosErrorDetail(e)),
-  });
-
-  const feedbackMut = useMutation({
-    mutationFn: (body: { entryId: string; action: "invalidate" | "restore" | "delete" }) =>
-      postLlmRepeaterFeedbackManage(body),
-    onSuccess: async () => {
-      notifyOk("复读反馈已更新");
-      await qc.invalidateQueries({ queryKey: ["llm-repeater-feedback"] });
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
@@ -357,39 +334,6 @@ export default function AiConfigBehaviorSection() {
                 </Button>
               </div>
             </section>
-          </StateBlock>
-          <StateBlock loading={summaryQ.isLoading} error={summaryQ.error} empty={group <= 0} emptyText="请在上方填写群号。">
-            <pre className="max-h-24 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
-              {JSON.stringify(summaryQ.data, null, 2)}
-            </pre>
-          </StateBlock>
-          <StateBlock loading={feedbackQ.isLoading} error={feedbackQ.error} empty={!feedbackQ.data?.items?.length}>
-            {(feedbackQ.data?.items || []).slice(0, 10).map((row, i) => {
-              const entryId = String(row.entry_id || row.id || "");
-              return (
-                <div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-xs">
-                  <span className="font-mono">{entryId || `#${i}`}</span>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      icon={Ban}
-                      onClick={() => entryId && void feedbackMut.mutateAsync({ entryId, action: "invalidate" })}
-                    >
-                      作废
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      icon={Trash2}
-                      onClick={() => entryId && void feedbackMut.mutateAsync({ entryId, action: "delete" })}
-                    >
-                      删除
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
           </StateBlock>
           </>
         ) : null}
