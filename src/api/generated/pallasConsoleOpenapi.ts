@@ -13643,6 +13643,8 @@ export interface operations {
     _repeater_semantic_style_get_pallas_api_llm_repeater_semantic_style_get: {
         parameters: {
             query?: {
+                bot_id?: number | null;
+                group_id?: number | null;
                 token?: string | null;
             };
             header?: {

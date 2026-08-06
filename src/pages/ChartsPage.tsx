@@ -48,7 +48,7 @@ import {
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 import { querySettled } from "@/utils/querySettled";
-import { ingressSchedulerMetrics, ingressWorkAuxMetrics } from "@/utils/ingressDispatchWorkQueue";
+import { ingressCapacityMetrics, ingressSchedulerMetrics, ingressWorkAuxMetrics } from "@/utils/ingressDispatchWorkQueue";
 import {
   buildIngressHistoryView,
   DEFAULT_INGRESS_HISTORY_WINDOW_SEC,
@@ -431,6 +431,13 @@ export default function ChartsPage() {
   const ingress = ingressQ.data;
   const workAux = ingressWorkAuxMetrics(ingress?.work_aux);
   const scheduler = ingressSchedulerMetrics(ingress?.conversation_scheduler);
+  const capacity = ingressCapacityMetrics(ingress?.lanes, {
+    selected: ingress?.matchers_selected,
+    completed: ingress?.matchers_run,
+    laneBusy: ingress?.lane_busy,
+  });
+  const completionRate = capacity.completionRate == null ? "—" : `${Math.round(capacity.completionRate * 100)}%`;
+  const chatLane = capacity.chatLimit > 0 ? `${capacity.chatInUse}/${capacity.chatLimit}` : "—";
   const ingressHistory = buildIngressHistoryView(ingressHistoryQ.data);
   const ingressAlerts = ingress?.alerts ?? [];
   const ingressUnavailable = Boolean(ingressQ.error);
@@ -607,6 +614,8 @@ export default function ChartsPage() {
               <MetricTile label="群消息" value={ingressMetric(ingress?.group_messages)} hint="今日累计" />
               <MetricTile label="入站 P95" value={ingressMetric(ingress?.ingress_duration_ms_p95, " ms")} hint={`背压 ${ingressMetric(ingress?.overload_signals)}`} />
               <MetricTile label="调度等待 P95" value={ingressMetric(scheduler.waitP95Ms, " ms")} hint={`背压 ${ingressMetric(scheduler.backpressureWaits)}`} />
+              <MetricTile label="Matcher 完成率" value={completionRate} hint={`完成 ${ingressMetric(capacity.completed)}/${ingressMetric(capacity.selected)} · 忙 ${ingressMetric(capacity.laneBusy)}`} />
+              <MetricTile label="Chat Lane" value={chatLane} hint="执行中 / 上限" />
               <MetricTile label="后台任务" value={ingressMetric(workAux.pending)} hint={`执行中 ${ingressMetric(workAux.leased)} · ${ingressMetric(workAux.consumers)} 路`} />
             </div>
             <div className="charts-page__ingress-board">

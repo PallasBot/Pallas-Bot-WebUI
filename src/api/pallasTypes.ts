@@ -2570,6 +2570,11 @@ export interface IngressDispatchHistoryData {
   points: IngressDispatchHistoryPoint[];
 }
 
+export interface IngressDispatchLane {
+  limit?: number;
+  in_use?: number;
+}
+
 /** GET /ingress-dispatch */
 export interface IngressDispatchData {
   sharded?: boolean;
@@ -2594,6 +2599,7 @@ export interface IngressDispatchData {
   hotpath?: IngressDispatchHotpath;
   work_aux?: IngressDispatchWorkAux;
   conversation_scheduler?: IngressDispatchConversationScheduler;
+  lanes?: Record<string, IngressDispatchLane>;
   alerts?: string[];
 }
 

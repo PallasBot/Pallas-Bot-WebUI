@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ingressSchedulerMetrics, ingressWorkAuxMetrics, ingressWorkQueueMetrics } from "@/utils/ingressDispatchWorkQueue";
+import { ingressCapacityMetrics, ingressSchedulerMetrics, ingressWorkAuxMetrics, ingressWorkQueueMetrics } from "@/utils/ingressDispatchWorkQueue";
 
 describe("ingressWorkQueueMetrics", () => {
   it("reads buffered learning queue counters from ingress hotpath metrics", () => {
@@ -60,5 +60,17 @@ describe("ingressSchedulerMetrics", () => {
         backpressure_waits: 3,
       }),
     ).toEqual({ pending: 2, pendingPeak: 20, active: 4, activePeak: 8, readyPeak: 6, waitP95Ms: 451.2, backpressureWaits: 3 });
+  });
+});
+
+describe("ingressCapacityMetrics", () => {
+  it("reports actual matcher completion and chat lane occupancy", () => {
+    expect(
+      ingressCapacityMetrics({ chat: { limit: 8, in_use: 6 } }, { selected: 100, completed: 92, laneBusy: 3 }),
+    ).toEqual({ completionRate: 0.92, completed: 92, selected: 100, laneBusy: 3, chatInUse: 6, chatLimit: 8 });
+  });
+
+  it("keeps unavailable completion rate distinct from zero", () => {
+    expect(ingressCapacityMetrics(undefined, { selected: 0, completed: 0, laneBusy: 0 }).completionRate).toBeNull();
   });
 });
