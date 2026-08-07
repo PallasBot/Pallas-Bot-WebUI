@@ -183,6 +183,7 @@ export function blankProvider(): LlmProviderRow {
     api_key_set: false,
     api_keys_count: 0,
     default_model: "",
+    models: [],
     enabled: true,
     task_models: {},
     capabilities: ["text"],

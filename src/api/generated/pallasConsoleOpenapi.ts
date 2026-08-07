@@ -5995,6 +5995,10 @@ export interface components {
              * @default
              */
             default_model: string;
+            /** Models */
+            models?: {
+                [key: string]: unknown;
+            }[];
             /**
              * Enabled
              * @default false
@@ -6088,6 +6092,10 @@ export interface components {
              * @default
              */
             default_model: string;
+            /** Models */
+            models?: {
+                [key: string]: unknown;
+            }[];
             /**
              * Enabled
              * @default true

@@ -4,14 +4,44 @@ export type ProviderModelSource = {
   id: string;
   default_model?: string;
   task_models?: Record<string, string>;
+  models?: Array<{ name?: string }>;
 };
+
+function providerForId(providerId: string, providers: ProviderModelSource[]): ProviderModelSource | undefined {
+  const id = (providerId || "").trim();
+  return id ? providers.find((provider) => provider.id === id) : undefined;
+}
+
+function registeredModelNames(provider: ProviderModelSource | undefined): string[] {
+  if (!provider) return [];
+  return (provider.models || []).map((model) => String(model?.name || "").trim()).filter(Boolean);
+}
 
 /** 用于模型选择器「常用」列表的提供方默认模型。 */
 export function providerDefaultModel(providerId: string, providers: ProviderModelSource[]): string {
-  const id = (providerId || "").trim();
-  if (!id) return "";
-  const provider = providers.find((p) => p.id === id);
+  const provider = providerForId(providerId, providers);
   return String(provider?.default_model || "").trim();
+}
+
+/** 已注册模型用于任务选择器的「常用」，默认模型始终置顶。 */
+export function providerCommonModels(providerId: string, providers: ProviderModelSource[]): string[] {
+  const provider = providerForId(providerId, providers);
+  if (!provider) return [];
+  const values = [String(provider.default_model || "").trim(), ...registeredModelNames(provider)];
+  return [...new Set(values.filter(Boolean))];
+}
+
+/** 实时发现里排除已经登记到该提供方的模型。 */
+export function modelDiscoveryOptionsForProvider(
+  providerId: string,
+  providers: ProviderModelSource[],
+  fetchedByProvider: Record<string, string[]>,
+): string[] {
+  const provider = providerForId(providerId, providers);
+  const id = (providerId || "").trim();
+  if (!provider || !id) return [];
+  const known = new Set(providerCommonModels(id, providers));
+  return (fetchedByProvider[id] || []).map((model) => String(model || "").trim()).filter((model) => model && !known.has(model));
 }
 
 export function modelOptionsForProvider(
@@ -20,8 +50,7 @@ export function modelOptionsForProvider(
   fetchedByProvider: Record<string, string[]>,
 ): string[] {
   const id = (providerId || "").trim();
-  if (!id) return [];
-  const provider = providers.find((p) => p.id === id);
+  const provider = providerForId(id, providers);
   if (!provider) return [];
 
   const values: string[] = [];
@@ -33,7 +62,7 @@ export function modelOptionsForProvider(
     values.push(model);
   };
 
-  add(provider.default_model);
+  for (const model of providerCommonModels(id, providers)) add(model);
   for (const model of Object.values(provider.task_models || {})) add(model);
   for (const model of fetchedByProvider[id] || []) add(model);
   return values;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  modelDiscoveryOptionsForProvider,
   modelAfterProviderChange,
+  providerCommonModels,
   providerDefaultModel,
   modelOptionsForProvider,
 } from "../src/utils/llmProviderModels";
@@ -63,6 +65,32 @@ describe("providerDefaultModel", () => {
     expect(providerDefaultModel("ghost", providers)).toBe("");
     expect(providerDefaultModel("", providers)).toBe("");
     expect(providerDefaultModel("bare", [{ id: "bare" }])).toBe("");
+  });
+});
+
+describe("registered provider models", () => {
+  const registered = [
+    {
+      id: "deepseek",
+      default_model: "deepseek-chat",
+      models: [
+        { model_id: "chat", name: "deepseek-chat" },
+        { model_id: "reasoner", name: "deepseek-reasoner" },
+      ],
+    },
+  ];
+
+  it("puts the default model first in common options", () => {
+    expect(providerCommonModels("deepseek", registered)).toEqual([
+      "deepseek-chat",
+      "deepseek-reasoner",
+    ]);
+  });
+
+  it("does not repeat registered models in discovery options", () => {
+    expect(modelDiscoveryOptionsForProvider("deepseek", registered, {
+      deepseek: ["deepseek-chat", "deepseek-reasoner", "deepseek-v3"],
+    })).toEqual(["deepseek-v3"]);
   });
 });
 
