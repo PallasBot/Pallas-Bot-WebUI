@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.30] - 2026-08-07
 
 ### 更新公告
 
@@ -20,6 +20,16 @@
 
 - 注册模型选择器首次打开会发现可用模型。
 - 模型价格条件切换计费方式时不再新增重复配置，并使用每日时段选择器编辑时段。
+
+### 提交明细
+
+### Added
+
+* feat(ai-config): 支持提供方多模型与价格条件 ([e17b32f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e17b32f100ede343febd278fe66311adec6ea62c))
+
+**完整变更**: [`v0.8.29...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.29...HEAD)
+
+
 ## [0.8.29] - 2026-08-07
 
 ### Added
@@ -48,7 +58,6 @@
 
 **完整变更**: [`v0.8.28...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.28...HEAD)
 
-
 ## [0.8.28] - 2026-08-05
 
 ### 更新公告
@@ -69,7 +78,6 @@
 * fix(protocol): 托管账号优先显示实例名 ([6568ab9](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6568ab963a3b0b7e74595dbbb657e71e30a0437e))
 
 **完整变更**: [`v0.8.27...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.27...HEAD)
-
 
 ## [0.8.27] - 2026-08-05
 
