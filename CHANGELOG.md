@@ -4,6 +4,35 @@
 
 <!-- entries -->
 
+## [0.8.29] - 2026-08-07
+
+### Added
+
+* feat(charts): 展示入站执行容量 ([fd497d8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fd497d87ec571c70b5e99a508bc6028a15c2c6fb))
+* feat(ai): 增加复读语义风格控制台 ([8448afa](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8448afa48ff23007f8efcedb5f08f3ce52b71e44))
+* feat(ai): 支持视觉选图任务编排 ([74164b4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/74164b4983c947c26f0656b7409ecc135b23daae))
+* feat(charts): 丰富入站压力趋势 ([421bfd8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/421bfd87a02b568bdb367a093b7365add5fa798e))
+* feat(charts): 图表化入站调度历史 ([86e23f3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/86e23f3b795f71ce6b44549725fd4ea59a4ed5bd))
+* feat(charts): 展示学习流水线与调度指标 ([ccf75d8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ccf75d889391ab5c09b5adad99927dc16d50c665))
+
+### Fixed
+
+* fix(test): 修复浏览器环境 smoke 测试 ([2a7ad11](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2a7ad1186822ce22432cc772d5ed7cb3ef2baa99))
+* fix(webui): 统一手机端顶部品牌名称 ([e434ccb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e434ccbfafdfb5914d19e4060a9251488fac1e26))
+* fix(toolbar): 恢复钉住操作区毛玻璃底 ([afbce40](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/afbce40e93a50b94a31295d8e0a4bca83802902a))
+* fix(ai-config): 常用模型展示提供方默认值 ([883c379](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/883c379e10359f3458333799d90caf1c839f1047))
+* fix(ai-config): 展示提供方密钥尾号提示 ([20bd224](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/20bd22459d216ec6b5ac30d70bd243741e707176))
+* fix(ai): 修正视觉选图分档与任务标签布局 ([677cae6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/677cae6d304457bce65f3cd497bef6abafb7a328))
+* fix(charts): 默认展示近期入站历史 ([f98f498](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f98f498a8543a17303484363d99d408b17d9e101))
+
+### Changed
+
+* refactor(ai-config): 收紧智能对话常用配置 ([4eea174](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4eea17461095fb4b5d6fda81c14ad96e192f2d1c))
+* refactor(ai): 收敛复读页职责 ([5241e64](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5241e64d0b7051ba8baf5e608e2b9e16a1abba57))
+
+**完整变更**: [`v0.8.28...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.28...HEAD)
+
+
 ## [0.8.28] - 2026-08-05
 
 ### 更新公告
