@@ -11,6 +11,7 @@ import {
   putLlmProvidersConfig,
   type LlmLocalRoutingConfig,
   type LlmProviderCapability,
+  type LlmProviderPricingRule,
   type LlmProviderRow,
   type LlmProvidersConfig,
 } from "@/api/console";
@@ -28,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -40,8 +42,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
 import {
   modelAfterProviderChange,
+  modelDiscoveryOptionsForProvider,
+  providerCommonModels,
   modelOptionsForProvider as listModelsForProvider,
-  providerDefaultModel,
 } from "@/utils/llmProviderModels";
 import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
@@ -139,18 +142,8 @@ function parseModelPrice(raw: string): number {
   return n;
 }
 
-/** 编辑中允许临时字符串（如 0.），避免 number 受控吞掉小数点。 */
-type PriceField = "price_in" | "price_out" | "cache_price_in" | "cache_price_out";
-
 function isPriceInputText(raw: string): boolean {
   return raw === "" || /^\d*\.?\d*$/.test(raw);
-}
-
-function pricingModelKeys(draft: LlmProviderRow): string[] {
-  return Object.keys(draft.model_pricing || {})
-    .map((model) => String(model || "").trim())
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b));
 }
 
 function ModelPriceField({
@@ -181,6 +174,21 @@ function ModelPriceField({
   );
 }
 
+function DailyTimeSelect({ value, onValueChange, label }: { value?: string; onValueChange: (value: string) => void; label: string }) {
+  const hours = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`);
+  return <Popover>
+    <PopoverTrigger asChild>
+      <Button type="button" variant="outline" className="h-8 justify-between text-xs"><span>{value || label}</span></Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-56 p-2" align="start">
+      <Button type="button" variant="ghost" className="h-8 w-full justify-start text-xs" onClick={() => onValueChange("")}>全天</Button>
+      <div className="grid grid-cols-4 gap-1">
+        {hours.map((time) => <Button key={time} type="button" size="sm" variant={value === time ? "secondary" : "ghost"} className="h-7 px-1 font-mono text-xs" onClick={() => onValueChange(time)}>{time}</Button>)}
+      </div>
+    </PopoverContent>
+  </Popover>;
+}
+
 export default function LlmProvidersForm() {
   const qc = useQueryClient();
   const { confirm, confirmDialog } = useConsoleConfirm();
@@ -202,11 +210,7 @@ export default function LlmProvidersForm() {
   const apiKeysInputRef = useRef<TagsInputHandle>(null);
   const [useEnvVar, setUseEnvVar] = useState(false);
   const [editErr, setEditErr] = useState("");
-  const [pricingModelDraft, setPricingModelDraft] = useState("");
-  /** model -> field -> 正在输入的原文（含 0.） */
-  const [pricingTexts, setPricingTexts] = useState<
-    Record<string, Partial<Record<PriceField, string>>>
-  >({});
+  const [registeredModelDraft, setRegisteredModelDraft] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [modelsBusy, setModelsBusy] = useState(false);
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({});
@@ -365,8 +369,6 @@ export default function LlmProvidersForm() {
     setKeepStoredApiKey(false);
     setUseEnvVar(false);
     setEditErr("");
-    setPricingModelDraft("");
-    setPricingTexts({});
     setModels([]);
     setEditing(true);
   }
@@ -381,8 +383,6 @@ export default function LlmProvidersForm() {
     if (!next.request_method) next.request_method = "chat_completions";
     if (!next.model_pricing || typeof next.model_pricing !== "object") next.model_pricing = {};
     setDraft(next);
-    setPricingModelDraft("");
-    setPricingTexts({});
     const keys = Array.isArray(row.api_keys) ? row.api_keys.map((k) => String(k || "").trim()).filter(Boolean) : [];
     if (!keys.length && row.api_key?.trim()) keys.push(row.api_key.trim());
     setDraftApiKeys(keys);
@@ -393,56 +393,74 @@ export default function LlmProvidersForm() {
     setEditing(true);
   }
 
-  function priceFieldText(modelName: string, field: PriceField, num: number | undefined): string {
-    const typed = pricingTexts[modelName]?.[field];
-    if (typed !== undefined) return typed;
-    if (typeof num === "number" && Number.isFinite(num) && num > 0) return String(num);
-    return "";
-  }
-
-  function setPriceField(modelName: string, field: PriceField, raw: string) {
-    setPricingTexts((prev) => ({
-      ...prev,
-      [modelName]: { ...(prev[modelName] || {}), [field]: raw },
-    }));
-    const value = parseModelPrice(raw);
-    setDraft((d) => ({
-      ...d,
-      model_pricing: {
-        ...(d.model_pricing || {}),
-        [modelName]: {
-          ...(d.model_pricing?.[modelName] || {}),
-          [field]: value,
-        },
-      },
-    }));
-  }
-
-  function addPricingModel(nameRaw: string) {
+  function registerProviderModel(nameRaw: string) {
     const name = nameRaw.trim();
     if (!name) return;
     setDraft((d) => ({
       ...d,
-      model_pricing: {
-        ...(d.model_pricing || {}),
-        [name]: { ...(d.model_pricing?.[name] || {}) },
-      },
+      models: [
+        ...(d.models || []).filter((model) => model.name !== name),
+        { model_id: `model-${Date.now()}`, name, capabilities: [], pricing_rules: [] },
+      ],
     }));
-    setPricingModelDraft("");
+    setRegisteredModelDraft("");
   }
 
-  function removePricingModel(modelName: string) {
-    setDraft((d) => {
-      const next = { ...(d.model_pricing || {}) };
-      delete next[modelName];
-      return { ...d, model_pricing: next };
-    });
-    setPricingTexts((prev) => {
-      if (!(modelName in prev)) return prev;
-      const next = { ...prev };
-      delete next[modelName];
-      return next;
-    });
+  function removeRegisteredProviderModel(name: string) {
+    if (draft.default_model.trim() === name) {
+      setEditErr("请先切换默认调用模型，再删除该模型");
+      return;
+    }
+    setDraft((d) => ({ ...d, models: (d.models || []).filter((model) => model.name !== name) }));
+  }
+
+  function newPricingRule(kind: LlmProviderPricingRule["kind"]): LlmProviderPricingRule {
+    return {
+      id: `rule-${Date.now()}`,
+      kind,
+      ...(kind === "per_request"
+        ? { price_per_request: 0 }
+        : { price_in: 0, price_out: 0, cache_price_in: 0, cache_price_out: 0 }),
+    };
+  }
+
+  function addPricingRule(modelName: string) {
+    setDraft((d) => ({ ...d, models: (d.models || []).map((model) => model.name !== modelName ? model : {
+      ...model, pricing_rules: [...(model.pricing_rules || []), newPricingRule("token")],
+    }) }));
+  }
+
+  function setPricingRuleKind(modelName: string, ruleId: string, kind: LlmProviderPricingRule["kind"]) {
+    setDraft((d) => ({ ...d, models: (d.models || []).map((model) => model.name !== modelName ? model : {
+      ...model, pricing_rules: (model.pricing_rules || []).map((rule) => rule.id !== ruleId ? rule : { ...newPricingRule(kind), id: rule.id, input_tokens_min: rule.input_tokens_min, input_tokens_max: rule.input_tokens_max, daily_start: rule.daily_start, daily_end: rule.daily_end }),
+    }) }));
+  }
+
+  function setPricingRuleValue(
+    modelName: string,
+    ruleId: string,
+    field: "price_in" | "price_out" | "cache_price_in" | "cache_price_out" | "price_per_request" | "priority" | "input_tokens_min" | "input_tokens_max",
+    value: number,
+  ) {
+    setDraft((d) => ({
+      ...d,
+      models: (d.models || []).map((model) => model.name !== modelName ? model : {
+        ...model,
+        pricing_rules: (model.pricing_rules || []).map((rule) => rule.id === ruleId ? { ...rule, [field]: value } : rule),
+      }),
+    }));
+  }
+
+  function setPricingRuleText(modelName: string, ruleId: string, field: "daily_start" | "daily_end", value: string) {
+    setDraft((d) => ({ ...d, models: (d.models || []).map((model) => model.name !== modelName ? model : {
+      ...model, pricing_rules: (model.pricing_rules || []).map((rule) => rule.id === ruleId ? { ...rule, [field]: value || undefined } : rule),
+    }) }));
+  }
+
+  function removePricingRule(modelName: string, ruleId: string) {
+    setDraft((d) => ({ ...d, models: (d.models || []).map((model) => model.name !== modelName ? model : {
+      ...model, pricing_rules: (model.pricing_rules || []).filter((rule) => rule.id !== ruleId),
+    }) }));
   }
 
   function toggleCapability(cap: LlmProviderCapability) {
@@ -504,6 +522,7 @@ export default function LlmProvidersForm() {
       api_key_set: apiKeys.length > 0 || Boolean(apiKeyEnv) || keepStoredApiKey,
       api_keys_count: apiKeys.length || (keepStoredApiKey ? draft.api_keys_count || 1 : 0),
       default_model: draft.default_model.trim(),
+      models: [...(draft.models || [])],
       task_models: { ...(draft.task_models || {}) },
       capabilities: [...(draft.capabilities || [])],
       model_effort: draft.model_effort || "",
@@ -870,7 +889,7 @@ export default function LlmProvidersForm() {
           value={opts.model}
           disabled={!opts.providerId}
           options={modelOptionsForProvider(opts.providerId)}
-          presetOptions={[providerDefaultModel(opts.providerId, doc.providers)]}
+          presetOptions={providerCommonModels(opts.providerId, doc.providers)}
           placeholder={opts.modelPlaceholder}
           onValueChange={opts.onModelChange}
         />
@@ -1380,12 +1399,13 @@ export default function LlmProvidersForm() {
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 font-semibold" htmlFor="llm-provider-model">
                       <Server className="size-4" />
-                      调用模型
+                      默认调用模型
                     </Label>
                     <AiModelSelect
                       id="llm-provider-model"
                       value={draft.default_model}
-                      options={models}
+                      options={modelDiscoveryOptionsForProvider(draft.id, [draft], { [draft.id]: models })}
+                      presetOptions={providerCommonModels(draft.id, [draft])}
                       isFetching={modelsBusy}
                       onDiscover={() => void refreshModels()}
                       placeholder="选择或输入模型名称"
@@ -1394,92 +1414,63 @@ export default function LlmProvidersForm() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="font-semibold">模型单价（可选）</Label>
-                    <p className="text-xs text-muted-foreground">
-                      每百万 tokens 单价；0 表示不计费。币种见工具条「费用币种」。
-                    </p>
-                    <div className="space-y-2">
-                      {pricingModelKeys(draft).map((modelName) => {
-                        const row = draft.model_pricing?.[modelName] || {};
-                        return (
-                          <div
-                            key={modelName}
-                            className="space-y-2 rounded-lg border border-border/70 bg-muted/10 p-2.5 sm:p-3"
-                          >
-                            <div className="flex min-w-0 items-center justify-between gap-2">
-                              <span className="min-w-0 truncate font-mono text-xs sm:text-sm">{modelName}</span>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 shrink-0 px-2 text-xs text-muted-foreground"
-                                icon={Trash2}
-                                onClick={() => removePricingModel(modelName)}
-                              >
-                                删除
-                              </Button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                              <ModelPriceField
-                                label={AI_TOKEN_METRIC_LABELS.prompt}
-                                textValue={priceFieldText(modelName, "price_in", row.price_in)}
-                                onTextChange={(raw) => setPriceField(modelName, "price_in", raw)}
-                              />
-                              <ModelPriceField
-                                label={AI_TOKEN_METRIC_LABELS.completion}
-                                textValue={priceFieldText(modelName, "price_out", row.price_out)}
-                                onTextChange={(raw) => setPriceField(modelName, "price_out", raw)}
-                              />
-                              <ModelPriceField
-                                label={AI_TOKEN_METRIC_LABELS.cacheRead}
-                                textValue={priceFieldText(modelName, "cache_price_in", row.cache_price_in)}
-                                onTextChange={(raw) => setPriceField(modelName, "cache_price_in", raw)}
-                              />
-                              <ModelPriceField
-                                label={AI_TOKEN_METRIC_LABELS.cacheWrite}
-                                textValue={priceFieldText(modelName, "cache_price_out", row.cache_price_out)}
-                                onTextChange={(raw) => setPriceField(modelName, "cache_price_out", raw)}
-                              />
-                            </div>
+                    <Label className="font-semibold">已注册模型</Label>
+                    <p className="text-xs text-muted-foreground">任务编排的“常用”会优先展示这里的模型。</p>
+                    <div className="space-y-1.5">
+                      {(draft.models || []).map((model) => (
+                        <div key={model.model_id || model.name} className="space-y-1.5 rounded border border-border/70 px-2.5 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="min-w-0 truncate font-mono text-xs">{model.name}</span>
+                            <Button type="button" size="sm" variant="ghost" className="h-7 shrink-0 px-2" icon={Trash2} onClick={() => removeRegisteredProviderModel(model.name)}>
+                              删除
+                            </Button>
                           </div>
-                        );
-                      })}
+                          {(model.pricing_rules || []).map((rule) => (
+                            <div key={rule.id} className="space-y-2 rounded bg-muted/20 p-2 text-xs text-muted-foreground">
+                              <div className="flex items-center justify-between gap-2">
+                                <Select value={rule.kind} onValueChange={(value) => setPricingRuleKind(model.name, rule.id, value as LlmProviderPricingRule["kind"])}>
+                                  <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent><SelectItem value="token">按 Token</SelectItem><SelectItem value="per_request">按次</SelectItem></SelectContent>
+                                </Select>
+                                <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" icon={Trash2} onClick={() => removePricingRule(model.name, rule.id)}>删除</Button>
+                              </div>
+                              {rule.kind === "per_request" ? (
+                                <Input className="h-8 font-mono text-xs" inputMode="decimal" value={rule.price_per_request || ""} placeholder="每次费用" onChange={(event) => setPricingRuleValue(model.name, rule.id, "price_per_request", parseModelPrice(event.target.value))} />
+                              ) : (
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.prompt} textValue={String(rule.price_in || "")} onTextChange={(raw) => setPricingRuleValue(model.name, rule.id, "price_in", parseModelPrice(raw))} />
+                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.completion} textValue={String(rule.price_out || "")} onTextChange={(raw) => setPricingRuleValue(model.name, rule.id, "price_out", parseModelPrice(raw))} />
+                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.cacheRead} textValue={String(rule.cache_price_in || "")} onTextChange={(raw) => setPricingRuleValue(model.name, rule.id, "cache_price_in", parseModelPrice(raw))} />
+                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.cacheWrite} textValue={String(rule.cache_price_out || "")} onTextChange={(raw) => setPricingRuleValue(model.name, rule.id, "cache_price_out", parseModelPrice(raw))} />
+                                </div>
+                              )}
+                              <div className="grid grid-cols-2 gap-2">
+                                <Input className="h-8 font-mono text-xs" inputMode="numeric" value={rule.input_tokens_min || ""} placeholder="输入 >=（可空）" onChange={(event) => setPricingRuleValue(model.name, rule.id, "input_tokens_min", parseModelPrice(event.target.value))} />
+                                <Input className="h-8 font-mono text-xs" inputMode="numeric" value={rule.input_tokens_max || ""} placeholder="输入 <=（可空）" onChange={(event) => setPricingRuleValue(model.name, rule.id, "input_tokens_max", parseModelPrice(event.target.value))} />
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <DailyTimeSelect label="开始时间" value={rule.daily_start} onValueChange={(value) => setPricingRuleText(model.name, rule.id, "daily_start", value)} />
+                                <DailyTimeSelect label="结束时间" value={rule.daily_end} onValueChange={(value) => setPricingRuleText(model.name, rule.id, "daily_end", value)} />
+                              </div>
+                            </div>
+                          ))}
+                          <Button type="button" size="sm" variant="outline" className="h-8" icon={Plus} onClick={() => addPricingRule(model.name)}>添加价格条件</Button>
+                        </div>
+                      ))}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Input
-                        className="h-8 min-w-0 flex-1 font-mono text-xs sm:max-w-xs"
-                        value={pricingModelDraft}
-                        placeholder="添加模型名后定价"
-                        onChange={(e) => setPricingModelDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key !== "Enter") return;
-                          e.preventDefault();
-                          addPricingModel(pricingModelDraft);
-                        }}
+                      <AiModelSelect
+                        value={registeredModelDraft}
+                        options={modelDiscoveryOptionsForProvider(draft.id, [draft], { [draft.id]: models })}
+                        presetOptions={providerCommonModels(draft.id, [draft])}
+                        isFetching={modelsBusy}
+                        onDiscover={() => void refreshModels()}
+                        placeholder="选择或输入模型名称"
+                        onValueChange={setRegisteredModelDraft}
                       />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-8"
-                        icon={Plus}
-                        onClick={() => addPricingModel(pricingModelDraft)}
-                      >
-                        添加
+                      <Button type="button" size="sm" variant="outline" className="h-8" icon={Plus} onClick={() => registerProviderModel(registeredModelDraft)}>
+                        注册模型
                       </Button>
-                      {draft.default_model.trim() &&
-                      !(draft.model_pricing || {})[draft.default_model.trim()] ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-8"
-                          icon={Plus}
-                          onClick={() => addPricingModel(draft.default_model)}
-                        >
-                          添加调用模型
-                        </Button>
-                      ) : null}
                     </div>
                   </div>
 

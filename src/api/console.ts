@@ -475,6 +475,29 @@ export type LlmModelPricingRow = {
   cache_price_out?: number;
 };
 
+export type LlmProviderRegisteredModel = {
+  model_id: string;
+  name: string;
+  capabilities?: LlmProviderCapability[];
+  pricing_rules?: LlmProviderPricingRule[];
+};
+
+export type LlmProviderPricingRule = {
+  id: string;
+  kind: "token" | "per_request";
+  priority?: number;
+  daily_start?: string;
+  daily_end?: string;
+  /** 单次请求输入 Token 闭区间。 */
+  input_tokens_min?: number;
+  input_tokens_max?: number;
+  price_in?: number;
+  price_out?: number;
+  cache_price_in?: number;
+  cache_price_out?: number;
+  price_per_request?: number;
+};
+
 export type LlmProviderRow = {
   id: string;
   kind: string;
@@ -486,6 +509,7 @@ export type LlmProviderRow = {
   api_key_set?: boolean;
   api_keys_count?: number;
   default_model: string;
+  models?: LlmProviderRegisteredModel[];
   enabled: boolean;
   task_models: Record<string, string>;
   capabilities?: LlmProviderCapability[];
@@ -635,6 +659,7 @@ export async function putLlmProvidersConfig(body: LlmProvidersConfig): Promise<L
         base_url: row.base_url,
         api_key_env: apiKeyEnv,
         default_model: row.default_model,
+        models: Array.isArray(row.models) ? row.models : [],
         enabled: row.enabled,
         task_models: row.task_models,
         capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
@@ -667,6 +692,7 @@ export async function putLlmProvider(row: LlmProviderRow): Promise<LlmProvidersS
     base_url: row.base_url,
     api_key_env: apiKeyEnv,
     default_model: row.default_model,
+    models: Array.isArray(row.models) ? row.models : [],
     enabled: row.enabled,
     task_models: row.task_models,
     capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
