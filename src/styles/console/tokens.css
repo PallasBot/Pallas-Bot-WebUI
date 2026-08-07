@@ -533,18 +533,18 @@ html[data-theme="light"] {
   --ui-btn-font: 14px;
   /*
    * 浅色：近白画布（#fcfcfc）+ 白卡片。
-   * 外框 --surface-edge / --border-base 清晰（240 4% 83%）；
+   * 外框 --surface-edge / --border-base 清晰（240 4% 85%）；
    * --border 保持轻量，供卡内 color-mix / 通用描边，避免外框色渗进分割线。
    */
   --bg-deep: #fcfcfc;
   --bg-elev: #fcfcfc;
   --bg-card: #ffffff;
   --bg-card-hover: #ffffff;
-  --border-base: hsl(240 4% 83%);
+  --border-base: hsl(240 4% 85%);
   --border: rgba(15, 23, 42, 0.06);
   --border-strong: rgba(15, 23, 42, 0.1);
   --surface-edge: var(--border-base);
-  --surface-edge-glass: hsl(240 4% 83% / 0.4);
+  --surface-edge-glass: hsl(240 4% 85% / 0.4);
   /* 卡内分割线：对齐暗色 0.8 的轻量感 */
   --surface-divider: rgba(15, 23, 42, 0.035);
   --text: #0f172a;
@@ -685,4 +685,3 @@ a {
 a:hover {
   color: #7dd3fc;
 }
-

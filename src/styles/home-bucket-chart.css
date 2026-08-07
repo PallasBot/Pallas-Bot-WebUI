@@ -12,9 +12,10 @@
 }
 
 .home-plugin-bucket-chart__svg .home-plugin-bucket__grid {
-  stroke: color-mix(in srgb, var(--border) 88%, transparent);
+  stroke: color-mix(in srgb, var(--border-strong) 100%, transparent);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
+  stroke-dasharray: 4 4;
 }
 
 .home-plugin-bucket-chart__svg .home-plugin-bucket__axis {

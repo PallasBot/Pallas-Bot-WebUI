@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** 全站工具条壳：Card + p-4 + 行内统一 gap / h-9。
+/** 全站工具条壳：Card + p-4 + 行内统一 gap / 32px 控件。
  * 行距 / 簇距见 console-hub.css `--chrome-tools-row-gap` / `--chrome-tools-cluster-gap`。
  * 与下方面板间距 = `--hub-page-gap`（via `--console-chrome-tools-gap`）；勿再叠 Tailwind mb-*。
  * 主行 nowrap + 横向滚动（同 `.console-hub-page__chrome-row`），宽度不够时不换行。
@@ -23,7 +23,7 @@ export const CHROME_TOOLS_CLUSTER =
 export const CHROME_TOOLS_TRAILING =
   "chrome-tools__trailing ml-auto flex shrink-0 flex-nowrap items-center self-center";
 
-/** 工具条分段 / 筛选 Select；高度由 CSS `--chrome-field-h` 固定为 h-9。 */
+/** 工具条分段 / 筛选 Select；高度由 CSS `--chrome-field-h` 固定为 32px。 */
 export const CHROME_SELECT_TRIGGER =
   "h-9 w-auto min-w-[7.5rem] max-w-[12rem] shrink-0";
 
@@ -33,7 +33,7 @@ export const CHROME_SELECT_TRIGGER =
 export const CHROME_BOT_ACCOUNT_SELECT =
   "bot-acct-sel h-9 w-auto min-w-[4.5rem] max-w-[9rem] shrink-0 overflow-hidden";
 
-/** 工具条搜索 Input；高度由 CSS 强制为 h-9。 */
+/** 工具条搜索 Input；高度由 CSS 强制为 32px。 */
 export const CHROME_SEARCH_INPUT = "h-9 min-h-9 w-full pl-8";
 
 export default function ChromeTools({

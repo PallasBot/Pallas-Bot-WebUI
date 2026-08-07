@@ -18,7 +18,12 @@ import {
   XCircle,
 } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
-import { fetchConversationKernelKnowledgeSources, fetchLlmTaskStats } from "@/api/fullConsole";
+import ConsoleHint from "@/components/ConsoleHint";
+import AiProgressBar from "@/components/ai/AiProgressBar";
+import {
+  fetchConversationKernelKnowledgeSources,
+  fetchLlmTaskStats,
+} from "@/api/fullConsole";
 import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChromeContext";
 import ShareDistribution from "@/components/ai/ShareDistribution";
 import ChartsNamedSeriesTrend from "@/components/ChartsNamedSeriesTrend";
@@ -28,7 +33,13 @@ import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import StatsSectionLabel from "@/components/StatsSectionLabel";
 import PendingValue from "@/components/PendingValue";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   addDaysIso,
   aggregateHistoryAiOutcomes,
@@ -68,6 +79,7 @@ import {
   type TokenRow,
 } from "@/utils/aiTaskStats";
 import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
+import { fixedChartPalette } from "@/utils/chartTheme";
 import { countShareRows } from "@/utils/shareDistribution";
 import { labelLlmRoute } from "@/utils/aiHistoryLabels";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
@@ -86,7 +98,8 @@ type StatsTab = (typeof TAB_OPTIONS)[number]["value"];
 function readStoredTab(): StatsTab {
   try {
     const raw = sessionStorage.getItem(TAB_STORAGE_KEY);
-    if (raw && TAB_OPTIONS.some((opt) => opt.value === raw)) return raw as StatsTab;
+    if (raw && TAB_OPTIONS.some((opt) => opt.value === raw))
+      return raw as StatsTab;
   } catch {
     /* ignore */
   }
@@ -146,7 +159,9 @@ function RangeMetricCard({
             "—"
           )}
         </div>
-        {hint ? <div className="text-[11px] text-muted-foreground">{hint}</div> : null}
+        {hint ? (
+          <div className="text-[11px] text-muted-foreground">{hint}</div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -163,27 +178,50 @@ function formatCostAmount(value: number): string {
   return "—";
 }
 
+function formatTokenUnitCost(row: TokenRow): string {
+  if (row.totalTokens <= 0 || row.costTotal <= 0) return "—";
+  const costPerMillion = (row.costTotal * 1_000_000) / row.totalTokens;
+  return costPerMillion >= 1
+    ? costPerMillion.toFixed(2)
+    : costPerMillion.toFixed(4);
+}
+
 function CostDetailTable({
   title,
   rows,
   kind,
   currency,
+  showUnitCost = false,
+  className,
 }: {
   title: string;
   rows: Array<TokenRow | ImageRow>;
   kind: "token" | "image";
   currency: string;
+  showUnitCost?: boolean;
+  className?: string;
 }) {
   if (!rows.length) return null;
+  const totalVolume = rows.reduce(
+    (total, row) =>
+      total +
+      (kind === "token"
+        ? (row as TokenRow).totalTokens
+        : (row as ImageRow).imageCount),
+    0,
+  );
+  const palette = fixedChartPalette(Math.max(rows.length, 8));
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
         <CardTitle className="text-base">{title}</CardTitle>
         <CardDescription>仅显示有费用的项</CardDescription>
       </CardHeader>
       <CardContent className="p-3 sm:p-6">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[22rem] text-left text-sm">
+          <table
+            className={`w-full ${showUnitCost ? "min-w-[31rem]" : "min-w-[22rem]"} text-left text-sm`}
+          >
             <thead className="text-xs text-muted-foreground">
               <tr>
                 <th className="pb-2 pr-3 font-medium">名称</th>
@@ -192,21 +230,61 @@ function CostDetailTable({
                 ) : (
                   <th className="pb-2 pr-3 font-medium">张数</th>
                 )}
-                <th className="pb-2 font-medium">费用{currency ? ` (${currency})` : ""}</th>
+                <th className="pb-2 font-medium">
+                  费用{currency ? ` (${currency})` : ""}
+                </th>
+                {kind === "token" && showUnitCost ? (
+                  <th className="pb-2 pl-3 font-medium">
+                    每百万 Token{currency ? ` (${currency})` : ""}
+                  </th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.key} className="border-t border-border/60">
-                  <td className="py-2 pr-3 font-mono text-xs">{row.key}</td>
-                  <td className="py-2 pr-3 tabular-nums">
-                    {kind === "token"
-                      ? formatCompactNumber((row as TokenRow).totalTokens)
-                      : formatCompactNumber((row as ImageRow).imageCount)}
-                  </td>
-                  <td className="py-2 tabular-nums">{formatCostAmount(row.costTotal)}</td>
-                </tr>
-              ))}
+              {rows.map((row, i) => {
+                const volume =
+                  kind === "token"
+                    ? (row as TokenRow).totalTokens
+                    : (row as ImageRow).imageCount;
+                const share =
+                  totalVolume > 0
+                    ? Math.round((volume / totalVolume) * 1000) / 10
+                    : 0;
+                return (
+                  <tr key={row.key} className="border-t border-border/60">
+                    <td className="py-2 pr-3">
+                      <div
+                        className="truncate font-mono text-xs"
+                        title={row.key}
+                      >
+                        {row.key}
+                      </div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <AiProgressBar
+                          className="min-w-0 flex-1"
+                          value={share}
+                          color={palette[i % palette.length]}
+                          ariaLabel={`${row.key} 用量占比`}
+                        />
+                        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                          {share.toFixed(1)}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-2 pr-3 tabular-nums">
+                      {formatCompactNumber(volume)}
+                    </td>
+                    <td className="py-2 tabular-nums">
+                      {formatCostAmount(row.costTotal)}
+                    </td>
+                    {kind === "token" && showUnitCost ? (
+                      <td className="py-2 pl-3 tabular-nums">
+                        {formatTokenUnitCost(row as TokenRow)}
+                      </td>
+                    ) : null}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -219,13 +297,15 @@ function DrawBreakdownTable({
   title,
   rows,
   emptyText,
+  className,
 }: {
   title: string;
   rows: ImageRow[];
   emptyText: string;
+  className?: string;
 }) {
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
         <CardTitle className="flex items-center gap-1.5 text-base">
           <PanelTitleIcon icon={Boxes} />
@@ -261,32 +341,41 @@ function DrawBreakdownTable({
                   return (
                     <tr key={row.key} className="border-t border-border/60">
                       <td className="max-w-0 py-2 pr-2">
-                        <div className="truncate font-mono text-xs" title={row.key}>
+                        <div
+                          className="truncate font-mono text-xs"
+                          title={row.key}
+                        >
                           {row.key}
                         </div>
                         {okRate != null ? (
                           <div className="mt-1 flex items-center gap-2">
-                            <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-                              <div
-                                className={`h-full rounded-full ${okRateBarClass(okRate)}`}
-                                style={{ width: `${Math.min(100, Math.max(0, okRate))}%` }}
-                              />
-                            </div>
+                            <AiProgressBar
+                              className="min-w-0 flex-1"
+                              value={okRate}
+                              fillClassName={okRateBarClass(okRate)}
+                              ariaLabel={`${row.key} 成功率`}
+                            />
                             <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
                               {okRate.toFixed(1)}%
                             </span>
                           </div>
                         ) : null}
                       </td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{row.okCount}</td>
+                      <td className="py-2 pr-2 text-right tabular-nums">
+                        {row.okCount}
+                      </td>
                       <td
                         className={`py-2 pr-2 text-right tabular-nums ${
-                          row.failCount > 0 ? "text-rose-600 dark:text-rose-400" : ""
+                          row.failCount > 0
+                            ? "text-rose-600 dark:text-rose-400"
+                            : ""
                         }`}
                       >
                         {row.failCount}
                       </td>
-                      <td className="py-2 text-right tabular-nums">{row.imageCount}</td>
+                      <td className="py-2 text-right tabular-nums">
+                        {row.imageCount}
+                      </td>
                     </tr>
                   );
                 })}
@@ -358,7 +447,9 @@ function CallBreakdownTable({
               </colgroup>
               <thead className="text-xs text-muted-foreground">
                 <tr>
-                  <th className="pb-2 pr-2 text-left font-medium">{nameHeader}</th>
+                  <th className="pb-2 pr-2 text-left font-medium">
+                    {nameHeader}
+                  </th>
                   <th className="pb-2 pr-2 text-right font-medium">次数</th>
                   <th className="pb-2 pr-2 text-right font-medium">成功</th>
                   <th className="pb-2 pr-2 text-right font-medium">失败</th>
@@ -374,28 +465,37 @@ function CallBreakdownTable({
                   return (
                     <tr key={row.key} className="border-t border-border/60">
                       <td className="max-w-0 py-2 pr-2">
-                        <div className="truncate font-mono text-xs" title={row.key}>
+                        <div
+                          className="truncate font-mono text-xs"
+                          title={row.key}
+                        >
                           {row.key}
                         </div>
                         {okRate != null ? (
                           <div className="mt-1 flex items-center gap-2">
-                            <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-                              <div
-                                className={`h-full rounded-full ${okRateBarClass(okRate)}`}
-                                style={{ width: `${Math.min(100, Math.max(0, okRate))}%` }}
-                              />
-                            </div>
+                            <AiProgressBar
+                              className="min-w-0 flex-1"
+                              value={okRate}
+                              fillClassName={okRateBarClass(okRate)}
+                              ariaLabel={`${row.key} 成功率`}
+                            />
                             <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
                               {okRate.toFixed(1)}%
                             </span>
                           </div>
                         ) : null}
                       </td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{row.requests}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{row.succeeded}</td>
+                      <td className="py-2 pr-2 text-right tabular-nums">
+                        {row.requests}
+                      </td>
+                      <td className="py-2 pr-2 text-right tabular-nums">
+                        {row.succeeded}
+                      </td>
                       <td
                         className={`py-2 pr-2 text-right tabular-nums ${
-                          row.failed > 0 ? "text-rose-600 dark:text-rose-400" : ""
+                          row.failed > 0
+                            ? "text-rose-600 dark:text-rose-400"
+                            : ""
                         }`}
                       >
                         {row.failed}
@@ -445,14 +545,20 @@ export default function AiStatisticsPage() {
     queryFn: fetchConversationKernelKnowledgeSources,
   });
 
-  const summary = useMemo(() => summarizeTaskStats(taskStatsQ.data), [taskStatsQ.data]);
+  const summary = useMemo(
+    () => summarizeTaskStats(taskStatsQ.data),
+    [taskStatsQ.data],
+  );
   const historyRows = taskStatsQ.data?.history?.rows;
   const knowledgeInventory = useMemo(
     () => summarizeKnowledgeInventory(knowledgeSourcesQ.data?.items || []),
     [knowledgeSourcesQ.data?.items],
   );
 
-  const activeTokenDays = useMemo(() => daysWithTokenActivity(historyRows), [historyRows]);
+  const activeTokenDays = useMemo(
+    () => daysWithTokenActivity(historyRows),
+    [historyRows],
+  );
   const isCalendarDayDisabled = useCallback(
     (iso: string) => {
       const day = String(iso || "").slice(0, 10);
@@ -523,7 +629,10 @@ export default function AiStatisticsPage() {
     [rangeTokenTaskRows],
   );
 
-  const rangeCacheHitRate = useMemo(() => cacheHitRateFromBucket(selectedRange), [selectedRange]);
+  const rangeCacheHitRate = useMemo(
+    () => cacheHitRateFromBucket(selectedRange),
+    [selectedRange],
+  );
   const rangeAiTotal = selectedOutcomes.ok + selectedOutcomes.fail;
   const aiOk = rangeAiTotal > 0 ? selectedOutcomes.ok : summary.aiOk;
   const aiFail = rangeAiTotal > 0 ? selectedOutcomes.fail : summary.aiFail;
@@ -534,29 +643,54 @@ export default function AiStatisticsPage() {
     const dailyIo = dailyTokenIoTrend(historyRows, start, end);
     if (dailyIo.length >= 2 || (start !== end && dailyIo.length >= 1)) {
       const prompt = padDailyTrendPoints(
-        dailyFieldToTrendPoints(dailyIo.map((p) => ({ date: p.date, value: p.promptTokens }))),
+        dailyFieldToTrendPoints(
+          dailyIo.map((p) => ({ date: p.date, value: p.promptTokens })),
+        ),
         start,
         end,
       );
       const completion = padDailyTrendPoints(
-        dailyFieldToTrendPoints(dailyIo.map((p) => ({ date: p.date, value: p.completionTokens }))),
+        dailyFieldToTrendPoints(
+          dailyIo.map((p) => ({ date: p.date, value: p.completionTokens })),
+        ),
         start,
         end,
       );
       if (prompt.length >= 2) {
         return [
-          { id: "prompt", label: AI_TOKEN_METRIC_LABELS.prompt, axis: "left", points: prompt },
-          { id: "completion", label: AI_TOKEN_METRIC_LABELS.completion, axis: "right", points: completion },
+          {
+            id: "prompt",
+            label: AI_TOKEN_METRIC_LABELS.prompt,
+            axis: "left",
+            points: prompt,
+          },
+          {
+            id: "completion",
+            label: AI_TOKEN_METRIC_LABELS.completion,
+            axis: "right",
+            points: completion,
+          },
         ];
       }
     }
     // 单日：按小时输入 / 输出，缺小时补 0
     const day = start === end ? start : dailyIo[0]?.date || start;
-    const histRow = (historyRows ?? []).find((r) => String(r.date || "").slice(0, 10) === day);
+    const histRow = (historyRows ?? []).find(
+      (r) => String(r.date || "").slice(0, 10) === day,
+    );
     const liveHourRows =
-      day === todayIso() ? hourTokenRows(taskStatsQ.data?.ai?.tokens?.by_hour) : [];
-    const histSeries = hourlyTokenIoTrendSeries(hourTokenRows(histRow?.ai?.tokens?.by_hour), day);
-    const liveSeries = hourlyTokenIoTrendSeries(liveHourRows, day, new Date().getHours());
+      day === todayIso()
+        ? hourTokenRows(taskStatsQ.data?.ai?.tokens?.by_hour)
+        : [];
+    const histSeries = hourlyTokenIoTrendSeries(
+      hourTokenRows(histRow?.ai?.tokens?.by_hour),
+      day,
+    );
+    const liveSeries = hourlyTokenIoTrendSeries(
+      liveHourRows,
+      day,
+      new Date().getHours(),
+    );
     const series = histSeries[0]?.points.length >= 2 ? histSeries : liveSeries;
     if (series[0]?.points.length >= 2) return series as NamedSeriesInput[];
     return [];
@@ -565,7 +699,11 @@ export default function AiStatisticsPage() {
   const tokenHourIoSeries = useMemo(() => {
     const hour =
       start === end && start === todayIso() ? new Date().getHours() : undefined;
-    return hourlyTokenIoTrendSeries(summary.tokenHourRows, todayIso(), hour) as NamedSeriesInput[];
+    return hourlyTokenIoTrendSeries(
+      summary.tokenHourRows,
+      todayIso(),
+      hour,
+    ) as NamedSeriesInput[];
   }, [start, end, summary.tokenHourRows]);
 
   const tokenTrendIsHourly = useMemo(() => {
@@ -577,7 +715,8 @@ export default function AiStatisticsPage() {
     const knowledgeRaw = dailyRagTrend(historyRows, start, end, "rag");
     const memoryRaw = dailyRagTrend(historyRows, start, end, "memory_rag");
     const hasAny =
-      knowledgeRaw.some((p) => p.queries > 0) || memoryRaw.some((p) => p.queries > 0);
+      knowledgeRaw.some((p) => p.queries > 0) ||
+      memoryRaw.some((p) => p.queries > 0);
     if (!hasAny || start === end) {
       return [
         { id: "knowledge", label: "知识库命中率%", points: [] },
@@ -585,12 +724,16 @@ export default function AiStatisticsPage() {
       ];
     }
     const knowledge = padDailyTrendPoints(
-      dailyFieldToTrendPoints(knowledgeRaw.map((p) => ({ date: p.date, value: p.hitRate }))),
+      dailyFieldToTrendPoints(
+        knowledgeRaw.map((p) => ({ date: p.date, value: p.hitRate })),
+      ),
       start,
       end,
     );
     const memory = padDailyTrendPoints(
-      dailyFieldToTrendPoints(memoryRaw.map((p) => ({ date: p.date, value: p.hitRate }))),
+      dailyFieldToTrendPoints(
+        memoryRaw.map((p) => ({ date: p.date, value: p.hitRate })),
+      ),
       start,
       end,
     );
@@ -607,16 +750,21 @@ export default function AiStatisticsPage() {
     const daily = dailyCostTrend(historyRows, start, end);
     if (start === end) return [];
     const token = padDailyTrendPoints(
-      dailyFieldToTrendPoints(daily.map((p) => ({ date: p.date, value: p.tokenCost }))),
+      dailyFieldToTrendPoints(
+        daily.map((p) => ({ date: p.date, value: p.tokenCost })),
+      ),
       start,
       end,
     );
     const image = padDailyTrendPoints(
-      dailyFieldToTrendPoints(daily.map((p) => ({ date: p.date, value: p.imageCost }))),
+      dailyFieldToTrendPoints(
+        daily.map((p) => ({ date: p.date, value: p.imageCost })),
+      ),
       start,
       end,
     );
-    if (token.every((p) => p.total <= 0) && image.every((p) => p.total <= 0)) return [];
+    if (token.every((p) => p.total <= 0) && image.every((p) => p.total <= 0))
+      return [];
     return [
       { id: "token-cost", label: "Token 费用", points: token },
       { id: "image-cost", label: "画画费用", points: image },
@@ -627,7 +775,9 @@ export default function AiStatisticsPage() {
     const daily = dailyAiSuccessTrend(historyRows, start, end);
     if (start === end) return [];
     const rate = padDailyTrendPoints(
-      dailyFieldToTrendPoints(daily.map((p) => ({ date: p.date, value: p.successRate }))),
+      dailyFieldToTrendPoints(
+        daily.map((p) => ({ date: p.date, value: p.successRate })),
+      ),
       start,
       end,
     );
@@ -637,7 +787,12 @@ export default function AiStatisticsPage() {
 
   const providerStackSeries = useMemo((): NamedSeriesInput[] => {
     if (start === end) return [];
-    return dailyProviderTokenSeries(historyRows, start, end, 8) as NamedSeriesInput[];
+    return dailyProviderTokenSeries(
+      historyRows,
+      start,
+      end,
+      8,
+    ) as NamedSeriesInput[];
   }, [end, historyRows, start]);
 
   const routeShareRows = useMemo(
@@ -675,7 +830,12 @@ export default function AiStatisticsPage() {
         { key: "续聊", count: selectedSpeak.followup },
         { key: "未触发", count: selectedSpeak.skip },
       ]),
-    [selectedSpeak.ambient, selectedSpeak.followup, selectedSpeak.mention, selectedSpeak.skip],
+    [
+      selectedSpeak.ambient,
+      selectedSpeak.followup,
+      selectedSpeak.mention,
+      selectedSpeak.skip,
+    ],
   );
 
   const toolShareRows = useMemo(
@@ -700,7 +860,8 @@ export default function AiStatisticsPage() {
   const toolCalls = toolCallTotal(selectedTools);
   const toolCallSuccessRate =
     toolCalls > 0 ? (selectedTools.callOk / toolCalls) * 100 : null;
-  const toolSessionTotal = selectedTools.sessionCalled + selectedTools.sessionNoCall;
+  const toolSessionTotal =
+    selectedTools.sessionCalled + selectedTools.sessionNoCall;
 
   const aiOutcomeShareRows = useMemo(
     () =>
@@ -733,7 +894,10 @@ export default function AiStatisticsPage() {
   const cacheShareRows = useMemo(
     () =>
       countShareRows([
-        { key: AI_TOKEN_METRIC_LABELS.cacheRead, count: selectedRange.cacheReadTokens },
+        {
+          key: AI_TOKEN_METRIC_LABELS.cacheRead,
+          count: selectedRange.cacheReadTokens,
+        },
         {
           key: AI_TOKEN_METRIC_LABELS.uncachedPrompt,
           count: Math.max(0, selectedRange.promptTokens),
@@ -760,7 +924,8 @@ export default function AiStatisticsPage() {
     [end, historyRows, start],
   );
   const rangeProviderRows = useMemo(
-    () => aggregateHistoryDimensionRows(historyRows, start, end, "provider_stats"),
+    () =>
+      aggregateHistoryDimensionRows(historyRows, start, end, "provider_stats"),
     [end, historyRows, start],
   );
   const rangeModelRows = useMemo(
@@ -794,13 +959,17 @@ export default function AiStatisticsPage() {
 
   const onRefresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["llm-task-stats"] });
-    void qc.invalidateQueries({ queryKey: ["conversation-kernel-knowledge-sources"] });
+    void qc.invalidateQueries({
+      queryKey: ["conversation-kernel-knowledge-sources"],
+    });
   }, [qc]);
 
   useRegisterAiObservationChrome({ middle: dateFilter, onRefresh });
 
   const onTabChange = useCallback((value: string) => {
-    const next = TAB_OPTIONS.some((opt) => opt.value === value) ? (value as StatsTab) : "overview";
+    const next = TAB_OPTIONS.some((opt) => opt.value === value)
+      ? (value as StatsTab)
+      : "overview";
     setActiveTab(next);
     try {
       sessionStorage.setItem(TAB_STORAGE_KEY, next);
@@ -812,7 +981,10 @@ export default function AiStatisticsPage() {
   const hint = buildPersistenceHint(taskStatsQ.data?.persistence);
   const loading = taskStatsQ.isLoading;
   const rangeLabel = `${start}${start !== end ? ` ~ ${end}` : ""}`;
-  const costCurrency = rangeCost.currency || selectedRange.costCurrency || summary.tokens.costCurrency;
+  const costCurrency =
+    rangeCost.currency ||
+    selectedRange.costCurrency ||
+    summary.tokens.costCurrency;
   const combinedCost = rangeCost.totalCost;
   const hasDrawInRange = rangeCost.hasImages;
 
@@ -843,7 +1015,9 @@ export default function AiStatisticsPage() {
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {formatCompactNumber(selectedRange.totalTokens)}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">{rangeLabel}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {rangeLabel}
+                  </div>
                 </CardContent>
               </Card>
               <Card>
@@ -879,7 +1053,11 @@ export default function AiStatisticsPage() {
                 <CardContent className="space-y-1 p-3 sm:p-4">
                   <div className="text-xs text-muted-foreground">AI 成功率</div>
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
-                    {loading ? "…" : aiSuccessRate != null ? `${aiSuccessRate.toFixed(1)}%` : "—"}
+                    {loading
+                      ? "…"
+                      : aiSuccessRate != null
+                        ? `${aiSuccessRate.toFixed(1)}%`
+                        : "—"}
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     成功 {aiOk} · 失败 {aiFail}
@@ -894,7 +1072,9 @@ export default function AiStatisticsPage() {
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {loading ? "…" : `${rangeCacheHitRate.toFixed(1)}%`}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">当前区间</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    当前区间
+                  </div>
                 </CardContent>
               </Card>
               <Card>
@@ -912,7 +1092,9 @@ export default function AiStatisticsPage() {
                 <CardContent className="space-y-1 p-3 sm:p-4">
                   <div className="text-xs text-muted-foreground">记忆命中</div>
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
-                    {loading ? "…" : formatCompactNumber(selectedMemoryRag.hitCount)}
+                    {loading
+                      ? "…"
+                      : formatCompactNumber(selectedMemoryRag.hitCount)}
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     命中率 {selectedMemoryRag.hitRate.toFixed(1)}%
@@ -975,7 +1157,8 @@ export default function AiStatisticsPage() {
                     回复路径
                   </CardTitle>
                   <CardDescription>
-                    接话走语料/现编；明确 @ 才是完整对话。下列为实际发出时的路径占比
+                    接话走语料/现编；明确 @
+                    才是完整对话。下列为实际发出时的路径占比
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="min-h-[260px] p-3 pt-0 sm:p-6 sm:pt-0">
@@ -989,7 +1172,7 @@ export default function AiStatisticsPage() {
             </div>
 
             <StatsSectionLabel>结果占比</StatsSectionLabel>
-            <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
+            <div className="console-panel-grid grid-cols-1 lg:grid-cols-2">
               <Card>
                 <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
@@ -1004,7 +1187,11 @@ export default function AiStatisticsPage() {
                     emptyText="暂无调用结果"
                     prefer="donut"
                     centerTitle="成功率"
-                    centerValue={aiSuccessRate != null ? `${aiSuccessRate.toFixed(1)}%` : "—"}
+                    centerValue={
+                      aiSuccessRate != null
+                        ? `${aiSuccessRate.toFixed(1)}%`
+                        : "—"
+                    }
                   />
                 </CardContent>
               </Card>
@@ -1033,7 +1220,8 @@ export default function AiStatisticsPage() {
                     {AI_TOKEN_METRIC_LABELS.cacheHitShare}
                   </CardTitle>
                   <CardDescription>
-                    {AI_TOKEN_METRIC_LABELS.cacheRead} · {AI_TOKEN_METRIC_LABELS.uncachedPrompt}
+                    {AI_TOKEN_METRIC_LABELS.cacheRead} ·{" "}
+                    {AI_TOKEN_METRIC_LABELS.uncachedPrompt}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-6">
@@ -1049,7 +1237,7 @@ export default function AiStatisticsPage() {
             </div>
 
             <StatsSectionLabel>发言与工具</StatsSectionLabel>
-            <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
+            <div className="console-panel-grid grid-cols-1 lg:grid-cols-2">
               <Card>
                 <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
@@ -1085,7 +1273,9 @@ export default function AiStatisticsPage() {
                     prefer="donut"
                     centerTitle="成功率"
                     centerValue={
-                      toolCallSuccessRate != null ? `${toolCallSuccessRate.toFixed(1)}%` : "—"
+                      toolCallSuccessRate != null
+                        ? `${toolCallSuccessRate.toFixed(1)}%`
+                        : "—"
                     }
                   />
                 </CardContent>
@@ -1106,7 +1296,9 @@ export default function AiStatisticsPage() {
                     emptyText="暂无工具会话"
                     prefer="donut"
                     centerTitle="有调用"
-                    centerValue={formatCompactNumber(selectedTools.sessionCalled)}
+                    centerValue={formatCompactNumber(
+                      selectedTools.sessionCalled,
+                    )}
                   />
                 </CardContent>
               </Card>
@@ -1129,7 +1321,9 @@ export default function AiStatisticsPage() {
                 <ChartsNamedSeriesTrend
                   series={providerStackSeries}
                   emptyText={
-                    start === end ? "请扩大日期查看按 Provider 日趋势" : "本区间暂无 Provider Token 趋势"
+                    start === end
+                      ? "请扩大日期查看按 Provider 日趋势"
+                      : "本区间暂无 Provider Token 趋势"
                   }
                   showSummary={false}
                   axisUnit=""
@@ -1155,7 +1349,9 @@ export default function AiStatisticsPage() {
             <StatsSectionLabel>Token 用量</StatsSectionLabel>
             <div
               className={`console-panel-grid grid-cols-2 ${
-                selectedRange.cacheWriteTokens > 0 ? "lg:grid-cols-5" : "lg:grid-cols-4"
+                selectedRange.cacheWriteTokens > 0
+                  ? "lg:grid-cols-5"
+                  : "lg:grid-cols-4"
               }`}
             >
               <Card className="col-span-2 lg:col-span-1">
@@ -1167,7 +1363,9 @@ export default function AiStatisticsPage() {
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {formatCompactNumber(selectedRange.totalTokens)}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">{rangeLabel}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {rangeLabel}
+                  </div>
                 </CardContent>
               </Card>
               <Card>
@@ -1214,7 +1412,7 @@ export default function AiStatisticsPage() {
               ) : null}
             </div>
 
-            <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
+            <div className="console-panel-grid grid-cols-1 lg:grid-cols-2">
               <Card>
                 <CardHeader className="p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
@@ -1224,34 +1422,47 @@ export default function AiStatisticsPage() {
                   <CardDescription>按 Token 总量看占比</CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <ShareDistribution rows={rangeTokenModelRows} emptyText="暂无按模型数据" />
+                  <ShareDistribution
+                    rows={rangeTokenModelRows}
+                    emptyText="暂无按模型数据"
+                  />
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
-                    <PanelTitleIcon icon={Cloud} />
-                    按 Provider
+                    <PanelTitleIcon icon={Cloud} />按 Provider
                   </CardTitle>
                   <CardDescription>按 Token 总量看占比</CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <ShareDistribution rows={rangeTokenProviderRows} emptyText="暂无按 Provider 数据" />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="p-3 sm:p-6">
-                  <CardTitle className="flex items-center gap-1.5 text-base">
-                    <PanelTitleIcon icon={Boxes} />
-                    按任务
-                  </CardTitle>
-                  <CardDescription>按 Token 总量看占比</CardDescription>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <ShareDistribution rows={rangeTokenTaskRows} emptyText="暂无按任务数据" />
+                  <ShareDistribution
+                    rows={rangeTokenProviderRows}
+                    emptyText="暂无按 Provider 数据"
+                  />
                 </CardContent>
               </Card>
             </div>
+
+            <Card>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="flex items-center gap-1.5 text-base">
+                  <PanelTitleIcon icon={Boxes} />
+                  按任务
+                </CardTitle>
+                <CardDescription>
+                  按 Token 总量排行
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                <ShareDistribution
+                  rows={rangeTokenTaskRows}
+                  limit={12}
+                  prefer="bars"
+                  emptyText="暂无按任务数据"
+                />
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader className="p-3 sm:p-6">
@@ -1269,7 +1480,9 @@ export default function AiStatisticsPage() {
                 <ChartsNamedSeriesTrend
                   series={providerStackSeries}
                   emptyText={
-                    start === end ? "请扩大日期查看按 Provider 日趋势" : "本区间暂无 Provider Token 趋势"
+                    start === end
+                      ? "请扩大日期查看按 Provider 日趋势"
+                      : "本区间暂无 Provider Token 趋势"
                   }
                   showSummary={false}
                   axisUnit=""
@@ -1307,13 +1520,18 @@ export default function AiStatisticsPage() {
                 <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">
                   <IconStatCard
                     title="出图成功"
-                    value={loading ? "…" : formatCompactNumber(selectedImages.okCount)}
+                    value={
+                      loading
+                        ? "…"
+                        : formatCompactNumber(selectedImages.okCount)
+                    }
                     icon={CheckCircle2}
                     subtitle={
                       selectedImages.okCount + selectedImages.failCount > 0
                         ? `成功率 ${(
                             (selectedImages.okCount /
-                              (selectedImages.okCount + selectedImages.failCount)) *
+                              (selectedImages.okCount +
+                                selectedImages.failCount)) *
                             100
                           ).toFixed(1)}% · ${rangeLabel}`
                         : rangeLabel
@@ -1321,13 +1539,18 @@ export default function AiStatisticsPage() {
                   />
                   <IconStatCard
                     title="出图失败"
-                    value={loading ? "…" : formatCompactNumber(selectedImages.failCount)}
+                    value={
+                      loading
+                        ? "…"
+                        : formatCompactNumber(selectedImages.failCount)
+                    }
                     icon={XCircle}
                     subtitle={
                       selectedImages.okCount + selectedImages.failCount > 0
                         ? `占比 ${(
                             (selectedImages.failCount /
-                              (selectedImages.okCount + selectedImages.failCount)) *
+                              (selectedImages.okCount +
+                                selectedImages.failCount)) *
                             100
                           ).toFixed(1)}%`
                         : "暂无数据"
@@ -1340,7 +1563,11 @@ export default function AiStatisticsPage() {
                   />
                   <IconStatCard
                     title="出图张数"
-                    value={loading ? "…" : formatCompactNumber(selectedImages.imageCount)}
+                    value={
+                      loading
+                        ? "…"
+                        : formatCompactNumber(selectedImages.imageCount)
+                    }
                     icon={ImageIcon}
                     subtitle="当前区间生成张数"
                   />
@@ -1363,7 +1590,7 @@ export default function AiStatisticsPage() {
                     }
                   />
                 </div>
-                <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
+                <div className="console-panel-grid grid-cols-1 lg:grid-cols-2">
                   <DrawBreakdownTable
                     title="按网关"
                     rows={rangeImageGatewayRows}
@@ -1378,6 +1605,7 @@ export default function AiStatisticsPage() {
                     title="按模型"
                     rows={rangeImageModelRows}
                     emptyText="暂无模型数据"
+                    className="lg:col-span-2"
                   />
                 </div>
               </div>
@@ -1398,12 +1626,16 @@ export default function AiStatisticsPage() {
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {loading ? "…" : formatCostAmount(combinedCost)}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">{rangeLabel}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {rangeLabel}
+                  </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="space-y-1 p-3 sm:p-4">
-                  <div className="text-xs text-muted-foreground">Token 费用</div>
+                  <div className="text-xs text-muted-foreground">
+                    Token 费用
+                  </div>
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {loading ? "…" : formatCostAmount(rangeCost.tokenCost)}
                   </div>
@@ -1417,7 +1649,9 @@ export default function AiStatisticsPage() {
               {hasDrawInRange ? (
                 <Card>
                   <CardContent className="space-y-1 p-3 sm:p-4">
-                    <div className="text-xs text-muted-foreground">画画费用</div>
+                    <div className="text-xs text-muted-foreground">
+                      画画费用
+                    </div>
                     <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                       {loading ? "…" : formatCostAmount(rangeCost.imageCost)}
                     </div>
@@ -1448,7 +1682,9 @@ export default function AiStatisticsPage() {
                 <ChartsNamedSeriesTrend
                   series={costTrendSeries}
                   emptyText={
-                    start === end ? "请扩大日期查看日趋势" : "本区间暂无费用趋势"
+                    start === end
+                      ? "请扩大日期查看日趋势"
+                      : "本区间暂无费用趋势"
                   }
                   showSummary={false}
                   axisUnit=""
@@ -1458,7 +1694,7 @@ export default function AiStatisticsPage() {
 
             <div className="space-y-2">
               <StatsSectionLabel>Token 明细</StatsSectionLabel>
-              <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
+              <div className="console-panel-grid grid-cols-1 lg:grid-cols-2">
                 <CostDetailTable
                   title="按 Provider"
                   rows={rangeCost.tokenProviderRows}
@@ -1476,6 +1712,8 @@ export default function AiStatisticsPage() {
                   rows={rangeCost.tokenTaskRows}
                   kind="token"
                   currency={costCurrency}
+                  showUnitCost
+                  className="lg:col-span-2"
                 />
               </div>
               {!rangeCost.tokenProviderRows.length &&
@@ -1492,7 +1730,7 @@ export default function AiStatisticsPage() {
             {hasDrawInRange ? (
               <div className="space-y-2">
                 <StatsSectionLabel>画画明细</StatsSectionLabel>
-                <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
+                <div className="console-panel-grid grid-cols-1 lg:grid-cols-2">
                   <CostDetailTable
                     title="按网关"
                     rows={rangeCost.imageGatewayRows}
@@ -1510,12 +1748,15 @@ export default function AiStatisticsPage() {
                     rows={rangeCost.imageModelRows}
                     kind="image"
                     currency={costCurrency}
+                    className="lg:col-span-2"
                   />
                 </div>
                 {!rangeCost.imageGatewayRows.length &&
                 !rangeCost.imageProviderRows.length &&
                 !rangeCost.imageModelRows.length ? (
-                  <p className="text-sm text-muted-foreground">有画画用量，但当前区间无画画费用记录。</p>
+                  <p className="text-sm text-muted-foreground">
+                    有画画用量，但当前区间无画画费用记录。
+                  </p>
                 ) : null}
               </div>
             ) : null}
@@ -1528,23 +1769,32 @@ export default function AiStatisticsPage() {
             <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardContent className="space-y-1 p-3 sm:p-4">
-                  <div className="text-xs text-muted-foreground">知识库命中率</div>
+                  <div className="text-xs text-muted-foreground">
+                    知识库命中率
+                  </div>
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {loading ? "…" : `${selectedRag.hitRate.toFixed(1)}%`}
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    实际检索 hit {selectedRag.hitCount} · miss {selectedRag.missCount}
-                    {selectedRag.skipCount > 0 ? ` · 跳过 ${selectedRag.skipCount}` : ""}
+                    实际检索 hit {selectedRag.hitCount} · miss{" "}
+                    {selectedRag.missCount}
+                    {selectedRag.skipCount > 0
+                      ? ` · 跳过 ${selectedRag.skipCount}`
+                      : ""}
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="space-y-1 p-3 sm:p-4">
-                  <div className="text-xs text-muted-foreground">知识库检索</div>
+                  <div className="text-xs text-muted-foreground">
+                    知识库检索
+                  </div>
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {loading
                       ? "…"
-                      : formatCompactNumber(selectedRag.hitCount + selectedRag.missCount)}
+                      : formatCompactNumber(
+                          selectedRag.hitCount + selectedRag.missCount,
+                        )}
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     {rangeLabel}
@@ -1556,12 +1806,15 @@ export default function AiStatisticsPage() {
               </Card>
               <Card>
                 <CardContent className="space-y-1 p-3 sm:p-4">
-                  <div className="text-xs text-muted-foreground">记忆命中率</div>
+                  <div className="text-xs text-muted-foreground">
+                    记忆命中率
+                  </div>
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {loading ? "…" : `${selectedMemoryRag.hitRate.toFixed(1)}%`}
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    hit {selectedMemoryRag.hitCount} · miss {selectedMemoryRag.missCount}
+                    hit {selectedMemoryRag.hitCount} · miss{" "}
+                    {selectedMemoryRag.missCount}
                   </div>
                 </CardContent>
               </Card>
@@ -1572,10 +1825,13 @@ export default function AiStatisticsPage() {
                     {loading
                       ? "…"
                       : formatCompactNumber(
-                          selectedMemoryRag.hitCount + selectedMemoryRag.missCount,
+                          selectedMemoryRag.hitCount +
+                            selectedMemoryRag.missCount,
                         )}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">{rangeLabel}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {rangeLabel}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -1624,24 +1880,32 @@ export default function AiStatisticsPage() {
             <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
               <Card>
                 <CardContent className="space-y-1 p-3 sm:p-4">
-                  <div className="text-xs text-muted-foreground">知识源数量</div>
+                  <div className="text-xs text-muted-foreground">
+                    知识源数量
+                  </div>
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {knowledgeSourcesQ.isLoading
                       ? "…"
                       : formatCompactNumber(knowledgeInventory.sourceCount)}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">已启用的知识源</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    已启用的知识源
+                  </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="space-y-1 p-3 sm:p-4">
-                  <div className="text-xs text-muted-foreground">知识片段总量</div>
+                  <div className="text-xs text-muted-foreground">
+                    知识片段总量
+                  </div>
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {knowledgeSourcesQ.isLoading
                       ? "…"
                       : formatCompactNumber(knowledgeInventory.chunkCount)}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">库存口径，与命中率无关</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    库存口径，与命中率无关
+                  </div>
                 </CardContent>
               </Card>
               <Card>
@@ -1654,7 +1918,10 @@ export default function AiStatisticsPage() {
                   {knowledgeInventory.topSources.length ? (
                     <ul className="space-y-1 text-sm">
                       {knowledgeInventory.topSources.slice(0, 4).map((row) => (
-                        <li key={row.id} className="flex items-center justify-between gap-2">
+                        <li
+                          key={row.id}
+                          className="flex items-center justify-between gap-2"
+                        >
                           <span className="min-w-0 truncate" title={row.title}>
                             {row.title}
                           </span>
@@ -1693,18 +1960,28 @@ export default function AiStatisticsPage() {
                         </thead>
                         <tbody>
                           {selectedRagDocs.slice(0, 8).map((row) => (
-                            <tr key={row.key} className="border-t border-border/60">
-                              <td className="max-w-[14rem] truncate py-1.5 pr-3" title={row.key}>
+                            <tr
+                              key={row.key}
+                              className="border-t border-border/60"
+                            >
+                              <td
+                                className="max-w-[14rem] truncate py-1.5 pr-3"
+                                title={row.key}
+                              >
                                 {row.key}
                               </td>
-                              <td className="py-1.5 tabular-nums">{row.hitCount}</td>
+                              <td className="py-1.5 tabular-nums">
+                                {row.hitCount}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">暂无文档命中</p>
+                    <p className="text-sm text-muted-foreground">
+                      暂无文档命中
+                    </p>
                   )}
                 </CardContent>
               </Card>
@@ -1714,7 +1991,9 @@ export default function AiStatisticsPage() {
                     <PanelTitleIcon icon={LineChart} />
                     命中率趋势
                   </CardTitle>
-                  <CardDescription>知识库与记忆检索命中率的日趋势。</CardDescription>
+                  <CardDescription>
+                    知识库与记忆检索命中率的日趋势。
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
                   <ChartsNamedSeriesTrend
@@ -1736,7 +2015,13 @@ export default function AiStatisticsPage() {
             <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">
               <IconStatCard
                 title="统计通道"
-                value={summary.reachable == null ? "…" : summary.reachable ? "正常" : "不可用"}
+                value={
+                  summary.reachable == null
+                    ? "…"
+                    : summary.reachable
+                      ? "正常"
+                      : "不可用"
+                }
                 icon={summary.reachable ? Wifi : WifiOff}
                 subtitle={
                   summary.reachable == null
@@ -1779,7 +2064,9 @@ export default function AiStatisticsPage() {
                     : "暂无数据"
                 }
                 valueClassName={
-                  summary.aiFail > 0 ? "text-rose-600 dark:text-rose-400" : undefined
+                  summary.aiFail > 0
+                    ? "text-rose-600 dark:text-rose-400"
+                    : undefined
                 }
               />
             </div>
@@ -1829,7 +2116,8 @@ export default function AiStatisticsPage() {
                       VLM 选图
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      durable work 任务的当日实时状态；Token 与费用按当前日期区间汇总。
+                      durable work 任务的当日实时状态；Token
+                      与费用按当前日期区间汇总。
                     </p>
                   </div>
                   <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">
@@ -1847,16 +2135,22 @@ export default function AiStatisticsPage() {
                     />
                     <IconStatCard
                       title="平均耗时"
-                      value={formatCallLatency(stickerVision.avg_duration_ms ?? null)}
+                      value={formatCallLatency(
+                        stickerVision.avg_duration_ms ?? null,
+                      )}
                       icon={LineChart}
                       subtitle={`模型失败 ${stickerVision.failed} · 跳过 ${stickerVision.skipped ?? 0}`}
                       valueClassName={
-                        stickerVision.failed > 0 ? "text-rose-600 dark:text-rose-400" : undefined
+                        stickerVision.failed > 0
+                          ? "text-rose-600 dark:text-rose-400"
+                          : undefined
                       }
                     />
                     <IconStatCard
                       title="Token / 费用"
-                      value={formatCompactNumber(stickerVisionTokens?.totalTokens ?? 0)}
+                      value={formatCompactNumber(
+                        stickerVisionTokens?.totalTokens ?? 0,
+                      )}
                       icon={Coins}
                       subtitle={
                         stickerVisionTokens?.costTotal
@@ -1865,59 +2159,95 @@ export default function AiStatisticsPage() {
                       }
                     />
                   </div>
-                  {stickerVision.recent.length ? (
+                  {stickerVision.recent.length || stickerVision.recent_error ? (
                     <Card>
                       <CardHeader className="p-3 pb-0 sm:p-4 sm:pb-0">
                         <CardTitle className="text-sm">最近任务</CardTitle>
                       </CardHeader>
                       <CardContent className="p-3 sm:p-4">
-                        <div className="overflow-x-auto">
-                          <table className="w-full min-w-[34rem] table-fixed text-sm">
-                        <colgroup>
-                          <col className="w-[18%]" />
-                          <col className="w-[15%]" />
-                          <col className="w-[25%]" />
-                          <col className="w-[12%]" />
-                          <col className="w-[12%]" />
-                          <col className="w-[18%]" />
-                        </colgroup>
-                        <thead className="text-xs text-muted-foreground">
-                          <tr>
-                            <th className="pb-2 pr-2 text-left font-medium">任务</th>
-                            <th className="pb-2 pr-2 text-left font-medium">结果</th>
-                            <th className="pb-2 pr-2 text-left font-medium">模型</th>
-                            <th className="pb-2 pr-2 text-right font-medium">候选</th>
-                            <th className="pb-2 pr-2 text-right font-medium">耗时</th>
-                            <th className="pb-2 text-left font-medium">发送 / 错误</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {stickerVision.recent.map((row) => (
-                            <tr key={row.job_id} className="border-t border-border/60">
-                              <td className="truncate py-2 pr-2 font-mono text-xs" title={row.job_id}>
-                                {row.job_id}
-                              </td>
-                              <td className="truncate py-2 pr-2 text-xs">{row.state}</td>
-                              <td className="truncate py-2 pr-2 font-mono text-xs" title={`${row.provider} / ${row.model}`}>
-                                {[row.provider, row.model].filter(Boolean).join(" / ") || "—"}
-                              </td>
-                              <td className="py-2 pr-2 text-right tabular-nums">{row.candidate_count}</td>
-                              <td className="py-2 pr-2 text-right tabular-nums">{formatCallLatency(row.duration_ms ?? null)}</td>
-                              <td className="truncate py-2 text-xs" title={row.error ?? row.delivery_state}>
-                                {row.error || row.delivery_state}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                          </table>
-                        </div>
+                        {stickerVision.recent_error ? (
+                          <ConsoleHint className="mb-3 border-rose-300/70 bg-rose-50/70 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-300">
+                            最近错误：{stickerVision.recent_error}
+                          </ConsoleHint>
+                        ) : null}
+                        {stickerVision.recent.length ? (
+                          <div className="overflow-x-auto">
+                            <table className="w-full min-w-[34rem] table-fixed text-sm">
+                              <colgroup>
+                                <col className="w-[18%]" />
+                                <col className="w-[15%]" />
+                                <col className="w-[25%]" />
+                                <col className="w-[12%]" />
+                                <col className="w-[12%]" />
+                                <col className="w-[18%]" />
+                              </colgroup>
+                              <thead className="text-xs text-muted-foreground">
+                                <tr>
+                                  <th className="pb-2 pr-2 text-left font-medium">
+                                    任务
+                                  </th>
+                                  <th className="pb-2 pr-2 text-left font-medium">
+                                    结果
+                                  </th>
+                                  <th className="pb-2 pr-2 text-left font-medium">
+                                    模型
+                                  </th>
+                                  <th className="pb-2 pr-2 text-right font-medium">
+                                    候选
+                                  </th>
+                                  <th className="pb-2 pr-2 text-right font-medium">
+                                    耗时
+                                  </th>
+                                  <th className="pb-2 text-left font-medium">
+                                    发送 / 错误
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {stickerVision.recent.map((row) => (
+                                  <tr
+                                    key={row.job_id}
+                                    className="border-t border-border/60"
+                                  >
+                                    <td
+                                      className="truncate py-2 pr-2 font-mono text-xs"
+                                      title={row.job_id}
+                                    >
+                                      {row.job_id}
+                                    </td>
+                                    <td className="truncate py-2 pr-2 text-xs">
+                                      {row.state}
+                                    </td>
+                                    <td
+                                      className="truncate py-2 pr-2 font-mono text-xs"
+                                      title={`${row.provider} / ${row.model}`}
+                                    >
+                                      {[row.provider, row.model]
+                                        .filter(Boolean)
+                                        .join(" / ") || "—"}
+                                    </td>
+                                    <td className="py-2 pr-2 text-right tabular-nums">
+                                      {row.candidate_count}
+                                    </td>
+                                    <td className="py-2 pr-2 text-right tabular-nums">
+                                      {formatCallLatency(
+                                        row.duration_ms ?? null,
+                                      )}
+                                    </td>
+                                    <td
+                                      className="truncate py-2 text-xs"
+                                      title={row.error ?? row.delivery_state}
+                                    >
+                                      {row.error || row.delivery_state}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : null}
                       </CardContent>
                     </Card>
-                  ) : null}
-                  {stickerVision.recent_error ? (
-                    <p className="text-xs text-rose-600 dark:text-rose-400">
-                      最近错误：{stickerVision.recent_error}
-                    </p>
                   ) : null}
                 </div>
               </>
@@ -1940,7 +2270,9 @@ export default function AiStatisticsPage() {
                 <ChartsNamedSeriesTrend
                   series={callsSuccessTrendSeries}
                   emptyText={
-                    start === end ? "请扩大日期查看日趋势" : "本区间暂无成功率趋势"
+                    start === end
+                      ? "请扩大日期查看日趋势"
+                      : "本区间暂无成功率趋势"
                   }
                   showSummary={false}
                   axisUnit="%"
@@ -1967,7 +2299,9 @@ export default function AiStatisticsPage() {
                   icon={Boxes}
                 />
               </div>
-              {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
+              {hint ? (
+                <p className="text-[11px] text-muted-foreground">{hint}</p>
+              ) : null}
             </div>
           </div>
         ) : null}

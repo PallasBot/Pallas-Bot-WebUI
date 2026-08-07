@@ -1,4 +1,5 @@
 import { formatSharePercent } from "@/utils/shareDistribution";
+import AiProgressBar from "@/components/ai/AiProgressBar";
 import { formatCompactNumber, type TokenRow } from "@/utils/aiTaskStats";
 import { fixedChartPalette } from "@/utils/chartTheme";
 import { cn } from "@/lib/utils";
@@ -40,15 +41,7 @@ export default function TokenShareBars({
                 <span className="ml-1.5 text-[11px]">{formatSharePercent(pct)}</span>
               </span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full border border-border/80 bg-muted">
-              <div
-                className="h-full rounded-full transition-[width]"
-                style={{
-                  width: `${Math.min(100, Math.max(pct, pct > 0 ? 1.5 : 0))}%`,
-                  backgroundColor: palette[i % palette.length],
-                }}
-              />
-            </div>
+            <AiProgressBar value={pct} color={palette[i % palette.length]} ariaLabel={`${label} 占比`} />
           </li>
         );
       })}

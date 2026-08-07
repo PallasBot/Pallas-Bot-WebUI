@@ -57,7 +57,7 @@ export default function HomeHourlyChartSvg({ pack }: { pack: HourlyChartPack }) 
         {pack.gridYs.map((gy, gi) => (
           <line
             key={`hg-${gi}`}
-            className="home-plugin-hourly__grid"
+            className="home-plugin-bucket__grid"
             x1={pack.left}
             y1={gy}
             x2={pack.left + pack.innerW}
@@ -65,14 +65,14 @@ export default function HomeHourlyChartSvg({ pack }: { pack: HourlyChartPack }) 
           />
         ))}
         {pack.yTicks.map((tk, ti) => (
-          <text key={`hyt-${ti}`} className="home-plugin-hourly__ytick" x={4} y={tk.y + 4}>
+          <text key={`hyt-${ti}`} className="home-plugin-bucket__ytick" x={4} y={tk.y + 4}>
             {tk.t}
           </text>
         ))}
         {HOURLY_AXIS_HOURS.filter((h) => h % 3 === 0).map((h) => (
           <text
             key={`hxt-${h}`}
-            className="home-plugin-hourly__xtick"
+            className="home-plugin-bucket__xtick"
             textAnchor="middle"
             x={pack.left + (h / 23) * pack.innerW}
             y={pack.H - 6}
