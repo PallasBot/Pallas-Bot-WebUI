@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.31] - 2026-08-09
 
 ### 更新公告
 
@@ -12,6 +12,19 @@
 - 优化控制台面板的边界、网格与加载态，信息层级更清晰。
 - AI 观测补充费用、用量与调用详情展示，并统一进度与占比视图。
 - 模型价格条件支持连续输入小数；运行日志默认查看主进程来源。
+
+### 提交明细
+
+### Added
+
+* feat(webui): 优化控制台面板与 AI 观测布局 ([6ed4f52](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6ed4f5224ae382931827058377d36d3ccaac5b36))
+
+### Fixed
+
+* fix(webui): 优化价格输入与日志默认来源 ([7b1f1fb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7b1f1fb9259ec9c188b5b9089fe597839a3c7567))
+
+**完整变更**: [`v0.8.30...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.30...HEAD)
+
 
 ## [0.8.30] - 2026-08-07
 
@@ -37,7 +50,6 @@
 * feat(ai-config): 支持提供方多模型与价格条件 ([e17b32f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e17b32f100ede343febd278fe66311adec6ea62c))
 
 **完整变更**: [`v0.8.29...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.29...HEAD)
-
 
 ## [0.8.29] - 2026-08-07
 
