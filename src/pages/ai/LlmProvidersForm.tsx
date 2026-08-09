@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
 import {
@@ -48,9 +49,10 @@ import {
 } from "@/utils/llmProviderModels";
 import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
-import { AlertTriangle, Cloud, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Save, Server, SlidersHorizontal, Trash2, Unplug, X, type LucideIcon } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, Cloud, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Save, Server, SlidersHorizontal, Trash2, Unplug, X, type LucideIcon } from "lucide-react";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { normalizeDrawCostCurrency } from "@/utils/drawGateways";
+import { decimalInputDraft, formatDecimalInput } from "@/utils/decimalInput";
 import {
   LLM_BASE_URL_SUGGESTIONS,
   LLM_LOCAL_BASE_URL_SUGGESTIONS,
@@ -142,33 +144,50 @@ function parseModelPrice(raw: string): number {
   return n;
 }
 
-function isPriceInputText(raw: string): boolean {
-  return raw === "" || /^\d*\.?\d*$/.test(raw);
+function DecimalPriceInput({ value, onValueChange, ...props }: Omit<ComponentProps<typeof Input>, "value" | "onChange"> & {
+  value: number | undefined;
+  onValueChange: (value: number) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [raw, setRaw] = useState(() => formatDecimalInput(value));
+
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) setRaw(formatDecimalInput(value));
+  }, [value]);
+
+  return <Input
+    {...props}
+    ref={inputRef}
+    type="text"
+    inputMode="decimal"
+    value={raw}
+    onChange={(event) => {
+      const next = decimalInputDraft(event.target.value);
+      if (next === null) return;
+      setRaw(next.raw);
+      onValueChange(next.value);
+    }}
+    onBlur={() => setRaw(formatDecimalInput(value))}
+  />;
 }
 
 function ModelPriceField({
   label,
-  textValue,
-  onTextChange,
+  value,
+  onValueChange,
 }: {
   label: string;
-  textValue: string;
-  onTextChange: (raw: string) => void;
+  value: number | undefined;
+  onValueChange: (value: number) => void;
 }) {
   return (
     <div className="space-y-1">
       <Label className="text-[11px] text-muted-foreground">{label}</Label>
-      <Input
+      <DecimalPriceInput
         className="h-8 font-mono text-xs"
-        type="text"
-        inputMode="decimal"
-        value={textValue}
+        value={value}
         placeholder="0"
-        onChange={(e) => {
-          const raw = e.target.value;
-          if (!isPriceInputText(raw)) return;
-          onTextChange(raw);
-        }}
+        onValueChange={onValueChange}
       />
     </div>
   );
@@ -205,6 +224,7 @@ export default function LlmProvidersForm() {
   const [editing, setEditing] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [draft, setDraft] = useState<LlmProviderRow>(blankProvider());
+  const [collapsedModels, setCollapsedModels] = useState<Record<string, boolean>>({});
   const [draftApiKeys, setDraftApiKeys] = useState<string[]>([]);
   const [keepStoredApiKey, setKeepStoredApiKey] = useState(false);
   const apiKeysInputRef = useRef<TagsInputHandle>(null);
@@ -1417,14 +1437,42 @@ export default function LlmProvidersForm() {
                     <Label className="font-semibold">已注册模型</Label>
                     <p className="text-xs text-muted-foreground">任务编排的“常用”会优先展示这里的模型。</p>
                     <div className="space-y-1.5">
-                      {(draft.models || []).map((model) => (
-                        <div key={model.model_id || model.name} className="space-y-1.5 rounded border border-border/70 px-2.5 py-2">
+                      {(draft.models || []).map((model) => {
+                        const modelKey = model.model_id || model.name;
+                        const collapsed = Boolean(collapsedModels[modelKey]);
+                        return <div key={modelKey} className="space-y-1.5 rounded border border-border/70 px-2.5 py-2">
                           <div className="flex items-center justify-between gap-2">
                             <span className="min-w-0 truncate font-mono text-xs">{model.name}</span>
-                            <Button type="button" size="sm" variant="ghost" className="h-7 shrink-0 px-2" icon={Trash2} onClick={() => removeRegisteredProviderModel(model.name)}>
-                              删除
-                            </Button>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <TooltipProvider delayDuration={200}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7"
+                                      icon={collapsed ? ChevronDown : ChevronUp}
+                                      aria-label={collapsed ? `展开 ${model.name}` : `收起 ${model.name}`}
+                                      onClick={() => setCollapsedModels((current) => ({ ...current, [modelKey]: !collapsed }))}
+                                    />
+                                  </TooltipTrigger>
+                                  <TooltipContent>{collapsed ? "展开模型配置" : "收起模型配置"}</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2"
+                                icon={Trash2}
+                                onClick={() => removeRegisteredProviderModel(model.name)}
+                              >
+                                删除模型
+                              </Button>
+                            </div>
                           </div>
+                          {collapsed ? <p className="text-xs text-muted-foreground">价格条件：{(model.pricing_rules || []).length} 条</p> : <>
                           {(model.pricing_rules || []).map((rule) => (
                             <div key={rule.id} className="space-y-2 rounded bg-muted/20 p-2 text-xs text-muted-foreground">
                               <div className="flex items-center justify-between gap-2">
@@ -1435,13 +1483,13 @@ export default function LlmProvidersForm() {
                                 <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" icon={Trash2} onClick={() => removePricingRule(model.name, rule.id)}>删除</Button>
                               </div>
                               {rule.kind === "per_request" ? (
-                                <Input className="h-8 font-mono text-xs" inputMode="decimal" value={rule.price_per_request || ""} placeholder="每次费用" onChange={(event) => setPricingRuleValue(model.name, rule.id, "price_per_request", parseModelPrice(event.target.value))} />
+                                <DecimalPriceInput className="h-8 font-mono text-xs" value={rule.price_per_request} placeholder="每次费用" onValueChange={(value) => setPricingRuleValue(model.name, rule.id, "price_per_request", value)} />
                               ) : (
                                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.prompt} textValue={String(rule.price_in || "")} onTextChange={(raw) => setPricingRuleValue(model.name, rule.id, "price_in", parseModelPrice(raw))} />
-                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.completion} textValue={String(rule.price_out || "")} onTextChange={(raw) => setPricingRuleValue(model.name, rule.id, "price_out", parseModelPrice(raw))} />
-                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.cacheRead} textValue={String(rule.cache_price_in || "")} onTextChange={(raw) => setPricingRuleValue(model.name, rule.id, "cache_price_in", parseModelPrice(raw))} />
-                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.cacheWrite} textValue={String(rule.cache_price_out || "")} onTextChange={(raw) => setPricingRuleValue(model.name, rule.id, "cache_price_out", parseModelPrice(raw))} />
+                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.prompt} value={rule.price_in} onValueChange={(value) => setPricingRuleValue(model.name, rule.id, "price_in", value)} />
+                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.completion} value={rule.price_out} onValueChange={(value) => setPricingRuleValue(model.name, rule.id, "price_out", value)} />
+                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.cacheRead} value={rule.cache_price_in} onValueChange={(value) => setPricingRuleValue(model.name, rule.id, "cache_price_in", value)} />
+                                  <ModelPriceField label={AI_TOKEN_METRIC_LABELS.cacheWrite} value={rule.cache_price_out} onValueChange={(value) => setPricingRuleValue(model.name, rule.id, "cache_price_out", value)} />
                                 </div>
                               )}
                               <div className="grid grid-cols-2 gap-2">
@@ -1455,8 +1503,9 @@ export default function LlmProvidersForm() {
                             </div>
                           ))}
                           <Button type="button" size="sm" variant="outline" className="h-8" icon={Plus} onClick={() => addPricingRule(model.name)}>添加价格条件</Button>
+                          </>}
                         </div>
-                      ))}
+                      })}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <AiModelSelect

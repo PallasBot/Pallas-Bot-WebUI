@@ -215,20 +215,37 @@ export function AiModelSelect({
               {isFetching ? <Loader2 className="size-3 animate-spin" /> : null}
             </Button>
           </div>
-          <Input
-            ref={inputRef}
-            value={draft}
-            disabled={disabled}
-            placeholder={inputPlaceholder}
-            className="h-9"
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                commitDraft();
-              }
-            }}
-          />
+          <div className="ai-model-select__input-row flex items-center gap-2">
+            <Input
+              ref={inputRef}
+              value={draft}
+              disabled={disabled}
+              placeholder={inputPlaceholder}
+              className="h-9 flex-1"
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitDraft();
+                }
+              }}
+            />
+            {onDiscover ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-9 shrink-0 gap-1 px-2 text-xs"
+                icon={RefreshCw}
+                iconMotion="spin"
+                iconBusy={isFetching}
+                disabled={disabled || isFetching}
+                onClick={() => onDiscover()}
+              >
+                {isFetching ? "发现中…" : "刷新列表"}
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <div className="h-[220px] overflow-hidden">
@@ -262,23 +279,6 @@ export function AiModelSelect({
             className={cn("flex h-full flex-col", tab !== "discovered" && "hidden")}
             onWheel={(e) => e.stopPropagation()}
           >
-            {onDiscover ? (
-              <div className="flex shrink-0 items-center justify-end border-b px-2 py-1.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 gap-1 px-2 text-xs"
-                  icon={RefreshCw}
-                  iconMotion="spin"
-                  iconBusy={isFetching}
-                  disabled={disabled || isFetching}
-                  onClick={() => onDiscover()}
-                >
-                  {isFetching ? "发现中…" : "刷新列表"}
-                </Button>
-              </div>
-            ) : null}
             <div className="min-h-0 flex-1 overflow-y-auto">
               {isFetching && discovered.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">

@@ -627,7 +627,7 @@ export default function ChartsPage() {
                 <CardHeader className={CHART_PANEL_HD}><CardTitle className="panel__title">学习流水线</CardTitle></CardHeader>
                 <CardContent className={CHART_PANEL_BD}><ChartsNamedSeriesTrend series={ingressHistory.learning} busy={ingressHistoryQ.isFetching} chartUid="ingress-learning" showSummary={false} axisUnit=" 条" compact stacked /></CardContent>
               </Card>
-              <Card className={CHART_PANEL}>
+              <Card className={cn(CHART_PANEL, "charts-page__ingress-pressure-panel")}>
                 <CardHeader className={CHART_PANEL_HD}><CardTitle className="panel__title">近期压力</CardTitle></CardHeader>
                 <CardContent className={CHART_PANEL_BD}><IngressPressureStrips points={ingressHistory.pressure} /></CardContent>
               </Card>

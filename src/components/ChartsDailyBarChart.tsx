@@ -29,12 +29,14 @@ export default function ChartsDailyBarChart({
   unit = "",
   accent = "#ea580c",
   emptyText = "所选范围暂无持久化数据",
+  xTickAngle = 0,
 }: {
   points: ChartsDailyBarPoint[];
   title?: string;
   unit?: string;
   accent?: string;
   emptyText?: string;
+  xTickAngle?: number;
 }) {
   const plotRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -47,11 +49,11 @@ export default function ChartsDailyBarChart({
     const values = pts.map((p) => Math.max(0, Number(p.value) || 0));
     const maxV = Math.max(...values, 1);
     const W = 640;
-    const H = 220;
+    const H = xTickAngle ? 272 : 220;
     const padL = 46;
     const padR = 12;
     const padT = 16;
-    const padB = 36;
+    const padB = xTickAngle ? 88 : 36;
     const innerW = W - padL - padR;
     const innerH = H - padT - padB;
     const left = padL;
@@ -74,9 +76,13 @@ export default function ChartsDailyBarChart({
       { y: padT, t: fmtTick(maxV) },
     ];
     const maxXTicks = n > 28 ? 7 : n > 18 ? 9 : 11;
-    const xTicks = pickTickIndices(n, maxXTicks).map((i) => ({ x: bars[i]!.cx, t: bars[i]!.dayLabel }));
+    const xTicks = pickTickIndices(n, maxXTicks).map((i) => ({
+      x: bars[i]!.cx,
+      t: bars[i]!.dayLabel,
+      fullLabel: bars[i]!.date,
+    }));
     return { W, H, left, bottom, bars, yTicks, xTicks, gap, barW };
-  }, [points]);
+  }, [points, xTickAngle]);
 
   if (!pack) {
     return <p className="muted charts-page__section-note">{emptyText}</p>;
@@ -143,7 +149,15 @@ export default function ChartsDailyBarChart({
             />
           ))}
           {chart.xTicks.map((t) => (
-            <text key={`x-${t.x}`} className="charts-daily-bar__xtick" x={t.x} y={chart.H - 10} textAnchor="middle">
+            <text
+              key={`x-${t.x}`}
+              className="charts-daily-bar__xtick"
+              x={t.x}
+              y={chart.H - 10}
+              textAnchor={xTickAngle ? "end" : "middle"}
+              transform={xTickAngle ? `rotate(${xTickAngle} ${t.x} ${chart.H - 10})` : undefined}
+            >
+              <title>{t.fullLabel}</title>
               {t.t}
             </text>
           ))}

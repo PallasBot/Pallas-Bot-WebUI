@@ -521,7 +521,7 @@ export default function HomePage() {
       : "—";
 
   const accountSocialPending =
-    selectedAccount != null && (socialQ.isFetching || (accountStatsQ.isFetching && statsScoped == null));
+    selectedAccount != null && (!overviewSettled || socialQ.isPending || socialQ.isFetching);
 
   const scopedReqRow = useMemo(() => {
     if (selectedAccount == null || !socialQ.data?.ov?.bots?.length) return null;
@@ -529,13 +529,13 @@ export default function HomePage() {
   }, [selectedAccount, socialQ.data]);
 
   const friendPendingLine = (() => {
-    if (!scopedReqRow) return "—";
+    if (accountSocialPending || !scopedReqRow) return "—";
     const n =
       (scopedReqRow.pending_friend_requests?.length ?? 0) +
       (scopedReqRow.doubt_friend_requests?.length ?? 0);
     return `${n}条待同意`;
   })();
-  const groupPendingLine = scopedReqRow
+  const groupPendingLine = !accountSocialPending && scopedReqRow
     ? `${scopedReqRow.pending_group_requests?.length ?? 0}条待同意`
     : "—";
 
@@ -903,10 +903,10 @@ export default function HomePage() {
                       <div className="home-acct-tile">
                         <span className="home-acct-tile__label">好友</span>
                         <span className="home-acct-tile__value">
-                          {socialQ.data?.fl != null ? (
-                            `${socialQ.data.fl.friends?.length ?? 0}${socialQ.data.fl.truncated ? "+" : ""}`
-                          ) : accountSocialPending ? (
+                          {accountSocialPending ? (
                             <PendingValue pending />
+                          ) : socialQ.data?.fl != null ? (
+                            `${socialQ.data.fl.friends?.length ?? 0}${socialQ.data.fl.truncated ? "+" : ""}`
                           ) : (
                             "—"
                           )}
@@ -915,10 +915,10 @@ export default function HomePage() {
                       <div className="home-acct-tile">
                         <span className="home-acct-tile__label">群聊</span>
                         <span className="home-acct-tile__value">
-                          {socialQ.data?.gl != null ? (
-                            `${socialQ.data.gl.groups?.length ?? 0}${socialQ.data.gl.truncated ? "+" : ""}`
-                          ) : accountSocialPending ? (
+                          {accountSocialPending ? (
                             <PendingValue pending />
+                          ) : socialQ.data?.gl != null ? (
+                            `${socialQ.data.gl.groups?.length ?? 0}${socialQ.data.gl.truncated ? "+" : ""}`
                           ) : (
                             "—"
                           )}
@@ -937,9 +937,16 @@ export default function HomePage() {
                         </span>
                       </div>
                     </div>
-                    {friendPendingLine !== "—" || groupPendingLine !== "—" ? (
+                    {accountSocialPending || friendPendingLine !== "—" || groupPendingLine !== "—" ? (
                       <div className="home-acct-pending-row">
-                        {friendPendingLine !== "—" ? (
+                        {accountSocialPending ? (
+                          <span
+                            className="home-acct-pending-pill home-acct-pending-pill--friend"
+                            aria-busy="true"
+                          >
+                            好友申请 · <PendingValue pending narrow />
+                          </span>
+                        ) : friendPendingLine !== "—" ? (
                           <Link
                             className="home-acct-pending-pill home-acct-pending-pill--friend"
                             to={{
@@ -951,7 +958,14 @@ export default function HomePage() {
                             好友申请 · {friendPendingLine}
                           </Link>
                         ) : null}
-                        {groupPendingLine !== "—" ? (
+                        {accountSocialPending ? (
+                          <span
+                            className="home-acct-pending-pill home-acct-pending-pill--group"
+                            aria-busy="true"
+                          >
+                            入群邀请 · <PendingValue pending narrow />
+                          </span>
+                        ) : groupPendingLine !== "—" ? (
                           <Link
                             className="home-acct-pending-pill home-acct-pending-pill--group"
                             to={{
