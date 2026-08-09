@@ -55,6 +55,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/preferences/bot-favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bot Favorites Get */
+        get: operations["bot_favorites_get_pallas_api_preferences_bot_favorites_get"];
+        /** Bot Favorites Put */
+        put: operations["bot_favorites_put_pallas_api_preferences_bot_favorites_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/acl/rules": {
         parameters: {
             query?: never;
@@ -4597,6 +4615,11 @@ export interface components {
             /** Image */
             image?: string | null;
         };
+        /** BotFavoritesUpdate */
+        BotFavoritesUpdate: {
+            /** Accounts */
+            accounts?: number[];
+        };
         /** BotGitApplyBody */
         BotGitApplyBody: {
             /**
@@ -6542,6 +6565,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["_ApiOkResponse__ConsoleLoginChangeData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bot_favorites_get_pallas_api_preferences_bot_favorites_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bot_favorites_put_pallas_api_preferences_bot_favorites_put: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BotFavoritesUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

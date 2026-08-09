@@ -215,6 +215,26 @@ export type FetchInstancesOptions = {
   bypassCache?: boolean;
 };
 
+export type BotFavoritesData = {
+  initialized: boolean;
+  accounts: number[];
+};
+
+export async function fetchBotFavorites(): Promise<BotFavoritesData> {
+  const { data } = await http.get<{ ok: boolean; data: BotFavoritesData }>(
+    "/preferences/bot-favorites",
+  );
+  return data.data;
+}
+
+export async function putBotFavorites(accounts: number[]): Promise<BotFavoritesData> {
+  const { data } = await http.put<{ ok: boolean; data: BotFavoritesData }>(
+    "/preferences/bot-favorites",
+    { accounts },
+  );
+  return data.data;
+}
+
 let systemInflight: Promise<SystemData> | null = null;
 
 export async function fetchSystem(): Promise<SystemData> {

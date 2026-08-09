@@ -1,52 +1,52 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { fetchBotFavorites, putBotFavorites } from "@/api/consoleApi";
+import { pushConsoleToast } from "@/utils/consoleToast";
+import { BOT_FAVORITES_STORAGE_KEY, createBotFavoritesStore } from "./botFavoritesStore";
 
-const STORAGE_KEY = "pallas_fav_bot_accounts_v1";
+const store = createBotFavoritesStore({
+  fetchRemote: fetchBotFavorites,
+  putRemote: putBotFavorites,
+  onError: () => pushConsoleToast("收藏保存失败，已恢复原状态", "err"),
+});
 
-function readSet(): Set<number> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return new Set();
-    const data = JSON.parse(raw) as unknown;
-    if (!Array.isArray(data)) return new Set();
-    const s = new Set<number>();
-    for (const x of data) {
-      const n = typeof x === "number" ? x : parseInt(String(x), 10);
-      if (Number.isFinite(n) && n > 0) s.add(Math.floor(n));
+let browserSyncConsumers = 0;
+let stopBrowserSync: (() => void) | null = null;
+
+function connectBrowserSync(): () => void {
+  browserSyncConsumers += 1;
+  if (!stopBrowserSync) {
+    function sync(ev: StorageEvent) {
+      if (ev.key === BOT_FAVORITES_STORAGE_KEY) store.syncFromLocal();
     }
-    return s;
-  } catch {
-    return new Set();
+    function refresh() {
+      void store.refresh();
+    }
+    window.addEventListener("storage", sync);
+    window.addEventListener("focus", refresh);
+    stopBrowserSync = () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("focus", refresh);
+    };
   }
-}
-
-function writeSet(s: Set<number>) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...s].sort((a, b) => a - b)));
-  } catch {
-    /* ignore */
-  }
+  return () => {
+    browserSyncConsumers -= 1;
+    if (browserSyncConsumers === 0) {
+      stopBrowserSync?.();
+      stopBrowserSync = null;
+    }
+  };
 }
 
 export function useBotFavorites() {
-  const [favorites, setFavorites] = useState<ReadonlySet<number>>(() => readSet());
+  const favorites = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 
   useEffect(() => {
-    function sync(ev: StorageEvent) {
-      if (ev.key !== STORAGE_KEY) return;
-      setFavorites(readSet());
-    }
-    window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
+    void store.initialize();
+    return connectBrowserSync();
   }, []);
 
   const toggleFavorite = useCallback((account: number) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(account)) next.delete(account);
-      else next.add(account);
-      writeSet(next);
-      return next;
-    });
+    void store.toggle(account);
   }, []);
 
   return { favorites, toggleFavorite };
