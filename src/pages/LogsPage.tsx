@@ -101,7 +101,7 @@ export default function LogsPage() {
   const [pageReady, setPageReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scope, setScope] = useState<LogScope>("all");
-  const [logSource, setLogSource] = useState("all");
+  const [logSource, setLogSource] = useState("hub");
   const [logSources, setLogSources] = useState<string[]>([]);
   const [n, setN] = useState(200);
   const [payload, setPayload] = useState<LogsData | null>(null);
