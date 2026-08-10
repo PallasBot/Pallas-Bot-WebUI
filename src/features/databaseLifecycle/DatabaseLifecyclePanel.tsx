@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { DatabaseZap, Play, RefreshCw, Settings2, ShieldCheck } from "lucide-react";
+import { DatabaseZap, Play, Settings2, ShieldCheck } from "lucide-react";
 import {
   fetchDbLifecycleCatalog,
   fetchDbLifecycleJob,
@@ -12,8 +12,8 @@ import type { DbLifecyclePolicy } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
 import ConsoleConfirmModal from "@/components/ConsoleConfirmModal";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { formatLifecycleBytes, lifecycleRiskMeta } from "./model";
@@ -90,7 +90,7 @@ export default function DatabaseLifecyclePanel() {
     }
   }, [jobQ.data?.status, queryClient]);
 
-  const closeSheet = () => {
+  const closeDialog = () => {
     if (saving || previewing) return;
     setSelectedId(null);
   };
@@ -146,21 +146,9 @@ export default function DatabaseLifecyclePanel() {
     <section className="database-lifecycle" aria-label="数据库生命周期">
       <div className="database-lifecycle__intro">
         <div>
-          <p className="database-lifecycle__eyebrow">生命周期</p>
           <h3>数据保留与存储上限</h3>
           <p>已登记的数据集可设置自动维护；未知、配置与安全对象始终受保护。</p>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          icon={RefreshCw}
-          iconMotion="spin"
-          onClick={() => void queryClient.invalidateQueries({ queryKey: ["db-lifecycle-catalog"] })}
-          disabled={!catalog}
-        >
-          刷新
-        </Button>
       </div>
 
       {activeJob ? (
@@ -258,14 +246,14 @@ export default function DatabaseLifecyclePanel() {
         <p className="muted">正在读取生命周期目录…</p>
       )}
 
-      <Sheet open={Boolean(selected)} onOpenChange={(open) => !open && closeSheet()}>
-        <SheetContent side="right" className="database-lifecycle__sheet">
-          <SheetHeader>
-            <SheetTitle>{selected?.label ?? "生命周期策略"}</SheetTitle>
+      <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && closeDialog()}>
+        <DialogContent className="database-lifecycle__dialog gap-0 overflow-hidden bg-card p-0">
+          <DialogHeader className="border-b px-4 py-3 text-left">
+            <DialogTitle>{selected?.label ?? "生命周期策略"}</DialogTitle>
             <p className="muted m-0 text-sm">{selected?.present_objects.join("、") || "尚未发现物理对象"}</p>
-          </SheetHeader>
+          </DialogHeader>
           {selected && draft ? (
-            <div className="database-lifecycle__form">
+            <div className="database-lifecycle__form min-h-0 overflow-y-auto px-4 py-3">
               <label className="database-lifecycle__switch-row">
                 <span><strong>自动维护</strong><small>每天 04:45 在维护进程检查此策略。</small></span>
                 <Switch checked={draft.enabled} onCheckedChange={(enabled) => setDraft({ ...draft, enabled })} />
@@ -322,8 +310,8 @@ export default function DatabaseLifecyclePanel() {
               </div>
             </div>
           ) : null}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <ConsoleConfirmModal
         open={Boolean(preview && selected && draft)}

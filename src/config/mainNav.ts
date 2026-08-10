@@ -18,7 +18,7 @@ import {
   Images,
 } from "lucide-react";
 import { AI_OBSERVATION_DEFAULT_PATH } from "@/config/aiObservationSections";
-import { COMMUNITY_FEDERATION_NOTICE } from "@/config/navigationNotices";
+import { COMMUNITY_FEDERATION_NOTICE, DATABASE_LIFECYCLE_NOTICE } from "@/config/navigationNotices";
 import type { NavigationNotice } from "@/config/navigationNotices";
 
 export type MainNavItem = {
@@ -48,7 +48,7 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/plugin-store", label: "插件商店", section: "插件", icon: Store },
   { to: AI_OBSERVATION_DEFAULT_PATH, label: "AI 观测", section: "AI", icon: LayoutDashboard },
   { to: "/ai/config/provider", label: "AI 配置", section: "AI", icon: Sparkles },
-  { to: "/database", label: "数据库", section: "数据", icon: Database },
+  { to: "/database", label: "数据库", section: "数据", icon: Database, notice: DATABASE_LIFECYCLE_NOTICE },
   { to: "/database/backups", label: "备份管理", section: "数据", icon: Archive },
   {
     to: "/community",

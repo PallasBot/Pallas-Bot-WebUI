@@ -34,6 +34,7 @@ import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import DatabaseBackendPanel from "@/components/DatabaseBackendPanel";
 import DatabaseMigratePanel from "@/components/DatabaseMigratePanel";
 import DatabaseLifecyclePanel from "@/features/databaseLifecycle/DatabaseLifecyclePanel";
+import NoticeDot from "@/components/NoticeDot";
 import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
@@ -57,11 +58,13 @@ import {
 } from "@/components/ui/select";
 import UiInput from "@/components/ui/UiInput";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
+import { DATABASE_LIFECYCLE_NOTICE } from "@/config/navigationNotices";
 import { Code2, ChevronDown, Database, DatabaseZap, Eye, Layers, Play, Plus, Search, Table2, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
+import { isNavigationNoticeUnseen, markNavigationNoticeSeen } from "@/utils/navigationNotice";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -266,6 +269,15 @@ export default function DatabasePage() {
 
   const activeSection = section === "aggregate" && !showAggregate ? "tables" : section;
   const activeMeta = SECTION_META[activeSection];
+  const lifecycleNoticeUnseen =
+    activeSection !== "lifecycle" &&
+    isNavigationNoticeUnseen(DATABASE_LIFECYCLE_NOTICE.key, DATABASE_LIFECYCLE_NOTICE.revision);
+
+  useEffect(() => {
+    if (activeSection === "lifecycle") {
+      markNavigationNoticeSeen(DATABASE_LIFECYCLE_NOTICE.key, DATABASE_LIFECYCLE_NOTICE.revision);
+    }
+  }, [activeSection]);
 
   const backendLabel = !overview
     ? "—"
@@ -740,7 +752,12 @@ export default function DatabasePage() {
             <SelectContent align="start">
               {sectionOptions.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  <ChromeOptionLabel icon={s.icon}>{s.label}</ChromeOptionLabel>
+                  <ChromeOptionLabel icon={s.icon}>
+                    {s.label}
+                    {s.id === "lifecycle" && lifecycleNoticeUnseen ? (
+                      <NoticeDot title={DATABASE_LIFECYCLE_NOTICE.label} />
+                    ) : null}
+                  </ChromeOptionLabel>
                 </SelectItem>
               ))}
             </SelectContent>
