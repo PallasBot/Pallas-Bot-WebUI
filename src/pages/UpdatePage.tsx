@@ -301,7 +301,10 @@ export default function UpdatePage() {
   const botCallout = useMemo((): { kind: "warn" | "info"; text: string } | null => {
     if (!bot) return null;
     if (bot.deployment_mode === "docker") {
-      return { kind: "warn", text: "控制台不能 git 拉代码；请按下方步骤拉新镜像并重启容器。" };
+      return {
+        kind: "warn",
+        text: "控制台更新只覆盖当前容器，docker compose restart 后仍保留；重建容器会恢复为镜像版本。",
+      };
     }
     if (bot.deployment_mode === "release_tag_dirty") {
       return {
@@ -316,6 +319,10 @@ export default function UpdatePage() {
     if (!bot) return [] as string[];
     const parts: string[] = [botDeployLabel(bot.deployment_mode)];
     if (bot.git_available && bot.current_branch) parts.push(`分支 ${bot.current_branch}`);
+    if (bot.deployment_mode === "docker") {
+      if (bot.runtime_version) parts.push(`运行版 ${bot.runtime_version}`);
+      if (bot.image_version) parts.push(`镜像版 ${bot.image_version}`);
+    }
     if (bot.dirty && (bot.dirty_file_count ?? 0) > 0) parts.push(`改动 ${bot.dirty_file_count} 项`);
     return parts;
   }, [bot]);
@@ -1084,16 +1091,14 @@ export default function UpdatePage() {
             </div>
           </CardHeader>
           <CardContent className={UPDATE_PANEL_BD}>
-            {bot?.deployment_mode !== "docker" ? (
-              <BotGitUpdatePanel
-                disabled={busy && applyKind !== "bot"}
-                applyBusy={applyKind === "bot"}
-                applyPercent={applyPercent}
-                applyHint={applyHint}
-                confirm={confirm}
-                onApply={applyBotGit}
-              />
-            ) : null}
+            <BotGitUpdatePanel
+              disabled={busy && applyKind !== "bot"}
+              applyBusy={applyKind === "bot"}
+              applyPercent={applyPercent}
+              applyHint={applyHint}
+              confirm={confirm}
+              onApply={applyBotGit}
+            />
 
             {bot?.error ? (
               <p className="alert alert--err update-page__release-inline-alert">{bot.error}</p>
@@ -1110,20 +1115,20 @@ export default function UpdatePage() {
 
             {bot?.deployment_mode === "docker" ? (
               <section className="update-page__release-section update-page__docker-hint">
-                <h3 className="update-page__release-section-title">Docker 更新步骤</h3>
+                <h3 className="update-page__release-section-title">持久更新镜像</h3>
                 <ol className="update-page__docker-steps">
                   <li>
                     <code>docker compose pull pallasbot</code>
                   </li>
                   <li>
-                    <code>docker compose up -d pallasbot</code>（未换镜像时加 <code>--force-recreate</code>）
+                    <code>docker compose up -d pallasbot</code>
                   </li>
                   <li>
                     未用 <code>:latest</code> 时，先把 compose 里 image tag 改为目标版本
                   </li>
                 </ol>
                 <p className="muted update-page__docker-foot">
-                  数据与配置通常在卷中（<code>data/</code>、<code>config/pallas.toml</code>、<code>local/plugins/</code>）。
+                  以上操作会重建容器，并清除控制台安装的 Bot 覆盖版本；数据与配置卷不受影响。
                 </p>
               </section>
             ) : null}
@@ -1161,7 +1166,7 @@ export default function UpdatePage() {
               </ul>
             </details>
 
-            {bot?.has_update && bot?.deployment_mode !== "docker" ? (
+            {bot?.has_update ? (
               <p className="update-page__release-foot muted">
                 配置与数据请放在 <code>config/pallas.toml</code>、<code>data/</code>，避免改主仓 <code>src/</code>。
               </p>

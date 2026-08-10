@@ -341,6 +341,23 @@ export type ProtocolDockerPullJob = {
   finished_at?: string | null;
 };
 
+export type ProtocolDockerCapability = {
+  status: string;
+  ready: boolean;
+  message: string;
+  server_version?: string;
+};
+
+export async function protocolFetchDockerCapability(
+  mountUrl: string,
+): Promise<ProtocolDockerCapability> {
+  const { data } = await protocolHttp(mountUrl).get<{ capability?: ProtocolDockerCapability }>(
+    "/api/runtime/docker/capability",
+  );
+  if (!data?.capability) throw new Error("未返回 Docker 能力状态");
+  return data.capability;
+}
+
 export async function protocolFetchDockerPullJob(
   mountUrl: string,
   jobId: string,

@@ -2283,6 +2283,9 @@ export interface BotUpdateCheckData {
   dirty_file_count?: number;
   current_branch?: string;
   restart_available?: boolean;
+  image_version?: string;
+  runtime_version?: string;
+  container_overlay_update?: boolean;
   activation_policy?: ExtensionActivationPolicy | null;
 }
 
@@ -2311,6 +2314,9 @@ export type BotGitStatusData = {
   current_branch?: string;
   deployment_mode?: BotDeploymentMode | string;
   restart_available?: boolean;
+  image_version?: string;
+  runtime_version?: string;
+  container_overlay_update?: boolean;
 };
 
 export type BotGitHistoryItem = {

@@ -98,11 +98,12 @@ export default function BotGitUpdatePanel({
     staleTime: 30_000,
     retry: 1,
   });
+  const isDocker = statusQ.data?.deployment_mode === "docker";
 
   useEffect(() => {
     const data = statusQ.data;
     if (!data) return;
-    setMode(trackToMode(String(data.update_track || "")));
+    setMode(data.deployment_mode === "docker" ? "release" : trackToMode(String(data.update_track || "")));
     const preferred = String(data.update_branch || "").trim();
     const cur = String(data.current_branch || "").trim();
     const next = coerceTrackBranch(preferred || (cur !== "HEAD" ? cur : "") || "dev");
@@ -117,7 +118,9 @@ export default function BotGitUpdatePanel({
         branch: mode === "commit" ? branch : "",
         limit: HISTORY_LIMIT,
       }),
-    enabled: Boolean(statusQ.data?.git_available) && (mode === "release" || Boolean(branch)),
+    enabled:
+      (Boolean(statusQ.data?.git_available) || Boolean(isDocker && mode === "release")) &&
+      (mode === "release" || Boolean(branch)),
     staleTime: 20_000,
     retry: 1,
   });
@@ -247,7 +250,7 @@ export default function BotGitUpdatePanel({
     return <p className="muted text-sm">加载 Bot git 状态…</p>;
   }
 
-  if (statusQ.data && statusQ.data.git_available === false) {
+  if (statusQ.data && statusQ.data.git_available === false && !isDocker) {
     return null;
   }
 
@@ -259,36 +262,38 @@ export default function BotGitUpdatePanel({
             <Select
               value={mode}
               onValueChange={(v) => void onModeChange(v === "commit" ? "commit" : "release")}
-              disabled={locked}
+              disabled={locked || isDocker}
             >
               <SelectTrigger className={cn(CHROME_SELECT_TRIGGER, "w-[7.5rem]")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="release">Release</SelectItem>
-                <SelectItem value="commit">Commit</SelectItem>
+                {!isDocker ? <SelectItem value="commit">Commit</SelectItem> : null}
               </SelectContent>
             </Select>
           </ChromeField>
 
-          <ChromeField label="分支" icon={GitBranch} className={mode !== "commit" ? "opacity-45" : undefined}>
-            <Select
-              value={branch || undefined}
-              onValueChange={(v) => void onBranchChange(v)}
-              disabled={locked || mode !== "commit" || !branches.length}
-            >
-              <SelectTrigger className={cn(CHROME_SELECT_TRIGGER, "w-[8.5rem]")}>
-                <SelectValue placeholder="—" />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </ChromeField>
+          {!isDocker ? (
+            <ChromeField label="分支" icon={GitBranch} className={mode !== "commit" ? "opacity-45" : undefined}>
+              <Select
+                value={branch || undefined}
+                onValueChange={(v) => void onBranchChange(v)}
+                disabled={locked || mode !== "commit" || !branches.length}
+              >
+                <SelectTrigger className={cn(CHROME_SELECT_TRIGGER, "w-[8.5rem]")}>
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ChromeField>
+          ) : null}
 
           <div className="bot-git-panel__actions">
             <Button
@@ -309,25 +314,27 @@ export default function BotGitUpdatePanel({
               <ArrowUpToLine className={cn(BTN_ICO, "group-hover:-translate-y-0.5")} aria-hidden />
               更新到最新
             </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              className="group"
-              disabled={locked}
-              onClick={() =>
-                void runApply({
-                  ref: "",
-                  strategy: "force",
-                  restart: Boolean(statusQ.data?.restart_available),
-                  label: mode === "commit" ? `origin/${branch || "…"} 最新` : "最新 Release",
-                  direction: "update",
-                })
-              }
-            >
-              <Zap className={cn(BTN_ICO, "group-hover:scale-110 group-hover:rotate-6")} aria-hidden />
-              强制更新到最新
-            </Button>
+            {!isDocker ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="group"
+                disabled={locked}
+                onClick={() =>
+                  void runApply({
+                    ref: "",
+                    strategy: "force",
+                    restart: Boolean(statusQ.data?.restart_available),
+                    label: mode === "commit" ? `origin/${branch || "…"} 最新` : "最新 Release",
+                    direction: "update",
+                  })
+                }
+              >
+                <Zap className={cn(BTN_ICO, "group-hover:scale-110 group-hover:rotate-6")} aria-hidden />
+                强制更新到最新
+              </Button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -421,29 +428,34 @@ export default function BotGitUpdatePanel({
                             )}
                             {safeLabel}
                           </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
-                            className="group"
-                            disabled={locked}
-                            onClick={() =>
-                              void runApply({
-                                ref: item.ref,
-                                strategy: "force",
-                                restart: false,
-                                label: rowLabel(item),
-                                direction: rollback ? "rollback" : "update",
-                              })
-                            }
-                          >
-                            {rollback ? (
-                              <RotateCcw className={cn(BTN_ICO, "group-hover:-rotate-45")} aria-hidden />
-                            ) : (
-                              <Zap className={cn(BTN_ICO, "group-hover:scale-110 group-hover:rotate-6")} aria-hidden />
-                            )}
-                            {forceLabel}
-                          </Button>
+                          {!isDocker ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              className="group"
+                              disabled={locked}
+                              onClick={() =>
+                                void runApply({
+                                  ref: item.ref,
+                                  strategy: "force",
+                                  restart: false,
+                                  label: rowLabel(item),
+                                  direction: rollback ? "rollback" : "update",
+                                })
+                              }
+                            >
+                              {rollback ? (
+                                <RotateCcw className={cn(BTN_ICO, "group-hover:-rotate-45")} aria-hidden />
+                              ) : (
+                                <Zap
+                                  className={cn(BTN_ICO, "group-hover:scale-110 group-hover:rotate-6")}
+                                  aria-hidden
+                                />
+                              )}
+                              {forceLabel}
+                            </Button>
+                          ) : null}
                         </>
                       )}
                     </td>
