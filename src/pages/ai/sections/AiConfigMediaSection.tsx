@@ -1533,7 +1533,7 @@ export default function AiConfigMediaSection() {
                   : backendOptions.map((b) => b.value).join(", ")}
               </p>
               {(singQ.data?.speakers.speakers || []).length ? (
-                <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2 text-[11px]">
+                <ul className="grid grid-cols-2 gap-2 text-[11px] xl:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))]">
                   {(singQ.data?.speakers.speakers || []).map((row) => (
                     <li
                       key={row.id}
@@ -1628,7 +1628,7 @@ export default function AiConfigMediaSection() {
             </PluginConfigFormSection>
           </div>
         </StateBlock>
-        <div ref={singMappingSectionRef}>
+        <div ref={singMappingSectionRef} className="sing-audio-mapping">
           <PluginConfigFormSection
             title="音频映射"
             subtitle="左侧是命令前缀（如「一歌」→「一歌唱歌」），右侧是媒体服务音色 id。也可在上方音色列表点「添加映射」。"

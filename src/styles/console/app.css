@@ -16,6 +16,12 @@
   overflow: hidden;
 }
 
+@media (max-width: 560px) {
+  .sing-audio-mapping .string-map-field__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .shell__bg {
   pointer-events: none;
   position: fixed;
