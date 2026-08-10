@@ -22,7 +22,7 @@ export function useProtocolMount() {
   const pageReady = !systemQ.isLoading && !instQ.isLoading;
   const loadErr = systemQ.error || instQ.error;
   const mountErr =
-    pageReady && !mountUrl && snap?.webui_enabled !== false
+    pageReady && snap?.webui_enabled === true && !mountUrl
       ? "无法解析协议端挂载地址（请检查 webui_enabled 与 webui_path）"
       : null;
 
