@@ -7,8 +7,9 @@
 .database-lifecycle__job--failed { border-color: color-mix(in srgb, var(--danger) 44%, transparent); background: color-mix(in srgb, var(--danger) 9%, transparent); }
 .database-lifecycle__table-wrap { overflow-x: auto; }
 .database-lifecycle__table { min-width: 760px; }
+.database-lifecycle__table th, .database-lifecycle__table td { white-space: nowrap; }
 .database-lifecycle__name { display: flex; align-items: center; gap: 7px; min-width: 118px; }
-.database-lifecycle__objects { max-width: 220px; color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; overflow-wrap: anywhere; }
+.database-lifecycle__objects { max-width: 220px; color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; white-space: normal; overflow-wrap: anywhere; }
 .database-lifecycle__numeric { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .database-lifecycle__cards { display: none; }
 .database-lifecycle__protected { display: flex; gap: 12px; align-items: flex-start; border-top: 1px solid var(--border); padding-top: 12px; color: var(--text-muted); font-size: 12px; }

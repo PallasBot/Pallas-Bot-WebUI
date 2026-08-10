@@ -434,7 +434,7 @@ export default function DatabasePage() {
     });
   }
 
-  async function loadBrowseRows(table: string, page: number) {
+  async function loadBrowseRows(table: string, page: number, pageSize = prefs.tablePageSize) {
     if (!table) {
       setBrowseRows(null);
       return;
@@ -442,7 +442,7 @@ export default function DatabasePage() {
     setBrowseBusy(true);
     setErr("");
     try {
-      const limit = prefs.tablePageSize;
+      const limit = pageSize;
       const data = await fetchDbTableRows({
         table,
         offset: Math.max(0, (page - 1) * limit),
@@ -1200,7 +1200,7 @@ export default function DatabasePage() {
                     onPageSizeChange={(size) => {
                       prefs.setTablePageSize(size);
                       setBrowsePage(1);
-                      void loadBrowseRows(browseTable, 1);
+                      void loadBrowseRows(browseTable, 1, size);
                     }}
                   />
                 </>
