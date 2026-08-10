@@ -10961,7 +10961,9 @@ table.data.console-data-table .link-quiet {
   gap: 18px;
   --plugin-store-hub-surface: var(--bg-card);
   --plugin-store-hub-muted: color-mix(in srgb, var(--text-muted) 10%, var(--bg-card));
-  --plugin-store-hub-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --plugin-card-edge: var(--border-strong);
+  --plugin-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --plugin-store-hub-shadow: var(--plugin-card-shadow);
   --plugin-store-hub-radius: calc(var(--radius-md) + 2px);
   min-height: min(100%, 100%);
 }
@@ -10969,7 +10971,26 @@ table.data.console-data-table .link-quiet {
 html[data-theme="light"] .plugin-store-page--hub {
   --plugin-store-hub-surface: #ffffff;
   --plugin-store-hub-muted: #ececee;
-  --plugin-store-hub-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --plugin-card-edge: rgba(15, 23, 42, 0.12);
+  --plugin-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 2px 8px rgba(15, 23, 42, 0.06);
+  --plugin-store-hub-shadow: var(--plugin-card-shadow);
+}
+
+.plugins-page--hub {
+  --plugin-store-hub-surface: var(--bg-card);
+  --plugin-store-hub-muted: color-mix(in srgb, var(--text-muted) 10%, var(--bg-card));
+  --plugin-card-edge: var(--border-strong);
+  --plugin-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --plugin-store-hub-shadow: var(--plugin-card-shadow);
+  --plugin-store-hub-radius: calc(var(--radius-md) + 2px);
+}
+
+html[data-theme="light"] .plugins-page--hub {
+  --plugin-store-hub-surface: #ffffff;
+  --plugin-store-hub-muted: #ececee;
+  --plugin-card-edge: rgba(15, 23, 42, 0.12);
+  --plugin-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 2px 8px rgba(15, 23, 42, 0.06);
+  --plugin-store-hub-shadow: var(--plugin-card-shadow);
 }
 
 html[data-theme="light"] .plugin-store-page--hub .plugin-store-card--clickable:hover {
@@ -11222,7 +11243,7 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-page__tab-btn.is-
 }
 
 .plugin-store-page--hub .plugin-store-card {
-  border: 1px solid var(--border);
+  border: 1px solid var(--plugin-card-edge);
   border-radius: var(--plugin-store-hub-radius);
   box-shadow: var(--plugin-store-hub-shadow);
   min-height: 0;
@@ -11233,7 +11254,7 @@ html[data-layout="hub"][data-surface="solid"] .plugin-store-page--hub .plugin-st
 }
 
 html[data-theme="light"] .plugin-store-page--hub .plugin-store-card {
-  border-color: rgba(15, 23, 42, 0.08);
+  border-color: var(--plugin-card-edge);
 }
 
 .plugin-store-page--hub .plugin-store-card--installed {

@@ -18,6 +18,8 @@
   --surface-edge: var(--border);
   --surface-edge-glass: rgba(255, 255, 255, 0.12);
   --surface-divider: rgba(255, 255, 255, 0.05);
+  --config-panel-edge: rgba(255, 255, 255, 0.14);
+  --config-panel-shadow: 0 1px 4px color-mix(in srgb, var(--text) 10%, transparent);
   --text: #f4f4f5;
   --text-muted: #a1a1aa;
   --text-dim: #71717a;
@@ -543,6 +545,8 @@ html[data-theme="light"] {
   --border-base: hsl(240 4% 85%);
   --border: rgba(15, 23, 42, 0.06);
   --border-strong: rgba(15, 23, 42, 0.1);
+  --config-panel-edge: rgba(15, 23, 42, 0.14);
+  --config-panel-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
   --surface-edge: var(--border-base);
   --surface-edge-glass: hsl(240 4% 85% / 0.4);
   /* 卡内分割线：对齐暗色 0.8 的轻量感 */

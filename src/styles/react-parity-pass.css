@@ -608,6 +608,24 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .pl
   box-shadow: none;
 }
 
+/* 配置分组共用一套边框层级，弹窗浅色规则必须在同级之后覆盖。 */
+.plugin-config-group-card,
+.plugin-governance-panel__group,
+.string-map-field__group,
+.plugin-config-workspace--dialog .plugin-config-group-card,
+.plugin-config-workspace--dialog .plugin-governance-panel .plugin-governance-panel__group,
+html[data-theme="light"] .plugin-config-group-card,
+html[data-layout="hub"][data-theme="light"] .plugin-config-group-card,
+html[data-theme="light"] .plugin-governance-panel__group,
+html[data-layout="hub"][data-theme="light"] .plugin-governance-panel__group,
+html[data-theme="light"] .plugin-config-workspace--dialog .plugin-config-group-card,
+html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .plugin-config-group-card,
+html[data-theme="light"] .plugin-config-workspace--dialog .plugin-governance-panel .plugin-governance-panel__group,
+html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .plugin-governance-panel .plugin-governance-panel__group {
+  border-color: var(--config-panel-edge);
+  box-shadow: var(--config-panel-shadow);
+}
+
 .plugin-governance-panel--dialog .plugin-governance-panel__group {
   gap: 12px;
   padding: 16px 18px 16px;
