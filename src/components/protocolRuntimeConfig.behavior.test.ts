@@ -54,3 +54,32 @@ describe("SnowLuma Runtime 配置即时回显", () => {
     );
   });
 });
+
+describe("协议账号昵称独立保存", () => {
+  it("只提交 display_name 并立即刷新列表", () => {
+    expect(accountWorkspaceSource).toContain("async function saveDisplayName()");
+    expect(accountWorkspaceSource).toContain(
+      "{ display_name: displayName.trim() || accountId },\n          false,",
+    );
+    expect(accountWorkspaceSource).toContain(
+      'qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] })',
+    );
+    expect(accountWorkspaceSource).toContain(
+      'qc.invalidateQueries({ queryKey: ["instances"] })',
+    );
+  });
+
+  it("底部连接配置保存不再包含实例名", () => {
+    const keyStart = accountWorkspaceSource.indexOf("function connectionSettingsKey()");
+    const keyEnd = accountWorkspaceSource.indexOf("function validateRuntimeSettings()", keyStart);
+    const connectionKey = accountWorkspaceSource.slice(keyStart, keyEnd);
+    expect(keyStart).toBeGreaterThan(-1);
+    expect(connectionKey).not.toContain("display_name");
+
+    const saveStart = accountWorkspaceSource.indexOf("async function saveSettings()");
+    const saveEnd = accountWorkspaceSource.indexOf("async function saveDisplayName()", saveStart);
+    const saveSettings = accountWorkspaceSource.slice(saveStart, saveEnd);
+    expect(saveStart).toBeGreaterThan(-1);
+    expect(saveSettings).not.toContain("display_name");
+  });
+});

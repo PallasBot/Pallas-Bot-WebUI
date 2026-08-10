@@ -69,6 +69,7 @@ import {
   Play,
   QrCode,
   RotateCw,
+  Save,
   Square,
   Syringe,
   Trash2,
@@ -169,6 +170,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     const [deleteBusy, setDeleteBusy] = useState(false);
     const [deleteErr, setDeleteErr] = useState("");
     const [saveBusy, setSaveBusy] = useState(false);
+    const [displayNameSaving, setDisplayNameSaving] = useState(false);
     const [systemLocal, setSystemLocal] = useState<SystemData | null>(system);
 
     const [displayName, setDisplayName] = useState("");
@@ -202,6 +204,10 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       const name = (account?.display_name || "").trim();
       return name || `账号 ${accountId}`;
     }, [account, accountId]);
+
+    const normalizedDisplayName = displayName.trim() || accountId;
+    const savedDisplayName = String(account?.display_name ?? "").trim() || accountId;
+    const displayNameChanged = normalizedDisplayName !== savedDisplayName;
 
     const isLinuxDocker = protocolAccountIsLinuxDocker(account as Record<string, unknown> | null);
 
@@ -456,7 +462,6 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         setWsToken(nextWsToken);
         setSavedConnectionSettings(
           JSON.stringify({
-            display_name: nextDisplayName.trim(),
             webui_port: nextWebuiPort.trim(),
             ws_url: nextWsUrl.trim(),
             ws_name: nextWsName.trim(),
@@ -524,7 +529,6 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
 
     function connectionSettingsKey(): string {
       return JSON.stringify({
-        display_name: displayName.trim(),
         webui_port: webuiPort.trim(),
         ws_url: wsUrl.trim(),
         ws_name: wsName.trim(),
@@ -623,7 +627,6 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         }
         if (connectionChanged) {
           const body: Record<string, unknown> = {
-            display_name: displayName.trim(),
             ws_url: wsUrl.trim(),
             ws_name: wsName.trim(),
             ws_token: wsToken,
@@ -654,6 +657,37 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         notify(protocolApiErrorMessage(e, "保存失败"), "err");
       } finally {
         setSaveBusy(false);
+      }
+    }
+
+    async function saveDisplayName() {
+      if (!mountUrl || !accountId || displayNameSaving || !displayNameChanged) return;
+      setDisplayNameSaving(true);
+      try {
+        const result = await protocolUpdateAccount(
+          mountUrl,
+          accountId,
+          { display_name: displayName.trim() || accountId },
+          false,
+        );
+        const savedAccount = result.account;
+        const nextDisplayName = String(savedAccount?.display_name ?? normalizedDisplayName);
+        setDisplayName(nextDisplayName);
+        setAccount((current) => {
+          if (savedAccount) return savedAccount;
+          if (!current) return current;
+          return { ...current, display_name: nextDisplayName };
+        });
+        if (savedAccount) onAccountLoaded?.(savedAccount);
+        notify("实例名已保存", "ok");
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] }),
+          qc.invalidateQueries({ queryKey: ["instances"] }),
+        ]);
+      } catch (e) {
+        notify(protocolApiErrorMessage(e, "实例名保存失败"), "err");
+      } finally {
+        setDisplayNameSaving(false);
       }
     }
 
@@ -1274,12 +1308,26 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                   <FormSectionDivider title="实例" />
                   <div className="protocol-account-workspace__form-grid">
                     <SettingsFormField label="实例名" hint="控制台与列表中的展示称呼。">
-                      <UiInput
-                        type="text"
-                        autoComplete="off"
-                        value={displayName}
-                        onValueChange={setDisplayName}
-                      />
+                      <div className="flex min-w-0 items-center gap-2">
+                        <UiInput
+                          type="text"
+                          autoComplete="off"
+                          value={displayName}
+                          onValueChange={setDisplayName}
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="shrink-0"
+                          title="保存实例名"
+                          aria-label="保存实例名"
+                          disabled={!displayNameChanged || displayNameSaving}
+                          icon={Save}
+                          iconBusy={displayNameSaving}
+                          onClick={() => void saveDisplayName()}
+                        />
+                      </div>
                     </SettingsFormField>
                     <SettingsFormField
                       label="原生 WebUI 端口"
@@ -1454,12 +1502,26 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                   </div>
                   <div className="panel__bd protocol-account-workspace__form-grid">
                     <SettingsFormField label="实例名" hint="控制台与列表中的展示称呼。">
-                      <UiInput
-                        type="text"
-                        autoComplete="off"
-                        value={displayName}
-                        onValueChange={setDisplayName}
-                      />
+                      <div className="flex min-w-0 items-center gap-2">
+                        <UiInput
+                          type="text"
+                          autoComplete="off"
+                          value={displayName}
+                          onValueChange={setDisplayName}
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="shrink-0"
+                          title="保存实例名"
+                          aria-label="保存实例名"
+                          disabled={!displayNameChanged || displayNameSaving}
+                          icon={Save}
+                          iconBusy={displayNameSaving}
+                          onClick={() => void saveDisplayName()}
+                        />
+                      </div>
                     </SettingsFormField>
                     <SettingsFormField
                       label="原生 WebUI 端口"
