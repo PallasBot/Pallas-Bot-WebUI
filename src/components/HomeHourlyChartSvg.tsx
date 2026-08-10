@@ -8,6 +8,8 @@ export default function HomeHourlyChartSvg({ pack }: { pack: HourlyChartPack }) 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverHour, setHoverHour] = useState<number | null>(null);
   const [tooltipX, setTooltipX] = useState(0);
+  const [tooltipY, setTooltipY] = useState(0);
+  const [tooltipBelow, setTooltipBelow] = useState(false);
 
   const hoverX = hoverHour != null ? pack.left + (hoverHour / 23) * pack.innerW : null;
   const hoverRows =
@@ -36,6 +38,10 @@ export default function HomeHourlyChartSvg({ pack }: { pack: HourlyChartPack }) 
     const rect = wrap.getBoundingClientRect();
     const pad = 12;
     setTooltipX(Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left)));
+    const relativeY = ev.clientY - rect.top;
+    const below = relativeY < 96;
+    setTooltipY(below ? Math.min(rect.height - pad, relativeY + 8) : Math.max(pad, relativeY - 8));
+    setTooltipBelow(below);
   }
 
   return (
@@ -100,7 +106,11 @@ export default function HomeHourlyChartSvg({ pack }: { pack: HourlyChartPack }) 
         ) : null}
       </svg>
       {hoverHour != null && hoverRows.length ? (
-        <div className="home-plugin-hourly-chart__tooltip" style={{ left: `${tooltipX}px` }} role="status">
+        <div
+          className={`home-plugin-hourly-chart__tooltip${tooltipBelow ? " home-plugin-hourly-chart__tooltip--below" : ""}`}
+          style={{ left: `${tooltipX}px`, top: `${tooltipY}px` }}
+          role="status"
+        >
           <div className="home-plugin-hourly-chart__tooltip-hour">{hoverHour}:00</div>
           {hoverRows.map((r) => (
             <div key={r.label} className="home-plugin-hourly-chart__tooltip-row">

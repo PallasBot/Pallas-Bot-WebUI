@@ -43,6 +43,8 @@ export default function GsDualAxisTrendChart({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [tooltipX, setTooltipX] = useState(0);
+  const [tooltipY, setTooltipY] = useState(0);
+  const [tooltipBelow, setTooltipBelow] = useState(false);
   const [animKey, setAnimKey] = useState(0);
 
   const pack = useMemo(() => buildGsTrendChartPack(rows), [rows]);
@@ -87,7 +89,12 @@ export default function GsDualAxisTrendChart({
       const rect = wrap.getBoundingClientRect();
       const pad = 12;
       const nextX = Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left));
+      const relativeY = ev.clientY - rect.top;
+      const below = relativeY < 96;
+      const nextY = below ? Math.min(rect.height - pad, relativeY + 8) : Math.max(pad, relativeY - 8);
       setTooltipX((prev) => (Math.abs(prev - nextX) < 0.5 ? prev : nextX));
+      setTooltipY((prev) => (Math.abs(prev - nextY) < 0.5 ? prev : nextY));
+      setTooltipBelow((prev) => (prev === below ? prev : below));
     },
     [pack],
   );
@@ -236,7 +243,11 @@ export default function GsDualAxisTrendChart({
             </svg>
 
             {hoverRow && hoverIndex != null ? (
-              <div className="gs-trend-chart__tooltip" style={{ left: `${tooltipX}px` }} role="status">
+              <div
+                className={`gs-trend-chart__tooltip${tooltipBelow ? " gs-trend-chart__tooltip--below" : ""}`}
+                style={{ left: `${tooltipX}px`, top: `${tooltipY}px` }}
+                role="status"
+              >
                 <div className="gs-trend-chart__tooltip-date">{fmtDateLabel(hoverRow.date)}</div>
                 {pack.series.map((s) => (
                   <div key={`tip-${s.def.id}`} className="gs-trend-chart__tooltip-row">
