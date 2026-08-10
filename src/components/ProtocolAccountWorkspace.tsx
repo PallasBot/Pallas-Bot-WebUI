@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import "@/styles/protocol-account-workspace.css";
 import type { NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import { copyTextToClipboard } from "@/utils/clipboard";
@@ -154,6 +155,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     },
     ref,
   ) {
+    const qc = useQueryClient();
     const isDialog = presentation === "dialog";
     const showTabNav = !hideTabNav;
     const logPreRef = useRef<HTMLPreElement>(null);
@@ -644,6 +646,10 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         }
         notify(savedMessage, "ok");
         await loadAccount(false);
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] }),
+          qc.invalidateQueries({ queryKey: ["instances"] }),
+        ]);
       } catch (e) {
         notify(protocolApiErrorMessage(e, "保存失败"), "err");
       } finally {

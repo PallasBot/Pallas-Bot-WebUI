@@ -443,7 +443,7 @@ export async function protocolCreateSnowlumaRuntime(
 export async function protocolUpdateSnowlumaRuntime(
   mountUrl: string,
   runtimeId: string,
-  payload: { snowluma_docker_image: string },
+  payload: { display_name?: string; snowluma_docker_image?: string },
 ): Promise<SnowlumaRuntimeRow | null> {
   const { data } = await protocolHttp(mountUrl).put<{ runtime?: SnowlumaRuntimeRow }>(
     `/api/snowluma/runtimes/${encodeURIComponent(runtimeId)}`,

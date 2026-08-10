@@ -206,6 +206,7 @@ export default function ProtocolRuntimeTab() {
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["protocol-snowluma-runtimes", mountUrl] });
     void qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] });
+    void qc.invalidateQueries({ queryKey: ["instances"] });
   }, [qc, mountUrl]);
 
   function setSelectedId(runtimeId: string, checked: boolean) {

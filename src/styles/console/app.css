@@ -8548,13 +8548,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .protocol-runtime-row__actions > .ui-btn {
     flex: 1 1 calc(50% - 4px);
   }
-  .protocol-runtime-member {
-    flex-wrap: wrap;
-  }
-  .protocol-runtime-member__actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
   .protocol-runtime-attach {
     flex-wrap: wrap;
   }

@@ -11,6 +11,8 @@ import {
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import ProtocolDockerImageSelect from "@/components/protocol/ProtocolDockerImageSelect";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -63,13 +65,16 @@ export default function ProtocolRuntimeConfigDialog({
   const again = useConfirmAgain();
   const [memberBusyKey, setMemberBusyKey] = useState<string | null>(null);
   const [addAccountId, setAddAccountId] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [dockerImage, setDockerImage] = useState("");
-  const [imageSaving, setImageSaving] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   const runtimeId = runtime?.id ?? "";
   useEffect(() => {
-    if (open) setDockerImage(String(runtime?.snowluma_docker_image ?? "").trim());
-  }, [open, runtime?.id, runtime?.snowluma_docker_image]);
+    if (!open) return;
+    setDisplayName(String(runtime?.display_name ?? "").trim());
+    setDockerImage(String(runtime?.snowluma_docker_image ?? "").trim());
+  }, [open, runtime?.id, runtime?.display_name, runtime?.snowluma_docker_image]);
 
   const members = useMemo(
     () => (runtime?.member_account_ids ?? []).map((id) => String(id || "").trim()).filter(Boolean),
@@ -109,31 +114,27 @@ export default function ProtocolRuntimeConfigDialog({
       : "";
   const webuiHref = webuiPort ? snowlumaRuntimeWebUiHref(runtime, accounts, system) : null;
   const title = runtime ? runtimeTitle(runtime) : "Runtime";
-  const busy = memberBusyKey != null || imageSaving;
+  const busy = memberBusyKey != null || settingsSaving;
 
-  async function saveDockerImage() {
+  async function saveRuntimeSettings() {
     if (!mountUrl || !runtimeId) return;
-    setImageSaving(true);
+    setSettingsSaving(true);
     try {
       await protocolUpdateSnowlumaRuntime(mountUrl, runtimeId, {
+        display_name: displayName.trim() || runtimeId,
         snowluma_docker_image: dockerImage.trim(),
       });
-      const cleared = !dockerImage.trim();
       pushConsoleToast(
         runtime?.process_running
-          ? cleared
-            ? "已恢复默认镜像配置，当前容器不受影响；下次启动时使用。"
-            : "镜像配置已保存，当前容器不受影响；下次启动时使用。"
-          : cleared
-            ? "已恢复默认镜像配置，下次启动时使用。"
-            : "镜像配置已保存，下次启动时使用。",
+          ? "Runtime 配置已保存，当前容器不会重启；镜像变更将在下次启动时使用。"
+          : "Runtime 配置已保存；镜像变更将在下次启动时使用。",
         "ok",
       );
       onChanged?.();
     } catch (e) {
-      pushConsoleToast(protocolApiErrorMessage(e, "保存镜像配置失败"), "err");
+      pushConsoleToast(protocolApiErrorMessage(e, "保存 Runtime 配置失败"), "err");
     } finally {
-      setImageSaving(false);
+      setSettingsSaving(false);
     }
   }
 
@@ -287,6 +288,17 @@ export default function ProtocolRuntimeConfigDialog({
 
         <div className="plugin-config-dialog__bd protocol-runtime-config-dialog__bd min-h-[200px] flex-1 space-y-4 overflow-auto px-4 py-3">
           <section className="space-y-2">
+            <Label htmlFor="runtime-display-name">Runtime 名称</Label>
+            <Input
+              id="runtime-display-name"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              disabled={busy}
+              placeholder={runtimeId || "SnowLuma Runtime"}
+            />
+          </section>
+
+          <section className="space-y-2">
             <div className="space-y-1">
               <h3 className="text-xs font-medium text-muted-foreground">Docker 镜像</h3>
               <p className="text-xs text-muted-foreground">仅保存配置，不会重启或重建当前 Runtime；下次启动时使用。</p>
@@ -302,8 +314,8 @@ export default function ProtocolRuntimeConfigDialog({
                   placeholder="使用默认 SnowLuma 镜像"
                 />
               </div>
-              <Button type="button" size="sm" disabled={busy} onClick={() => void saveDockerImage()}>
-                {imageSaving ? "保存中…" : "保存镜像"}
+              <Button type="button" size="sm" disabled={busy} onClick={() => void saveRuntimeSettings()}>
+                {settingsSaving ? "保存中…" : "保存配置"}
               </Button>
             </div>
           </section>
