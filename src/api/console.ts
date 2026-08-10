@@ -1120,6 +1120,8 @@ export type SingSpeakersPayload = {
   default_speaker?: string;
   preferred_backend?: string;
   speaker_backends?: Record<string, string>;
+  song_cache_days?: number;
+  song_cache_size?: number;
   writable?: boolean;
 };
 export type SingBackendsPayload = {
@@ -1330,10 +1332,14 @@ export async function putSingDefaults(body: {
   default_speaker?: string;
   preferred_backend?: string;
   speaker_backends?: Record<string, string>;
+  song_cache_days?: number;
+  song_cache_size?: number;
 }): Promise<{
   default_speaker?: string;
   preferred_backend?: string;
   speaker_backends?: Record<string, string>;
+  song_cache_days?: number;
+  song_cache_size?: number;
 }> {
   const { data: res } = await http.put("/common-config/llm/media-models/sing/defaults", body);
   return unwrapNestedEnvelope(res);

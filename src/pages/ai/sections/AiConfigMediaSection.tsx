@@ -281,6 +281,8 @@ export default function AiConfigMediaSection() {
   const [defaultSpeaker, setDefaultSpeaker] = useState("");
   const [preferredBackend, setPreferredBackend] = useState("");
   const [speakerBackends, setSpeakerBackends] = useState<Record<string, string>>({});
+  const [songCacheDays, setSongCacheDays] = useState("");
+  const [songCacheSize, setSongCacheSize] = useState("");
   const [ttsRef, setTtsRef] = useState("");
   const [ttsPrompt, setTtsPrompt] = useState("");
   const [ttsPromptLang, setTtsPromptLang] = useState("");
@@ -328,6 +330,10 @@ export default function AiConfigMediaSection() {
     const sp = singQ.data?.speakers;
     if (sp?.default_speaker) setDefaultSpeaker(sp.default_speaker);
     if (sp?.preferred_backend != null) setPreferredBackend(sp.preferred_backend || "");
+    if (sp) {
+      setSongCacheDays(sp.song_cache_days != null ? String(sp.song_cache_days) : "");
+      setSongCacheSize(sp.song_cache_size != null ? String(sp.song_cache_size) : "");
+    }
     const map: Record<string, string> = { ...(sp?.speaker_backends || {}) };
     for (const row of sp?.speakers || []) {
       if (row.preferred_backend) map[row.id] = row.preferred_backend;
@@ -689,18 +695,49 @@ export default function AiConfigMediaSection() {
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const singMut = useMutation({
-    mutationFn: () =>
-      putSingDefaults({
-        default_speaker: defaultSpeaker,
-        preferred_backend: preferredBackend,
-        speaker_backends: speakerBackends,
-      }),
+    mutationFn: (body: {
+      default_speaker: string;
+      preferred_backend: string;
+      speaker_backends: Record<string, string>;
+      song_cache_days: number;
+      song_cache_size: number;
+    }) => putSingDefaults(body),
     onSuccess: async () => {
       notifyOk("唱歌默认已保存");
       await qc.invalidateQueries({ queryKey: ["sing-models"] });
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
+  const saveSingDefaults = async () => {
+    const songCacheDaysNum = Number(songCacheDays);
+    if (
+      !songCacheDays.trim()
+      || !Number.isInteger(songCacheDaysNum)
+      || songCacheDaysNum < 1
+      || songCacheDaysNum > 3650
+    ) {
+      notifyErr("请填写 1 到 3650 的歌曲缓存保留天数");
+      return false;
+    }
+    const songCacheSizeNum = Number(songCacheSize);
+    if (
+      !songCacheSize.trim()
+      || !Number.isInteger(songCacheSizeNum)
+      || songCacheSizeNum < 0
+      || songCacheSizeNum > 10000
+    ) {
+      notifyErr("请填写 0 到 10000 的缓存保护数量");
+      return false;
+    }
+    await singMut.mutateAsync({
+      default_speaker: defaultSpeaker,
+      preferred_backend: preferredBackend,
+      speaker_backends: speakerBackends,
+      song_cache_days: songCacheDaysNum,
+      song_cache_size: songCacheSizeNum,
+    });
+    return true;
+  };
   const ttsMut = useMutation({
     mutationFn: () => putTtsDefaults({ ref_audio_path: ttsRef, prompt_text: ttsPrompt, prompt_lang: ttsPromptLang, text_lang: ttsTextLang }),
     onSuccess: () => notifyOk("TTS 默认已保存"), onError: (e) => notifyErr(axiosErrorDetail(e)),
@@ -720,9 +757,9 @@ export default function AiConfigMediaSection() {
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
-  const singSaveRef = useRef(singMut.mutateAsync);
+  const singSaveRef = useRef(saveSingDefaults);
   const ttsSaveRef = useRef(ttsMut.mutateAsync);
-  singSaveRef.current = singMut.mutateAsync;
+  singSaveRef.current = saveSingDefaults;
   ttsSaveRef.current = ttsMut.mutateAsync;
   const payload = (statusQ.data?.data || {}) as Record<string, unknown>;
   const loggedIn = Boolean(payload.success) && Boolean(payload.session);
@@ -898,8 +935,8 @@ export default function AiConfigMediaSection() {
           }
           onClick={() => {
             void (async () => {
-              await singSaveRef.current();
-              if (singPluginStatus.hasData) await singWorkspaceRef.current?.save();
+              const defaultsSaved = await singSaveRef.current();
+              if (defaultsSaved && singPluginStatus.hasData) await singWorkspaceRef.current?.save();
             })();
           }}
         >
@@ -1602,7 +1639,7 @@ export default function AiConfigMediaSection() {
               subtitle="点歌时未指定音色时用默认音色；未按音色指定推理方式时用全局优先。"
               bodyClassName="!grid-cols-1 gap-3"
             >
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 min-[561px]:grid-cols-2 gap-3">
                 <AiConfigField label="默认音色" description="未指定时使用的唱歌音色。">
                   <AiOptionSelect
                     value={defaultSpeaker}
@@ -1622,6 +1659,30 @@ export default function AiConfigMediaSection() {
                     placeholder="选择推理方式"
                     emptyLabel="（未指定）"
                     onValueChange={setPreferredBackend}
+                  />
+                </AiConfigField>
+                <AiConfigField
+                  label="歌曲缓存保留天数"
+                  description="超过天数且不在保护范围内会在每日清理删除；保存后下一次每日清理生效。"
+                >
+                  <Input
+                    type="number"
+                    min={1}
+                    max={3650}
+                    value={songCacheDays}
+                    onChange={(e) => setSongCacheDays(e.target.value)}
+                  />
+                </AiConfigField>
+                <AiConfigField
+                  label="缓存保护数量"
+                  description="数量按最近访问保护且不是磁盘容量；保存后下一次每日清理生效。"
+                >
+                  <Input
+                    type="number"
+                    min={0}
+                    max={10000}
+                    value={songCacheSize}
+                    onChange={(e) => setSongCacheSize(e.target.value)}
                   />
                 </AiConfigField>
               </div>

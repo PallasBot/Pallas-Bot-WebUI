@@ -5642,6 +5642,18 @@ export interface components {
             /** Error */
             error?: null;
         };
+        /** _ApiOkResponse[_LlmSingDefaultsData] */
+        _ApiOkResponse__LlmSingDefaultsData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_LlmSingDefaultsData"];
+            /** Error */
+            error?: null;
+        };
         /** _ApiOkResponse[_ServiceGatewaysConnectivityCheckData] */
         _ApiOkResponse__ServiceGatewaysConnectivityCheckData_: {
             /**
@@ -6564,6 +6576,38 @@ export interface components {
             submit_gate?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /** _LlmSingDefaultsBody */
+        _LlmSingDefaultsBody: {
+            /** Default Speaker */
+            default_speaker?: string | null;
+            /** Preferred Backend */
+            preferred_backend?: string | null;
+            /** Speaker Backends */
+            speaker_backends?: {
+                [key: string]: string;
+            } | null;
+            /** Song Cache Days */
+            song_cache_days?: number | null;
+            /** Song Cache Size */
+            song_cache_size?: number | null;
+        };
+        /** _LlmSingDefaultsData */
+        _LlmSingDefaultsData: {
+            /** Default Speaker */
+            default_speaker: string;
+            /** Preferred Backend */
+            preferred_backend: string;
+            /** Speaker Backends */
+            speaker_backends: {
+                [key: string]: string;
+            };
+            /** Song Cache Days */
+            song_cache_days: number;
+            /** Song Cache Size */
+            song_cache_size: number;
+            /** Writable */
+            writable?: boolean | null;
         };
         /** _LlmTtsHealthData */
         _LlmTtsHealthData: {
@@ -13368,9 +13412,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["_LlmSingDefaultsBody"];
             };
         };
         responses: {
@@ -13380,7 +13422,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse__LlmSingDefaultsData_"];
                 };
             };
             /** @description Validation Error */
