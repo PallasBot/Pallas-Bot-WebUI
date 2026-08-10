@@ -6373,23 +6373,17 @@ export interface components {
             /** Command Permission Overrides */
             command_permission_overrides?: {
                 [key: string]: string;
-            };
+            } | null;
             /** Command Limit Overrides */
             command_limit_overrides?: {
                 [key: string]: number;
-            };
-            /**
-             * Global Disable
-             * @default false
-             */
-            global_disable: boolean;
-            /**
-             * Help Hidden
-             * @default false
-             */
-            help_hidden: boolean;
+            } | null;
+            /** Global Disable */
+            global_disable?: boolean | null;
+            /** Help Hidden */
+            help_hidden?: boolean | null;
             /** Blocked User Ids */
-            blocked_user_ids?: number[];
+            blocked_user_ids?: number[] | null;
         };
         /** _RequestActionBody */
         _RequestActionBody: {

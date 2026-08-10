@@ -625,10 +625,10 @@ export interface PluginGovernanceData {
 }
 
 export interface PluginGovernanceBody {
-  command_permission_overrides: Record<string, string>;
-  command_limit_overrides: Record<string, number>;
-  global_disable: boolean;
-  help_hidden: boolean;
+  command_permission_overrides?: Record<string, string>;
+  command_limit_overrides?: Record<string, number>;
+  global_disable?: boolean;
+  help_hidden?: boolean;
   blocked_user_ids?: number[];
 }
 
