@@ -242,6 +242,28 @@
   vertical-align: middle;
 }
 
+.update-page__status-pill--current,
+.bot-git-panel__badge--latest {
+  border-color: color-mix(in srgb, var(--border, #e5e7eb) 78%, var(--text-muted, #64748b));
+  background: color-mix(in srgb, var(--surface-muted, #f8fafc) 72%, transparent);
+  color: var(--text-muted, #64748b);
+}
+
+.update-page__status-pill--available {
+  border-color: color-mix(in srgb, #22a06b 35%, var(--border, #e5e7eb));
+  background: color-mix(in srgb, #22a06b 9%, transparent);
+  color: color-mix(in srgb, #117a4e 82%, var(--text, #1f2937));
+}
+
+.update-page__status-dot {
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 999px;
+  background: #22a06b;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #22a06b 14%, transparent);
+}
+
 .update-page__bd p {
   margin: 0 0 6px;
 }

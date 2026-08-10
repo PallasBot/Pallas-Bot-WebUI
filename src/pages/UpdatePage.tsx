@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import "@/styles/update-page.css";
 import { axiosErrorDetail } from "@/api/http";
-import { fetchPluginConfig, putPluginConfig } from "@/api/console";
+import { fetchAiInstallStatus, fetchPluginConfig, putPluginConfig } from "@/api/console";
 import {
   fetchUpdateChangelog,
   fetchUpdateCheckAll,
@@ -24,6 +24,7 @@ import { waitForUpdateApplyJob } from "@/utils/updateApplyJobStream";
 import { InstallJobFailedError, InstallJobStreamInterruptedError } from "@/utils/installJobStream";
 import { getActiveJob } from "@/utils/activeJobSession";
 import { pallasBotVersionLabel, updateCheckCurrentTagLabel } from "@/utils/versionDisplay";
+import { aiRuntimeUpdateOverview } from "@/utils/updateOverview";
 import {
   PALLAS_BOT_DOC,
   PALLAS_BOT_RELEASES,
@@ -67,6 +68,7 @@ import {
   Bot,
   Check,
   ChevronRight,
+  Cpu,
   Download,
   ExternalLink,
   LayoutDashboard,
@@ -277,6 +279,7 @@ export default function UpdatePage() {
     cron_minute: 0,
   });
   const q = useQuery({ queryKey: ["update-check-all"], queryFn: fetchUpdateCheckAll });
+  const aiInstallQ = useQuery({ queryKey: ["ai-install"], queryFn: fetchAiInstallStatus });
   const autoQ = useQuery({
     queryKey: ["webui-auto-update-status"],
     queryFn: fetchWebuiAutoUpdateStatus,
@@ -285,6 +288,7 @@ export default function UpdatePage() {
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
   const web = q.data?.webui;
   const bot = q.data?.bot;
+  const aiRuntime = aiRuntimeUpdateOverview(aiInstallQ.data || {});
 
   const webCurrentDisplay = updateCheckCurrentTagLabel(web?.current_tag);
   const botCurrentDisplay = pallasBotVersionLabel(undefined, bot);
@@ -328,11 +332,11 @@ export default function UpdatePage() {
   }, [bot]);
 
   const updateMastheadLead = useMemo(() => {
-    if (!web && !bot) return "WebUI 与 Bot 版本更新。";
-    const n = (web?.has_update ? 1 : 0) + (bot?.has_update ? 1 : 0);
+    if (!web && !bot && !aiInstallQ.data) return "WebUI、Bot 与 AI Runtime 版本更新。";
+    const n = (web?.has_update ? 1 : 0) + (bot?.has_update ? 1 : 0) + (aiRuntime.state === "update_available" ? 1 : 0);
     if (n > 0) return `有 ${n} 项可更新`;
     return "均已是最新";
-  }, [bot, web]);
+  }, [aiInstallQ.data, aiRuntime.state, bot, web]);
 
   const checkedAtDisplay = formatCheckedAt(q.data?.checked_at);
   const webApplyDisabled = busy || !web?.has_update || !web?.latest_tag;
@@ -944,11 +948,11 @@ export default function UpdatePage() {
               <PanelTitleIcon icon={LayoutDashboard} />
               WebUI
               {web?.has_update ? (
-                <Badge className={UPDATE_STATUS_PILL} variant="warn">
-                  有更新
+                <Badge className={`${UPDATE_STATUS_PILL} update-page__status-pill--available`} variant="outline">
+                  <span className="update-page__status-dot" aria-hidden />有更新
                 </Badge>
               ) : (
-                <Badge className={UPDATE_STATUS_PILL} variant="success">
+                <Badge className={`${UPDATE_STATUS_PILL} update-page__status-pill--current`} variant="outline">
                   已是最新
                 </Badge>
               )}
@@ -1057,8 +1061,8 @@ export default function UpdatePage() {
                 <PanelTitleIcon icon={Bot} />
                 Bot 本体
                 {bot?.has_update ? (
-                  <Badge className={UPDATE_STATUS_PILL} variant="warn">
-                    有更新
+                  <Badge className={`${UPDATE_STATUS_PILL} update-page__status-pill--available`} variant="outline">
+                    <span className="update-page__status-dot" aria-hidden />有更新
                   </Badge>
                 ) : botTrack === "release" && bot?.development_build ? (
                   <Badge
@@ -1069,7 +1073,7 @@ export default function UpdatePage() {
                     开发构建
                   </Badge>
                 ) : (
-                  <Badge className={UPDATE_STATUS_PILL} variant="success">
+                  <Badge className={`${UPDATE_STATUS_PILL} update-page__status-pill--current`} variant="outline">
                     已是最新
                   </Badge>
                 )}
@@ -1170,6 +1174,54 @@ export default function UpdatePage() {
               <p className="update-page__release-foot muted">
                 配置与数据请放在 <code>config/pallas.toml</code>、<code>data/</code>，避免改主仓 <code>src/</code>。
               </p>
+            ) : null}
+          </CardContent>
+        </Card>
+        <Card id="console-update-ai-runtime" className={UPDATE_PANEL}>
+          <CardHeader className={UPDATE_PANEL_HD}>
+            <div className="update-page__panel-hd-main min-w-0">
+              <CardTitle className="panel__title flex min-w-0 flex-wrap items-center gap-1.5">
+                <PanelTitleIcon icon={Cpu} />
+                AI Runtime
+                <Badge
+                  className={cn(
+                    UPDATE_STATUS_PILL,
+                    aiRuntime.state === "update_available"
+                      ? "update-page__status-pill--available"
+                      : "update-page__status-pill--current",
+                  )}
+                  variant="outline"
+                >
+                  {aiRuntime.state === "update_available" ? <span className="update-page__status-dot" aria-hidden /> : null}
+                  {aiRuntime.label}
+                </Badge>
+              </CardTitle>
+              {aiRuntime.state === "external" ? (
+                <p className="update-page__panel-hd-meta muted">Docker / 远端服务由部署环境更新</p>
+              ) : null}
+            </div>
+            <div className="update-page__panel-hd-actions">
+              <Button asChild type="button" variant="secondary" size="sm" className="group">
+                <Link to="/ai/config/media?panel=service">前往 AI 配置</Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className={UPDATE_PANEL_BD}>
+            <div className="update-page__release-summary">
+              <div className="update-page__release-stat">
+                <span className="update-page__release-stat-label">当前</span>
+                <span className="update-page__release-stat-value font-mono">{aiRuntime.current}</span>
+              </div>
+              <span className="update-page__release-stat-arrow muted" aria-hidden>→</span>
+              <div className="update-page__release-stat">
+                <span className="update-page__release-stat-label">远端</span>
+                <span className="update-page__release-stat-value font-mono">{aiRuntime.remote}</span>
+              </div>
+            </div>
+            {aiInstallQ.data?.update_check_error ? (
+              <p className="update-page__release-foot muted">检查失败：{aiInstallQ.data.update_check_error}</p>
+            ) : aiRuntime.state === "update_available" ? (
+              <p className="update-page__release-foot muted">更新会在 AI 配置页执行，并重新运行依赖安装与运行时启动流程。</p>
             ) : null}
           </CardContent>
         </Card>

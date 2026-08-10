@@ -6,8 +6,10 @@ import { fetchHealth } from "@/api/health";
 import {
   fetchCommunityPluginStore,
   fetchOfficialExtensions,
+  fetchUpdateCheckAll,
   fetchWebuiAutoUpdateStatus,
 } from "@/api/fullConsole";
+import { fetchAiInstallStatus } from "@/api/console";
 import { pendingAutoUpdateLabel } from "@/utils/autoUpdateNotice";
 import { MAIN_NAV_ITEMS, buildNavEntries, isNavActive, sectionIcon } from "@/config/mainNav";
 import type { MainNavItem } from "@/config/mainNav";
@@ -251,6 +253,16 @@ export default function AppShell() {
     queryFn: fetchWebuiAutoUpdateStatus,
     refetchInterval: 60_000,
   });
+  const updateCheckQ = useQuery({
+    queryKey: ["update-check-all"],
+    queryFn: fetchUpdateCheckAll,
+    staleTime: 60_000,
+  });
+  const aiInstallQ = useQuery({
+    queryKey: ["ai-install"],
+    queryFn: fetchAiInstallStatus,
+    staleTime: 60_000,
+  });
   const communityStoreQ = useQuery({
     queryKey: ["plugins-community-store", "nav-notice"],
     queryFn: () => fetchCommunityPluginStore({ skipAssets: true }),
@@ -265,7 +277,13 @@ export default function AppShell() {
     staleTime: 120_000,
     retry: 1,
   });
-  const updateNotice = pendingAutoUpdateLabel(autoUpdateQ.data?.pending_notice);
+  const updateNotice = useMemo(() => {
+    const n =
+      (updateCheckQ.data?.webui?.has_update ? 1 : 0) +
+      (updateCheckQ.data?.bot?.has_update ? 1 : 0) +
+      (aiInstallQ.data?.can_update && aiInstallQ.data.has_update ? 1 : 0);
+    return n > 0 ? `有 ${n} 项可更新` : pendingAutoUpdateLabel(autoUpdateQ.data?.pending_notice);
+  }, [aiInstallQ.data, autoUpdateQ.data?.pending_notice, updateCheckQ.data]);
   const pluginStoreNotice = useMemo(() => {
     const community = communityStoreQ.data?.plugins || [];
     const official = officialStoreQ.data || [];

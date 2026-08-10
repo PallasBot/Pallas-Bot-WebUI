@@ -387,7 +387,7 @@ export default function BotGitUpdatePanel({
                     <td className="bot-git-panel__ref">
                       <code>{rowLabel(item)}</code>
                       {item.is_latest ? (
-                        <Badge variant="success" className="bot-git-panel__badge">
+                        <Badge variant="outline" className="bot-git-panel__badge bot-git-panel__badge--latest">
                           最新
                         </Badge>
                       ) : null}

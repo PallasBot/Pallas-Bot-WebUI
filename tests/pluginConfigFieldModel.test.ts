@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { PluginConfigField } from "@/api/pallasTypes";
 import {
-  configValuesFingerprint,
+  fieldValuesFromConfig,
   isStringListField,
   parsePluginConfigField,
   resolveConfigFieldLayout,
-  savedConfigFingerprint,
   tagsFromJsonText,
   tagsToJsonText,
 } from "@/utils/pluginConfigFieldModel";
@@ -82,14 +81,13 @@ describe("resolveConfigFieldLayout", () => {
   });
 });
 
-describe("config dirty fingerprint", () => {
-  it("matches saved values when form mirrors server current", () => {
+describe("config current values", () => {
+  it("models server current values for the form", () => {
     const fields: PluginConfigField[] = [
       makeField({ name: "enabled", kind: "bool", current: true, default: false }),
       makeField({ name: "limit", kind: "int", current: 3, default: 0 }),
     ];
-    const baseline = savedConfigFingerprint(fields);
-    expect(configValuesFingerprint(fields, { enabled: "true", limit: "3" })).toBe(baseline);
+    expect(fieldValuesFromConfig(fields)).toEqual({ enabled: "true", limit: "3" });
   });
 });
 
