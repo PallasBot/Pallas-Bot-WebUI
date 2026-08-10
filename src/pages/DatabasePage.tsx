@@ -33,6 +33,7 @@ import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import DatabaseBackendPanel from "@/components/DatabaseBackendPanel";
 import DatabaseMigratePanel from "@/components/DatabaseMigratePanel";
+import DatabaseLifecyclePanel from "@/features/databaseLifecycle/DatabaseLifecyclePanel";
 import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
@@ -56,7 +57,7 @@ import {
 } from "@/components/ui/select";
 import UiInput from "@/components/ui/UiInput";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
-import { Code2, ChevronDown, Database, Eye, Layers, Play, Plus, Search, Table2, Users } from "lucide-react";
+import { Code2, ChevronDown, Database, DatabaseZap, Eye, Layers, Play, Plus, Search, Table2, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
@@ -127,7 +128,7 @@ const DB_PANEL_HD =
   "panel__hd panel__hd--split flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const DB_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
 
-type DbSectionId = "backend" | "group" | "user" | "tables" | "aggregate";
+type DbSectionId = "backend" | "group" | "user" | "lifecycle" | "tables" | "aggregate";
 
 const SECTION_META: Record<
   DbSectionId,
@@ -136,6 +137,7 @@ const SECTION_META: Record<
   backend: { label: "后端", icon: Database, panelId: "db-backend-config" },
   group: { label: "群配置", icon: Users, panelId: "db-group-configs" },
   user: { label: "好友配置", icon: Users, panelId: "db-user-configs" },
+  lifecycle: { label: "生命周期", icon: DatabaseZap, panelId: "db-lifecycle" },
   tables: { label: "存储", icon: Table2, panelId: "db-tables" },
   aggregate: { label: "聚合查询", icon: Code2, panelId: "db-aggregate" },
 };
@@ -165,6 +167,7 @@ function sectionFromHash(hash: string): DbSectionId | null {
   if (id === "db-backend-config") return "backend";
   if (id === "db-group-configs") return "group";
   if (id === "db-user-configs") return "user";
+  if (id === "db-lifecycle") return "lifecycle";
   if (id === "db-tables") return "tables";
   if (id === "db-aggregate") return "aggregate";
   return null;
@@ -256,7 +259,7 @@ export default function DatabasePage() {
   const showAggregate = isMongo(overview);
 
   const sectionOptions = useMemo(() => {
-    const ids: DbSectionId[] = ["backend", "group", "user", "tables"];
+    const ids: DbSectionId[] = ["backend", "group", "user", "lifecycle", "tables"];
     if (showAggregate) ids.push("aggregate");
     return ids.map((id) => ({ id, ...SECTION_META[id] }));
   }, [showAggregate]);
@@ -588,6 +591,11 @@ export default function DatabasePage() {
       void loadSocialConfigs();
       return;
     }
+    if (activeSection === "lifecycle") {
+      void queryClient.invalidateQueries({ queryKey: ["db-lifecycle-catalog"] });
+      void queryClient.invalidateQueries({ queryKey: ["db-lifecycle-policies"] });
+      return;
+    }
     void loadAll();
   }
 
@@ -596,6 +604,8 @@ export default function DatabasePage() {
       ? overviewQ.isFetching || healthQ.isFetching
       : activeSection === "group" || activeSection === "user"
         ? socialConfigsBusy
+        : activeSection === "lifecycle"
+          ? false
         : dbRefreshBusy || overviewQ.isFetching || tablesQ.isFetching || browseBusy;
   const showBody = Boolean(overview) && !dbRefreshBusy;
   const browseableTables = tableMeta.filter((t) => t.browseable);
@@ -635,9 +645,11 @@ export default function DatabasePage() {
           : overview?.backend === "postgres"
             ? "表与行数"
             : "集合与文档数"
-        : activeSection === "aggregate"
-          ? "聚合查询"
-          : activeMeta.label;
+      : activeSection === "aggregate"
+        ? "聚合查询"
+        : activeSection === "lifecycle"
+          ? "生命周期"
+        : activeMeta.label;
 
   function selectStorageView(next: string) {
     preserveShellMainScroll(() => {
@@ -899,6 +911,8 @@ export default function DatabasePage() {
               </div>
             </div>
           ) : null}
+
+          {activeSection === "lifecycle" ? <DatabaseLifecyclePanel /> : null}
 
           {activeSection === "group" ? (
             <>

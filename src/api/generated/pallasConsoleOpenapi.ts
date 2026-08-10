@@ -3369,6 +3369,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/db/lifecycle/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lifecycle Catalog */
+        get: operations["lifecycle_catalog_pallas_api_db_lifecycle_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/lifecycle/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lifecycle Policies */
+        get: operations["lifecycle_policies_pallas_api_db_lifecycle_policies_get"];
+        /** Update Lifecycle Policies */
+        put: operations["update_lifecycle_policies_pallas_api_db_lifecycle_policies_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/lifecycle/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Lifecycle Job */
+        post: operations["preview_lifecycle_job_pallas_api_db_lifecycle_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/lifecycle/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Lifecycle Job */
+        post: operations["start_lifecycle_job_pallas_api_db_lifecycle_jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/lifecycle/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lifecycle Job */
+        get: operations["lifecycle_job_pallas_api_db_lifecycle_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/db/overview": {
         parameters: {
             query?: never;
@@ -4773,6 +4859,162 @@ export interface components {
             learn_persisted: number;
             /** Work Completed */
             work_completed: number;
+        };
+        /** LifecycleCatalogModel */
+        LifecycleCatalogModel: {
+            /** Backend */
+            backend: string;
+            /** Datasets */
+            datasets: components["schemas"]["LifecycleDatasetModel"][];
+            /** Unmanaged Objects */
+            unmanaged_objects: components["schemas"]["LifecycleObjectModel"][];
+        };
+        /** LifecycleCatalogResponse */
+        LifecycleCatalogResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            data: components["schemas"]["LifecycleCatalogModel"];
+        };
+        /** LifecycleDatasetModel */
+        LifecycleDatasetModel: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Label */
+            label: string;
+            /**
+             * Risk
+             * @enum {string}
+             */
+            risk: "low" | "medium" | "high";
+            /** Registered Objects */
+            registered_objects: string[];
+            /** Present Objects */
+            present_objects: string[];
+            /** Row Count */
+            row_count: number | null;
+            /** Size Bytes */
+            size_bytes: number | null;
+            policy: components["schemas"]["LifecyclePolicyModel"];
+            /** Supports Retention */
+            supports_retention: boolean;
+            /** Supports Max Bytes */
+            supports_max_bytes: boolean;
+            /** Errors */
+            errors: string[];
+        };
+        /** LifecycleJobBody */
+        LifecycleJobBody: {
+            /** Dataset Id */
+            dataset_id: string;
+            policy: components["schemas"]["LifecyclePolicyModel"];
+            /** Confirmation Token */
+            confirmation_token: string;
+        };
+        /** LifecycleJobModel */
+        LifecycleJobModel: {
+            /** Job Id */
+            job_id: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed";
+            /** Deleted Rows */
+            deleted_rows: number;
+            /** Freed Bytes */
+            freed_bytes: number;
+            /** Error */
+            error: string | null;
+            /** Created At */
+            created_at: number;
+            /** Started At */
+            started_at: number | null;
+            /** Finished At */
+            finished_at: number | null;
+        };
+        /** LifecycleJobResponse */
+        LifecycleJobResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            data: components["schemas"]["LifecycleJobModel"];
+        };
+        /** LifecycleObjectModel */
+        LifecycleObjectModel: {
+            /** Name */
+            name: string;
+            /** Row Count */
+            row_count: number | null;
+            /** Size Bytes */
+            size_bytes: number | null;
+            /** Dataset Id */
+            dataset_id: string | null;
+            /** Protected */
+            protected: boolean;
+            /** Protection Reason */
+            protection_reason: string | null;
+            /** Error */
+            error?: string | null;
+        };
+        /** LifecyclePoliciesModel */
+        LifecyclePoliciesModel: {
+            /** Policies */
+            policies: {
+                [key: string]: components["schemas"]["LifecyclePolicyModel"];
+            };
+        };
+        /** LifecyclePoliciesResponse */
+        LifecyclePoliciesResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            data: components["schemas"]["LifecyclePoliciesModel"];
+        };
+        /** LifecyclePolicyModel */
+        LifecyclePolicyModel: {
+            /** Enabled */
+            enabled: boolean;
+            /** Retention Days */
+            retention_days?: number | null;
+            /** Max Bytes */
+            max_bytes?: number | null;
+        };
+        /** LifecyclePreviewBody */
+        LifecyclePreviewBody: {
+            /** Dataset Id */
+            dataset_id: string;
+            policy: components["schemas"]["LifecyclePolicyModel"];
+        };
+        /** LifecyclePreviewModel */
+        LifecyclePreviewModel: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Candidate Rows */
+            candidate_rows: number;
+            /** Candidate Bytes */
+            candidate_bytes: number;
+            /** Confirmation Token */
+            confirmation_token: string;
+            /** Expires At */
+            expires_at: number;
+        };
+        /** LifecyclePreviewResponse */
+        LifecyclePreviewResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            data: components["schemas"]["LifecyclePreviewModel"];
         };
         /** LlmReplayRunBody */
         LlmReplayRunBody: {
@@ -14793,6 +15035,218 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lifecycle_catalog_pallas_api_db_lifecycle_catalog_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecycleCatalogResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lifecycle_policies_pallas_api_db_lifecycle_policies_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecyclePoliciesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_lifecycle_policies_pallas_api_db_lifecycle_policies_put: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifecyclePoliciesModel"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecyclePoliciesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_lifecycle_job_pallas_api_db_lifecycle_preview_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifecyclePreviewBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecyclePreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_lifecycle_job_pallas_api_db_lifecycle_jobs_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifecycleJobBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecycleJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lifecycle_job_pallas_api_db_lifecycle_jobs__job_id__get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecycleJobResponse"];
                 };
             };
             /** @description Validation Error */

@@ -1805,6 +1805,20 @@ export interface DbTableRowsData {
   rows: Record<string, unknown>[];
 }
 
+export type DbLifecycleCatalogData = OpenapiOkData<
+  ConsoleOpenapiPaths["/pallas/api/db/lifecycle/catalog"]["get"]
+>;
+export type DbLifecyclePoliciesData = OpenapiOkData<
+  ConsoleOpenapiPaths["/pallas/api/db/lifecycle/policies"]["get"]
+>;
+export type DbLifecyclePolicy = DbLifecyclePoliciesData["policies"][string];
+export type DbLifecyclePreviewData = OpenapiOkData<
+  ConsoleOpenapiPaths["/pallas/api/db/lifecycle/preview"]["post"]
+>;
+export type DbLifecycleJobData = OpenapiOkData<
+  ConsoleOpenapiPaths["/pallas/api/db/lifecycle/jobs"]["post"]
+>;
+
 export type DbBackendKind = "postgresql" | "mongodb";
 
 export interface DbBackendPostgresConfig {

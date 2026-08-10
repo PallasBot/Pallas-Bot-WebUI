@@ -34,6 +34,11 @@ import type {
   DbBackendProbeResult,
   DbBackendSaveResult,
   DbHealthData,
+  DbLifecycleCatalogData,
+  DbLifecycleJobData,
+  DbLifecyclePoliciesData,
+  DbLifecyclePolicy,
+  DbLifecyclePreviewData,
   DbMigrateMongoPgInfo,
   DbMigrateMongoPgJob,
   DbOverviewData,
@@ -2586,6 +2591,57 @@ export async function fetchDbTables(): Promise<DbTablesData> {
     "/db/tables",
     { timeout: DB_HEAVY_READ_TIMEOUT_MS },
   )) as DbTablesData;
+}
+
+export async function fetchDbLifecycleCatalog(): Promise<DbLifecycleCatalogData> {
+  return consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/catalog"]["get"]>(
+    "/db/lifecycle/catalog",
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  );
+}
+
+export async function fetchDbLifecyclePolicies(): Promise<DbLifecyclePoliciesData> {
+  return consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/policies"]["get"]>(
+    "/db/lifecycle/policies",
+  );
+}
+
+export async function putDbLifecyclePolicies(
+  policies: Record<string, DbLifecyclePolicy>,
+): Promise<DbLifecyclePoliciesData> {
+  return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/policies"]["put"]>(
+    "/db/lifecycle/policies",
+    { policies },
+  );
+}
+
+export async function previewDbLifecycle(
+  datasetId: string,
+  policy: DbLifecyclePolicy,
+): Promise<DbLifecyclePreviewData> {
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/preview"]["post"]>(
+    "/db/lifecycle/preview",
+    { dataset_id: datasetId, policy },
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  );
+}
+
+export async function startDbLifecycleJob(
+  datasetId: string,
+  policy: DbLifecyclePolicy,
+  confirmationToken: string,
+): Promise<DbLifecycleJobData> {
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/jobs"]["post"]>(
+    "/db/lifecycle/jobs",
+    { dataset_id: datasetId, policy, confirmation_token: confirmationToken },
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  );
+}
+
+export async function fetchDbLifecycleJob(jobId: string): Promise<DbLifecycleJobData> {
+  return consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/jobs/{job_id}"]["get"]>(
+    `/db/lifecycle/jobs/${encodeURIComponent(jobId)}`,
+  );
 }
 
 export async function fetchDbTableRows(params: {
