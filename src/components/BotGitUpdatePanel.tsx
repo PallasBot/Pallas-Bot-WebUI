@@ -98,7 +98,11 @@ export default function BotGitUpdatePanel({
     staleTime: 30_000,
     retry: 1,
   });
-  const isDocker = statusQ.data?.deployment_mode === "docker";
+  const releaseOnly = statusQ.data?.deployment_mode === "docker";
+  const supportsForce = !releaseOnly;
+  const historyEnabled =
+    (Boolean(statusQ.data?.git_available) || (releaseOnly && mode === "release")) &&
+    (mode === "release" || Boolean(branch));
 
   useEffect(() => {
     const data = statusQ.data;
@@ -118,9 +122,7 @@ export default function BotGitUpdatePanel({
         branch: mode === "commit" ? branch : "",
         limit: HISTORY_LIMIT,
       }),
-    enabled:
-      (Boolean(statusQ.data?.git_available) || Boolean(isDocker && mode === "release")) &&
-      (mode === "release" || Boolean(branch)),
+    enabled: historyEnabled,
     staleTime: 20_000,
     retry: 1,
   });
@@ -250,7 +252,7 @@ export default function BotGitUpdatePanel({
     return <p className="muted text-sm">加载 Bot git 状态…</p>;
   }
 
-  if (statusQ.data && statusQ.data.git_available === false && !isDocker) {
+  if (statusQ.data && statusQ.data.git_available === false && !releaseOnly) {
     return null;
   }
 
@@ -262,19 +264,19 @@ export default function BotGitUpdatePanel({
             <Select
               value={mode}
               onValueChange={(v) => void onModeChange(v === "commit" ? "commit" : "release")}
-              disabled={locked || isDocker}
+              disabled={locked || releaseOnly}
             >
               <SelectTrigger className={cn(CHROME_SELECT_TRIGGER, "w-[7.5rem]")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="release">Release</SelectItem>
-                {!isDocker ? <SelectItem value="commit">Commit</SelectItem> : null}
+                {!releaseOnly ? <SelectItem value="commit">Commit</SelectItem> : null}
               </SelectContent>
             </Select>
           </ChromeField>
 
-          {!isDocker ? (
+          {!releaseOnly ? (
             <ChromeField label="分支" icon={GitBranch} className={mode !== "commit" ? "opacity-45" : undefined}>
               <Select
                 value={branch || undefined}
@@ -314,7 +316,7 @@ export default function BotGitUpdatePanel({
               <ArrowUpToLine className={cn(BTN_ICO, "group-hover:-translate-y-0.5")} aria-hidden />
               更新到最新
             </Button>
-            {!isDocker ? (
+            {supportsForce ? (
               <Button
                 type="button"
                 variant="destructive"
@@ -428,7 +430,7 @@ export default function BotGitUpdatePanel({
                             )}
                             {safeLabel}
                           </Button>
-                          {!isDocker ? (
+                          {supportsForce ? (
                             <Button
                               type="button"
                               size="sm"
