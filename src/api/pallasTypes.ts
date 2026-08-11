@@ -2700,6 +2700,12 @@ export interface ShardObservabilityData {
   pg_pool?: ShardPgPoolEstimate;
 }
 
+/** GET /system/restart-availability */
+export interface SystemRestartAvailabilityData {
+  restart_available?: boolean;
+  deployment_mode?: string;
+}
+
 /** 生成 OpenAPI 类型与手写类型的对齐入口 */
 export type OpenapiSystemData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/system"]["get"]>;
 export type OpenapiPluginsData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins"]["get"]>;
@@ -2715,6 +2721,8 @@ export type OpenapiPluginConfigCheckResult =
   OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config-check"]["post"]>;
 export type OpenapiShardObservabilityData =
   OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/shard-observability"]["get"]>;
+export type OpenapiSystemRestartAvailabilityData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/system/restart-availability"]["get"]>;
 export type OpenapiIngressDispatchData =
   OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/ingress-dispatch"]["get"]>;
 export type OpenapiLogsData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/logs"]["get"]>;

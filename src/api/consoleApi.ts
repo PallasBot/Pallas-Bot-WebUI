@@ -132,6 +132,7 @@ import type {
   IngressDispatchData,
   IngressDispatchHistoryData,
   ShardObservabilityData,
+  SystemRestartAvailabilityData,
   ConsoleLoginChangeResult,
   ConsoleSetupStatus,
   GitMirrorInfo,
@@ -2245,6 +2246,12 @@ export async function fetchShardObservability(): Promise<ShardObservabilityData>
     });
   }
   return shardObsInflight;
+}
+
+export async function fetchSystemRestartAvailability(): Promise<SystemRestartAvailabilityData> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/system/restart-availability"]["get"]
+  >("/system/restart-availability")) as SystemRestartAvailabilityData;
 }
 
 export async function fetchCorpusStatus(): Promise<CorpusStatusData> {

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  fetchBotUpdateCheck,
   fetchShardObservability,
+  fetchSystemRestartAvailability,
   postSystemRestart,
 } from "@/api/fullConsole";
-import type { BotUpdateCheckData } from "@/api/pallasTypes";
+import type { BotUpdateCheckData, SystemRestartAvailabilityData } from "@/api/pallasTypes";
 import { fetchHealth } from "@/api/health";
 import { axiosErrorDetail } from "@/api/http";
 import ConsoleConfirmModal from "@/components/ConsoleConfirmModal";
@@ -22,6 +22,10 @@ export type { BotRestartPhase };
 /** 与首页 `["bot-update-check"]` 共用，避免壳层再打一枪 */
 export const BOT_UPDATE_CHECK_QUERY_KEY = ["bot-update-check"] as const;
 export const BOT_UPDATE_CHECK_STALE_MS = 10 * 60 * 1000;
+
+/** 壳层侧栏重启按钮能力探测：轻量、无 GitHub 等网络请求 */
+export const SYSTEM_RESTART_AVAILABILITY_KEY = ["system-restart-availability"] as const;
+export const SYSTEM_RESTART_AVAILABILITY_STALE_MS = 60 * 1000;
 
 export async function trackRestartFromPluginResult(
   result: {
@@ -59,7 +63,9 @@ export function useBotSystemRestart(options?: {
   const [restartErr, setRestartErr] = useState("");
   const [restartPhase, setRestartPhase] = useState<BotRestartPhase>("idle");
   const [shardedRuntime, setShardedRuntime] = useState<boolean | null>(null);
-  const [internalBotCheck, setInternalBotCheck] = useState<BotUpdateCheckData | null>(null);
+  const [restartAvailability, setRestartAvailability] = useState<SystemRestartAvailabilityData | null>(
+    null,
+  );
   const [restartConfirm, setRestartConfirm] = useState<{ workersOnly: boolean } | null>(null);
   const restartConfirmResolver = useRef<((ok: boolean) => void) | null>(null);
   const shardedRef = useRef<boolean | null>(null);
@@ -68,10 +74,10 @@ export function useBotSystemRestart(options?: {
     shardedRef.current = shardedRuntime;
   }, [shardedRuntime]);
 
-  const effectiveBotCheck = options?.botUpdateCheck ?? internalBotCheck;
+  const effectiveAvailability = options?.botUpdateCheck ?? restartAvailability;
 
   const restartAvailable = Boolean(
-    effectiveBotCheck?.restart_available && effectiveBotCheck?.deployment_mode !== "docker",
+    effectiveAvailability?.restart_available && effectiveAvailability?.deployment_mode !== "docker",
   );
 
   const restartProgressLabel = useMemo(
@@ -87,18 +93,16 @@ export function useBotSystemRestart(options?: {
       && restartPhase !== "failed");
 
   const ensureRestartContext = useCallback(async () => {
-    if (options?.botUpdateCheck != null) {
-      setInternalBotCheck(options.botUpdateCheck);
-    } else if (!internalBotCheck) {
+    if (options?.botUpdateCheck == null && !restartAvailability) {
       try {
         const data = await qc.ensureQueryData({
-          queryKey: BOT_UPDATE_CHECK_QUERY_KEY,
-          queryFn: fetchBotUpdateCheck,
-          staleTime: BOT_UPDATE_CHECK_STALE_MS,
+          queryKey: SYSTEM_RESTART_AVAILABILITY_KEY,
+          queryFn: fetchSystemRestartAvailability,
+          staleTime: SYSTEM_RESTART_AVAILABILITY_STALE_MS,
         });
-        setInternalBotCheck(data);
+        setRestartAvailability(data);
       } catch {
-        setInternalBotCheck(null);
+        setRestartAvailability(null);
       }
     }
     if (shardedRef.current != null) return;
@@ -108,13 +112,15 @@ export function useBotSystemRestart(options?: {
     } catch {
       setShardedRuntime(false);
     }
-  }, [internalBotCheck, options?.botUpdateCheck, qc]);
+  }, [options?.botUpdateCheck, qc, restartAvailability]);
 
   const restartBot = useCallback(
     async (workersOnly = false): Promise<boolean> => {
       await ensureRestartContext();
-      const bot = options?.botUpdateCheck ?? internalBotCheck;
-      const available = Boolean(bot?.restart_available && bot?.deployment_mode !== "docker");
+      const availability = options?.botUpdateCheck ?? restartAvailability;
+      const available = Boolean(
+        availability?.restart_available && availability?.deployment_mode !== "docker",
+      );
       if (!available) return false;
       const ok = await new Promise<boolean>((resolve) => {
         restartConfirmResolver.current?.(false);
@@ -189,7 +195,7 @@ export function useBotSystemRestart(options?: {
         syncRestartSession({ busy: false });
       }
     },
-    [ensureRestartContext, internalBotCheck, options?.botUpdateCheck],
+    [ensureRestartContext, options?.botUpdateCheck, restartAvailability],
   );
 
   const finishRestartConfirm = useCallback((ok: boolean) => {
