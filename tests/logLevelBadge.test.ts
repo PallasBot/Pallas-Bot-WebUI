@@ -12,6 +12,6 @@ describe("日志等级徽章", () => {
     expect(feed).toContain('variant={logLevelBadgeVariant(pinnedRow.level)}');
     expect(feed).not.toContain('"log-line__lv-tag--dot"');
     expect(styles).toContain(".log-line--virtual .log-line__level-badge {");
-    expect(styles).toContain("margin-top: 1px;");
+    expect(styles).toContain("margin-top: 2px;");
   });
 });

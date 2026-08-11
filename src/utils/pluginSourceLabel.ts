@@ -4,16 +4,18 @@ export type PluginSourceBadgeVariant = "neutral" | "info" | "success" | "warn" |
 
 export function pluginSourceLabel(source: PluginSourceKind | undefined): string {
   if (source === "core" || source === "bundled" || source === "main") return "内置插件";
-  if (source === "extra") return "官方插件";
+  if (source === "official" || source === "extra") return "官方插件";
   if (source === "community") return "社区插件";
+  if (source === "nonebot") return "NoneBot 插件";
   if (source === "local") return "本地插件";
-  return "PyPI 包";
+  return "未知来源";
 }
 
 export function pluginSourceBadgeVariant(source: PluginSourceKind | undefined): PluginSourceBadgeVariant {
   if (source === "core" || source === "bundled" || source === "main") return "neutral";
-  if (source === "extra") return "info";
+  if (source === "official" || source === "extra") return "info";
   if (source === "community") return "success";
+  if (source === "nonebot") return "outline";
   if (source === "local") return "warn";
   return "outline";
 }

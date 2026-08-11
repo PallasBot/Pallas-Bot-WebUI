@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Cpu, FolderOpen, Globe, Puzzle, RefreshCw, Search, Tags } from "lucide-react";
+import { Boxes, Cpu, FolderOpen, Globe, Puzzle, RefreshCw, Search, Tags, Users } from "lucide-react";
 import {
   fetchCommunityPluginStore,
   fetchOfficialExtensions,
@@ -198,9 +198,13 @@ export default function PluginsPage() {
                           ? Globe
                           : tab.id === "core"
                             ? Cpu
-                            : tab.id === "extra"
-                              ? Puzzle
-                              : FolderOpen
+                          : tab.id === "official"
+                            ? Puzzle
+                            : tab.id === "community"
+                              ? Users
+                              : tab.id === "nonebot"
+                                ? Boxes
+                                : FolderOpen
                       }
                     >
                       {tab.label}

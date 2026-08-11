@@ -65,24 +65,24 @@ describe("scopeBadgeHue", () => {
 
 describe("formatLogScopeBadge", () => {
   it("shortens pallas_plugin_* / nonebot_plugin_* to import id", () => {
-    expect(shortenLogScopeModule("pallas_plugin_sing")).toBe("sing");
-    expect(shortenLogScopeModule("pallas_plugin_sing.handlers")).toBe("sing");
-    expect(shortenLogScopeModule("nonebot_plugin_foo")).toBe("foo");
+    expect(shortenLogScopeModule("pallas_plugin_sing")).toBe("Sing");
+    expect(shortenLogScopeModule("pallas_plugin_sing.handlers")).toBe("Sing");
+    expect(shortenLogScopeModule("nonebot_plugin_foo")).toBe("Foo");
     expect(formatLogScopeBadge("pallas_plugin_sing")).toEqual({
-      label: "sing",
+      label: "Sing",
       title: "pallas_plugin_sing",
     });
   });
 
   it("keeps worker source and shortens module", () => {
     expect(formatLogScopeBadge("worker-1/pallas_plugin_sing")).toEqual({
-      label: "worker-1/sing",
+      label: "Sing",
       title: "worker-1/pallas_plugin_sing",
     });
   });
 
   it("leaves core / pb_* scopes unchanged", () => {
-    expect(formatLogScopeBadge("pallas")).toEqual({ label: "pallas", title: "pallas" });
-    expect(formatLogScopeBadge("pb_webui")).toEqual({ label: "pb_webui", title: "pb_webui" });
+    expect(formatLogScopeBadge("pallas")).toEqual({ label: "Core", title: "pallas" });
+    expect(formatLogScopeBadge("pb_webui")).toEqual({ label: "Pb_webui", title: "pb_webui" });
   });
 });

@@ -1180,6 +1180,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/system/restart-availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * System Restart Availability
+         * @description 壳层判断侧栏重启按钮；轻量、不含 GitHub 等网络请求。
+         */
+        get: operations["_system_restart_availability_pallas_api_system_restart_availability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/shard-registry": {
         parameters: {
             query?: never;
@@ -5456,6 +5476,21 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** SystemRestartAvailabilityData */
+        SystemRestartAvailabilityData: {
+            /**
+             * Restart Available
+             * @default false
+             */
+            restart_available: boolean;
+            /**
+             * Deployment Mode
+             * @default
+             */
+            deployment_mode: string;
+        } & {
+            [key: string]: unknown;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -5802,6 +5837,18 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["ShardObservabilityData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[SystemRestartAvailabilityData] */
+        _ApiOkResponse_SystemRestartAvailabilityData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["SystemRestartAvailabilityData"];
             /** Error */
             error?: null;
         };
@@ -10445,6 +10492,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _system_restart_availability_pallas_api_system_restart_availability_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse_SystemRestartAvailabilityData_"];
                 };
             };
             /** @description Validation Error */

@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RefreshCw, X } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 /** 协议登录二维码：shadcn Dialog。 */
 export default function ProtocolAccountQrcodeModal({
@@ -196,9 +196,6 @@ export default function ProtocolAccountQrcodeModal({
             onClick={() => void refreshMeta(false)}
           >
             {refreshBusy ? "刷新中…" : "刷新"}
-          </Button>
-          <Button type="button" size="sm" icon={X} iconMotion="close" onClick={onClose}>
-            关闭
           </Button>
         </DialogFooter>
       </DialogContent>

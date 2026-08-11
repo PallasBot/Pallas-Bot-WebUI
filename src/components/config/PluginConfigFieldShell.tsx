@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
-import { Braces, Hash, List, TextCursorInput, ToggleLeft, X } from "lucide-react";
+import { Braces, Hash, List, TextCursorInput, ToggleLeft } from "lucide-react";
 import type { PluginConfigField } from "@/api/console";
 import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer";
 import UiField from "@/components/ui/UiField";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -278,11 +277,6 @@ export default function PluginConfigFieldShell({
           </DialogHeader>
           <div className="plugin-config-field-popover plugin-config-field-popover--dialog">
             <FieldHelpBody field={field} title={title} />
-          </div>
-          <div className="flex justify-end">
-            <Button type="button" variant="outline" size="sm" icon={X} iconMotion="close" onClick={() => setDialogOpen(false)}>
-              关闭
-            </Button>
           </div>
         </DialogContent>
       </Dialog>

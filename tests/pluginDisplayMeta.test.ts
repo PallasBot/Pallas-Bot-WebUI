@@ -21,21 +21,21 @@ describe("pluginDisplayMeta", () => {
     expect(pluginDisplaySubtitle(row)).toBe("");
   });
 
-  it("shows pip package / module id even when technical", () => {
+  it("shows NoneBot package / module id even when technical", () => {
     const row = {
       name: "nonebot_plugin_apscheduler",
       resolved_plugin_id: "nonebot_plugin_apscheduler",
-      plugin_source: "pip",
+      plugin_source: "nonebot",
       metadata: { name: "定时任务" },
     } as PluginRow;
     expect(pluginDisplaySubtitle(row)).toBe("nonebot_plugin_apscheduler");
   });
 
-  it("prefers extra_package for pip subtitle when present", () => {
+  it("prefers extra_package for official subtitle when present", () => {
     const row = {
       name: "draw",
       resolved_plugin_id: "draw",
-      plugin_source: "pip",
+      plugin_source: "official",
       extra_package: "nonebot-plugin-apscheduler",
       metadata: { name: "定时任务" },
     } as PluginRow;

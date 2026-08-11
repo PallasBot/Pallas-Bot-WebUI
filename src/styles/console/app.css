@@ -3731,7 +3731,8 @@ html[data-theme="light"] .console-view-toggle button.is-on {
 }
 
 .data-card-grid--bots {
-  grid-template-columns: repeat(auto-fill, minmax(188px, 1fr));
+  /* 每列至少容纳 5 字昵称 + 星标 + 连接状态胶囊，避免昵称换行 */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
   gap: 10px;
 }
 
@@ -9619,7 +9620,7 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
 
 @media (max-width: 720px) {
   .data-card-grid--bots {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
     gap: 8px;
   }
 

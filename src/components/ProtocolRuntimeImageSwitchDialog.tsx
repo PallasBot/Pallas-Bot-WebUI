@@ -256,7 +256,6 @@ export default function ProtocolRuntimeImageSwitchDialog({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="secondary" disabled={busy} onClick={requestClose}>关闭</Button>
             <Button type="button" disabled={busy || !image.trim()} onClick={requestStart}>{starting ? "正在提交…" : mode === "rebuild_all" ? "确认并重建" : "保存并等待下次启动"}</Button>
           </DialogFooter>
         </DialogContent>
