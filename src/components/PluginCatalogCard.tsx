@@ -20,8 +20,8 @@ import {
 } from "@/utils/pluginSourceLabel";
 import BtnIco from "@/components/BtnIco";
 import PluginIcon from "@/components/PluginIcon";
-import { usePluginFavorites } from "@/hooks/usePluginFavorites";
 import { Badge } from "@/components/ui/badge";
+import { usePluginFavorites } from "@/hooks/usePluginFavorites";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -42,9 +42,9 @@ export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, 
   const pluginIdValue = pluginResolvedId(plugin);
   const loadProcessTags = pluginLoadProcessTags(plugin);
   const loadBadge = pluginLoadBadgeText(plugin);
+  const loadWhere = pluginLoadWhere(plugin);
   const sourceLabel = pluginSourceLabel(plugin.plugin_source);
   const versionLabel = pluginVersionLabel(plugin);
-  const loadWhere = pluginLoadWhere(plugin);
   const isFavorite = favorites.has(pluginIdValue);
 
   const resolvedAvatarUrl =
@@ -122,7 +122,14 @@ export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, 
                     {sourceLabel}
                   </Badge>
                 ) : null}
-                {versionLabel ? <Badge variant="outline" size="compact" title={versionLabel}>{versionLabel}</Badge> : null}
+                {versionLabel ? (
+                  <span
+                    className="plugin-store-card__meta-link plugin-store-card__meta-link--version"
+                    title={versionLabel}
+                  >
+                    {versionLabel}
+                  </span>
+                ) : null}
                 {loadProcessTags.map((tag) => (
                   <span
                     key={tag}

@@ -4,6 +4,7 @@ import {
   pluginSourceBadgeVariant,
   pluginSourceLabel,
   pluginVersionLabel,
+  shortPluginVersionLabel,
 } from "../src/utils/pluginSourceLabel";
 
 describe("plugin catalog source badges", () => {
@@ -28,5 +29,11 @@ describe("plugin catalog source badges", () => {
   it("renders only reliable plugin versions", () => {
     expect(pluginVersionLabel({ plugin_version: "1.2.3" } as PluginRow)).toBe("v1.2.3");
     expect(pluginVersionLabel({ plugin_version: "" } as PluginRow)).toBe("");
+  });
+
+  it("adds v only to release versions", () => {
+    expect(shortPluginVersionLabel("1.2.3")).toBe("v1.2.3");
+    expect(shortPluginVersionLabel("v1.2.3")).toBe("v1.2.3");
+    expect(shortPluginVersionLabel("abcdef123456")).toBe("abcde");
   });
 });

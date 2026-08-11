@@ -23,8 +23,14 @@ export function hasPluginSource(p: Pick<PluginRow, "plugin_source">): boolean {
 }
 
 export function pluginVersionLabel(p: Pick<PluginRow, "plugin_version">): string {
-  const version = (p.plugin_version || "").trim();
-  return version ? `v${version}` : "";
+  return shortPluginVersionLabel(p.plugin_version || "");
+}
+
+export function shortPluginVersionLabel(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^[0-9a-f]{6,40}$/i.test(trimmed)) return trimmed.slice(0, 5);
+  return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
 }
 
 export function pluginSourceDir(p: Pick<PluginRow, "plugin_source_dir">): string {
