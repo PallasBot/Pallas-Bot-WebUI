@@ -1,4 +1,4 @@
-import type { paths as ConsoleOpenapiPaths } from "./generated/pallasConsoleOpenapi";
+import type { components as ConsoleOpenapiComponents, paths as ConsoleOpenapiPaths } from "./generated/pallasConsoleOpenapi";
 import type { HealthResponse } from "./health";
 
 /** 标准响应结构 */
@@ -1644,8 +1644,7 @@ export interface PersonaAxisSnapshot {
 export interface PersonaObserveBotRow {
   account: number;
   group_style_enabled: boolean;
-  seed_prefs?: string[];
-  seed_source?: "auto" | "manual" | string;
+  account_profile: AccountPersonaProfile;
   base: PersonaAxisSnapshot;
   base_hints: string[];
   resolved: PersonaAxisSnapshot | null;
@@ -1982,46 +1981,113 @@ export interface BotConfigPublic {
   disabled_plugins: string[];
   /** 是否在社区主站名册展示本牛 QQ（默认开；需通用配置开启「公开牛牛 QQ」） */
   community_roster_show_qq: boolean;
-  /** 账号 persona JSON（含 seed / seed_override / cross_group） */
+  /** 账号 persona JSON；编辑面仅写 account_profile，其他字段为运行时兼容数据。 */
   persona?: Record<string, unknown> | null;
   group_style_enabled?: boolean;
 }
 
-export type PersonaSeedPref = "short" | "long" | "chaotic" | "restrained" | "warm";
+export type AccountPersonaAxis = "energy" | "warmth" | "mischief" | "restraint";
 
-export const PERSONA_SEED_PREF_OPTIONS: { id: PersonaSeedPref; label: string }[] = [
-  { id: "short", label: "偏短" },
-  { id: "long", label: "偏长" },
-  { id: "chaotic", label: "偏跳" },
-  { id: "restrained", label: "偏克制" },
-  { id: "warm", label: "偏暖" },
-];
+/** Bot openspec 新结构；WebUI generated 基线同步后可改回 generated alias。 */
+export type AccountPersonaProfile = ConsoleOpenapiComponents["schemas"]["AccountPersonaProfile"];
 
-export function readBotPersonaSeedPrefs(persona: Record<string, unknown> | null | undefined): {
-  prefs: PersonaSeedPref[];
-  source: "auto" | "manual";
-} {
-  const override = persona?.seed_override;
-  if (override && typeof override === "object" && Array.isArray((override as { prefs?: unknown }).prefs)) {
-    const prefs = ((override as { prefs: unknown[] }).prefs as unknown[])
-      .map((item) => String(item || "").trim())
-      .filter((item): item is PersonaSeedPref =>
-        PERSONA_SEED_PREF_OPTIONS.some((opt) => opt.id === item),
-      )
-      .slice(0, 2);
-    if (prefs.length) return { prefs, source: "manual" };
-  }
-  const seed = persona?.seed;
-  if (seed && typeof seed === "object" && Array.isArray((seed as { prefs?: unknown }).prefs)) {
-    const prefs = ((seed as { prefs: unknown[] }).prefs as unknown[])
-      .map((item) => String(item || "").trim())
-      .filter((item): item is PersonaSeedPref =>
-        PERSONA_SEED_PREF_OPTIONS.some((opt) => opt.id === item),
-      )
-      .slice(0, 2);
-    if (prefs.length) return { prefs, source: "auto" };
-  }
-  return { prefs: [], source: "auto" };
+export interface MessageLengthDistribution {
+  average: number;
+  p50: number;
+  p90: number;
+}
+
+export interface GroupExpressionAggregate {
+  sample_count: number;
+  window_hours: number;
+  message_count: number;
+  answer_count: number;
+  distinct_answer_keywords: number;
+  active_hour_count: number;
+  messages_per_active_hour: number;
+  message_length?: MessageLengthDistribution;
+  answer_ratio: number;
+  repetition_rate: number;
+  forced_teach_weight: number;
+  contamination_skipped_messages: number;
+  contamination_skipped_answers: number;
+}
+
+export interface SemanticExamplesSummary {
+  profile_ref: string;
+  scene: string;
+  sample_count: number;
+  direct_example_count: number;
+  direct_pair_count: number;
+  rewrite_seed_count: number;
+  intensity_counts?: Record<string, number>;
+  form_counts?: Record<string, number>;
+  updated_at?: string | null;
+}
+
+export type SemanticStyleOverridesData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleOverridesData"];
+export type SemanticStyleStatusData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleStatusData"];
+export type SemanticStyleQualityData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleQualityData"];
+export type LlmStickerLabelOverviewData = ConsoleOpenapiComponents["schemas"]["_StickerLabelOverviewData"];
+export type LlmStickerLabelMaintenanceResult = OpenapiOkData<
+  ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona/sticker-labels/manage"]["post"]
+>;
+
+export type LlmStickerLabelManageRequest =
+  | { action: "requeue" }
+  | { action: "pause"; paused: boolean }
+  | { action: "clear"; contentHash: string };
+
+export interface GroupReplyShapeHint {
+  length_pref: "short" | "medium" | "long" | "any";
+  bubble_count_p50: number;
+  bubble_count_p90: number;
+  segment_char_length_p50: number;
+  segment_char_length_p90: number;
+  rhythm_distribution?: Record<string, number>;
+}
+
+export interface GroupExpressionProfile {
+  aggregate: GroupExpressionAggregate;
+  examples_summary: SemanticExamplesSummary;
+  reply_shape: GroupReplyShapeHint;
+  updated_at?: string;
+}
+
+export interface LegacyGroupStyleProfile {
+  updated_at?: string | number;
+  sample?: {
+    window_hours?: number;
+    message_count?: number;
+    answer_count?: number;
+  };
+  raw?: {
+    avg_plain_len?: number;
+    p50_plain_len?: number;
+    msgs_per_hour_active?: number;
+    local_answer_ratio?: number;
+    repeat_chain_rate?: number;
+  };
+}
+
+export function readManualAccountPersonaProfile(
+  persona: Record<string, unknown> | null | undefined,
+): AccountPersonaProfile | null {
+  const raw = persona?.account_profile;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const profile = raw as Record<string, unknown>;
+  if (profile.source !== "manual") return null;
+  const value = (axis: AccountPersonaAxis) => {
+    const parsed = Number(profile[axis]);
+    return Number.isFinite(parsed) ? Math.max(-1, Math.min(1, parsed)) : 0;
+  };
+  return {
+    energy: value("energy"),
+    warmth: value("warmth"),
+    mischief: value("mischief"),
+    restraint: value("restraint"),
+    source: "manual",
+  };
 }
 
 export interface GroupStyleProfileSnapshot {

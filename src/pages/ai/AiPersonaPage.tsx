@@ -1,6 +1,13 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Ban, Download, RefreshCw } from "lucide-react";
+import { axiosErrorDetail } from "@/api/http";
+import {
+  fetchLlmStickerLabelOverview,
+  fetchLlmRepeaterSemanticStyle,
+  postLlmStickerLabelManage,
+  postLlmRepeaterSemanticStyleManage,
+} from "@/api/console";
 import {
   fetchInstances,
   fetchLlmPersonaExport,
@@ -9,11 +16,16 @@ import {
 } from "@/api/fullConsole";
 import type {
   GroupStyleProfileSnapshot,
+  GroupExpressionProfile,
+  LlmStickerLabelManageRequest,
+  LlmStickerLabelOverviewData,
   PersonaAffectRefineSnapshot,
   PersonaAffectTriggerRow,
   PersonaAxisSnapshot,
   PersonaObserveBotRow,
   PersonaObserveData,
+  SemanticStyleQualityData,
+  SemanticStyleStatusData,
 } from "@/api/pallasTypes";
 import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChromeContext";
 import AiScopeHint from "@/components/ai/AiScopeHint";
@@ -28,9 +40,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { copyTextToClipboard } from "@/utils/clipboard";
-import { personaValueZh, personaValuesZh } from "@/utils/personaLabels";
+import { pushConsoleToast } from "@/utils/consoleToast";
+import {
+  groupExpressionView,
+  scopedSemanticStyleQuality,
+  semanticStyleQualityView,
+  semanticStyleScopeKey,
+  type ScopedSemanticStyleQuality,
+} from "@/utils/groupExpressionModel";
+import { personaValueZh } from "@/utils/personaLabels";
 import SceneDialogueExamplesCard from "./SceneDialogueExamplesCard";
 
 function num(v: unknown, fallback = 0): number {
@@ -47,6 +68,14 @@ function fmtTime(unix: unknown): string {
   const n = Number(unix);
   if (!Number.isFinite(n) || n <= 0) return "—";
   return new Date(n * 1000).toLocaleString();
+}
+
+function fmtDateTime(value: unknown): string {
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return new Date(parsed).toLocaleString();
+  }
+  return fmtTime(value);
 }
 
 function asRecord(v: unknown): Record<string, unknown> | null {
@@ -127,23 +156,12 @@ function AxisPanel({
     );
   }
 
-  const tags = [snap.preset_label, snap.archetype, snap.tone]
-    .map((t) => personaValueZh(t, ""))
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .filter((t, i, arr) => arr.indexOf(t) === i);
-
   return (
     <div className="space-y-3.5 rounded-lg bg-muted/40 px-3.5 py-3">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {title}
         </span>
-        {tags.map((t) => (
-          <Badge key={t} variant="outline" className="h-5 border-border/60 bg-background/60 px-1.5 text-[11px] font-normal">
-            {t}
-          </Badge>
-        ))}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -154,12 +172,19 @@ function AxisPanel({
 
       <div className="grid gap-x-4 gap-y-1.5 border-t border-border/50 pt-3 sm:grid-cols-2">
         <Kv label="来源">{personaValueZh(snap.source)}</Kv>
-        <Kv label="长度">{personaValueZh(snap.length_pref)}</Kv>
         <Kv label="接话">{fmtNum(snap.reply_bias)}</Kv>
         <Kv label="主动偏置">{fmtNum(snap.speak_bias)}</Kv>
-        <Kv label="混沌">{fmtNum(snap.chaos_bias)}</Kv>
         <Kv label="活跃">{personaValueZh(snap.activity_level)}</Kv>
       </div>
+
+      <details className="border-t border-border/50 pt-3 text-sm">
+        <summary className="cursor-pointer text-muted-foreground">高级只读信息</summary>
+        <div className="mt-2 grid gap-1 sm:grid-cols-2">
+          <Kv label="原型">{personaValueZh(snap.archetype)}</Kv>
+          <Kv label="语气">{personaValueZh(snap.tone)}</Kv>
+          <Kv label="旧混沌值">{fmtNum(snap.chaos_bias)}</Kv>
+        </div>
+      </details>
 
       <div className="border-t border-border/50 pt-3">
         <HintList hints={hints} />
@@ -177,6 +202,7 @@ function BotPersonaCard({
 }) {
   const title = nickname?.trim() || `Bot ${row.account}`;
   const showAccountUnder = Boolean(nickname?.trim());
+  const accountProfile = row.account_profile;
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
@@ -186,11 +212,7 @@ function BotPersonaCard({
           {showAccountUnder ? (
             <div className="mt-0.5 text-xs tabular-nums text-muted-foreground">{row.account}</div>
           ) : null}
-          <div className="mt-1.5 text-xs text-muted-foreground">
-            {row.seed_prefs?.length
-              ? `偏好 ${personaValuesZh(row.seed_prefs)}`
-              : "无种子偏好覆盖"}
-          </div>
+          <div className="mt-1.5 text-xs text-muted-foreground">账号稳定气质</div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <Badge
@@ -199,11 +221,6 @@ function BotPersonaCard({
           >
             {row.group_style_enabled ? "群风格开" : "群风格关"}
           </Badge>
-          {row.seed_source ? (
-            <Badge variant="outline" className="h-5 px-1.5 text-[11px] font-normal">
-              种子 {personaValueZh(row.seed_source)}
-            </Badge>
-          ) : null}
         </div>
       </div>
 
@@ -213,6 +230,20 @@ function BotPersonaCard({
           row.resolved ? "sm:grid-cols-2" : "grid-cols-1",
         )}
       >
+        {accountProfile ? (
+          <section className="space-y-3 rounded-lg border border-border/60 px-3.5 py-3 sm:col-span-2" aria-label="账号稳定气质四轴">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-medium">账号稳定气质</h3>
+              <Badge variant="outline">来源 {personaValueZh(accountProfile.source)}</Badge>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <AxisMeter label="活力" value={num(accountProfile.energy)} />
+              <AxisMeter label="亲和" value={num(accountProfile.warmth)} />
+              <AxisMeter label="调皮" value={num(accountProfile.mischief)} />
+              <AxisMeter label="克制" value={num(accountProfile.restraint)} />
+            </div>
+          </section>
+        ) : null}
         <AxisPanel title="基线" snap={row.base} hints={row.base_hints ?? []} />
         {row.resolved || row.group_style_enabled ? (
           <AxisPanel
@@ -311,76 +342,148 @@ function SnapshotHints({ snap }: { snap: GroupStyleProfileSnapshot | null | unde
   );
 }
 
-function GroupStyleLiveCard({ data }: { data: Record<string, unknown> }) {
-  const sample = asRecord(data.sample);
-  const raw = asRecord(data.raw);
-  const derived = asRecord(data.derived);
-  const affect = asRecord(raw?.affect_tone);
-  const contamination = asRecord(sample?.contamination_skipped);
-
+function GroupExpressionCard({ data }: { data: GroupExpressionProfile }) {
+  const view = groupExpressionView(data);
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <div className="rounded-md border p-3">
-          <div className="text-xs text-muted-foreground">窗口（小时）</div>
-          <div className="mt-1 text-lg font-semibold tabular-nums">{num(sample?.window_hours)}</div>
-        </div>
-        <div className="rounded-md border p-3">
-          <div className="text-xs text-muted-foreground">消息样本</div>
-          <div className="mt-1 text-lg font-semibold tabular-nums">{num(sample?.message_count)}</div>
-        </div>
-        <div className="rounded-md border p-3">
-          <div className="text-xs text-muted-foreground">回答样本</div>
-          <div className="mt-1 text-lg font-semibold tabular-nums">{num(sample?.answer_count)}</div>
-        </div>
-        <div className="rounded-md border p-3">
-          <div className="text-xs text-muted-foreground">更新时间</div>
-          <div className="mt-1 text-sm font-medium tabular-nums">{fmtTime(data.updated_at)}</div>
-        </div>
+      <div className="grid gap-x-5 gap-y-2 rounded-md border p-3 sm:grid-cols-2">
+        {view.aggregate.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
+        <Kv label="更新时间">{fmtDateTime(data.updated_at)}</Kv>
       </div>
-
-      {derived ? (
-        <div className="space-y-2 rounded-md border p-3">
-          <div className="text-sm font-medium">派生信号</div>
-          <div className="grid gap-1 text-sm sm:grid-cols-2">
-            <Kv label="长度偏好">{personaValueZh(derived.length_pref)}</Kv>
-            <Kv label="接话倍率">{fmtNum(derived.reply_bias_mul, 3)}</Kv>
-            <Kv label="主动倍率">{fmtNum(derived.speak_bias_mul, 3)}</Kv>
-            <Kv label="混沌">{fmtNum(derived.chaos_bias, 3)}</Kv>
-            <Kv label="温暖偏置">{fmtNum(derived.warmth_bias, 3)}</Kv>
-            <Kv label="主动偏置">{fmtNum(derived.assertiveness_bias, 3)}</Kv>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <section className="space-y-2 rounded-md border p-3" aria-label="回复形态">
+          <h3 className="text-sm font-medium">回复形态</h3>
+          <div className="grid gap-1">
+            {view.replyShape.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
+            <Kv label="节奏">{view.rhythm}</Kv>
           </div>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">暂无派生信号。</p>
-      )}
-
-      {raw ? (
-        <div className="space-y-2 rounded-md border p-3">
-          <div className="text-sm font-medium">原始统计</div>
-          <div className="grid gap-1 text-sm sm:grid-cols-2">
-            <Kv label="均长">{fmtNum(raw.avg_plain_len)}</Kv>
-            <Kv label="P50 长度">{fmtNum(raw.p50_plain_len)}</Kv>
-            <Kv label="活跃条/时">{fmtNum(raw.msgs_per_hour_active)}</Kv>
-            <Kv label="本地回答比">{fmtNum(raw.local_answer_ratio)}</Kv>
-            <Kv label="复读链率">{fmtNum(raw.repeat_chain_rate)}</Kv>
-            {affect ? <Kv label="文明分">{fmtNum(affect.civility_score)}</Kv> : null}
+        </section>
+        <section className="space-y-2 rounded-md border p-3" aria-label="语义样例摘要">
+          <h3 className="text-sm font-medium">语义样例摘要</h3>
+          <div className="grid gap-1">
+            {view.exampleSummary.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
+            <Kv label="强度">{view.intensity}</Kv>
+            <Kv label="形式">{view.forms}</Kv>
           </div>
-          {contamination ? (
-            <p className="text-xs text-muted-foreground">
-              污染跳过：消息 {num(contamination.message_count)} · 回答 {num(contamination.answer_count)}
-            </p>
-          ) : null}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function StickerLabelOverview({
+  data,
+  busy,
+  onManage,
+}: {
+  data: LlmStickerLabelOverviewData;
+  busy: boolean;
+  onManage: (action: LlmStickerLabelManageRequest) => void;
+}) {
+  const labels = data.labels;
+  const jobs = data.jobs;
+  return (
+    <section className="space-y-3 border-t pt-4" aria-label="全局表情标签">
+      <div>
+        <h3 className="text-sm font-medium">全局表情标签</h3>
+        <p className="mt-1 text-sm text-muted-foreground">跨群缓存统计；不随当前 Bot 或群范围变化。</p>
+      </div>
+      <div className="grid gap-x-5 gap-y-2 rounded-md border p-3 sm:grid-cols-2">
+        <Kv label="已标注">{labels.total}</Kv>
+        <Kv label="表情">{labels.sticker}</Kv>
+        <Kv label="非表情">{labels.not_sticker}</Kv>
+        <Kv label="低置信">{labels.low_confidence}</Kv>
+        <Kv label="待处理">{jobs.pending}</Kv>
+        <Kv label="失败">{jobs.failed}</Kv>
+        <Kv label="当前版本">{labels.current_version}</Kv>
+        <Kv label="VLM 精修避免">{data.vlm_refine_avoided}</Kv>
+        <Kv label="VLM 精修实际">{data.vlm_refine_actual}</Kv>
+        <Kv label="发送命中">{data.send_hits}</Kv>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          icon={RefreshCw}
+          iconMotion="spin"
+          disabled={busy}
+          onClick={() => onManage({ action: "requeue" })}
+        >
+          重排陈旧标签
+        </Button>
+        <Button
+          size="sm"
+          variant={data.lazy_labels_paused ? "default" : "outline"}
+          icon={Ban}
+          disabled={busy}
+          onClick={() => onManage({ action: "pause", paused: !data.lazy_labels_paused })}
+        >
+          {data.lazy_labels_paused ? "恢复懒标注" : "暂停懒标注"}
+        </Button>
+      </div>
+      {jobs.recent_errors?.length ? (
+        <p className="text-sm text-destructive">最近失败：{jobs.recent_errors.length} 条</p>
+      ) : null}
+    </section>
+  );
+}
+
+type SemanticStyleOverrides = { aggressive: boolean; nonsense: boolean; direct: boolean; image: boolean };
+type SemanticStyleAction = "overrides" | "rebuild" | "quality" | "disable";
+
+function isSemanticStyleQuality(
+  data: SemanticStyleStatusData | SemanticStyleQualityData,
+): data is SemanticStyleQualityData {
+  return "status" in data && "label_version" in data;
+}
+function SemanticStyleControls({
+  data,
+  qualityData,
+  overrides,
+  setOverrides,
+  busy,
+  onAction,
+}: {
+  data: SemanticStyleStatusData | undefined;
+  qualityData: SemanticStyleQualityData | null;
+  overrides: SemanticStyleOverrides;
+  setOverrides: (value: SemanticStyleOverrides) => void;
+  busy: boolean;
+  onAction: (action: SemanticStyleAction) => void;
+}) {
+  const options: Array<[keyof SemanticStyleOverrides, string]> = [
+    ["aggressive", "攻击性"], ["nonsense", "无厘头"], ["direct", "直给"], ["image", "图片倾向"],
+  ];
+  return (
+    <section className="space-y-3 border-t pt-4" aria-label="群表达质量与管理">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant={data?.enabled === false ? "muted" : "success"}>{data?.enabled === false ? "已停用" : "已启用"}</Badge>
+        <Badge variant="outline">样例 {num(data?.example_count)}</Badge>
+        <Badge variant="outline">画像 {num(data?.profile_count)}</Badge>
+        <span className="text-xs text-muted-foreground">范围：当前 Bot + 当前群；未指定时不开放管理。</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {options.map(([key, label]) => (
+          <label key={key} className="flex min-h-10 items-center justify-between gap-2 rounded-md border px-3 text-sm">
+            <span>{label}</span>
+            <Switch checked={overrides[key]} disabled={busy} onCheckedChange={(checked) => setOverrides({ ...overrides, [key]: checked })} />
+          </label>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" disabled={busy} onClick={() => onAction("overrides")}>应用开关</Button>
+        <Button size="sm" variant="outline" icon={RefreshCw} iconMotion="spin" disabled={busy} onClick={() => onAction("rebuild")}>重建</Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction("quality")}>质量评价</Button>
+        <Button size="sm" variant="destructive" icon={Ban} disabled={busy} onClick={() => onAction("disable")}>停用</Button>
+      </div>
+      {qualityData ? (
+        <div className="grid gap-1 rounded-md border p-3 sm:grid-cols-2">
+          {semanticStyleQualityView(qualityData).map(([label, value]) => (
+            <Kv key={label} label={label}>{value}</Kv>
+          ))}
         </div>
       ) : null}
-
-      <details className="rounded-md border px-3 py-2 text-sm">
-        <summary className="cursor-pointer select-none text-muted-foreground">查看原始 JSON</summary>
-        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all font-mono text-xs">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      </details>
-    </div>
+    </section>
   );
 }
 
@@ -508,6 +611,13 @@ export default function AiPersonaPage() {
   const qc = useQueryClient();
   const { botId, groupId } = useAiObservationScope();
   const [plainText, setPlainText] = useState("");
+  const [semanticOverrides, setSemanticOverrides] = useState<SemanticStyleOverrides>({
+    aggressive: false,
+    nonsense: false,
+    direct: false,
+    image: false,
+  });
+  const [semanticQuality, setSemanticQuality] = useState<ScopedSemanticStyleQuality | null>(null);
 
   const bot = parseScopeBotId(botId) ?? 0;
   const group = parseScopeGroupId(groupId);
@@ -531,19 +641,76 @@ export default function AiPersonaPage() {
         botId: bot,
         groupId: group,
         plainText: plainText.trim() || undefined,
-        purpose: "chat",
       }),
   });
   const styleQ = useQuery({
-    queryKey: ["llm-persona-group-style", group],
+    queryKey: ["llm-persona-group-style", bot || null, group, "group_chat"],
     enabled: groupReady,
-    queryFn: () => fetchLlmPersonaGroupStyle({ groupId: group as number }),
+    queryFn: () => fetchLlmPersonaGroupStyle({
+      botId: botReady ? bot : undefined,
+      groupId: group as number,
+    }),
+  });
+  const semanticQ = useQuery({
+    queryKey: ["llm-repeater-semantic-style", bot || null, group],
+    enabled: botReady && groupReady,
+    queryFn: () => fetchLlmRepeaterSemanticStyle({ botId: bot, groupId: group as number }),
+  });
+  const stickerLabelQ = useQuery({
+    queryKey: ["llm-sticker-label-overview"],
+    queryFn: () => fetchLlmStickerLabelOverview(),
+  });
+
+  useEffect(() => {
+    const raw = semanticQ.data?.overrides;
+    if (!raw) return;
+    setSemanticOverrides({
+      aggressive: raw.aggressive === true,
+      nonsense: raw.nonsense === true,
+      direct: raw.direct === true,
+      image: raw.image === true,
+    });
+  }, [semanticQ.data]);
+
+  const semanticMut = useMutation<
+    SemanticStyleStatusData | SemanticStyleQualityData,
+    Error,
+    SemanticStyleAction
+  >({
+    mutationFn: (action) => {
+      const body = {
+        action,
+        botId: bot,
+        groupId: group as number,
+        ...(action === "overrides" ? { overrides: semanticOverrides } : {}),
+      };
+      if (action === "quality") return postLlmRepeaterSemanticStyleManage({ ...body, action });
+      return postLlmRepeaterSemanticStyleManage({ ...body, action });
+    },
+    onSuccess: async (data, action) => {
+      if (action === "quality" && isSemanticStyleQuality(data)) {
+        setSemanticQuality({ scopeKey: semanticStyleScopeKey(bot, group), data });
+      }
+      pushConsoleToast("群表达已更新", "ok");
+      await qc.invalidateQueries({ queryKey: ["llm-repeater-semantic-style"] });
+    },
+    onError: (error) => pushConsoleToast(axiosErrorDetail(error), "err"),
+  });
+  const stickerLabelMut = useMutation({
+    mutationFn: postLlmStickerLabelManage,
+    onSuccess: async () => {
+      pushConsoleToast("表情标签维护已提交", "ok");
+      await qc.invalidateQueries({ queryKey: ["llm-sticker-label-overview"] });
+    },
+    onError: (error) => pushConsoleToast(axiosErrorDetail(error), "err"),
   });
 
   const onRefresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["llm-persona-observe"] });
     void qc.invalidateQueries({ queryKey: ["llm-persona-export"] });
     void qc.invalidateQueries({ queryKey: ["llm-persona-group-style"] });
+    void qc.invalidateQueries({ queryKey: ["llm-repeater-semantic-style"] });
+    void qc.invalidateQueries({ queryKey: ["llm-sticker-label-overview"] });
     void qc.invalidateQueries({ queryKey: ["instances"] });
   }, [qc]);
 
@@ -567,7 +734,7 @@ export default function AiPersonaPage() {
     return map;
   }, [instQ.data?.bot_profiles]);
 
-  const styleLive = asRecord(styleQ.data);
+  const styleLive = styleQ.data;
 
   return (
     <div className="space-y-3">
@@ -608,15 +775,40 @@ export default function AiPersonaPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">群风格</CardTitle>
-          <CardDescription>根据近期群消息统计，需填写群号。</CardDescription>
+          <CardTitle className="text-base">群表达</CardTitle>
+          <CardDescription>群范围统计与回复形态；语义样例和管理操作使用当前 Bot + 群范围。</CardDescription>
         </CardHeader>
         <CardContent>
+          <StateBlock loading={stickerLabelQ.isLoading} error={stickerLabelQ.error}>
+            {stickerLabelQ.data ? (
+              <StickerLabelOverview
+                data={stickerLabelQ.data}
+                busy={stickerLabelMut.isPending}
+                onManage={(action) => void stickerLabelMut.mutateAsync(action)}
+              />
+            ) : null}
+          </StateBlock>
           <StateBlock loading={styleQ.isLoading} error={styleQ.error}>
             {!groupReady ? (
               <AiScopeHint>请在顶栏指定群号。</AiScopeHint>
             ) : styleLive ? (
-              <GroupStyleLiveCard data={styleLive} />
+              <div className="space-y-4">
+                <GroupExpressionCard data={styleLive} />
+                {botReady ? (
+                  <StateBlock loading={semanticQ.isLoading} error={semanticQ.error}>
+                    <SemanticStyleControls
+                      data={semanticQ.data}
+                      qualityData={scopedSemanticStyleQuality(semanticQuality, bot, group)}
+                      overrides={semanticOverrides}
+                      setOverrides={setSemanticOverrides}
+                      busy={semanticMut.isPending}
+                      onAction={(action) => void semanticMut.mutateAsync(action)}
+                    />
+                  </StateBlock>
+                ) : (
+                  <AiScopeHint>填写 Bot QQ 后可查看当前 Bot + 群范围的语义样例质量与管理操作。</AiScopeHint>
+                )}
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">暂无画像数据。</p>
             )}
