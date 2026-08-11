@@ -27,6 +27,8 @@ export type TagsInputProps = {
   /** stacked：芯片在上；embedded：单框 +「更多」 */
   variant?: "stacked" | "embedded";
   options?: string[];
+  /** 仅展示的历史值；不会回写、复制或作为可选项提交。 */
+  readOnlyValues?: string[];
   className?: string;
   /** 如 QQ/群号：numeric */
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
@@ -94,6 +96,7 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
     disabled = false,
     variant = "stacked",
     options,
+    readOnlyValues = [],
     className,
     inputMode,
     acceptPattern,
@@ -141,6 +144,10 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
 
   const visibleTags = isEmbedded ? list.slice(0, maxVisibleTags) : list;
   const hiddenCount = isEmbedded ? Math.max(0, list.length - maxVisibleTags) : 0;
+  const storedValues = useMemo(
+    () => readOnlyValues.map((value) => value.trim()).filter(Boolean),
+    [readOnlyValues],
+  );
 
   const filteredAdded = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -272,6 +279,15 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
   if (!isEmbedded) {
     return (
       <div className={cn("tags-input tags-input--stacked", disabled && "tags-input--disabled", className)}>
+        {storedValues.length ? (
+          <div className="tags-input__chips">
+            {storedValues.map((value, index) => (
+              <span key={`${value}-${index}`} className="tags-input__chip tags-input__chip--stored" title="已保存密钥">
+                <span className="tags-input__chip-text">{value}</span>
+              </span>
+            ))}
+          </div>
+        ) : null}
         {list.length ? (
           <div className="tags-input__chips">
             {list.map((tag, index) => (
@@ -346,6 +362,17 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
             </button>
           </PopoverTrigger>
           <div className="tags-input__shell-chips">
+            {storedValues.map((value, index) => (
+              <span
+                key={`${value}-${index}`}
+                className="tags-input__embed-chip tags-input__embed-chip--stored"
+                title="已保存密钥"
+              >
+                <span className="tags-input__embed-chip-text" title={value}>
+                  {truncateToWidth(value)}
+                </span>
+              </span>
+            ))}
             {visibleTags.map((tag, index) => (
               <span
                 key={`${tag}-${index}`}
@@ -437,6 +464,18 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
             ) : null}
           </div>
           <div className="tags-input__popover-body">
+            {storedValues.length ? (
+              <div className="tags-input__popover-section">
+                <div className="tags-input__popover-hd">已保存（{storedValues.length}）</div>
+                <ul className="tags-input__popover-list">
+                  {storedValues.map((value, index) => (
+                    <li key={`${value}-${index}`} className="tags-input__popover-row tags-input__popover-row--stored">
+                      <span className="tags-input__popover-row-text" title={value}>{value}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <div className="tags-input__popover-section">
               <div className="tags-input__popover-hd">
                 已添加（{filteredAdded.length}/{list.length}）

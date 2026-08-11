@@ -32,6 +32,12 @@
   word-break: break-all;
 }
 
+.tags-input__chip--stored,
+.tags-input__embed-chip--stored {
+  background: color-mix(in srgb, var(--accent, #0284c7) 12%, transparent);
+  color: var(--accent, #0284c7);
+}
+
 .tags-input__field {
   width: 100%;
 }
@@ -211,6 +217,10 @@
 
 .tags-input__popover-row:hover {
   background: color-mix(in srgb, var(--text, #0f172a) 4%, transparent);
+}
+
+.tags-input__popover-row--stored {
+  color: var(--accent, #0284c7);
 }
 
 .tags-input__popover-row-text {

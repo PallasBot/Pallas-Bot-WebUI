@@ -1377,6 +1377,7 @@ export default function LlmProvidersForm() {
                             sortable
                             showPrimaryBadge
                             value={draftApiKeys}
+                            readOnlyValues={keepStoredApiKey ? draft.api_key_hints : []}
                             onChange={(keys) => {
                               setDraftApiKeys(keys);
                               if (keys.some((k) => k.trim())) setKeepStoredApiKey(false);
