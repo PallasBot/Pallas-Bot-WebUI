@@ -430,7 +430,7 @@ export type PluginLoadRole = "hub" | "worker" | "both" | "infra" | "internal";
 
 export type PluginCatalogProcessRole = "hub" | "worker" | "unified";
 
-export type PluginSourceKind = "main" | "core" | "extra" | "local" | "pip";
+export type PluginSourceKind = "main" | "core" | "extra" | "bundled" | "community" | "local" | "pip";
 
 export type OfficialExtensionStatus =
   | "installed"
@@ -655,6 +655,8 @@ export interface PluginRow {
   global_disable_protected?: boolean;
   /** 插件代码来源 */
   plugin_source?: PluginSourceKind;
+  /** 已安装插件版本；无法可靠识别时为空 */
+  plugin_version?: string | null;
   extra_package?: string | null;
   /** 相对仓库根的目录，如 local/plugins/draw */
   plugin_source_dir?: string | null;

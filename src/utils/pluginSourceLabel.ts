@@ -1,15 +1,30 @@
 import type { PluginRow, PluginSourceKind } from "@/api/pallasTypes";
 
+export type PluginSourceBadgeVariant = "neutral" | "info" | "success" | "warn" | "outline";
+
 export function pluginSourceLabel(source: PluginSourceKind | undefined): string {
-  if (source === "local") return "站点 local";
-  if (source === "pip") return "pip 包";
-  if (source === "extra") return "主仓扩展";
-  if (source === "core" || source === "main") return "主仓核心";
-  return "";
+  if (source === "core" || source === "bundled" || source === "main") return "内置插件";
+  if (source === "extra") return "官方插件";
+  if (source === "community") return "社区插件";
+  if (source === "local") return "本地插件";
+  return "PyPI 包";
+}
+
+export function pluginSourceBadgeVariant(source: PluginSourceKind | undefined): PluginSourceBadgeVariant {
+  if (source === "core" || source === "bundled" || source === "main") return "neutral";
+  if (source === "extra") return "info";
+  if (source === "community") return "success";
+  if (source === "local") return "warn";
+  return "outline";
 }
 
 export function hasPluginSource(p: Pick<PluginRow, "plugin_source">): boolean {
   return Boolean(pluginSourceLabel(p.plugin_source));
+}
+
+export function pluginVersionLabel(p: Pick<PluginRow, "plugin_version">): string {
+  const version = (p.plugin_version || "").trim();
+  return version ? `v${version}` : "";
 }
 
 export function pluginSourceDir(p: Pick<PluginRow, "plugin_source_dir">): string {

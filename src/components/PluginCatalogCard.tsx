@@ -12,15 +12,17 @@ import {
   pluginLoadProcessTags,
   pluginLoadWhere,
 } from "@/utils/pluginLoadRoleLabel";
-import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
+import {
+  pluginSourceBadgeVariant,
+  pluginSourceDir,
+  pluginSourceLabel,
+  pluginVersionLabel,
+} from "@/utils/pluginSourceLabel";
 import BtnIco from "@/components/BtnIco";
 import PluginIcon from "@/components/PluginIcon";
 import { usePluginFavorites } from "@/hooks/usePluginFavorites";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-function hasSource(plugin: PluginRow): boolean {
-  return hasPluginSource(plugin);
-}
 
 type Props = {
   plugin: PluginRow;
@@ -40,6 +42,8 @@ export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, 
   const pluginIdValue = pluginResolvedId(plugin);
   const loadProcessTags = pluginLoadProcessTags(plugin);
   const loadBadge = pluginLoadBadgeText(plugin);
+  const sourceLabel = pluginSourceLabel(plugin.plugin_source);
+  const versionLabel = pluginVersionLabel(plugin);
   const loadWhere = pluginLoadWhere(plugin);
   const isFavorite = favorites.has(pluginIdValue);
 
@@ -101,7 +105,7 @@ export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, 
               ) : null}
             </div>
 
-            {plugin.globally_disabled || loadBadge || hasSource(plugin) || loadProcessTags.length ? (
+            {plugin.globally_disabled || loadBadge || loadProcessTags.length || sourceLabel || versionLabel ? (
               <div className="plugin-store-card__meta-row plugin-catalog-card__meta-row">
                 {plugin.globally_disabled ? <span className="data-pill data-pill--off">已禁用</span> : null}
                 {loadBadge ? (
@@ -109,14 +113,16 @@ export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, 
                     {loadBadge}
                   </span>
                 ) : null}
-                {hasSource(plugin) ? (
-                  <span
-                    className="plugin-store-card__meta-link plugin-store-card__meta-link--version"
+                {sourceLabel ? (
+                  <Badge
+                    variant={pluginSourceBadgeVariant(plugin.plugin_source)}
+                    size="compact"
                     title={pluginSourceDir(plugin) || pluginSourceLabel(plugin.plugin_source)}
                   >
-                    {pluginSourceLabel(plugin.plugin_source)}
-                  </span>
+                    {sourceLabel}
+                  </Badge>
                 ) : null}
+                {versionLabel ? <Badge variant="outline" size="compact" title={versionLabel}>{versionLabel}</Badge> : null}
                 {loadProcessTags.map((tag) => (
                   <span
                     key={tag}
