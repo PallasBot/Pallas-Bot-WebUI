@@ -430,7 +430,15 @@ export type PluginLoadRole = "hub" | "worker" | "both" | "infra" | "internal";
 
 export type PluginCatalogProcessRole = "hub" | "worker" | "unified";
 
-export type PluginSourceKind = "main" | "core" | "extra" | "bundled" | "community" | "local" | "pip";
+export type PluginSourceKind =
+  | "main"
+  | "core"
+  | "extra"
+  | "bundled"
+  | "official"
+  | "community"
+  | "nonebot"
+  | "local";
 
 export type OfficialExtensionStatus =
   | "installed"

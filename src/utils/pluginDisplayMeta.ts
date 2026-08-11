@@ -23,8 +23,7 @@ export function pluginDisplaySubtitle(plugin: PluginRow): string {
   const title = pluginDisplayTitle(plugin);
   if (!id || id === title) return "";
 
-  /* pip 外部包：始终展示包名/模块 id，避免卡片标题下空一行 */
-  if (plugin.plugin_source === "pip") {
+  if (plugin.plugin_source === "official" || plugin.plugin_source === "nonebot") {
     const pkg = (plugin.extra_package || "").trim();
     if (pkg && pkg !== title) return pkg;
     return id;
