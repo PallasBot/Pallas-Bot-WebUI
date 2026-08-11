@@ -444,40 +444,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/pallas/api/common-config/llm/persona/sticker-labels": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Sticker Label Overview Get */
-        get: operations["_sticker_label_overview_get_pallas_api_common_config_llm_persona_sticker_labels_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/common-config/llm/persona/sticker-labels/manage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Sticker Label Maintenance Post */
-        post: operations["_sticker_label_maintenance_post_pallas_api_common_config_llm_persona_sticker_labels_manage_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/pallas/api/common-config/llm/persona/export": {
         parameters: {
             query?: never;
@@ -506,6 +472,40 @@ export interface paths {
         get: operations["_llm_persona_group_style_get_pallas_api_common_config_llm_persona_group_style_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/persona/sticker-labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sticker Label Overview Get */
+        get: operations["_sticker_label_overview_get_pallas_api_common_config_llm_persona_sticker_labels_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/persona/sticker-labels/manage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sticker Label Maintenance Post */
+        post: operations["_sticker_label_maintenance_post_pallas_api_common_config_llm_persona_sticker_labels_manage_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4722,11 +4722,31 @@ export interface components {
     schemas: {
         /** AccountPersonaProfile */
         AccountPersonaProfile: {
+            /**
+             * Energy
+             * @default 0
+             */
             energy: number;
+            /**
+             * Warmth
+             * @default 0
+             */
             warmth: number;
+            /**
+             * Mischief
+             * @default 0
+             */
             mischief: number;
+            /**
+             * Restraint
+             * @default 0
+             */
             restraint: number;
-            /** @enum {string} */
+            /**
+             * Source
+             * @default derived
+             * @enum {string}
+             */
             source: "derived" | "manual" | "legacy_migrated";
         };
         /** Body__community_gallery_create_pallas_api_community_gallery_post */
@@ -4850,18 +4870,66 @@ export interface components {
         };
         /** GroupExpressionAggregate */
         GroupExpressionAggregate: {
+            /**
+             * Sample Count
+             * @default 0
+             */
             sample_count: number;
+            /**
+             * Window Hours
+             * @default 0
+             */
             window_hours: number;
+            /**
+             * Message Count
+             * @default 0
+             */
             message_count: number;
+            /**
+             * Answer Count
+             * @default 0
+             */
             answer_count: number;
+            /**
+             * Distinct Answer Keywords
+             * @default 0
+             */
             distinct_answer_keywords: number;
+            /**
+             * Active Hour Count
+             * @default 0
+             */
             active_hour_count: number;
+            /**
+             * Messages Per Active Hour
+             * @default 0
+             */
             messages_per_active_hour: number;
             message_length?: components["schemas"]["MessageLengthDistribution"];
+            /**
+             * Answer Ratio
+             * @default 0
+             */
             answer_ratio: number;
+            /**
+             * Repetition Rate
+             * @default 0
+             */
             repetition_rate: number;
+            /**
+             * Forced Teach Weight
+             * @default 0
+             */
             forced_teach_weight: number;
+            /**
+             * Contamination Skipped Messages
+             * @default 0
+             */
             contamination_skipped_messages: number;
+            /**
+             * Contamination Skipped Answers
+             * @default 0
+             */
             contamination_skipped_answers: number;
         };
         /** GroupExpressionProfile */
@@ -4869,17 +4937,41 @@ export interface components {
             aggregate?: components["schemas"]["GroupExpressionAggregate"];
             examples_summary?: components["schemas"]["SemanticExamplesSummary"];
             reply_shape?: components["schemas"]["GroupReplyShapeHint"];
-            /** Format: date-time */
+            /**
+             * Updated At
+             * Format: date-time
+             */
             updated_at?: string;
         };
         /** GroupReplyShapeHint */
         GroupReplyShapeHint: {
-            /** @enum {string} */
+            /**
+             * Length Pref
+             * @default any
+             * @enum {string}
+             */
             length_pref: "short" | "medium" | "long" | "any";
+            /**
+             * Bubble Count P50
+             * @default 0
+             */
             bubble_count_p50: number;
+            /**
+             * Bubble Count P90
+             * @default 0
+             */
             bubble_count_p90: number;
+            /**
+             * Segment Char Length P50
+             * @default 0
+             */
             segment_char_length_p50: number;
+            /**
+             * Segment Char Length P90
+             * @default 0
+             */
             segment_char_length_p90: number;
+            /** Rhythm Distribution */
             rhythm_distribution?: {
                 [key: string]: number;
             };
@@ -5086,12 +5178,6 @@ export interface components {
             /** Expires At */
             expires_at: number;
         };
-        /** MessageLengthDistribution */
-        MessageLengthDistribution: {
-            average: number;
-            p50: number;
-            p90: number;
-        };
         /** LifecyclePreviewResponse */
         LifecyclePreviewResponse: {
             /**
@@ -5158,6 +5244,24 @@ export interface components {
             sharded_logs: boolean;
             /** Log Sources */
             log_sources?: string[];
+        };
+        /** MessageLengthDistribution */
+        MessageLengthDistribution: {
+            /**
+             * Average
+             * @default 0
+             */
+            average: number;
+            /**
+             * P50
+             * @default 0
+             */
+            p50: number;
+            /**
+             * P90
+             * @default 0
+             */
+            p90: number;
         };
         /**
          * PluginConfigData
@@ -5268,17 +5372,46 @@ export interface components {
              */
             help_ignored: boolean;
         };
-        /** SemanticExamplesSummary */
+        /**
+         * SemanticExamplesSummary
+         * @description Stable snapshot metadata; mutable admission and delivery quotas stay in their owner.
+         */
         SemanticExamplesSummary: {
+            /**
+             * Profile Ref
+             * @default
+             */
             profile_ref: string;
+            /**
+             * Scene
+             * @default
+             */
             scene: string;
+            /**
+             * Sample Count
+             * @default 0
+             */
             sample_count: number;
+            /**
+             * Direct Example Count
+             * @default 0
+             */
             direct_example_count: number;
+            /**
+             * Direct Pair Count
+             * @default 0
+             */
             direct_pair_count: number;
+            /**
+             * Rewrite Seed Count
+             * @default 0
+             */
             rewrite_seed_count: number;
+            /** Intensity Counts */
             intensity_counts?: {
                 [key: string]: number;
             };
+            /** Form Counts */
             form_counts?: {
                 [key: string]: number;
             };
@@ -5578,7 +5711,11 @@ export interface components {
         };
         /** _ApiOkResponse[GroupExpressionProfile] */
         _ApiOkResponse_GroupExpressionProfile_: {
-            /** @constant */
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
             ok: true;
             data: components["schemas"]["GroupExpressionProfile"];
             /** Error */
@@ -5668,6 +5805,32 @@ export interface components {
             /** Error */
             error?: null;
         };
+        /** _ApiOkResponse[Union[_SemanticStyleStatusData, _SemanticStyleQualityData]] */
+        _ApiOkResponse_Union__SemanticStyleStatusData___SemanticStyleQualityData__: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            /** Data */
+            data: components["schemas"]["_SemanticStyleStatusData"] | components["schemas"]["_SemanticStyleQualityData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[Union[_StickerLabelRequeueResult, _StickerLabelPauseResult, _StickerLabelClearResult]] */
+        _ApiOkResponse_Union__StickerLabelRequeueResult___StickerLabelPauseResult___StickerLabelClearResult__: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            /** Data */
+            data: components["schemas"]["_StickerLabelRequeueResult"] | components["schemas"]["_StickerLabelPauseResult"] | components["schemas"]["_StickerLabelClearResult"];
+            /** Error */
+            error?: null;
+        };
         /** _ApiOkResponse[_AiExtensionTestData] */
         _ApiOkResponse__AiExtensionTestData_: {
             /**
@@ -5740,14 +5903,6 @@ export interface components {
             /** Error */
             error?: null;
         };
-        /** _ApiOkResponse[Union[_SemanticStyleStatusData, _SemanticStyleQualityData]] */
-        _ApiOkResponse_Union__SemanticStyleStatusData___SemanticStyleQualityData__: {
-            /** @constant */
-            ok: true;
-            data: components["schemas"]["_SemanticStyleStatusData"] | components["schemas"]["_SemanticStyleQualityData"];
-            /** Error */
-            error?: null;
-        };
         /** _ApiOkResponse[_LlmRuntimeOverviewData] */
         _ApiOkResponse__LlmRuntimeOverviewData_: {
             /**
@@ -5757,22 +5912,6 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_LlmRuntimeOverviewData"];
-            /** Error */
-            error?: null;
-        };
-        /** _ApiOkResponse[_PersonaObserveData] */
-        _ApiOkResponse__PersonaObserveData_: {
-            /** @constant */
-            ok: true;
-            data: components["schemas"]["_PersonaObserveData"];
-            /** Error */
-            error?: null;
-        };
-        /** _ApiOkResponse[_SemanticStyleStatusData] */
-        _ApiOkResponse__SemanticStyleStatusData_: {
-            /** @constant */
-            ok: true;
-            data: components["schemas"]["_SemanticStyleStatusData"];
             /** Error */
             error?: null;
         };
@@ -5788,6 +5927,30 @@ export interface components {
             /** Error */
             error?: null;
         };
+        /** _ApiOkResponse[_PersonaObserveData] */
+        _ApiOkResponse__PersonaObserveData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_PersonaObserveData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[_SemanticStyleStatusData] */
+        _ApiOkResponse__SemanticStyleStatusData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_SemanticStyleStatusData"];
+            /** Error */
+            error?: null;
+        };
         /** _ApiOkResponse[_ServiceGatewaysConnectivityCheckData] */
         _ApiOkResponse__ServiceGatewaysConnectivityCheckData_: {
             /**
@@ -5797,6 +5960,18 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_ServiceGatewaysConnectivityCheckData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[_StickerLabelOverviewData] */
+        _ApiOkResponse__StickerLabelOverviewData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_StickerLabelOverviewData"];
             /** Error */
             error?: null;
         };
@@ -5814,12 +5989,13 @@ export interface components {
             security?: boolean | null;
             /** Community Roster Show Qq */
             community_roster_show_qq?: boolean | null;
-            /** Persona */
-            persona?: {
-                [key: string]: unknown;
-            } | null;
+            persona?: components["schemas"]["_BotPersonaPatch"] | null;
             /** Group Style Enabled */
             group_style_enabled?: boolean | null;
+        };
+        /** _BotPersonaPatch */
+        _BotPersonaPatch: {
+            account_profile?: components["schemas"]["AccountPersonaProfile"] | null;
         };
         /** _CommonConfigSectionPatchBody */
         _CommonConfigSectionPatchBody: {
@@ -6253,26 +6429,6 @@ export interface components {
              * @default
              */
             drunk: string;
-            /**
-             * Repeater Fallback
-             * @default
-             */
-            repeater_fallback: string;
-            /**
-             * Repeater Polish
-             * @default
-             */
-            repeater_polish: string;
-            /**
-             * Repeater Polish Lite
-             * @default
-             */
-            repeater_polish_lite: string;
-            /**
-             * Repeater Select
-             * @default
-             */
-            repeater_select: string;
         };
         /** _LlmMediaTaskCapabilityRow */
         _LlmMediaTaskCapabilityRow: {
@@ -6763,34 +6919,6 @@ export interface components {
             /** Pipeline */
             pipeline?: unknown[];
         };
-        /** _PersonaObserveBotRow */
-        _PersonaObserveBotRow: {
-            account: number;
-            group_style_enabled: boolean;
-            account_profile: components["schemas"]["AccountPersonaProfile"];
-            base: {
-                [key: string]: unknown;
-            };
-            base_hints?: string[];
-            resolved?: {
-                [key: string]: unknown;
-            } | null;
-            resolved_hints?: string[];
-        };
-        /** _PersonaObserveData */
-        _PersonaObserveData: {
-            group_id?: number | null;
-            group_style_snapshot?: {
-                [key: string]: unknown;
-            } | null;
-            affect_refine?: {
-                [key: string]: unknown;
-            } | null;
-            affect_triggers?: {
-                [key: string]: unknown;
-            }[];
-            bots?: components["schemas"]["_PersonaObserveBotRow"][];
-        };
         /** _OfficialExtensionPackageBody */
         _OfficialExtensionPackageBody: {
             /** Package */
@@ -6800,6 +6928,48 @@ export interface components {
              * @default false
              */
             restart: boolean;
+        };
+        /** _PersonaObserveBotRow */
+        _PersonaObserveBotRow: {
+            /** Account */
+            account: number;
+            /**
+             * Group Style Enabled
+             * @default true
+             */
+            group_style_enabled: boolean;
+            account_profile: components["schemas"]["AccountPersonaProfile"];
+            /** Base */
+            base: {
+                [key: string]: unknown;
+            };
+            /** Base Hints */
+            base_hints?: string[];
+            /** Resolved */
+            resolved?: {
+                [key: string]: unknown;
+            } | null;
+            /** Resolved Hints */
+            resolved_hints?: string[];
+        };
+        /** _PersonaObserveData */
+        _PersonaObserveData: {
+            /** Group Id */
+            group_id?: number | null;
+            /** Group Style Snapshot */
+            group_style_snapshot?: {
+                [key: string]: unknown;
+            } | null;
+            /** Affect Refine */
+            affect_refine?: {
+                [key: string]: unknown;
+            } | null;
+            /** Affect Triggers */
+            affect_triggers?: {
+                [key: string]: unknown;
+            }[];
+            /** Bots */
+            bots?: components["schemas"]["_PersonaObserveBotRow"][];
         };
         /** _PluginConfigRawBody */
         _PluginConfigRawBody: {
@@ -6896,63 +7066,138 @@ export interface components {
         };
         /** _SemanticStyleManageBody */
         _SemanticStyleManageBody: {
-            /** @enum {string} */
+            /**
+             * Action
+             * @enum {string}
+             */
             action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable";
+            /** Bot Id */
             bot_id?: number | null;
+            /** Group Id */
             group_id?: number | null;
-            /** @default group_chat */
+            /**
+             * Scene
+             * @default group_chat
+             */
             scene: string;
             overrides?: components["schemas"]["_SemanticStyleOverridesPatch"] | null;
         };
         /** _SemanticStyleOverridesData */
         _SemanticStyleOverridesData: {
+            /** Aggressive */
             aggressive: boolean;
+            /** Nonsense */
             nonsense: boolean;
+            /** Direct */
             direct: boolean;
+            /** Image */
             image: boolean;
         };
         /** _SemanticStyleOverridesPatch */
         _SemanticStyleOverridesPatch: {
+            /** Aggressive */
             aggressive?: boolean | null;
+            /** Nonsense */
             nonsense?: boolean | null;
+            /** Direct */
             direct?: boolean | null;
+            /** Image */
             image?: boolean | null;
         };
         /** _SemanticStyleProfileSummaryData */
         _SemanticStyleProfileSummaryData: {
+            /** Profile Ref */
             profile_ref: string;
+            /** Scene */
             scene: string;
+            /**
+             * Sample Count
+             * @default 0
+             */
             sample_count: number;
+            /**
+             * Direct Example Count
+             * @default 0
+             */
             direct_example_count: number;
+            /**
+             * Direct Pair Count
+             * @default 0
+             */
             direct_pair_count: number;
+            /**
+             * Rewrite Seed Count
+             * @default 0
+             */
             rewrite_seed_count: number;
+            /** Intensity Counts */
             intensity_counts?: {
                 [key: string]: number;
             };
+            /** Form Counts */
             form_counts?: {
                 [key: string]: number;
             };
+            /**
+             * Bubble Count P50
+             * @default 0
+             */
             bubble_count_p50: number;
+            /**
+             * Bubble Count P90
+             * @default 0
+             */
             bubble_count_p90: number;
+            /**
+             * Segment Char Length P50
+             * @default 0
+             */
             segment_char_length_p50: number;
+            /**
+             * Segment Char Length P90
+             * @default 0
+             */
             segment_char_length_p90: number;
+            /** Rhythm Distribution */
             rhythm_distribution?: {
                 [key: string]: number;
             };
+            /**
+             * Updated At
+             * @default 0
+             */
             updated_at: number;
         };
         /** _SemanticStyleQualityData */
         _SemanticStyleQualityData: {
             status: components["schemas"]["_SemanticStyleStatusData"];
+            /** Label Version */
             label_version: number;
+            /**
+             * Positive Bot Style Count
+             * @default 0
+             */
             positive_bot_style_count: number;
         };
         /** _SemanticStyleStatusData */
         _SemanticStyleStatusData: {
+            /**
+             * Enabled
+             * @default true
+             */
             enabled: boolean;
             overrides?: components["schemas"]["_SemanticStyleOverridesData"] | null;
+            /**
+             * Example Count
+             * @default 0
+             */
             example_count: number;
+            /**
+             * Profile Count
+             * @default 0
+             */
             profile_count: number;
+            /** Backfill Cursor */
             backfill_cursor?: {
                 [key: string]: unknown;
             };
@@ -7002,43 +7247,20 @@ export interface components {
             /** Queue Load Hint */
             queue_load_hint?: string | null;
         };
-        /** _SystemRestartBody */
-        _SystemRestartBody: {
+        /** _StickerLabelClearBody */
+        _StickerLabelClearBody: {
             /**
-             * Workers Only
-             * @default false
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            workers_only: boolean;
+            action: "clear";
+            /** Content Hash */
+            content_hash: string;
         };
-        /** _UserConfigPatch */
-        _UserConfigPatch: {
-            /** Banned */
-            banned?: boolean | null;
-        };
-        /** _ApiOkResponse[_StickerLabelOverviewData] */
-        _ApiOkResponse__StickerLabelOverviewData_: {
-            /**
-             * Ok
-             * @default true
-             * @constant
-             */
-            ok: true;
-            data: components["schemas"]["_StickerLabelOverviewData"];
-            /** Error */
-            error?: null;
-        };
-        /** _ApiOkResponse[Union[_StickerLabelRequeueResult, _StickerLabelPauseResult, _StickerLabelClearResult]] */
-        _ApiOkResponse_Union__StickerLabelRequeueResult___StickerLabelPauseResult___StickerLabelClearResult__: {
-            /**
-             * Ok
-             * @default true
-             * @constant
-             */
-            ok: true;
-            /** Data */
-            data: components["schemas"]["_StickerLabelRequeueResult"] | components["schemas"]["_StickerLabelPauseResult"] | components["schemas"]["_StickerLabelClearResult"];
-            /** Error */
-            error?: null;
+        /** _StickerLabelClearResult */
+        _StickerLabelClearResult: {
+            /** Cleared */
+            cleared: boolean;
         };
         /** _StickerLabelJobErrorData */
         _StickerLabelJobErrorData: {
@@ -7077,21 +7299,6 @@ export interface components {
             failed: number;
             /** Recent Errors */
             recent_errors?: components["schemas"]["_StickerLabelJobErrorData"][];
-        };
-        /** _StickerLabelClearBody */
-        _StickerLabelClearBody: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            action: "clear";
-            /** Content Hash */
-            content_hash: string;
-        };
-        /** _StickerLabelClearResult */
-        _StickerLabelClearResult: {
-            /** Cleared */
-            cleared: boolean;
         };
         /** _StickerLabelOverviewData */
         _StickerLabelOverviewData: {
@@ -7196,6 +7403,19 @@ export interface components {
              * @default 0
              */
             low_confidence: number;
+        };
+        /** _SystemRestartBody */
+        _SystemRestartBody: {
+            /**
+             * Workers Only
+             * @default false
+             */
+            workers_only: boolean;
+        };
+        /** _UserConfigPatch */
+        _UserConfigPatch: {
+            /** Banned */
+            banned?: boolean | null;
         };
     };
     responses: never;
@@ -8440,76 +8660,6 @@ export interface operations {
             };
         };
     };
-    _sticker_label_overview_get_pallas_api_common_config_llm_persona_sticker_labels_get: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["_ApiOkResponse__StickerLabelOverviewData_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _sticker_label_maintenance_post_pallas_api_common_config_llm_persona_sticker_labels_manage_post: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["_StickerLabelRequeueBody"] | components["schemas"]["_StickerLabelPauseBody"] | components["schemas"]["_StickerLabelClearBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["_ApiOkResponse_Union__StickerLabelRequeueResult___StickerLabelPauseResult___StickerLabelClearResult__"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     _llm_persona_export_get_pallas_api_common_config_llm_persona_export_get: {
         parameters: {
             query: {
@@ -8572,6 +8722,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["_ApiOkResponse_GroupExpressionProfile_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _sticker_label_overview_get_pallas_api_common_config_llm_persona_sticker_labels_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__StickerLabelOverviewData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _sticker_label_maintenance_post_pallas_api_common_config_llm_persona_sticker_labels_manage_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_StickerLabelRequeueBody"] | components["schemas"]["_StickerLabelPauseBody"] | components["schemas"]["_StickerLabelClearBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse_Union__StickerLabelRequeueResult___StickerLabelPauseResult___StickerLabelClearResult__"];
                 };
             };
             /** @description Validation Error */
