@@ -19,6 +19,7 @@ import {
   type PluginGovernanceAction,
 } from "@/components/config/pluginGovernancePatch";
 import StateBlock from "@/components/StateBlock";
+import { Badge } from "@/components/ui/badge";
 import UiInput from "@/components/ui/UiInput";
 import {
   Select,
@@ -234,24 +235,28 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
               </div>
               <div className="plugin-governance-panel__badges">
                 {g.reload_policy ? (
-                  <span className="plugin-governance-panel__badge">热更新：{reloadPolicyLabel(g.reload_policy)}</span>
+                  <Badge variant="info" size="compact" className="plugin-governance-panel__badge">
+                    热更新：{reloadPolicyLabel(g.reload_policy)}
+                  </Badge>
                 ) : null}
                 {g.activation_policy ? (
-                  <span className="plugin-governance-panel__badge">
+                  <Badge variant="info" size="compact" className="plugin-governance-panel__badge">
                     生效方式：{activationPolicyShortLabel(g.activation_policy)}
-                  </span>
+                  </Badge>
                 ) : null}
               </div>
             </header>
           ) : g.reload_policy || g.activation_policy ? (
             <div className="plugin-governance-panel__dialog-meta">
               {g.reload_policy ? (
-                <span className="plugin-governance-panel__badge">热更新：{reloadPolicyLabel(g.reload_policy)}</span>
+                <Badge variant="info" size="compact" className="plugin-governance-panel__badge">
+                  热更新：{reloadPolicyLabel(g.reload_policy)}
+                </Badge>
               ) : null}
               {g.activation_policy ? (
-                <span className="plugin-governance-panel__badge">
+                <Badge variant="info" size="compact" className="plugin-governance-panel__badge">
                   生效方式：{activationPolicyShortLabel(g.activation_policy)}
-                </span>
+                </Badge>
               ) : null}
             </div>
           ) : null}

@@ -22,6 +22,7 @@ import {
 import BotRestartProgressDialog from "@/components/BotRestartProgressDialog";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import ConsoleToastHost from "@/components/ConsoleToastHost";
+import StatusTone from "@/components/StatusTone";
 import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
 import { cn } from "@/lib/utils";
 import {
@@ -472,7 +473,11 @@ export default function AppShell() {
                   <div className="shell__title">PBWebUI</div>
                 </div>
                 <div className="shell__brand-meta">
-                  <span className={cn("shell__sidebar-conn shell__sidebar-conn--brand", connCls)}>{connText}</span>
+                  <StatusTone
+                    className="shell__sidebar-conn shell__sidebar-conn--brand"
+                    pending={connPending}
+                    ok={connOk}
+                  />
                   <span className="shell__brand-badge" title="控制台资源版本">
                     {brandVersionDisplay}
                   </span>
@@ -601,7 +606,11 @@ export default function AppShell() {
                     </span>
                   </div>
                   <div className="shell__brand-meta shell__brand-meta--mobile">
-                    <span className={cn("shell__sidebar-conn shell__sidebar-conn--brand", connCls)}>{connText}</span>
+                    <StatusTone
+                      className="shell__sidebar-conn shell__sidebar-conn--brand"
+                      pending={connPending}
+                      ok={connOk}
+                    />
                   </div>
                 </div>
               </div>

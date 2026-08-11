@@ -948,11 +948,11 @@ export default function UpdatePage() {
               <PanelTitleIcon icon={LayoutDashboard} />
               WebUI
               {web?.has_update ? (
-                <Badge className={`${UPDATE_STATUS_PILL} update-page__status-pill--available`} variant="outline">
+                <Badge className={UPDATE_STATUS_PILL} variant="warn">
                   <span className="update-page__status-dot" aria-hidden />有更新
                 </Badge>
               ) : (
-                <Badge className={`${UPDATE_STATUS_PILL} update-page__status-pill--current`} variant="outline">
+                <Badge className={UPDATE_STATUS_PILL} variant="success">
                   已是最新
                 </Badge>
               )}
@@ -1061,7 +1061,7 @@ export default function UpdatePage() {
                 <PanelTitleIcon icon={Bot} />
                 Bot 本体
                 {bot?.has_update ? (
-                  <Badge className={`${UPDATE_STATUS_PILL} update-page__status-pill--available`} variant="outline">
+                  <Badge className={UPDATE_STATUS_PILL} variant="warn">
                     <span className="update-page__status-dot" aria-hidden />有更新
                   </Badge>
                 ) : botTrack === "release" && bot?.development_build ? (
@@ -1073,7 +1073,7 @@ export default function UpdatePage() {
                     开发构建
                   </Badge>
                 ) : (
-                  <Badge className={`${UPDATE_STATUS_PILL} update-page__status-pill--current`} variant="outline">
+                  <Badge className={UPDATE_STATUS_PILL} variant="success">
                     已是最新
                   </Badge>
                 )}
@@ -1184,13 +1184,8 @@ export default function UpdatePage() {
                 <PanelTitleIcon icon={Cpu} />
                 AI Runtime
                 <Badge
-                  className={cn(
-                    UPDATE_STATUS_PILL,
-                    aiRuntime.state === "update_available"
-                      ? "update-page__status-pill--available"
-                      : "update-page__status-pill--current",
-                  )}
-                  variant="outline"
+                  className={UPDATE_STATUS_PILL}
+                  variant={aiRuntime.state === "update_available" ? "warn" : "success"}
                 >
                   {aiRuntime.state === "update_available" ? <span className="update-page__status-dot" aria-hidden /> : null}
                   {aiRuntime.label}

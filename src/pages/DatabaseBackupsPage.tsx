@@ -15,6 +15,7 @@ import BackupDirPicker from "@/components/BackupDirPicker";
 import BackupTargetTree from "@/components/BackupTargetTree";
 import ConsolePageSkeleton, { SkelValue } from "@/components/ConsolePageSkeleton";
 import PageMasthead from "@/components/PageMasthead";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import UiInput from "@/components/ui/UiInput";
 import { Button } from "@/components/ui/button";
 import {
@@ -246,11 +247,11 @@ export default function DatabaseBackupsPage() {
     return "已完成";
   }
 
-  function runStatusBadgeVariant(row: DbBackupRunRow): string {
+  function runStatusBadgeVariant(row: DbBackupRunRow): BadgeProps["variant"] {
     const status = runStatus(row);
-    if (status === "completed") return "badge--ok";
-    if (status === "failed") return "badge--warn";
-    return "badge";
+    if (status === "completed") return "success";
+    if (status === "failed") return "warn";
+    return "pending";
   }
 
   function downloadState(path: string): DownloadState {
@@ -750,7 +751,9 @@ export default function DatabaseBackupsPage() {
                           <div className="database-backups-page__card-size">{formatBackupBytes(row.size_bytes)}</div>
                         </div>
                         <div className="database-backups-page__card-actions">
-                          <span className={`badge ${runStatusBadgeVariant(row)} database-backups-page__status-badge`}>{runStatusLabel(row)}</span>
+                          <Badge variant={runStatusBadgeVariant(row)} size="compact" className="database-backups-page__status-badge">
+                            {runStatusLabel(row)}
+                          </Badge>
                           <div className="database-backups-page__row-btns">
                             <button type="button" className="btn btn--primary database-backups-page__restore-btn" disabled={runStatus(row) !== "completed" || anyJobBusy || !restoreToolReady} onClick={() => void restoreRun(row)}>
                               {restoreBusy && restoreJob?.output_dir === row.path ? "复原中…" : "复原"}
@@ -804,7 +807,9 @@ export default function DatabaseBackupsPage() {
                             <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatBackupBytes(row.size_bytes)}</td>
                             <td className="muted">{formatModifiedAt(row.modified_at)}</td>
                             <td>
-                              <span className={`badge ${runStatusBadgeVariant(row)} database-backups-page__status-badge`}>{runStatusLabel(row)}</span>
+                              <Badge variant={runStatusBadgeVariant(row)} size="compact" className="database-backups-page__status-badge">
+                                {runStatusLabel(row)}
+                              </Badge>
                             </td>
                             <td style={{ textAlign: "right" }}>
                               <div className="database-backups-page__row-btns database-backups-page__row-btns--table">

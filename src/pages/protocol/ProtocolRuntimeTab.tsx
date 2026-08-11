@@ -16,6 +16,7 @@ import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import ProtocolRuntimeConfigDialog from "@/components/ProtocolRuntimeConfigDialog";
 import ProtocolRuntimeImageSwitchDialog from "@/components/ProtocolRuntimeImageSwitchDialog";
 import StatusTone from "@/components/StatusTone";
+import { Badge } from "@/components/ui/badge";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import { Button } from "@/components/ui/button";
@@ -528,12 +529,12 @@ export default function ProtocolRuntimeTab() {
                               offLabel="已停止"
                             />
                             {!members.length ? (
-                              <span className="data-conn-capsule data-conn-capsule--off">空闲</span>
+                              <Badge variant="neutral" size="compact">空闲</Badge>
                             ) : null}
                             {webuiPort ? (
                               webuiHref ? (
                                 <a
-                                  className="data-conn-capsule data-conn-capsule--on protocol-runtime-webui-link"
+                                  className="badge badge--compact badge--success protocol-runtime-webui-link"
                                   href={webuiHref}
                                   target="_blank"
                                   rel="noopener noreferrer"
@@ -543,9 +544,9 @@ export default function ProtocolRuntimeTab() {
                                   WebUI :{webuiPort}
                                 </a>
                               ) : (
-                                <span className="data-conn-capsule data-conn-capsule--off">
+                                <Badge variant="neutral" size="compact">
                                   WebUI :{webuiPort}
-                                </span>
+                                </Badge>
                               )
                             ) : null}
                           </div>

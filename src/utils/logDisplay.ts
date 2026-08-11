@@ -77,9 +77,13 @@ export function shortenLogScopeModule(module: string): string {
       break;
     }
   }
+  const normalized = s.toLowerCase();
+  if (normalized === "pallas" || normalized === "pallas.core" || normalized.startsWith("pallas.core.")) {
+    return "Core";
+  }
   // logger 名常带 `.子模块`，badge 只留首段导入 id
   const head = s.split(/[.:/]/)[0]?.trim() || s;
-  return head;
+  return head.charAt(0).toUpperCase() + head.slice(1);
 }
 
 /** 列表 / 固定面板 scope 徽章文案：短标签 + 悬停完整名 */
@@ -88,8 +92,12 @@ export function formatLogScopeBadge(scope: string): { label: string; title: stri
   const { source, module } = splitLogScope(raw);
   const full = [source, module].filter(Boolean).join("/") || raw;
   const shortMod = shortenLogScopeModule(module);
-  const label = [source, shortMod].filter(Boolean).join("/") || shortMod || source || "";
+  const label = shortMod || source || "";
   return { label, title: full || label };
+}
+
+export function logScopeBadgeColorKey(scope: string): string {
+  return formatLogScopeBadge(scope).label;
 }
 /** 运行日志 feed 行首：仅 `HH:mm:ss`，缩短前置标签 */
 export function formatLogDisplayTime(raw: string | number): string {

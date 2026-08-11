@@ -40,6 +40,7 @@ import RefreshIconButton from "@/components/RefreshIconButton";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
 import { Button } from "@/components/ui/button";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -176,11 +177,11 @@ function sectionFromHash(hash: string): DbSectionId | null {
   return null;
 }
 
-function healthBadgeClass(status: DbHealthStatus | undefined): string {
-  if (status === "healthy") return "badge badge--ok";
-  if (status === "degraded") return "badge badge--warn";
-  if (status === "unhealthy") return "badge badge--err";
-  return "badge";
+function healthBadgeVariant(status: DbHealthStatus | undefined): BadgeProps["variant"] {
+  if (status === "healthy") return "success";
+  if (status === "degraded") return "warn";
+  if (status === "unhealthy") return "danger";
+  return "neutral";
 }
 
 function healthStatusLabel(status: DbHealthStatus | undefined): string {
@@ -729,7 +730,9 @@ export default function DatabasePage() {
                 <span className="metric-tile__label">健康</span>
               </div>
               <div className="metric-tile__value-slot">
-                <span className={healthBadgeClass(health.status)}>{healthStatusLabel(health.status)}</span>
+                <Badge variant={healthBadgeVariant(health.status)} size="compact">
+                  {healthStatusLabel(health.status)}
+                </Badge>
                 <span
                   className="database-page__kpi-hint muted"
                   title={health.reason || undefined}

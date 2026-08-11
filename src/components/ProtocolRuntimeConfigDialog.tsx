@@ -11,6 +11,7 @@ import {
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import ProtocolDockerImageSelect from "@/components/protocol/ProtocolDockerImageSelect";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -246,17 +247,11 @@ export default function ProtocolRuntimeConfigDialog({
               <DialogTitle id="protocol-runtime-config-dialog-title" className="text-left">
                 {title}
               </DialogTitle>
-              <span
-                className={
-                  runtime?.process_running
-                    ? "data-conn-capsule data-conn-capsule--run"
-                    : "data-conn-capsule data-conn-capsule--off"
-                }
-              >
+              <Badge variant={runtime?.process_running ? "info" : "neutral"} size="compact">
                 {runtime?.process_running ? "运行中" : "已停止"}
-              </span>
+              </Badge>
               {!members.length ? (
-                <span className="data-conn-capsule data-conn-capsule--off">空闲</span>
+                <Badge variant="neutral" size="compact">空闲</Badge>
               ) : null}
             </div>
             <p className="muted break-all text-xs">{runtimeId}</p>
@@ -265,7 +260,7 @@ export default function ProtocolRuntimeConfigDialog({
               {webuiPort ? (
                 webuiHref ? (
                   <a
-                    className="data-conn-capsule data-conn-capsule--on protocol-runtime-webui-link"
+                    className="badge badge--compact badge--success protocol-runtime-webui-link"
                     href={webuiHref}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -274,9 +269,9 @@ export default function ProtocolRuntimeConfigDialog({
                     WebUI :{webuiPort}
                   </a>
                 ) : (
-                  <span className="data-conn-capsule data-conn-capsule--off">
+                  <Badge variant="neutral" size="compact">
                     WebUI :{webuiPort}
-                  </span>
+                  </Badge>
                 )
               ) : null}
             </div>

@@ -107,11 +107,11 @@ export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, 
 
             {plugin.globally_disabled || loadBadge || loadProcessTags.length || sourceLabel || versionLabel ? (
               <div className="plugin-store-card__meta-row plugin-catalog-card__meta-row">
-                {plugin.globally_disabled ? <span className="data-pill data-pill--off">已禁用</span> : null}
+                {plugin.globally_disabled ? <Badge variant="neutral" size="compact">已禁用</Badge> : null}
                 {loadBadge ? (
-                  <span className="data-pill data-pill--warn" title={loadWhere}>
+                  <Badge variant="warn" size="compact" title={loadWhere}>
                     {loadBadge}
-                  </span>
+                  </Badge>
                 ) : null}
                 {sourceLabel ? (
                   <Badge
