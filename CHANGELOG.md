@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.0] - 2026-08-11
 
 ### 更新公告
 
@@ -15,6 +15,21 @@
 - AI 配置新增代理歌曲缓存生命周期设置。
 - 插件卡统一来源标签、描边与状态样式，深色模式可读性提升；唱歌页移动端双列布局优化。
 - 修复协议端未加载插件时的误报挂载异常、插件治理配置按字段保存、图表悬停提示跟随等问题。
+
+### 提交明细
+
+### Added
+
+* feat(protocol): 增加账号昵称独立保存 ([f85f052](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f85f052810a35e48cea310459c9dd97f5cd518b4))
+* feat(protocol): 支持 Runtime 名称即时回显并修复窄屏布局 ([f7073f9](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f7073f9bf0d46ecc19d6ad8579c8c815a1e3f12a))
+* feat(webui): 接入全局 Bot 收藏同步 ([f0ff96d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f0ff96d94832004bd0bc780eb05511185414d20f))
+
+### Changed
+
+* chore(api): 同步消息运行时候选接口类型 ([09b05f3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/09b05f306225ad4f1dee8d631aa6d7fe6ce6d77a))
+
+**完整变更**: [`v0.8.31...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.31...HEAD)
+
 
 ## [0.8.31] - 2026-08-09
 
@@ -36,7 +51,6 @@
 * fix(webui): 优化价格输入与日志默认来源 ([7b1f1fb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7b1f1fb9259ec9c188b5b9089fe597839a3c7567))
 
 **完整变更**: [`v0.8.30...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.30...HEAD)
-
 
 ## [0.8.30] - 2026-08-07
 
