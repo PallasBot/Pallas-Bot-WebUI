@@ -18,11 +18,10 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Power, UserMinus, UserPlus, X } from "lucide-react";
+import { Power, UserMinus, UserPlus } from "lucide-react";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { coerceBoolean } from "@/utils/protocolUi";
 import { snowlumaRuntimeWebUiHref } from "@/utils/protocolLinks";
@@ -425,12 +424,6 @@ export default function ProtocolRuntimeConfigDialog({
             )}
           </section>
         </div>
-
-        <DialogFooter className="plugin-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
-          <Button type="button" size="sm" variant="secondary" icon={X} iconMotion="close" disabled={busy} onClick={requestClose}>
-            关闭
-          </Button>
-        </DialogFooter>
         </DialogContent>
       </Dialog>
       {confirmDialog}

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +8,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { X } from "lucide-react";
 
 function isMobileViewport(): boolean {
   return typeof window !== "undefined" && window.innerWidth <= 560;
@@ -215,11 +213,6 @@ export default function ConfigFieldHelp({
           </DialogHeader>
           <div className="plugin-config-field-popover plugin-config-field-popover--dialog">
             <HelpBody title={title} description={description} />
-          </div>
-          <div className="flex justify-end">
-            <Button type="button" variant="outline" size="sm" icon={X} iconMotion="close" onClick={() => setDialogOpen(false)}>
-              关闭
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
