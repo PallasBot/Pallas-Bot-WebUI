@@ -79,7 +79,7 @@
 .log-line--virtual .log-line__level-badge {
   grid-column: 2;
   width: 3.5rem;
-  margin-top: 1px;
+  margin-top: 2px;
   justify-self: start;
 }
 
