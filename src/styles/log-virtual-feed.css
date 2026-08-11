@@ -1,4 +1,4 @@
-/* 运行日志虚拟列表：time | level-dot | scope | message
+/* 运行日志虚拟列表：time | level | scope | message
  * 对齐 gsuid ConsolePanel：固定列 + 正文 pre-wrap/break-all；
  * 行高必须随正文软换行撑开（勿用 baseline，否则多行会溢出叠行）。 */
 
@@ -30,7 +30,7 @@
 
 .log-line.log-line--virtual {
   display: grid;
-  grid-template-columns: 4.75rem 0.75rem 5.5rem minmax(0, 1fr);
+  grid-template-columns: 4.75rem 3.5rem 5.5rem minmax(0, 1fr);
   column-gap: 6px;
   align-items: start;
   position: relative;
@@ -76,39 +76,11 @@
   text-overflow: ellipsis;
 }
 
-.log-line--virtual .log-line__lv-tag--dot {
+.log-line--virtual .log-line__level-badge {
   grid-column: 2;
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  min-width: 6px !important;
-  max-width: 6px;
-  padding: 0 !important;
-  margin: 0.45rem 0 0;
-  border-radius: 999px;
-  border: none;
-  font-size: 0;
-  line-height: 0;
-  letter-spacing: 0;
-  text-indent: -9999px;
-  overflow: hidden;
-  box-shadow: none;
-  justify-self: center;
-}
-.log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--debug {
-  background: var(--text-muted);
-}
-.log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--info {
-  background: var(--accent);
-}
-.log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--success {
-  background: var(--success);
-}
-.log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--warn {
-  background: var(--warn);
-}
-.log-line--virtual .log-line__lv-tag--dot.log-line__lv-tag--error {
-  background: var(--danger);
+  width: 3.5rem;
+  margin-top: 1px;
+  justify-self: start;
 }
 
 .log-line--virtual .log-line__scope-group {
@@ -139,11 +111,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   --scope-h: 210;
+  --scope-s: 78%;
+  --scope-l: 50%;
   color: #fff !important;
-  background: hsl(var(--scope-h) 68% 46%) !important;
+  background: hsl(var(--scope-h) var(--scope-s) var(--scope-l)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), inset 0 -1px 0 rgb(0 0 0 / 0.16);
 }
 html[data-theme="dark"] .log-line__scope-badge {
-  background: hsl(var(--scope-h) 62% 42%) !important;
+  --scope-s: 74%;
+  --scope-l: 52%;
 }
 .log-line--virtual .log-line__scope-badge {
   width: 100%;
@@ -208,10 +184,10 @@ html[data-theme="dark"] .log-line__scope-badge {
     width: auto;
     max-width: 4.5rem;
   }
-  .log-line--virtual .log-line__lv-tag--dot {
+  .log-line--virtual .log-line__level-badge {
     grid-column: 2;
     grid-row: 1;
-    margin: 0.45rem 0 0;
+    align-self: start;
   }
   .log-line--virtual .log-line__scope-group {
     grid-column: 3;
@@ -241,10 +217,10 @@ html[data-theme="dark"] .log-line__scope-badge {
     width: auto;
     max-width: 4.5rem;
   }
-  .log-line--virtual .log-line__lv-tag--dot {
+  .log-line--virtual .log-line__level-badge {
     grid-column: 2;
     grid-row: 1;
-    margin: 0.45rem 0 0;
+    align-self: start;
   }
   .log-line--virtual .log-line__scope-group {
     grid-column: 3;
@@ -289,34 +265,8 @@ html[data-theme="dark"] .log-line__scope-badge {
   font-size: 11px !important;
   line-height: 1.5;
 }
-.log-virtual-feed__detail .log-line__lv-tag {
+.log-virtual-feed__detail-level {
   min-width: 3.6rem;
-  border: none;
-  color: #fff;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  line-height: 1.45;
-}
-.log-virtual-feed__detail .log-line__lv-tag--debug {
-  background: hsl(215 16% 47%);
-  color: #fff;
-}
-.log-virtual-feed__detail .log-line__lv-tag--info {
-  background: color-mix(in srgb, var(--accent) 35%, hsl(226 90% 56%));
-  color: #fff;
-}
-.log-virtual-feed__detail .log-line__lv-tag--success {
-  background: color-mix(in srgb, var(--success) 30%, hsl(142 76% 42%));
-  color: #fff;
-}
-.log-virtual-feed__detail .log-line__lv-tag--warn {
-  background: color-mix(in srgb, var(--warn) 28%, hsl(38 95% 48%));
-  color: #fff;
-}
-.log-virtual-feed__detail .log-line__lv-tag--error {
-  background: color-mix(in srgb, var(--danger) 28%, hsl(0 84% 55%));
-  color: #fff;
 }
 .log-virtual-feed__detail-pin {
   flex: none;

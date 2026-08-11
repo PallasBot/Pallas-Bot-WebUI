@@ -1,8 +1,17 @@
 import {
   protocolFetchDockerPullJob,
   protocolStreamDockerPullJob,
+  type ProtocolDockerCapability,
   type ProtocolDockerPullJob,
 } from "@/api/protocol";
+
+export function dockerCapabilityHint(capability: ProtocolDockerCapability): string {
+  if (capability.ready) {
+    const version = capability.server_version?.trim();
+    return version ? `Docker daemon 可用（Server ${version}）` : capability.message;
+  }
+  return `${capability.message}。也可在宿主机手动 pull 对应镜像。`;
+}
 
 export async function waitForDockerPullJob(
   mountUrl: string,

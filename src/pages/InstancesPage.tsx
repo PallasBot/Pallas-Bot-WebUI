@@ -56,7 +56,7 @@ function parseSelfId(raw: string | undefined | null): number | null {
 }
 
 function boolPillClass(on: boolean): string {
-  return on ? "data-pill data-pill--on" : "data-pill data-pill--off";
+  return on ? "badge badge--compact badge--success" : "badge badge--compact badge--neutral";
 }
 
 function sortedAdminsList(admins: number[] | undefined | null): number[] {
@@ -516,8 +516,8 @@ export default function InstancesPage() {
                             <img
                               src={qqAvatarUrl(c.account)}
                               alt=""
-                              width={36}
-                              height={36}
+                              width={40}
+                              height={40}
                               decoding="async"
                               referrerPolicy="no-referrer"
                               onError={(e) => {
@@ -551,21 +551,16 @@ export default function InstancesPage() {
                               >
                                 ★
                               </button>
+                              <StatusTone
+                                size="compact"
+                                className="data-summary-card__title-status"
+                                ok={isBotConnected(c.account)}
+                                pendingLabel="探测中"
+                                okLabel="已连接"
+                                offLabel="未连接"
+                              />
                             </div>
                             <div className="data-summary-card__secondary muted">{c.account}</div>
-                          </div>
-                          <div className="data-summary-card__head-badges">
-                            <StatusTone
-                              className={
-                                isBotConnected(c.account)
-                                  ? "data-conn-capsule data-conn-capsule--on"
-                                  : "data-conn-capsule data-conn-capsule--off"
-                              }
-                              ok={isBotConnected(c.account)}
-                              pendingLabel="探测中"
-                              okLabel="已连接"
-                              offLabel="未连接"
-                            />
                           </div>
                         </div>
                         <div className="data-summary-card__body">
@@ -672,9 +667,9 @@ export default function InstancesPage() {
                             <td className="muted">{b.connection_key}</td>
                             <td>
                               {acc != null && accountInDb(acc) ? (
-                                <span className="data-pill data-pill--on">已入库</span>
+                                <span className="badge badge--compact badge--success">已入库</span>
                               ) : acc != null ? (
-                                <span className="data-pill data-pill--off">未入库</span>
+                                <span className="badge badge--compact badge--neutral">未入库</span>
                               ) : (
                                 <span className="muted">—</span>
                               )}

@@ -4,6 +4,7 @@ import BtnIco from "@/components/BtnIco";
 import NoticeDot from "@/components/NoticeDot";
 import PluginIcon from "@/components/PluginIcon";
 import { cn } from "@/lib/utils";
+import { shortPluginVersionLabel } from "@/utils/pluginSourceLabel";
 
 export type PluginStoreMenuItem = {
   id: string;
@@ -51,12 +52,6 @@ type Props = {
   onUpdate?: () => void;
   onMenuAction?: (id: string) => void;
 };
-
-function shortVersionLabel(value: string): string {
-  const trimmed = value.trim();
-  if (/^[0-9a-f]{6,40}$/i.test(trimmed)) return trimmed.slice(0, 5);
-  return trimmed;
-}
 
 export default function PluginStoreCard({
   title,
@@ -244,7 +239,7 @@ export default function PluginStoreCard({
                     className="plugin-store-card__meta-link plugin-store-card__meta-link--version"
                     title={chip.value}
                   >
-                    {shortVersionLabel(chip.value)}
+                    {shortPluginVersionLabel(chip.value)}
                   </span>
                 ))}
               </div>

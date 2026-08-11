@@ -6,8 +6,6 @@ import FormSectionDivider from "@/components/config/FormSectionDivider";
 import IdChipsInput from "@/components/config/IdChipsInput";
 import SettingsFormField from "@/components/config/SettingsFormField";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -18,19 +16,29 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Save, Undo2 } from "lucide-react";
-import type { BotConfigPublic, PersonaSeedPref, PluginRow } from "@/api/pallasTypes";
-import {
-  PERSONA_SEED_PREF_OPTIONS,
-  readBotPersonaSeedPrefs,
-} from "@/api/pallasTypes";
+import type { AccountPersonaAxis, AccountPersonaProfile, BotConfigPublic, PluginRow } from "@/api/pallasTypes";
+import { readManualAccountPersonaProfile } from "@/api/pallasTypes";
 import { cn } from "@/lib/utils";
+import {
+  ACCOUNT_PERSONA_AXES,
+  accountPersonaPayload,
+  EMPTY_ACCOUNT_PERSONA_PROFILE,
+  updateAccountPersonaAxis,
+} from "@/utils/accountPersonaProfile";
 import { qqAvatarUrl } from "@/utils/botDisplay";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
-import {
-  readPersonaDisposition,
-  serializePersonaDisposition,
-  type PersonaDispositionDraft,
-} from "@/utils/personaDisposition";
+
+const ACCOUNT_PERSONA_AXIS_META: Array<{
+  axis: AccountPersonaAxis;
+  label: string;
+  low: string;
+  high: string;
+}> = [
+  { axis: "energy", label: "活力", low: "安静", high: "活跃" },
+  { axis: "warmth", label: "亲和", low: "疏离", high: "亲近" },
+  { axis: "mischief", label: "调皮", low: "正经", high: "爱逗" },
+  { axis: "restraint", label: "克制", low: "随性", high: "收敛" },
+];
 
 type Draft = {
   security: boolean;
@@ -39,9 +47,8 @@ type Draft = {
   community_roster_show_qq: boolean;
   disabled_plugins: string[];
   admins: number[];
-  seedPrefs: PersonaSeedPref[];
-  seedManual: boolean;
-  disposition: PersonaDispositionDraft;
+  accountProfile: AccountPersonaProfile;
+  accountProfileManual: boolean;
 };
 
 type Props = {
@@ -62,14 +69,13 @@ function defaultDraft(): Draft {
     community_roster_show_qq: true,
     disabled_plugins: [],
     admins: [],
-    seedPrefs: [],
-    seedManual: false,
-    disposition: readPersonaDisposition(null),
+    accountProfile: { ...EMPTY_ACCOUNT_PERSONA_PROFILE },
+    accountProfileManual: false,
   };
 }
 
 function draftFromConfig(c: BotConfigPublic): Draft {
-  const seed = readBotPersonaSeedPrefs(c.persona ?? null);
+  const accountProfile = readManualAccountPersonaProfile(c.persona ?? null);
   return {
     security: c.security,
     auto_accept_friend: c.auto_accept_friend,
@@ -77,9 +83,8 @@ function draftFromConfig(c: BotConfigPublic): Draft {
     community_roster_show_qq: c.community_roster_show_qq !== false,
     disabled_plugins: [...(c.disabled_plugins ?? [])],
     admins: [...(c.admins ?? [])],
-    seedPrefs: [...seed.prefs],
-    seedManual: seed.source === "manual",
-    disposition: readPersonaDisposition(c.persona ?? null),
+    accountProfile: accountProfile ?? { ...EMPTY_ACCOUNT_PERSONA_PROFILE },
+    accountProfileManual: accountProfile != null,
   };
 }
 
@@ -165,27 +170,21 @@ export default function BotConfigModal({
     });
   }
 
-  function toggleSeedPref(pref: PersonaSeedPref, checked: boolean) {
+  function setAccountPersonaAxis(axis: AccountPersonaAxis, value: number) {
     setDraft((prev) => {
       if (!prev) return prev;
-      const set = new Set(prev.seedPrefs);
-      if (checked) {
-        if (set.size >= 2 && !set.has(pref)) return prev;
-        set.add(pref);
-      } else {
-        set.delete(pref);
-      }
-      const seedPrefs = PERSONA_SEED_PREF_OPTIONS.map((opt) => opt.id).filter((id) => set.has(id));
-      return { ...prev, seedPrefs, seedManual: seedPrefs.length > 0 };
+      const accountProfile = updateAccountPersonaAxis(prev.accountProfile, axis, value);
+      const accountProfileManual = ACCOUNT_PERSONA_AXES.some((key) => accountProfile[key] !== 0);
+      return { ...prev, accountProfile, accountProfileManual };
     });
   }
 
-  function clearSeedOverride() {
-    setDraft((prev) => (prev ? { ...prev, seedPrefs: [], seedManual: false } : prev));
-  }
-
-  function setDisposition(field: keyof PersonaDispositionDraft, value: string) {
-    setDraft((prev) => (prev ? { ...prev, disposition: { ...prev.disposition, [field]: value } } : prev));
+  function clearAccountProfile() {
+    setDraft((prev) => prev ? {
+      ...prev,
+      accountProfile: { ...EMPTY_ACCOUNT_PERSONA_PROFILE },
+      accountProfileManual: false,
+    } : prev);
   }
 
   async function saveBotConfig() {
@@ -197,12 +196,9 @@ export default function BotConfigModal({
     setSaveBusy(true);
     setSaveErr("");
     try {
-      const { seedPrefs, seedManual, disposition, ...rest } = draft;
+      const { accountProfile, accountProfileManual, ...rest } = draft;
       const body: Parameters<typeof putBotConfig>[1] = { ...rest };
-      body.persona = {
-        seed_override: seedManual ? { prefs: seedPrefs } : null,
-        disposition: serializePersonaDisposition(disposition),
-      };
+      body.persona = accountPersonaPayload(accountProfile, accountProfileManual);
       await putBotConfig(account, body);
       onSaved();
       onClose();
@@ -325,96 +321,54 @@ export default function BotConfigModal({
               </div>
 
               <div className="bot-config-dialog__block">
-                <FormSectionDivider title="账号处事风格" />
+                <FormSectionDivider title="小姑娘稳定气质" />
                 <div className="bot-config-dialog__section-body">
-                  <div className="bot-config-edit__grid bot-config-edit__grid--pair">
-                    <SettingsFormField
-                      label="处事方式"
-                      hint="遇到提问、吐槽或求助时通常怎么接住和判断。"
-                    >
-                      <Input
-                        value={draft.disposition.approach}
-                        onChange={(event) => setDisposition("approach", event.target.value)}
-                        placeholder="例如：先接住再判断"
-                        aria-label="处事方式"
-                      />
-                    </SettingsFormField>
-                    <SettingsFormField
-                      label="主动程度"
-                      hint="什么时候主动补问、追进度或提醒，不填则随对话自然判断。"
-                    >
-                      <Input
-                        value={draft.disposition.initiative}
-                        onChange={(event) => setDisposition("initiative", event.target.value)}
-                        placeholder="例如：有明确线索再追问"
-                        aria-label="主动程度"
-                      />
-                    </SettingsFormField>
-                    <SettingsFormField
-                      label="分歧处理"
-                      hint="遇到不同意见时的表达方式，不填则不额外限制。"
-                    >
-                      <Input
-                        value={draft.disposition.conflict}
-                        onChange={(event) => setDisposition("conflict", event.target.value)}
-                        placeholder="例如：讲理由，不抢结论"
-                        aria-label="分歧处理"
-                      />
-                    </SettingsFormField>
-                  </div>
-                  <div className="bot-config-edit__grid bot-config-edit__grid--pair">
-                    <SettingsFormField label="偏好" hint="一行一项，最多保留 4 项。">
-                      <Textarea
-                        className="min-h-[84px]"
-                        value={draft.disposition.do}
-                        onChange={(event) => setDisposition("do", event.target.value)}
-                        placeholder={"例如：\n说重点\n留接话口"}
-                        aria-label="处事偏好"
-                      />
-                    </SettingsFormField>
-                    <SettingsFormField label="避免" hint="一行一项，最多保留 4 项。">
-                      <Textarea
-                        className="min-h-[84px]"
-                        value={draft.disposition.dont}
-                        onChange={(event) => setDisposition("dont", event.target.value)}
-                        placeholder={"例如：\n讲大道理\n替人下结论"}
-                        aria-label="处事避免项"
-                      />
-                    </SettingsFormField>
-                  </div>
                   <SettingsFormField
-                    label="表达基调"
-                    hint="牛格种子影响选句和表达倾向；最多 2 项。清空可恢复账号自动派生。"
+                    label="四轴气质"
+                    hint="数值范围 -1 到 1，最多保留 2 个非零轴；恢复自动后由账号稳定派生。"
                   >
-                    <div className="bot-config-seed-tiles" role="group" aria-label="牛格种子偏好">
-                      {PERSONA_SEED_PREF_OPTIONS.map((opt) => {
-                        const on = draft.seedPrefs.includes(opt.id);
-                        const locked = !on && draft.seedPrefs.length >= 2;
+                    <div className="bot-config-persona-axes" role="group" aria-label="账号稳定气质四轴">
+                      {ACCOUNT_PERSONA_AXIS_META.map((meta) => {
+                        const inputId = `account-profile-${account}-${meta.axis}`;
+                        const activeCount = ACCOUNT_PERSONA_AXES.filter(
+                          (axis) => draft.accountProfile[axis] !== 0,
+                        ).length;
+                        const locked = draft.accountProfile[meta.axis] === 0 && activeCount >= 2;
                         return (
-                          <button
-                            key={`seed-${account}-${opt.id}`}
-                            type="button"
-                            className={cn(
-                              "bot-config-seed-tiles__btn",
-                              on && "bot-config-seed-tiles__btn--on",
-                            )}
-                            aria-pressed={on}
-                            disabled={locked}
-                            onClick={() => toggleSeedPref(opt.id, !on)}
-                          >
-                            {opt.label}
-                          </button>
+                          <div key={meta.axis} className="bot-config-persona-axis">
+                            <div className="bot-config-persona-axis__head">
+                              <label htmlFor={inputId}>{meta.label}</label>
+                              <output htmlFor={inputId}>{draft.accountProfile[meta.axis].toFixed(1)}</output>
+                            </div>
+                            <input
+                              id={inputId}
+                              type="range"
+                              min="-1"
+                              max="1"
+                              step="0.1"
+                              value={draft.accountProfile[meta.axis]}
+                              disabled={locked}
+                              aria-describedby={`${inputId}-ends`}
+                              onChange={(event) => setAccountPersonaAxis(meta.axis, Number(event.target.value))}
+                            />
+                            <div id={`${inputId}-ends`} className="bot-config-persona-axis__ends">
+                              <span>{meta.low} -1</span>
+                              <span>{meta.high} 1</span>
+                            </div>
+                          </div>
                         );
                       })}
                     </div>
-                    {draft.seedManual ? (
-                      <div className="bot-config-seed-status">
-                        <span className="muted">当前：手改覆盖</span>
-                        <Button type="button" variant="outline" size="sm" icon={Undo2} iconMotion="undo" onClick={clearSeedOverride}>
+                    <div className="bot-config-seed-status">
+                      <span className="muted">
+                        来源：{draft.accountProfileManual ? "手动" : "账号自动派生"}
+                      </span>
+                      {draft.accountProfileManual ? (
+                        <Button type="button" variant="outline" size="sm" icon={Undo2} iconMotion="undo" onClick={clearAccountProfile}>
                           恢复自动
                         </Button>
-                      </div>
-                    ) : null}
+                      ) : null}
+                    </div>
                   </SettingsFormField>
                 </div>
               </div>

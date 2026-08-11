@@ -778,17 +778,7 @@ html[data-layout="hub"] .ui-btn--sm {
 }
 
 .plugin-governance-panel__badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-  color: color-mix(in srgb, var(--accent, #38bdf8) 82%, var(--text, #fff) 10%);
-  background: color-mix(in srgb, var(--accent, #38bdf8) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent, #38bdf8) 18%, transparent);
+  flex-shrink: 0;
 }
 
 .plugin-governance-panel__group {
@@ -1661,4 +1651,3 @@ html[data-ui-preset="shadcn"] .ui-btn--destructive {
 }
 
 /* 插件配置字段：标签行与控件由视觉收口样式接管 */
-

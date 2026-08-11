@@ -5,12 +5,14 @@ import {
   protocolCleanupRuntimeDist,
   protocolDownloadRuntime,
   protocolDownloadSnowlumaRuntime,
+  protocolFetchDockerCapability,
   protocolFetchRuntimeOverview,
   protocolFetchRuntimeProfile,
   protocolListDockerImages,
   protocolPullDockerImage,
   protocolUpdateRuntimeProfile,
   type ProtocolDockerImageRow,
+  type ProtocolDockerCapability,
   type ProtocolRuntimeJob,
   type ProtocolRuntimeProfile,
 } from "@/api/protocol";
@@ -37,6 +39,7 @@ import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 import {
   dockerPullPercent,
   dockerPullPhaseLabel,
+  dockerCapabilityHint,
   waitForDockerPullJob,
 } from "@/utils/protocolDockerPull";
 import type { ProtocolDockerPullJob } from "@/api/protocol";
@@ -228,6 +231,7 @@ export default function ProtocolAssetsTab() {
   const [dockerPullLogOpen, setDockerPullLogOpen] = useState(false);
   const [dockerPullJob, setDockerPullJob] = useState<ProtocolDockerPullJob | null>(null);
   const [dockerPullWhich, setDockerPullWhich] = useState<"napcat" | "snowluma" | null>(null);
+  const [dockerCapability, setDockerCapability] = useState<ProtocolDockerCapability | null>(null);
 
   const napcatJob = useMemo(() => jobFromOverview(overview, "job"), [overview]);
   const snowlumaJob = useMemo(() => {
@@ -250,12 +254,14 @@ export default function ProtocolAssetsTab() {
   async function loadAssets() {
     if (!mountUrl) return;
     try {
-      const [ov, pf] = await Promise.all([
+      const [ov, pf, capability] = await Promise.all([
         protocolFetchRuntimeOverview(mountUrl),
         protocolFetchRuntimeProfile(mountUrl),
+        protocolFetchDockerCapability(mountUrl).catch(() => null),
       ]);
       setOverview(ov);
       setProfileForm({ ...pf });
+      setDockerCapability(capability);
     } catch (e) {
       notifyErr(protocolApiErrorMessage(e, "加载失败"));
     }
@@ -670,8 +676,10 @@ export default function ProtocolAssetsTab() {
           </CardHeader>
           <CardContent className={ASSET_PANEL_BD}>
             <p className="muted protocol-assets-docker-hint">
-              需在宿主机或已挂载 docker.sock 的环境执行；Bot 容器内无 Docker CLI 时请在宿主机手动
-              pull。SnowLuma 拉取成功后会自动重建派生镜像{" "}
+              {dockerCapability
+                ? dockerCapabilityHint(dockerCapability)
+                : "需要可用的 Docker daemon；容器部署须显式挂载 docker.sock，也可在宿主机手动 pull。"}
+              {" "}SnowLuma 拉取成功后会自动重建派生镜像{" "}
               <code className="mono">pallas/snowluma-auto-login</code>
               ，并打与上游相同的 tag（例如上游 <code className="mono">:v1.12.9</code> → 派生{" "}
               <code className="mono">:v1.12.9</code>；拉取 <code className="mono">:latest</code>{" "}
@@ -691,7 +699,12 @@ export default function ProtocolAssetsTab() {
                     type="button"
                     size="sm"
                     icon={Container}
-                    disabled={!mountUrl || napcatPullBusy || snowlumaPullBusy}
+                    disabled={
+                      !mountUrl ||
+                      dockerCapability?.ready === false ||
+                      napcatPullBusy ||
+                      snowlumaPullBusy
+                    }
                     onClick={() => void pullDocker("napcat")}
                   >
                     {napcatPullBusy ? "拉取中…" : "拉取镜像"}
@@ -732,7 +745,12 @@ export default function ProtocolAssetsTab() {
                     type="button"
                     size="sm"
                     icon={Container}
-                    disabled={!mountUrl || snowlumaPullBusy || napcatPullBusy}
+                    disabled={
+                      !mountUrl ||
+                      dockerCapability?.ready === false ||
+                      snowlumaPullBusy ||
+                      napcatPullBusy
+                    }
                     onClick={() => void pullDocker("snowluma")}
                   >
                     {snowlumaPullBusy ? "拉取中…" : "拉取并重建"}

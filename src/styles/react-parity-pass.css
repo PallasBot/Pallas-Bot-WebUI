@@ -575,14 +575,7 @@ html[data-theme="light"] .plugin-config-form-item .config-field-renderer__step {
 }
 
 .plugin-governance-panel__badge {
-  min-height: 26px;
-  padding: 0 11px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  flex-shrink: 0;
 }
 
 .plugin-governance-panel__group {
@@ -606,6 +599,24 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .pl
 .plugin-config-workspace--dialog .plugin-governance-panel .plugin-governance-panel__group {
   background: var(--bg-card, #fff);
   box-shadow: none;
+}
+
+/* 配置分组共用一套边框层级，弹窗浅色规则必须在同级之后覆盖。 */
+.plugin-config-group-card,
+.plugin-governance-panel__group,
+.string-map-field__group,
+.plugin-config-workspace--dialog .plugin-config-group-card,
+.plugin-config-workspace--dialog .plugin-governance-panel .plugin-governance-panel__group,
+html[data-theme="light"] .plugin-config-group-card,
+html[data-layout="hub"][data-theme="light"] .plugin-config-group-card,
+html[data-theme="light"] .plugin-governance-panel__group,
+html[data-layout="hub"][data-theme="light"] .plugin-governance-panel__group,
+html[data-theme="light"] .plugin-config-workspace--dialog .plugin-config-group-card,
+html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .plugin-config-group-card,
+html[data-theme="light"] .plugin-config-workspace--dialog .plugin-governance-panel .plugin-governance-panel__group,
+html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .plugin-governance-panel .plugin-governance-panel__group {
+  border-color: var(--config-panel-edge);
+  box-shadow: var(--config-panel-shadow);
 }
 
 .plugin-governance-panel--dialog .plugin-governance-panel__group {

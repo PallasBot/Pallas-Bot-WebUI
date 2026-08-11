@@ -1839,17 +1839,17 @@ html[data-layout="hub"] .plugins-page--hub .plugins-page__plugin-grid {
 html[data-layout="hub"] .plugins-page--hub .plugins-page__plugin-grid > .plugin-catalog-card {
   height: 100%;
   min-height: 0;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-edge, var(--border));
   border-radius: var(--plugin-store-hub-radius);
-  box-shadow: var(--plugin-store-hub-shadow);
+  box-shadow: var(--plugin-card-shadow);
 }
 
 html[data-layout="hub"][data-surface="solid"] .plugins-page--hub .plugins-page__plugin-grid > .plugin-catalog-card {
   background: var(--plugin-store-hub-surface);
 }
 
-html[data-layout="hub"][data-theme="light"] .plugins-page--hub .plugins-page__plugin-grid > .plugin-catalog-card {
-  border-color: rgba(15, 23, 42, 0.08);
+html[data-layout="hub"][data-surface="glass"] .plugins-page--hub .plugins-page__plugin-grid > .plugin-catalog-card {
+  border-color: var(--surface-edge-glass, var(--border));
 }
 
 html[data-layout="hub"] .plugins-page--hub .plugin-catalog-card.ui-card--interactive:hover {

@@ -10,12 +10,16 @@ import {
 import type {
   GroupFleetWhitelistEntry,
   PluginGovernanceBody,
-  PluginGovernanceData,
 } from "@/api/pallasTypes";
 import IdChipsInput from "@/components/config/IdChipsInput";
 import PluginRuntimeSwitchRow from "@/components/config/PluginRuntimeSwitchRow";
 import PluginGovernanceGroup from "@/components/config/PluginGovernanceGroup";
+import {
+  buildPluginGovernancePatch,
+  type PluginGovernanceAction,
+} from "@/components/config/pluginGovernancePatch";
 import StateBlock from "@/components/StateBlock";
+import { Badge } from "@/components/ui/badge";
 import UiInput from "@/components/ui/UiInput";
 import {
   Select,
@@ -93,15 +97,16 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
   }, [fleetQ.data, pluginName]);
 
   const saveGov = useMutation({
-    mutationFn: async (
-      patch: Partial<PluginGovernanceData["runtime"]> & {
-        blocked?: number[];
-        permSelectionsOverride?: Record<string, string>;
-      },
-    ) => {
+    mutationFn: async ({
+      action,
+      permSelectionsOverride,
+    }: {
+      action: PluginGovernanceAction;
+      permSelectionsOverride?: Record<string, string>;
+    }) => {
       const g = govQ.data;
       if (!g) throw new Error("治理数据未加载");
-      const effectivePerm = patch.permSelectionsOverride ?? permSelections;
+      const effectivePerm = permSelectionsOverride ?? permSelections;
       const permOverrides: Record<string, string> = {};
       for (const pg of g.perm_ui_filtered?.plugins || []) {
         for (const c of pg.commands) {
@@ -118,13 +123,11 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
           if (safe !== c.default_cd_sec) limitOverrides[c.command_id] = safe;
         }
       }
-      const body: PluginGovernanceBody = {
-        command_permission_overrides: permOverrides,
-        command_limit_overrides: limitOverrides,
-        global_disable: Boolean(patch.global_disable ?? g.runtime.global_disable),
-        help_hidden: Boolean(patch.help_hidden ?? g.runtime.help_hidden),
-        blocked_user_ids: patch.blocked ?? blockedUserIds,
-      };
+      const body: PluginGovernanceBody = buildPluginGovernancePatch({
+        action,
+        permissionOverrides: permOverrides,
+        limitOverrides,
+      });
       return putPluginGovernance(pluginName, body);
     },
     onSuccess: async () => {
@@ -166,15 +169,12 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
       }))
     )
       return;
-    await saveGov.mutateAsync({
-      global_disable: kind === "global_disable" ? next : g.runtime.global_disable,
-      help_hidden: kind === "help_hidden" ? next : g.runtime.help_hidden,
-    });
+    await saveGov.mutateAsync({ action: { kind, value: next } });
   }
 
   async function persistBlocked(next: number[]) {
     setBlockedUserIds(next);
-    await saveGov.mutateAsync({ blocked: next });
+    await saveGov.mutateAsync({ action: { kind: "blocked_user_ids", value: next } });
   }
 
   function cloneFleetEntries(): GroupFleetWhitelistEntry[] {
@@ -235,24 +235,28 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
               </div>
               <div className="plugin-governance-panel__badges">
                 {g.reload_policy ? (
-                  <span className="plugin-governance-panel__badge">热更新：{reloadPolicyLabel(g.reload_policy)}</span>
+                  <Badge variant="info" size="compact" className="plugin-governance-panel__badge">
+                    热更新：{reloadPolicyLabel(g.reload_policy)}
+                  </Badge>
                 ) : null}
                 {g.activation_policy ? (
-                  <span className="plugin-governance-panel__badge">
+                  <Badge variant="info" size="compact" className="plugin-governance-panel__badge">
                     生效方式：{activationPolicyShortLabel(g.activation_policy)}
-                  </span>
+                  </Badge>
                 ) : null}
               </div>
             </header>
           ) : g.reload_policy || g.activation_policy ? (
             <div className="plugin-governance-panel__dialog-meta">
               {g.reload_policy ? (
-                <span className="plugin-governance-panel__badge">热更新：{reloadPolicyLabel(g.reload_policy)}</span>
+                <Badge variant="info" size="compact" className="plugin-governance-panel__badge">
+                  热更新：{reloadPolicyLabel(g.reload_policy)}
+                </Badge>
               ) : null}
               {g.activation_policy ? (
-                <span className="plugin-governance-panel__badge">
+                <Badge variant="info" size="compact" className="plugin-governance-panel__badge">
                   生效方式：{activationPolicyShortLabel(g.activation_policy)}
-                </span>
+                </Badge>
               ) : null}
             </div>
           ) : null}
@@ -340,7 +344,10 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
                     onValueChange={(v) => {
                       const next = { ...permSelections, [cmd.command_id]: v };
                       setPermSelections(next);
-                      void saveGov.mutateAsync({ permSelectionsOverride: next });
+                      void saveGov.mutateAsync({
+                        action: { kind: "permissions" },
+                        permSelectionsOverride: next,
+                      });
                     }}
                   >
                     <SelectTrigger
@@ -383,7 +390,7 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
                     value={limitSelections[cmd.command_id] ?? String(cmd.effective_cd_sec)}
                     disabled={saveGov.isPending}
                     onValueChange={(v) => setLimitSelections((prev) => ({ ...prev, [cmd.command_id]: v }))}
-                    onBlur={() => void saveGov.mutateAsync({})}
+                    onBlur={() => void saveGov.mutateAsync({ action: { kind: "limits" } })}
                   />
                 </div>
               ))

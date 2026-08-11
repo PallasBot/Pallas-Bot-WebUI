@@ -7,6 +7,11 @@ import type {
   KnowledgeSourceDetail,
   KnowledgeSourceRetrieveData,
   LlmToolIntentPreview,
+  SemanticStyleQualityData,
+  SemanticStyleStatusData,
+  LlmStickerLabelMaintenanceResult,
+  LlmStickerLabelManageRequest,
+  LlmStickerLabelOverviewData,
 } from "@/api/pallasTypes";
 import { http } from "./http";
 
@@ -1120,6 +1125,8 @@ export type SingSpeakersPayload = {
   default_speaker?: string;
   preferred_backend?: string;
   speaker_backends?: Record<string, string>;
+  song_cache_days?: number;
+  song_cache_size?: number;
   writable?: boolean;
 };
 export type SingBackendsPayload = {
@@ -1330,10 +1337,14 @@ export async function putSingDefaults(body: {
   default_speaker?: string;
   preferred_backend?: string;
   speaker_backends?: Record<string, string>;
+  song_cache_days?: number;
+  song_cache_size?: number;
 }): Promise<{
   default_speaker?: string;
   preferred_backend?: string;
   speaker_backends?: Record<string, string>;
+  song_cache_days?: number;
+  song_cache_size?: number;
 }> {
   const { data: res } = await http.put("/common-config/llm/media-models/sing/defaults", body);
   return unwrapNestedEnvelope(res);
@@ -1623,7 +1634,7 @@ export type LlmRepeaterSemanticStyleOverrides = {
 export async function fetchLlmRepeaterSemanticStyle(params?: {
   botId?: number;
   groupId?: number;
-}): Promise<Record<string, unknown>> {
+}): Promise<SemanticStyleStatusData> {
   const { data: body } = await http.get("/llm/repeater-semantic-style", {
     params:
       params?.botId && params.groupId
@@ -1633,18 +1644,45 @@ export async function fetchLlmRepeaterSemanticStyle(params?: {
   return envelopeData(body) || {};
 }
 
-export async function postLlmRepeaterSemanticStyleManage(body: {
-  action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable";
+type SemanticStyleManageBase = {
   overrides?: LlmRepeaterSemanticStyleOverrides;
   botId?: number;
   groupId?: number;
-}): Promise<Record<string, unknown>> {
+};
+
+export function postLlmRepeaterSemanticStyleManage(
+  body: SemanticStyleManageBase & { action: "quality" },
+): Promise<SemanticStyleQualityData>;
+export function postLlmRepeaterSemanticStyleManage(
+  body: SemanticStyleManageBase & { action: "status" | "overrides" | "clear" | "rebuild" | "recover" | "disable" },
+): Promise<SemanticStyleStatusData>;
+export async function postLlmRepeaterSemanticStyleManage(body: SemanticStyleManageBase & {
+  action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable";
+}): Promise<SemanticStyleStatusData | SemanticStyleQualityData> {
   const { data: res } = await http.post("/llm/repeater-semantic-style/manage", {
     action: body.action,
     ...(body.overrides ? { overrides: body.overrides } : {}),
     ...(body.botId && body.groupId ? { bot_id: body.botId, group_id: body.groupId } : {}),
   });
   return envelopeData(res) || res;
+}
+
+export async function fetchLlmStickerLabelOverview(): Promise<LlmStickerLabelOverviewData> {
+  const { data: body } = await http.get("/common-config/llm/persona/sticker-labels");
+  return envelopeData(body) || {};
+}
+
+export async function postLlmStickerLabelManage(
+  body: LlmStickerLabelManageRequest,
+): Promise<LlmStickerLabelMaintenanceResult> {
+  const request =
+    body.action === "pause"
+      ? { action: body.action, paused: body.paused }
+      : body.action === "clear"
+        ? { action: body.action, content_hash: body.contentHash }
+        : { action: body.action };
+  const { data: response } = await http.post("/common-config/llm/persona/sticker-labels/manage", request);
+  return envelopeData(response) || response;
 }
 
 export async function fetchLlmPromotionCandidates(params: {

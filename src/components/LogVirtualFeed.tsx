@@ -8,13 +8,14 @@ import {
   useRef,
   useState,
 } from "react";
-import type { LogEntry } from "@/api/pallasTypes";
+import type { LogEntry, LogEntryLevel } from "@/api/pallasTypes";
 import {
   formatLogDisplayTime,
   formatLogScopeBadge,
+  logScopeBadgeColorKey,
   scopeBadgeHue,
 } from "@/utils/logDisplay";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import "@/styles/log-virtual-feed.css";
 
@@ -30,6 +31,14 @@ type Props = {
   onScrollState?: (nearBottom: boolean) => void;
 };
 
+function logLevelBadgeVariant(level: LogEntryLevel): NonNullable<BadgeProps["variant"]> {
+  if (level === "success") return "success";
+  if (level === "warn") return "warn";
+  if (level === "error") return "danger";
+  if (level === "info") return "info";
+  return "neutral";
+}
+
 function stableRowKey(row: LogEntry, index: number): string {
   const id = row.id;
   if (typeof id === "number" && Number.isFinite(id) && id > 0) return `id:${id}`;
@@ -39,7 +48,8 @@ function stableRowKey(row: LogEntry, index: number): string {
 
 function LogScopeChips({ scope }: { scope: string }) {
   const { label, title } = formatLogScopeBadge(scope);
-  const hue = title ? scopeBadgeHue(title) : 0;
+  const colorKey = logScopeBadgeColorKey(scope);
+  const hue = colorKey ? scopeBadgeHue(colorKey) : 0;
   return (
     <span className="log-line__scope-group" title={title || undefined}>
       {label ? (
@@ -91,11 +101,15 @@ const LogRow = memo(function LogRow({
       }}
     >
       <span className="log-line__time">{formatLogDisplayTime(row.time)}</span>
-      <span
-        className={cn("log-line__lv-tag", "log-line__lv-tag--dot", `log-line__lv-tag--${row.level}`)}
+      <Badge
+        variant={logLevelBadgeVariant(row.level)}
+        size="compact"
+        className="log-line__level-badge"
         title={row.level}
         aria-label={row.level}
-      />
+      >
+        {row.level}
+      </Badge>
       <LogScopeChips scope={row.scope} />
       <span className="log-line__msg log-line__msg--wrap">{normalizeLogMessage(row.message)}</span>
     </div>
@@ -217,9 +231,13 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
               固定
             </span>
             <span className="log-line__time">{formatLogDisplayTime(pinnedRow.time)}</span>
-            <span className={cn("log-line__lv-tag", `log-line__lv-tag--${pinnedRow.level}`)}>
+            <Badge
+              variant={logLevelBadgeVariant(pinnedRow.level)}
+              size="compact"
+              className="log-virtual-feed__detail-level"
+            >
               {pinnedRow.level}
-            </span>
+            </Badge>
             <LogScopeChips scope={pinnedRow.scope} />
             <button
               type="button"

@@ -13,6 +13,8 @@ export default function HomeBucketChartSvg({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [tooltipX, setTooltipX] = useState(0);
+  const [tooltipY, setTooltipY] = useState(0);
+  const [tooltipBelow, setTooltipBelow] = useState(false);
 
   const slotW = pack.timesSec.length > 0 ? pack.innerW / pack.timesSec.length : 0;
 
@@ -46,6 +48,10 @@ export default function HomeBucketChartSvg({
     const rect = wrap.getBoundingClientRect();
     const pad = 12;
     setTooltipX(Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left)));
+    const relativeY = ev.clientY - rect.top;
+    const below = relativeY < 96;
+    setTooltipY(below ? Math.min(rect.height - pad, relativeY + 8) : Math.max(pad, relativeY - 8));
+    setTooltipBelow(below);
   }
 
   return (
@@ -114,7 +120,11 @@ export default function HomeBucketChartSvg({
         ) : null}
       </svg>
       {hoverTime != null && hoverRows.length ? (
-        <div className="home-plugin-chart-tooltip" style={{ left: `${tooltipX}px` }} role="status">
+        <div
+          className={`home-plugin-chart-tooltip${tooltipBelow ? " home-plugin-chart-tooltip--below" : ""}`}
+          style={{ left: `${tooltipX}px`, top: `${tooltipY}px` }}
+          role="status"
+        >
           <div className="home-plugin-chart-tooltip__hd">{formatTimeLabel(hoverTime)}</div>
           {hoverRows.map((r) => (
             <div key={r.label} className="home-plugin-chart-tooltip__row">

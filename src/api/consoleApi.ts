@@ -21,6 +21,8 @@ import type {
   BotConfigMigrationCheckData,
   BotConfigMigrationApplyData,
   BotConfigPublic,
+  AccountPersonaProfile,
+  ApiOk,
   BotRow,
   DbBackupInfo,
   DbBackupJobData,
@@ -34,6 +36,11 @@ import type {
   DbBackendProbeResult,
   DbBackendSaveResult,
   DbHealthData,
+  DbLifecycleCatalogData,
+  DbLifecycleJobData,
+  DbLifecyclePoliciesData,
+  DbLifecyclePolicy,
+  DbLifecyclePreviewData,
   DbMigrateMongoPgInfo,
   DbMigrateMongoPgJob,
   DbOverviewData,
@@ -43,6 +50,7 @@ import type {
   FriendOverviewData,
   RequestOverviewData,
   GroupConfigPublic,
+  GroupExpressionProfile,
   GroupListData,
   InstancesData,
   NapcatAccountRow,
@@ -102,6 +110,10 @@ import type {
   ConversationKernelRelationshipNotesData,
   ConversationKernelTracesData,
   LlmTaskStatsData,
+  GroupStyleProfileSnapshot,
+  PersonaAffectRefineSnapshot,
+  PersonaAffectTriggerRow,
+  PersonaAxisSnapshot,
   PersonaObserveData,
   SceneDialogueExample,
   SceneDialogueExamplesData,
@@ -1604,7 +1616,6 @@ export async function fetchLlmPersonaExport(params: {
   botId: number;
   groupId?: number | null;
   plainText?: string;
-  purpose?: string;
 }): Promise<Record<string, unknown>> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona/export"]["get"]>(
     "/common-config/llm/persona/export",
@@ -1613,24 +1624,26 @@ export async function fetchLlmPersonaExport(params: {
         bot_id: params.botId,
         ...(params.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
         ...(params.plainText ? { plain_text: params.plainText } : {}),
-        ...(params.purpose ? { purpose: params.purpose } : {}),
       },
     },
   )) as Record<string, unknown>;
 }
 
 export async function fetchLlmPersonaGroupStyle(params: {
+  botId?: number;
   groupId: number;
-  windowHours?: number;
-}): Promise<Record<string, unknown>> {
-  return (await consoleOpenapiGet<
-    ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona/group-style"]["get"]
-  >("/common-config/llm/persona/group-style", {
+}): Promise<GroupExpressionProfile> {
+  const { data } = await http.get<ApiOk<GroupExpressionProfile>>(
+    "/common-config/llm/persona/group-style",
+    {
     params: {
+      bot_id: params.botId,
       group_id: params.groupId,
-      ...(params.windowHours ? { window_hours: params.windowHours } : {}),
+      scene: "group_chat",
     },
-  })) as Record<string, unknown>;
+    },
+  );
+  return data.data;
 }
 
 export async function fetchSceneDialogueExamples(botId: number): Promise<SceneDialogueExamplesData> {
@@ -1743,11 +1756,35 @@ export async function patchLlmToolOverride(
   )) as LlmToolCatalogData;
 }
 
+function personaAxisSnapshot(raw: Record<string, unknown>): PersonaAxisSnapshot {
+  const optionalString = (key: string) => (typeof raw[key] === "string" ? raw[key] : undefined);
+  const optionalNumber = (key: string) => (typeof raw[key] === "number" ? raw[key] : undefined);
+  return {
+    source: optionalString("source"),
+    preset_label: optionalString("preset_label"),
+    archetype: optionalString("archetype"),
+    tone: optionalString("tone"),
+    reply_bias: optionalNumber("reply_bias"),
+    speak_bias: optionalNumber("speak_bias"),
+    length_pref: optionalString("length_pref"),
+    chaos_bias: optionalNumber("chaos_bias"),
+    warmth: optionalNumber("warmth") ?? 0,
+    assertiveness: optionalNumber("assertiveness") ?? 0,
+    bluntness: optionalNumber("bluntness") ?? 0,
+    harsh_msg_ratio: optionalNumber("harsh_msg_ratio"),
+    polite_msg_ratio: optionalNumber("polite_msg_ratio"),
+    msgs_per_hour_active: optionalNumber("msgs_per_hour_active"),
+    activity_level: optionalString("activity_level"),
+  };
+}
+
 export async function fetchLlmPersonaObserve(params?: {
   groupId?: number | null;
   accounts?: number[];
 }): Promise<PersonaObserveData> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona-observe"]["get"]>(
+  const data = await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona-observe"]["get"]
+  >(
     "/common-config/llm/persona-observe",
     {
       params: {
@@ -1755,7 +1792,22 @@ export async function fetchLlmPersonaObserve(params?: {
         ...(params?.accounts?.length ? { accounts: params.accounts.join(",") } : {}),
       },
     },
-  )) as PersonaObserveData;
+  );
+  return {
+    group_id: data.group_id ?? null,
+    group_style_snapshot: (data.group_style_snapshot as GroupStyleProfileSnapshot | null) ?? null,
+    affect_refine: (data.affect_refine as PersonaAffectRefineSnapshot | null) ?? null,
+    affect_triggers: (data.affect_triggers as PersonaAffectTriggerRow[] | undefined) ?? [],
+    bots: (data.bots ?? []).map((row) => ({
+      account: row.account,
+      group_style_enabled: row.group_style_enabled,
+      account_profile: row.account_profile,
+      base: personaAxisSnapshot(row.base),
+      base_hints: row.base_hints ?? [],
+      resolved: row.resolved ? personaAxisSnapshot(row.resolved) : null,
+      resolved_hints: row.resolved_hints ?? [],
+    })),
+  };
 }
 
 export async function fetchLlmModelAdminStatus(): Promise<LlmModelAdminStatus> {
@@ -2588,6 +2640,57 @@ export async function fetchDbTables(): Promise<DbTablesData> {
   )) as DbTablesData;
 }
 
+export async function fetchDbLifecycleCatalog(): Promise<DbLifecycleCatalogData> {
+  return consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/catalog"]["get"]>(
+    "/db/lifecycle/catalog",
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  );
+}
+
+export async function fetchDbLifecyclePolicies(): Promise<DbLifecyclePoliciesData> {
+  return consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/policies"]["get"]>(
+    "/db/lifecycle/policies",
+  );
+}
+
+export async function putDbLifecyclePolicies(
+  policies: Record<string, DbLifecyclePolicy>,
+): Promise<DbLifecyclePoliciesData> {
+  return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/policies"]["put"]>(
+    "/db/lifecycle/policies",
+    { policies },
+  );
+}
+
+export async function previewDbLifecycle(
+  datasetId: string,
+  policy: DbLifecyclePolicy,
+): Promise<DbLifecyclePreviewData> {
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/preview"]["post"]>(
+    "/db/lifecycle/preview",
+    { dataset_id: datasetId, policy },
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  );
+}
+
+export async function startDbLifecycleJob(
+  datasetId: string,
+  policy: DbLifecyclePolicy,
+  confirmationToken: string,
+): Promise<DbLifecycleJobData> {
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/jobs"]["post"]>(
+    "/db/lifecycle/jobs",
+    { dataset_id: datasetId, policy, confirmation_token: confirmationToken },
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  );
+}
+
+export async function fetchDbLifecycleJob(jobId: string): Promise<DbLifecycleJobData> {
+  return consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/jobs/{job_id}"]["get"]>(
+    `/db/lifecycle/jobs/${encodeURIComponent(jobId)}`,
+  );
+}
+
 export async function fetchDbTableRows(params: {
   table: string;
   offset?: number;
@@ -2936,7 +3039,7 @@ export async function putBotConfig(
     auto_accept_group: boolean;
     security: boolean;
     community_roster_show_qq: boolean;
-    persona: Record<string, unknown> | null;
+    persona: { account_profile?: AccountPersonaProfile | null } | null;
     group_style_enabled: boolean;
   }>,
 ): Promise<BotConfigPublic> {

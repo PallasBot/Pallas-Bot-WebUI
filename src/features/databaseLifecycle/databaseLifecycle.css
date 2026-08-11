@@ -1,0 +1,42 @@
+.database-lifecycle { display: grid; gap: 14px; }
+.database-lifecycle__intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.database-lifecycle__intro h3 { margin: 0; font-size: 15px; line-height: 1.4; }
+.database-lifecycle__intro p { margin: 4px 0 0; color: var(--text-muted); font-size: 12px; }
+.database-lifecycle__job { display: flex; align-items: flex-start; gap: 8px; border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent); background: color-mix(in srgb, var(--accent) 8%, transparent); padding: 9px 10px; color: var(--text); font-size: 12px; }
+.database-lifecycle__job svg { width: 16px; flex: none; color: var(--accent); }
+.database-lifecycle__job--failed { border-color: color-mix(in srgb, var(--danger) 44%, transparent); background: color-mix(in srgb, var(--danger) 9%, transparent); }
+.database-lifecycle__table-wrap { overflow-x: auto; }
+.database-lifecycle__table { min-width: 760px; }
+.database-lifecycle__table th, .database-lifecycle__table td { white-space: nowrap; }
+.database-lifecycle__name { display: flex; align-items: center; gap: 7px; min-width: 118px; }
+.database-lifecycle__objects { max-width: 220px; color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; white-space: normal; overflow-wrap: anywhere; }
+.database-lifecycle__numeric { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.database-lifecycle__cards { display: none; }
+.database-lifecycle__protected { display: flex; gap: 12px; align-items: flex-start; border-top: 1px solid var(--border); padding-top: 12px; color: var(--text-muted); font-size: 12px; }
+.database-lifecycle__protected > div { display: flex; align-items: center; gap: 6px; min-width: 92px; color: var(--text); font-weight: 600; }
+.database-lifecycle__protected svg { width: 15px; color: var(--accent); }
+.database-lifecycle__protected p { margin: 0; overflow-wrap: anywhere; }
+.database-lifecycle__dialog { width: min(32rem, calc(100vw - 32px)); max-width: min(32rem, calc(100vw - 32px)); }
+.database-lifecycle__form { display: grid; gap: 16px; }
+.database-lifecycle__form label { display: grid; gap: 7px; color: var(--text); font-size: 13px; font-weight: 600; }
+.database-lifecycle__form label > span { display: grid; gap: 2px; }
+.database-lifecycle__form small { color: var(--text-muted); font-size: 12px; font-weight: 400; }
+.database-lifecycle__switch-row { display: flex !important; align-items: center; justify-content: space-between; gap: 16px; }
+.database-lifecycle__form-actions { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--border); padding-top: 14px; }
+@media (max-width: 560px) {
+  .database-lifecycle__intro { align-items: center; }
+  .database-lifecycle__intro p { max-width: 28rem; }
+  .database-lifecycle__table-wrap { display: none; }
+  .database-lifecycle__cards { display: grid; gap: 8px; }
+  .database-lifecycle__card { display: grid; gap: 10px; border: 1px solid var(--border); padding: 11px; }
+  .database-lifecycle__card-title, .database-lifecycle__card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .database-lifecycle__card p { margin: 0; color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; overflow-wrap: anywhere; }
+  .database-lifecycle__card dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
+  .database-lifecycle__card dl div { display: grid; gap: 2px; }
+  .database-lifecycle__card dt { color: var(--text-muted); font-size: 11px; }
+  .database-lifecycle__card dd { margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .database-lifecycle__protected { display: grid; gap: 6px; }
+  .database-lifecycle__dialog { width: min(32rem, calc(100vw - 24px)); max-width: min(32rem, calc(100vw - 24px)); }
+  .database-lifecycle__form-actions { align-items: stretch; flex-direction: column-reverse; }
+  .database-lifecycle__form-actions button { width: 100%; }
+}

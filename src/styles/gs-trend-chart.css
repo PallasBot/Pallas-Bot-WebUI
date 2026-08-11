@@ -107,9 +107,8 @@
 
 .gs-trend-chart__tooltip {
   position: absolute;
-  top: 6px;
   z-index: 2;
-  transform: translateX(-50%);
+  transform: translate(-50%, -100%);
   min-width: 148px;
   padding: 8px 10px;
   border-radius: 10px;
@@ -118,6 +117,10 @@
   box-shadow: var(--shadow-md, 0 8px 24px rgba(15, 23, 42, 0.12));
   pointer-events: none;
   animation: gs-trend-tip-in 0.16s ease;
+}
+
+.gs-trend-chart__tooltip--below {
+  transform: translateX(-50%);
 }
 
 .gs-trend-chart__tooltip-date {

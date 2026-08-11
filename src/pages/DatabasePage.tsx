@@ -33,11 +33,14 @@ import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import DatabaseBackendPanel from "@/components/DatabaseBackendPanel";
 import DatabaseMigratePanel from "@/components/DatabaseMigratePanel";
+import DatabaseLifecyclePanel from "@/features/databaseLifecycle/DatabaseLifecyclePanel";
+import NoticeDot from "@/components/NoticeDot";
 import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
 import { Button } from "@/components/ui/button";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -56,11 +59,13 @@ import {
 } from "@/components/ui/select";
 import UiInput from "@/components/ui/UiInput";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
-import { Code2, ChevronDown, Database, Eye, Layers, Play, Plus, Search, Table2, Users } from "lucide-react";
+import { DATABASE_LIFECYCLE_NOTICE } from "@/config/navigationNotices";
+import { Code2, ChevronDown, Database, DatabaseZap, Eye, Layers, Play, Plus, Search, Table2, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
+import { isNavigationNoticeUnseen, markNavigationNoticeSeen } from "@/utils/navigationNotice";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -127,7 +132,7 @@ const DB_PANEL_HD =
   "panel__hd panel__hd--split flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const DB_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
 
-type DbSectionId = "backend" | "group" | "user" | "tables" | "aggregate";
+type DbSectionId = "backend" | "group" | "user" | "lifecycle" | "tables" | "aggregate";
 
 const SECTION_META: Record<
   DbSectionId,
@@ -136,6 +141,7 @@ const SECTION_META: Record<
   backend: { label: "后端", icon: Database, panelId: "db-backend-config" },
   group: { label: "群配置", icon: Users, panelId: "db-group-configs" },
   user: { label: "好友配置", icon: Users, panelId: "db-user-configs" },
+  lifecycle: { label: "生命周期", icon: DatabaseZap, panelId: "db-lifecycle" },
   tables: { label: "存储", icon: Table2, panelId: "db-tables" },
   aggregate: { label: "聚合查询", icon: Code2, panelId: "db-aggregate" },
 };
@@ -165,16 +171,17 @@ function sectionFromHash(hash: string): DbSectionId | null {
   if (id === "db-backend-config") return "backend";
   if (id === "db-group-configs") return "group";
   if (id === "db-user-configs") return "user";
+  if (id === "db-lifecycle") return "lifecycle";
   if (id === "db-tables") return "tables";
   if (id === "db-aggregate") return "aggregate";
   return null;
 }
 
-function healthBadgeClass(status: DbHealthStatus | undefined): string {
-  if (status === "healthy") return "badge badge--ok";
-  if (status === "degraded") return "badge badge--warn";
-  if (status === "unhealthy") return "badge badge--err";
-  return "badge";
+function healthBadgeVariant(status: DbHealthStatus | undefined): BadgeProps["variant"] {
+  if (status === "healthy") return "success";
+  if (status === "degraded") return "warn";
+  if (status === "unhealthy") return "danger";
+  return "neutral";
 }
 
 function healthStatusLabel(status: DbHealthStatus | undefined): string {
@@ -256,13 +263,22 @@ export default function DatabasePage() {
   const showAggregate = isMongo(overview);
 
   const sectionOptions = useMemo(() => {
-    const ids: DbSectionId[] = ["backend", "group", "user", "tables"];
+    const ids: DbSectionId[] = ["backend", "group", "user", "lifecycle", "tables"];
     if (showAggregate) ids.push("aggregate");
     return ids.map((id) => ({ id, ...SECTION_META[id] }));
   }, [showAggregate]);
 
   const activeSection = section === "aggregate" && !showAggregate ? "tables" : section;
   const activeMeta = SECTION_META[activeSection];
+  const lifecycleNoticeUnseen =
+    activeSection !== "lifecycle" &&
+    isNavigationNoticeUnseen(DATABASE_LIFECYCLE_NOTICE.key, DATABASE_LIFECYCLE_NOTICE.revision);
+
+  useEffect(() => {
+    if (activeSection === "lifecycle") {
+      markNavigationNoticeSeen(DATABASE_LIFECYCLE_NOTICE.key, DATABASE_LIFECYCLE_NOTICE.revision);
+    }
+  }, [activeSection]);
 
   const backendLabel = !overview
     ? "—"
@@ -419,7 +435,7 @@ export default function DatabasePage() {
     });
   }
 
-  async function loadBrowseRows(table: string, page: number) {
+  async function loadBrowseRows(table: string, page: number, pageSize = prefs.tablePageSize) {
     if (!table) {
       setBrowseRows(null);
       return;
@@ -427,7 +443,7 @@ export default function DatabasePage() {
     setBrowseBusy(true);
     setErr("");
     try {
-      const limit = prefs.tablePageSize;
+      const limit = pageSize;
       const data = await fetchDbTableRows({
         table,
         offset: Math.max(0, (page - 1) * limit),
@@ -588,6 +604,11 @@ export default function DatabasePage() {
       void loadSocialConfigs();
       return;
     }
+    if (activeSection === "lifecycle") {
+      void queryClient.invalidateQueries({ queryKey: ["db-lifecycle-catalog"] });
+      void queryClient.invalidateQueries({ queryKey: ["db-lifecycle-policies"] });
+      return;
+    }
     void loadAll();
   }
 
@@ -596,6 +617,8 @@ export default function DatabasePage() {
       ? overviewQ.isFetching || healthQ.isFetching
       : activeSection === "group" || activeSection === "user"
         ? socialConfigsBusy
+        : activeSection === "lifecycle"
+          ? false
         : dbRefreshBusy || overviewQ.isFetching || tablesQ.isFetching || browseBusy;
   const showBody = Boolean(overview) && !dbRefreshBusy;
   const browseableTables = tableMeta.filter((t) => t.browseable);
@@ -635,9 +658,11 @@ export default function DatabasePage() {
           : overview?.backend === "postgres"
             ? "表与行数"
             : "集合与文档数"
-        : activeSection === "aggregate"
-          ? "聚合查询"
-          : activeMeta.label;
+      : activeSection === "aggregate"
+        ? "聚合查询"
+        : activeSection === "lifecycle"
+          ? "生命周期"
+        : activeMeta.label;
 
   function selectStorageView(next: string) {
     preserveShellMainScroll(() => {
@@ -705,7 +730,9 @@ export default function DatabasePage() {
                 <span className="metric-tile__label">健康</span>
               </div>
               <div className="metric-tile__value-slot">
-                <span className={healthBadgeClass(health.status)}>{healthStatusLabel(health.status)}</span>
+                <Badge variant={healthBadgeVariant(health.status)} size="compact">
+                  {healthStatusLabel(health.status)}
+                </Badge>
                 <span
                   className="database-page__kpi-hint muted"
                   title={health.reason || undefined}
@@ -728,7 +755,12 @@ export default function DatabasePage() {
             <SelectContent align="start">
               {sectionOptions.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  <ChromeOptionLabel icon={s.icon}>{s.label}</ChromeOptionLabel>
+                  <ChromeOptionLabel icon={s.icon}>
+                    {s.label}
+                    {s.id === "lifecycle" && lifecycleNoticeUnseen ? (
+                      <NoticeDot title={DATABASE_LIFECYCLE_NOTICE.label} />
+                    ) : null}
+                  </ChromeOptionLabel>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -899,6 +931,8 @@ export default function DatabasePage() {
               </div>
             </div>
           ) : null}
+
+          {activeSection === "lifecycle" ? <DatabaseLifecyclePanel /> : null}
 
           {activeSection === "group" ? (
             <>
@@ -1169,7 +1203,7 @@ export default function DatabasePage() {
                     onPageSizeChange={(size) => {
                       prefs.setTablePageSize(size);
                       setBrowsePage(1);
-                      void loadBrowseRows(browseTable, 1);
+                      void loadBrowseRows(browseTable, 1, size);
                     }}
                   />
                 </>

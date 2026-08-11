@@ -478,6 +478,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/persona/sticker-labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sticker Label Overview Get */
+        get: operations["_sticker_label_overview_get_pallas_api_common_config_llm_persona_sticker_labels_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/persona/sticker-labels/manage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sticker Label Maintenance Post */
+        post: operations["_sticker_label_maintenance_post_pallas_api_common_config_llm_persona_sticker_labels_manage_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/llm/conversation-kernel/memory/graph/stats": {
         parameters: {
             query?: never;
@@ -3369,6 +3403,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/db/lifecycle/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lifecycle Catalog */
+        get: operations["lifecycle_catalog_pallas_api_db_lifecycle_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/lifecycle/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lifecycle Policies */
+        get: operations["lifecycle_policies_pallas_api_db_lifecycle_policies_get"];
+        /** Update Lifecycle Policies */
+        put: operations["update_lifecycle_policies_pallas_api_db_lifecycle_policies_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/lifecycle/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Lifecycle Job */
+        post: operations["preview_lifecycle_job_pallas_api_db_lifecycle_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/lifecycle/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Lifecycle Job */
+        post: operations["start_lifecycle_job_pallas_api_db_lifecycle_jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/lifecycle/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lifecycle Job */
+        get: operations["lifecycle_job_pallas_api_db_lifecycle_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/db/overview": {
         parameters: {
             query?: never;
@@ -4600,6 +4720,35 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccountPersonaProfile */
+        AccountPersonaProfile: {
+            /**
+             * Energy
+             * @default 0
+             */
+            energy: number;
+            /**
+             * Warmth
+             * @default 0
+             */
+            warmth: number;
+            /**
+             * Mischief
+             * @default 0
+             */
+            mischief: number;
+            /**
+             * Restraint
+             * @default 0
+             */
+            restraint: number;
+            /**
+             * Source
+             * @default derived
+             * @enum {string}
+             */
+            source: "derived" | "manual" | "legacy_migrated";
+        };
         /** Body__community_gallery_create_pallas_api_community_gallery_post */
         Body__community_gallery_create_pallas_api_community_gallery_post: {
             /**
@@ -4719,6 +4868,114 @@ export interface components {
             /** Mirror Id */
             mirror_id?: string | null;
         };
+        /** GroupExpressionAggregate */
+        GroupExpressionAggregate: {
+            /**
+             * Sample Count
+             * @default 0
+             */
+            sample_count: number;
+            /**
+             * Window Hours
+             * @default 0
+             */
+            window_hours: number;
+            /**
+             * Message Count
+             * @default 0
+             */
+            message_count: number;
+            /**
+             * Answer Count
+             * @default 0
+             */
+            answer_count: number;
+            /**
+             * Distinct Answer Keywords
+             * @default 0
+             */
+            distinct_answer_keywords: number;
+            /**
+             * Active Hour Count
+             * @default 0
+             */
+            active_hour_count: number;
+            /**
+             * Messages Per Active Hour
+             * @default 0
+             */
+            messages_per_active_hour: number;
+            message_length?: components["schemas"]["MessageLengthDistribution"];
+            /**
+             * Answer Ratio
+             * @default 0
+             */
+            answer_ratio: number;
+            /**
+             * Repetition Rate
+             * @default 0
+             */
+            repetition_rate: number;
+            /**
+             * Forced Teach Weight
+             * @default 0
+             */
+            forced_teach_weight: number;
+            /**
+             * Contamination Skipped Messages
+             * @default 0
+             */
+            contamination_skipped_messages: number;
+            /**
+             * Contamination Skipped Answers
+             * @default 0
+             */
+            contamination_skipped_answers: number;
+        };
+        /** GroupExpressionProfile */
+        GroupExpressionProfile: {
+            aggregate?: components["schemas"]["GroupExpressionAggregate"];
+            examples_summary?: components["schemas"]["SemanticExamplesSummary"];
+            reply_shape?: components["schemas"]["GroupReplyShapeHint"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at?: string;
+        };
+        /** GroupReplyShapeHint */
+        GroupReplyShapeHint: {
+            /**
+             * Length Pref
+             * @default any
+             * @enum {string}
+             */
+            length_pref: "short" | "medium" | "long" | "any";
+            /**
+             * Bubble Count P50
+             * @default 0
+             */
+            bubble_count_p50: number;
+            /**
+             * Bubble Count P90
+             * @default 0
+             */
+            bubble_count_p90: number;
+            /**
+             * Segment Char Length P50
+             * @default 0
+             */
+            segment_char_length_p50: number;
+            /**
+             * Segment Char Length P90
+             * @default 0
+             */
+            segment_char_length_p90: number;
+            /** Rhythm Distribution */
+            rhythm_distribution?: {
+                [key: string]: number;
+            };
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -4773,6 +5030,162 @@ export interface components {
             learn_persisted: number;
             /** Work Completed */
             work_completed: number;
+        };
+        /** LifecycleCatalogModel */
+        LifecycleCatalogModel: {
+            /** Backend */
+            backend: string;
+            /** Datasets */
+            datasets: components["schemas"]["LifecycleDatasetModel"][];
+            /** Unmanaged Objects */
+            unmanaged_objects: components["schemas"]["LifecycleObjectModel"][];
+        };
+        /** LifecycleCatalogResponse */
+        LifecycleCatalogResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            data: components["schemas"]["LifecycleCatalogModel"];
+        };
+        /** LifecycleDatasetModel */
+        LifecycleDatasetModel: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Label */
+            label: string;
+            /**
+             * Risk
+             * @enum {string}
+             */
+            risk: "low" | "medium" | "high";
+            /** Registered Objects */
+            registered_objects: string[];
+            /** Present Objects */
+            present_objects: string[];
+            /** Row Count */
+            row_count: number | null;
+            /** Size Bytes */
+            size_bytes: number | null;
+            policy: components["schemas"]["LifecyclePolicyModel"];
+            /** Supports Retention */
+            supports_retention: boolean;
+            /** Supports Max Bytes */
+            supports_max_bytes: boolean;
+            /** Errors */
+            errors: string[];
+        };
+        /** LifecycleJobBody */
+        LifecycleJobBody: {
+            /** Dataset Id */
+            dataset_id: string;
+            policy: components["schemas"]["LifecyclePolicyModel"];
+            /** Confirmation Token */
+            confirmation_token: string;
+        };
+        /** LifecycleJobModel */
+        LifecycleJobModel: {
+            /** Job Id */
+            job_id: string;
+            /** Dataset Id */
+            dataset_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed";
+            /** Deleted Rows */
+            deleted_rows: number;
+            /** Freed Bytes */
+            freed_bytes: number;
+            /** Error */
+            error: string | null;
+            /** Created At */
+            created_at: number;
+            /** Started At */
+            started_at: number | null;
+            /** Finished At */
+            finished_at: number | null;
+        };
+        /** LifecycleJobResponse */
+        LifecycleJobResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            data: components["schemas"]["LifecycleJobModel"];
+        };
+        /** LifecycleObjectModel */
+        LifecycleObjectModel: {
+            /** Name */
+            name: string;
+            /** Row Count */
+            row_count: number | null;
+            /** Size Bytes */
+            size_bytes: number | null;
+            /** Dataset Id */
+            dataset_id: string | null;
+            /** Protected */
+            protected: boolean;
+            /** Protection Reason */
+            protection_reason: string | null;
+            /** Error */
+            error?: string | null;
+        };
+        /** LifecyclePoliciesModel */
+        LifecyclePoliciesModel: {
+            /** Policies */
+            policies: {
+                [key: string]: components["schemas"]["LifecyclePolicyModel"];
+            };
+        };
+        /** LifecyclePoliciesResponse */
+        LifecyclePoliciesResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            data: components["schemas"]["LifecyclePoliciesModel"];
+        };
+        /** LifecyclePolicyModel */
+        LifecyclePolicyModel: {
+            /** Enabled */
+            enabled: boolean;
+            /** Retention Days */
+            retention_days?: number | null;
+            /** Max Bytes */
+            max_bytes?: number | null;
+        };
+        /** LifecyclePreviewBody */
+        LifecyclePreviewBody: {
+            /** Dataset Id */
+            dataset_id: string;
+            policy: components["schemas"]["LifecyclePolicyModel"];
+        };
+        /** LifecyclePreviewModel */
+        LifecyclePreviewModel: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Candidate Rows */
+            candidate_rows: number;
+            /** Candidate Bytes */
+            candidate_bytes: number;
+            /** Confirmation Token */
+            confirmation_token: string;
+            /** Expires At */
+            expires_at: number;
+        };
+        /** LifecyclePreviewResponse */
+        LifecyclePreviewResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            data: components["schemas"]["LifecyclePreviewModel"];
         };
         /** LlmReplayRunBody */
         LlmReplayRunBody: {
@@ -4831,6 +5244,24 @@ export interface components {
             sharded_logs: boolean;
             /** Log Sources */
             log_sources?: string[];
+        };
+        /** MessageLengthDistribution */
+        MessageLengthDistribution: {
+            /**
+             * Average
+             * @default 0
+             */
+            average: number;
+            /**
+             * P50
+             * @default 0
+             */
+            p50: number;
+            /**
+             * P90
+             * @default 0
+             */
+            p90: number;
         };
         /**
          * PluginConfigData
@@ -4940,6 +5371,52 @@ export interface components {
              * @default false
              */
             help_ignored: boolean;
+        };
+        /**
+         * SemanticExamplesSummary
+         * @description Stable snapshot metadata; mutable admission and delivery quotas stay in their owner.
+         */
+        SemanticExamplesSummary: {
+            /**
+             * Profile Ref
+             * @default
+             */
+            profile_ref: string;
+            /**
+             * Scene
+             * @default
+             */
+            scene: string;
+            /**
+             * Sample Count
+             * @default 0
+             */
+            sample_count: number;
+            /**
+             * Direct Example Count
+             * @default 0
+             */
+            direct_example_count: number;
+            /**
+             * Direct Pair Count
+             * @default 0
+             */
+            direct_pair_count: number;
+            /**
+             * Rewrite Seed Count
+             * @default 0
+             */
+            rewrite_seed_count: number;
+            /** Intensity Counts */
+            intensity_counts?: {
+                [key: string]: number;
+            };
+            /** Form Counts */
+            form_counts?: {
+                [key: string]: number;
+            };
+            /** Updated At */
+            updated_at?: string | null;
         };
         /** ShardObservabilityData */
         ShardObservabilityData: {
@@ -5232,6 +5709,18 @@ export interface components {
             /** Error */
             error?: null;
         };
+        /** _ApiOkResponse[GroupExpressionProfile] */
+        _ApiOkResponse_GroupExpressionProfile_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["GroupExpressionProfile"];
+            /** Error */
+            error?: null;
+        };
         /** _ApiOkResponse[IngressDispatchData] */
         _ApiOkResponse_IngressDispatchData_: {
             /**
@@ -5313,6 +5802,32 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["ShardObservabilityData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[Union[_SemanticStyleStatusData, _SemanticStyleQualityData]] */
+        _ApiOkResponse_Union__SemanticStyleStatusData___SemanticStyleQualityData__: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            /** Data */
+            data: components["schemas"]["_SemanticStyleStatusData"] | components["schemas"]["_SemanticStyleQualityData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[Union[_StickerLabelRequeueResult, _StickerLabelPauseResult, _StickerLabelClearResult]] */
+        _ApiOkResponse_Union__StickerLabelRequeueResult___StickerLabelPauseResult___StickerLabelClearResult__: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            /** Data */
+            data: components["schemas"]["_StickerLabelRequeueResult"] | components["schemas"]["_StickerLabelPauseResult"] | components["schemas"]["_StickerLabelClearResult"];
             /** Error */
             error?: null;
         };
@@ -5400,6 +5915,42 @@ export interface components {
             /** Error */
             error?: null;
         };
+        /** _ApiOkResponse[_LlmSingDefaultsData] */
+        _ApiOkResponse__LlmSingDefaultsData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_LlmSingDefaultsData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[_PersonaObserveData] */
+        _ApiOkResponse__PersonaObserveData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_PersonaObserveData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[_SemanticStyleStatusData] */
+        _ApiOkResponse__SemanticStyleStatusData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_SemanticStyleStatusData"];
+            /** Error */
+            error?: null;
+        };
         /** _ApiOkResponse[_ServiceGatewaysConnectivityCheckData] */
         _ApiOkResponse__ServiceGatewaysConnectivityCheckData_: {
             /**
@@ -5409,6 +5960,18 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_ServiceGatewaysConnectivityCheckData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[_StickerLabelOverviewData] */
+        _ApiOkResponse__StickerLabelOverviewData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_StickerLabelOverviewData"];
             /** Error */
             error?: null;
         };
@@ -5426,12 +5989,13 @@ export interface components {
             security?: boolean | null;
             /** Community Roster Show Qq */
             community_roster_show_qq?: boolean | null;
-            /** Persona */
-            persona?: {
-                [key: string]: unknown;
-            } | null;
+            persona?: components["schemas"]["_BotPersonaPatch"] | null;
             /** Group Style Enabled */
             group_style_enabled?: boolean | null;
+        };
+        /** _BotPersonaPatch */
+        _BotPersonaPatch: {
+            account_profile?: components["schemas"]["AccountPersonaProfile"] | null;
         };
         /** _CommonConfigSectionPatchBody */
         _CommonConfigSectionPatchBody: {
@@ -5865,26 +6429,6 @@ export interface components {
              * @default
              */
             drunk: string;
-            /**
-             * Repeater Fallback
-             * @default
-             */
-            repeater_fallback: string;
-            /**
-             * Repeater Polish
-             * @default
-             */
-            repeater_polish: string;
-            /**
-             * Repeater Polish Lite
-             * @default
-             */
-            repeater_polish_lite: string;
-            /**
-             * Repeater Select
-             * @default
-             */
-            repeater_select: string;
         };
         /** _LlmMediaTaskCapabilityRow */
         _LlmMediaTaskCapabilityRow: {
@@ -6323,6 +6867,38 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** _LlmSingDefaultsBody */
+        _LlmSingDefaultsBody: {
+            /** Default Speaker */
+            default_speaker?: string | null;
+            /** Preferred Backend */
+            preferred_backend?: string | null;
+            /** Speaker Backends */
+            speaker_backends?: {
+                [key: string]: string;
+            } | null;
+            /** Song Cache Days */
+            song_cache_days?: number | null;
+            /** Song Cache Size */
+            song_cache_size?: number | null;
+        };
+        /** _LlmSingDefaultsData */
+        _LlmSingDefaultsData: {
+            /** Default Speaker */
+            default_speaker: string;
+            /** Preferred Backend */
+            preferred_backend: string;
+            /** Speaker Backends */
+            speaker_backends: {
+                [key: string]: string;
+            };
+            /** Song Cache Days */
+            song_cache_days: number;
+            /** Song Cache Size */
+            song_cache_size: number;
+            /** Writable */
+            writable?: boolean | null;
+        };
         /** _LlmTtsHealthData */
         _LlmTtsHealthData: {
             /** Capability */
@@ -6353,6 +6929,48 @@ export interface components {
              */
             restart: boolean;
         };
+        /** _PersonaObserveBotRow */
+        _PersonaObserveBotRow: {
+            /** Account */
+            account: number;
+            /**
+             * Group Style Enabled
+             * @default true
+             */
+            group_style_enabled: boolean;
+            account_profile: components["schemas"]["AccountPersonaProfile"];
+            /** Base */
+            base: {
+                [key: string]: unknown;
+            };
+            /** Base Hints */
+            base_hints?: string[];
+            /** Resolved */
+            resolved?: {
+                [key: string]: unknown;
+            } | null;
+            /** Resolved Hints */
+            resolved_hints?: string[];
+        };
+        /** _PersonaObserveData */
+        _PersonaObserveData: {
+            /** Group Id */
+            group_id?: number | null;
+            /** Group Style Snapshot */
+            group_style_snapshot?: {
+                [key: string]: unknown;
+            } | null;
+            /** Affect Refine */
+            affect_refine?: {
+                [key: string]: unknown;
+            } | null;
+            /** Affect Triggers */
+            affect_triggers?: {
+                [key: string]: unknown;
+            }[];
+            /** Bots */
+            bots?: components["schemas"]["_PersonaObserveBotRow"][];
+        };
         /** _PluginConfigRawBody */
         _PluginConfigRawBody: {
             /**
@@ -6373,23 +6991,17 @@ export interface components {
             /** Command Permission Overrides */
             command_permission_overrides?: {
                 [key: string]: string;
-            };
+            } | null;
             /** Command Limit Overrides */
             command_limit_overrides?: {
                 [key: string]: number;
-            };
-            /**
-             * Global Disable
-             * @default false
-             */
-            global_disable: boolean;
-            /**
-             * Help Hidden
-             * @default false
-             */
-            help_hidden: boolean;
+            } | null;
+            /** Global Disable */
+            global_disable?: boolean | null;
+            /** Help Hidden */
+            help_hidden?: boolean | null;
             /** Blocked User Ids */
-            blocked_user_ids?: number[];
+            blocked_user_ids?: number[] | null;
         };
         /** _RequestActionBody */
         _RequestActionBody: {
@@ -6452,6 +7064,145 @@ export interface components {
             /** Group Id */
             group_id: number;
         };
+        /** _SemanticStyleManageBody */
+        _SemanticStyleManageBody: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable";
+            /** Bot Id */
+            bot_id?: number | null;
+            /** Group Id */
+            group_id?: number | null;
+            /**
+             * Scene
+             * @default group_chat
+             */
+            scene: string;
+            overrides?: components["schemas"]["_SemanticStyleOverridesPatch"] | null;
+        };
+        /** _SemanticStyleOverridesData */
+        _SemanticStyleOverridesData: {
+            /** Aggressive */
+            aggressive: boolean;
+            /** Nonsense */
+            nonsense: boolean;
+            /** Direct */
+            direct: boolean;
+            /** Image */
+            image: boolean;
+        };
+        /** _SemanticStyleOverridesPatch */
+        _SemanticStyleOverridesPatch: {
+            /** Aggressive */
+            aggressive?: boolean | null;
+            /** Nonsense */
+            nonsense?: boolean | null;
+            /** Direct */
+            direct?: boolean | null;
+            /** Image */
+            image?: boolean | null;
+        };
+        /** _SemanticStyleProfileSummaryData */
+        _SemanticStyleProfileSummaryData: {
+            /** Profile Ref */
+            profile_ref: string;
+            /** Scene */
+            scene: string;
+            /**
+             * Sample Count
+             * @default 0
+             */
+            sample_count: number;
+            /**
+             * Direct Example Count
+             * @default 0
+             */
+            direct_example_count: number;
+            /**
+             * Direct Pair Count
+             * @default 0
+             */
+            direct_pair_count: number;
+            /**
+             * Rewrite Seed Count
+             * @default 0
+             */
+            rewrite_seed_count: number;
+            /** Intensity Counts */
+            intensity_counts?: {
+                [key: string]: number;
+            };
+            /** Form Counts */
+            form_counts?: {
+                [key: string]: number;
+            };
+            /**
+             * Bubble Count P50
+             * @default 0
+             */
+            bubble_count_p50: number;
+            /**
+             * Bubble Count P90
+             * @default 0
+             */
+            bubble_count_p90: number;
+            /**
+             * Segment Char Length P50
+             * @default 0
+             */
+            segment_char_length_p50: number;
+            /**
+             * Segment Char Length P90
+             * @default 0
+             */
+            segment_char_length_p90: number;
+            /** Rhythm Distribution */
+            rhythm_distribution?: {
+                [key: string]: number;
+            };
+            /**
+             * Updated At
+             * @default 0
+             */
+            updated_at: number;
+        };
+        /** _SemanticStyleQualityData */
+        _SemanticStyleQualityData: {
+            status: components["schemas"]["_SemanticStyleStatusData"];
+            /** Label Version */
+            label_version: number;
+            /**
+             * Positive Bot Style Count
+             * @default 0
+             */
+            positive_bot_style_count: number;
+        };
+        /** _SemanticStyleStatusData */
+        _SemanticStyleStatusData: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            overrides?: components["schemas"]["_SemanticStyleOverridesData"] | null;
+            /**
+             * Example Count
+             * @default 0
+             */
+            example_count: number;
+            /**
+             * Profile Count
+             * @default 0
+             */
+            profile_count: number;
+            /** Backfill Cursor */
+            backfill_cursor?: {
+                [key: string]: unknown;
+            };
+            profile_summary?: components["schemas"]["_SemanticStyleProfileSummaryData"] | null;
+        };
         /** _ServiceGatewaysConnectivityCheckData */
         _ServiceGatewaysConnectivityCheckData: {
             /** Lines */
@@ -6495,6 +7246,163 @@ export interface components {
             recent_failure_class?: string | null;
             /** Queue Load Hint */
             queue_load_hint?: string | null;
+        };
+        /** _StickerLabelClearBody */
+        _StickerLabelClearBody: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "clear";
+            /** Content Hash */
+            content_hash: string;
+        };
+        /** _StickerLabelClearResult */
+        _StickerLabelClearResult: {
+            /** Cleared */
+            cleared: boolean;
+        };
+        /** _StickerLabelJobErrorData */
+        _StickerLabelJobErrorData: {
+            /**
+             * Job Id
+             * @default
+             */
+            job_id: string;
+            /**
+             * Created At
+             * @default 0
+             */
+            created_at: number;
+            /**
+             * State
+             * @default
+             */
+            state: string;
+            /**
+             * Error
+             * @default
+             */
+            error: string;
+        };
+        /** _StickerLabelJobStatsData */
+        _StickerLabelJobStatsData: {
+            /**
+             * Pending
+             * @default 0
+             */
+            pending: number;
+            /**
+             * Failed
+             * @default 0
+             */
+            failed: number;
+            /** Recent Errors */
+            recent_errors?: components["schemas"]["_StickerLabelJobErrorData"][];
+        };
+        /** _StickerLabelOverviewData */
+        _StickerLabelOverviewData: {
+            labels: components["schemas"]["_StickerLabelStatsData"];
+            jobs: components["schemas"]["_StickerLabelJobStatsData"];
+            /**
+             * Lazy Labels Paused
+             * @default false
+             */
+            lazy_labels_paused: boolean;
+            /**
+             * Label Circuit Open
+             * @default false
+             */
+            label_circuit_open: boolean;
+            /**
+             * Vlm Refine Avoided
+             * @default 0
+             */
+            vlm_refine_avoided: number;
+            /**
+             * Vlm Refine Actual
+             * @default 0
+             */
+            vlm_refine_actual: number;
+            /**
+             * Send Hits
+             * @default 0
+             */
+            send_hits: number;
+        };
+        /** _StickerLabelPauseBody */
+        _StickerLabelPauseBody: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "pause";
+            /** Paused */
+            paused: boolean;
+        };
+        /** _StickerLabelPauseResult */
+        _StickerLabelPauseResult: {
+            /** Lazy Labels Paused */
+            lazy_labels_paused: boolean;
+        };
+        /** _StickerLabelRequeueBody */
+        _StickerLabelRequeueBody: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "requeue";
+        };
+        /** _StickerLabelRequeueResult */
+        _StickerLabelRequeueResult: {
+            /**
+             * Requeued
+             * @default 0
+             */
+            requeued: number;
+            /**
+             * Queued
+             * @default 0
+             */
+            queued: number;
+            /**
+             * Skipped
+             * @default 0
+             */
+            skipped: number;
+            /**
+             * Missing Cache
+             * @default 0
+             */
+            missing_cache: number;
+        };
+        /** _StickerLabelStatsData */
+        _StickerLabelStatsData: {
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+            /**
+             * Sticker
+             * @default 0
+             */
+            sticker: number;
+            /**
+             * Not Sticker
+             * @default 0
+             */
+            not_sticker: number;
+            /**
+             * Current Version
+             * @default 0
+             */
+            current_version: number;
+            /**
+             * Low Confidence
+             * @default 0
+             */
+            low_confidence: number;
         };
         /** _SystemRestartBody */
         _SystemRestartBody: {
@@ -7759,9 +8667,7 @@ export interface operations {
                 group_id?: number | null;
                 /** @description 编译用人设原文；可空 */
                 plain_text?: string;
-                purpose?: string;
                 mode?: string;
-                include_repeater_overlay?: boolean;
                 token?: string | null;
             };
             header?: {
@@ -7795,8 +8701,10 @@ export interface operations {
     _llm_persona_group_style_get_pallas_api_common_config_llm_persona_group_style_get: {
         parameters: {
             query: {
+                /** @description Bot QQ；提供后合并对应 bot/group/scene 的 semantic snapshot */
+                bot_id?: number | null;
                 group_id: number;
-                window_hours?: number;
+                scene?: string;
                 token?: string | null;
             };
             header?: {
@@ -7813,7 +8721,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_GroupExpressionProfile_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _sticker_label_overview_get_pallas_api_common_config_llm_persona_sticker_labels_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__StickerLabelOverviewData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _sticker_label_maintenance_post_pallas_api_common_config_llm_persona_sticker_labels_manage_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_StickerLabelRequeueBody"] | components["schemas"]["_StickerLabelPauseBody"] | components["schemas"]["_StickerLabelClearBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse_Union__StickerLabelRequeueResult___StickerLabelPauseResult___StickerLabelClearResult__"];
                 };
             };
             /** @description Validation Error */
@@ -13132,9 +14110,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["_LlmSingDefaultsBody"];
             };
         };
         responses: {
@@ -13144,7 +14120,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse__LlmSingDefaultsData_"];
                 };
             };
             /** @description Validation Error */
@@ -13779,7 +14755,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse__PersonaObserveData_"];
                 };
             };
             /** @description Validation Error */
@@ -13798,6 +14774,7 @@ export interface operations {
             query?: {
                 bot_id?: number | null;
                 group_id?: number | null;
+                scene?: string;
                 token?: string | null;
             };
             header?: {
@@ -13814,7 +14791,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse__SemanticStyleStatusData_"];
                 };
             };
             /** @description Validation Error */
@@ -13841,9 +14818,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["_SemanticStyleManageBody"];
             };
         };
         responses: {
@@ -13853,7 +14828,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_Union__SemanticStyleStatusData___SemanticStyleQualityData__"];
                 };
             };
             /** @description Validation Error */
@@ -14799,6 +15774,218 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lifecycle_catalog_pallas_api_db_lifecycle_catalog_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecycleCatalogResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lifecycle_policies_pallas_api_db_lifecycle_policies_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecyclePoliciesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_lifecycle_policies_pallas_api_db_lifecycle_policies_put: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifecyclePoliciesModel"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecyclePoliciesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_lifecycle_job_pallas_api_db_lifecycle_preview_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifecyclePreviewBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecyclePreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_lifecycle_job_pallas_api_db_lifecycle_jobs_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifecycleJobBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecycleJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lifecycle_job_pallas_api_db_lifecycle_jobs__job_id__get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifecycleJobResponse"];
                 };
             };
             /** @description Validation Error */

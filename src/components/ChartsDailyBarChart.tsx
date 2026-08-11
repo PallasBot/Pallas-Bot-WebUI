@@ -42,6 +42,8 @@ export default function ChartsDailyBarChart({
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [tooltipX, setTooltipX] = useState(0);
+  const [tooltipY, setTooltipY] = useState(0);
+  const [tooltipBelow, setTooltipBelow] = useState(false);
 
   const pack = useMemo(() => {
     const pts = points.filter((p) => p.date);
@@ -104,7 +106,12 @@ export default function ChartsDailyBarChart({
     const idx = Math.floor((svgPt.x - chart.left) / (chart.barW + chart.gap));
     setHoverIndex(Math.max(0, Math.min(chart.bars.length - 1, idx)));
     const rect = wrap.getBoundingClientRect();
-    setTooltipX(Math.max(12, Math.min(rect.width - 12, ev.clientX - rect.left)));
+    const pad = 12;
+    const relativeY = ev.clientY - rect.top;
+    const below = relativeY < 72;
+    setTooltipX(Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left)));
+    setTooltipY(below ? Math.min(rect.height - pad, relativeY + 8) : Math.max(pad, relativeY - 8));
+    setTooltipBelow(below);
   }
 
   return (
@@ -163,7 +170,10 @@ export default function ChartsDailyBarChart({
           ))}
         </svg>
         {hoverBar ? (
-          <div className="charts-daily-bar__tooltip" style={{ left: tooltipX }}>
+          <div
+            className={`charts-daily-bar__tooltip${tooltipBelow ? " charts-daily-bar__tooltip--below" : ""}`}
+            style={{ left: tooltipX, top: tooltipY }}
+          >
             <div className="charts-daily-bar__tooltip-date">{hoverBar.date}</div>
             <div className="charts-daily-bar__tooltip-val">
               {hoverBar.v.toLocaleString()}
