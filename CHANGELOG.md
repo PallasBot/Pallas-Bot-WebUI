@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.1] - 2026-08-11
 
 ### 更新公告
 
@@ -19,6 +19,45 @@
 - 修复数据库生命周期页物理对象列无法换行的问题。
 - 修复插件来源筛选与卡片展示不一致的问题。
 - 修复轻量重启入口与运行日志级别徽章的展示细节。
+
+### 提交明细
+
+### Added
+
+* feat(ui): 实例卡片最小列宽保证昵称 5 字不换行 ([e35d96a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e35d96a5078df0ef718c1d252ecbfeb0af830486))
+* feat(ui): 弹窗关闭按钮改为方形悬停/按下动效，移除底部重复关闭 ([5ad2f9e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5ad2f9eb93066bec74bb37ca564a1c57fb927da4))
+* feat(ai): 展示群表达与表情标签维护 ([c20cc47](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c20cc47c15f9c7e0600dedee8185ca673fe22e7f))
+* feat(ui): 统一状态与信息标签样式 ([fdd7993](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fdd7993de9a81086f24b85e320e1d0371c8c341b))
+* feat(plugins): 统一插件卡来源标签 ([35654bb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/35654bbee6f47f4c3c37abc9ea4cfdba4e9fa4d6))
+* feat(update): 汇总 AI Runtime 更新状态 ([6b005b4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6b005b4ff9cb8b2f1fcf37632bd68e7d5333ef70))
+* feat(ai): 配置歌曲缓存生命周期 ([4309fdc](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4309fdc1eea1fa93c40d94890bd864fedc778b93))
+* feat(database-ui): 完善生命周期管理交互 ([b1d4c18](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b1d4c183b514db11f7fd3e1f24536628ca8908c9))
+* feat(database-ui): 增加生命周期管理页面 ([d672513](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d67251376c2b1ab3b5e2bad580b206e5944f75eb))
+* feat(update): 开放 Docker Release 与协议镜像更新 ([c211e48](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c211e48e849cbbb59e51d9743d48a6bda8e42f20))
+
+### Fixed
+
+* fix(plugins): 同步来源筛选与展示 ([28d78ae](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/28d78ae4ba7677915e112b53711267139164c294))
+* fix(shell): 侧栏重启按钮改用轻量重启能力接口 ([da31962](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/da31962b88c4a3f8d4496b12bfecbaf6c1d4079f))
+* fix(logs): 运行日志级别徽章对齐 scope 徽章中线 ([b502147](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b502147adf874f02b9e4117d9fb8a65890f7b6c1))
+* fix(lifecycle): 数据库生命周期物理对象列允许换行 ([7b86086](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7b86086666a6720c10687f2a9cb1da86088b8467))
+* fix(ai): 回显已保存的脱敏密钥 ([74f5c71](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/74f5c7106b44374196f14cd8c5e7c0a496b92026))
+* fix(update): 提升深色模式状态标签可见度 ([450692d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/450692d4ca7055f0f7cac3a6a20bf34c3ae4e7e7))
+* fix(charts): 悬停提示跟随图表位置 ([7f3b745](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7f3b745e50281502103c82cfce2d9a7539e64e81))
+* fix(plugins): 统一插件卡与配置面板描边 ([bf939ee](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/bf939ee3f075332687a5dbbf49ceaef2f42ef366))
+* fix(database-ui): 修复表格换行与分页条数 ([f5124e5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f5124e591db7b24494c859a23b35830171ad6228))
+* fix(ai): 优化唱歌页移动端双列布局 ([9a33c12](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9a33c12bb950c09e92d4eec1f6ffa1812b7233a9))
+* fix(plugins): 按字段保存插件治理配置 ([2d85524](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2d85524a0b2e3a8f36e53ac79bb7e8f0d490fc02))
+* fix(protocol): 避免未加载协议插件时误报挂载异常 ([7fd3e28](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7fd3e280704506e90f36a816f98c1ea17021c69e))
+
+### Changed
+
+* refactor(plugins): 优化插件商店载入 ([ecaf456](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ecaf456e075add050d7970c5b6ee39e2b0757a26))
+* refactor(update): 简化 Docker 更新面板状态判断 ([06f149f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/06f149f64a8e2f348fdd0e94be4b5bff65b6a04c))
+* chore(api): 同步控制台 OpenAPI 类型 ([e6ee1bf](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e6ee1bfbd336fc398805a60a451c047763610dcf))
+
+**完整变更**: [`v0.9.0...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.0...HEAD)
+
 
 ## [0.9.0] - 2026-08-11
 
