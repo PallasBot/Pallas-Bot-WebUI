@@ -3852,7 +3852,9 @@ html[data-theme="light"] .console-view-toggle button.is-on {
   cursor: pointer;
   transition:
     border-color 120ms ease,
-    background-color 120ms ease;
+    background-color 120ms ease,
+    transform 0.2s var(--ease),
+    box-shadow 0.18s ease;
 }
 
 .data-summary-card--selectable:hover {
