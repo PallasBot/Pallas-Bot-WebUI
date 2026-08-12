@@ -11425,7 +11425,7 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   background: var(--plugin-store-hub-surface);
   border-color: var(--border);
   box-shadow: none;
-  border-radius: 999px;
+  border-radius: var(--radius-control, 10px);
 }
 
 .plugin-store-page--hub .plugin-store-card__foot-btn.btn:not(.btn--primary):not(.btn--danger):hover:not(:disabled) {
@@ -11979,7 +11979,7 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   min-height: 38px;
   font-size: 13px;
   padding-inline: 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-control, 10px);
   gap: 6px;
 }
 

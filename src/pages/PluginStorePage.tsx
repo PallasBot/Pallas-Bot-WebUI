@@ -66,6 +66,7 @@ import {
   RotateCw,
   Search,
   Server,
+  Settings2,
   Users,
   X,
 } from "lucide-react";
@@ -1583,6 +1584,7 @@ export default function PluginStorePage() {
                 showInstall={false}
                 showUpdate={false}
                 detailLabel="配置"
+                detailIcon={Settings2}
                 canOpen
                 onOpen={() => navigate(`/plugins/${encodeURIComponent(row.name)}`)}
               />
