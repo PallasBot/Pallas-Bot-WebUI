@@ -17,6 +17,34 @@
 
 ### 提交明细
 
+### Added
+
+* feat(log-errors): 报错页改为独立可展开小卡片，去掉嵌套面板内滚动 ([fe35a82](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fe35a82b2bd64d6157724d5a49e89f6c363aa859))
+* feat(protocol): SnowLuma Runtime 卡片改整卡多选，去掉勾选框，与实例页交互一致 ([a2998e0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a2998e0c53614b835b52e49be0228b11794da989))
+* feat(ai): 统计页新增表情标签区与表情视觉空状态 ([0189994](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/01899940429650329504fa2aa149833bc8601a59))
+* feat(logs): 前缀高亮支持中文空格与连字符（HTTP 服务等） ([b0961e1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b0961e120a7b9f8a4318e4dbda653f8b2fade1e9))
+* feat(ui): 管理页插件卡片统一提供卸载入口，内置插件提示不可卸载 ([c1ff5bf](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c1ff5bfc23846d9e937571bfa924cdc2685e3b96))
+* feat(logs): 日志行首纯字母业务前缀按模块色系高亮 ([a93e455](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a93e45517b950e1389ea7d2089ec72d4152f858d))
+* feat(ui): 插件卸载统一移到管理页，配置弹窗增加输入名校对的卸载确认 ([5e90c2e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5e90c2e266a661d4ffed672aa847d07ad0bc07ff))
+
+### Fixed
+
+* fix(ui): 卡片悬停效果统一，实例卡补浮空，插件卡彩色光环收紧 ([52aa33b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/52aa33b27a011280420849eb3ec01b7b94d2c283))
+* fix(ui): 插件管理页卡片归属与版本标签不换行 ([ce025ad](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ce025add458af19bcff2d86384a3cdb4bb60db2c))
+* fix(ui): 商店卡片次级按钮改实心强调色，管理页卡片按钮窄屏保持一行 ([c2efc03](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c2efc039088cffa42f288320f38ff791f284920c))
+* fix(ui): 商店卡片次级按钮彩色预设下强调色浅染 ([3cb3971](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3cb3971bb1e216c28871005b55680990689eb0da))
+* fix(ui): 插件卡片按钮配色随主题，shadcn 危险按钮保持灰阶，窄卡片按钮堆叠 ([bc36ebb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/bc36ebbfb94cbb56233aa904e87a96d4425f07d8))
+* fix(ui): shadcn 预设下 --accent 被覆写为前景色，插件卡片按钮改用 --accent-hue 真强调色 ([eced103](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/eced1034444be93272a822e8579ee2623f761878))
+* fix(ui): 商店卡片按钮直接复用管理页样式，次级按钮补齐标准底色 ([6ba00f2](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6ba00f22e4a9f0c4357d31f16103a657ad44f350))
+* fix(ui): 商店卡片 GitHub/版本标签不换行，仓库按钮背景用明显强调色 ([a7b6996](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a7b6996f95bf165b4db07ea54c2c9c1308aeb9dd))
+* fix(ui): 商店卡片次级按钮也采用强调色浅染 ([c05a8c1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c05a8c1ea1b82bc570d2fb42958aab17c4038e4e))
+* fix(ui): 卸载按钮仅可卸载插件显示，删除才需输名；商店按钮改实心强调色 ([d91bb39](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d91bb39f9c43a8c7cf46e0ac55c8f4ff5aa1a32f))
+* fix(ui): 商店卡片更新按钮改强调色，脚按钮圆角统一为全局变量并补齐图标 ([12ad50d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/12ad50d88c5e8ab49032c8ec09e9e94c527a02fc))
+
+### Changed
+
+* chore(dev): 安装 playwright 便于浏览器测试 ([ae65a35](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ae65a353fb2600b84a0ccf7b2289319aec0eb9af))
+
 **完整变更**: [`v0.9.1...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.1...HEAD)
 
 
