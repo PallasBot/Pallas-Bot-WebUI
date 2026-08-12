@@ -1092,6 +1092,7 @@ export interface LlmTaskMetricsSlice {
     totals: LlmClassificationTotals;
   };
   sticker_vision?: LlmStickerVisionStats;
+  sticker_label?: LlmStickerLabelStats;
 }
 
 export interface LlmStickerVisionRecentRow {
@@ -1118,6 +1119,26 @@ export interface LlmStickerVisionStats {
   avg_duration_ms?: number | null;
   recent_error?: string | null;
   recent: LlmStickerVisionRecentRow[];
+}
+
+export interface LlmStickerLabelStats {
+  submitted?: number;
+  labeled?: number;
+  pending?: number;
+  failed?: number;
+  timeout?: number;
+  parse_error?: number;
+  no_vision?: number;
+  circuit_open?: number;
+  cache_changed?: number;
+  recent_errors?: LlmStickerLabelRecentError[];
+}
+
+export interface LlmStickerLabelRecentError {
+  job_id: string;
+  created_at: number;
+  state: string;
+  error: string;
 }
 
 export interface LlmRuntimeDimensionStatsRow {
