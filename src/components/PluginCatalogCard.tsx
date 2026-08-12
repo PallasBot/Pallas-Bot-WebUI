@@ -156,17 +156,22 @@ export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, 
       </div>
 
       <div className="ui-card__footer">
+        {plugin.uninstallable ? (
+          <button
+            type="button"
+            className="group btn ui-btn ui-btn--destructive btn--danger plugin-store-card__foot-btn"
+            onClick={onUninstall}
+          >
+            <BtnIco icon={PackageX} motion="scale" className="plugin-store-card__foot-ico" />
+            {uninstallLabel}
+          </button>
+        ) : null}
         <button
           type="button"
-          className="group btn ui-btn ui-btn--destructive btn--danger plugin-store-card__foot-btn"
-          onClick={onUninstall}
-        >
-          <BtnIco icon={PackageX} motion="scale" className="plugin-store-card__foot-ico" />
-          {uninstallLabel}
-        </button>
-        <button
-          type="button"
-          className="group btn btn--primary ui-btn ui-btn--primary plugin-store-card__foot-btn"
+          className={cn(
+            "group btn btn--primary ui-btn ui-btn--primary plugin-store-card__foot-btn",
+            plugin.uninstallable ? "" : "plugin-store-card__foot-btn--full",
+          )}
           onClick={onSelect}
         >
           <BtnIco icon={Settings2} motion="settings" className="plugin-store-card__foot-ico" />

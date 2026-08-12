@@ -274,7 +274,6 @@ export default function PluginsPage() {
         officialExtensions={officialQ.data || []}
         communityPlugins={communityQ.data?.plugins || []}
         onClose={closeConfigDialog}
-        onUninstall={() => setUninstallRow(selectedPluginRow)}
       />
 
       <PluginUninstallDialog

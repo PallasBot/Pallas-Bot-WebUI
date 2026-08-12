@@ -11,7 +11,7 @@ import type {
 } from "@/api/pallasTypes";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
-import { PackageX, Save, ShieldCheck } from "lucide-react";
+import { Save, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,7 +30,6 @@ type Props = {
   officialExtensions: OfficialExtensionRow[];
   communityPlugins: CommunityPluginRow[];
   onClose: () => void;
-  onUninstall?: () => void;
 };
 
 /** 插件配置弹窗：shadcn Dialog（居中实心底）。 */
@@ -41,7 +40,6 @@ export default function PluginConfigDialog({
   officialExtensions,
   communityPlugins,
   onClose,
-  onUninstall,
 }: Props) {
   const workspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
   const [status, setStatus] = useState<PluginConfigWorkspaceStatus>({
@@ -89,47 +87,31 @@ export default function PluginConfigDialog({
   }
 
   const footer = (
-    <DialogFooter className="plugin-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3">
-      <div className="flex w-full flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {pluginRow?.uninstallable && onUninstall ? (
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              icon={PackageX}
-              iconMotion="scale"
-              onClick={onUninstall}
-            >
-              卸载插件
-            </Button>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {status.supportsConfigCheck ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              icon={ShieldCheck}
-              disabled={!canSave}
-              onClick={() => void workspaceRef.current?.runConfigCheck()}
-            >
-              {status.checking ? "检测中…" : AI_ENTRY_PLUGIN_CONFIG_CHECK.label}
-            </Button>
-          ) : null}
+    <DialogFooter className="plugin-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
+      <div className="flex flex-wrap items-center gap-2">
+        {status.supportsConfigCheck ? (
           <Button
             type="button"
+            variant="outline"
             size="sm"
-            icon={Save}
-            iconMotion="scale"
+            icon={ShieldCheck}
             disabled={!canSave}
-            title="Ctrl+S"
-            onClick={() => void workspaceRef.current?.save()}
+            onClick={() => void workspaceRef.current?.runConfigCheck()}
           >
-            {status.saving ? "保存中…" : "保存"}
+            {status.checking ? "检测中…" : AI_ENTRY_PLUGIN_CONFIG_CHECK.label}
           </Button>
-        </div>
+        ) : null}
+        <Button
+          type="button"
+          size="sm"
+          icon={Save}
+          iconMotion="scale"
+          disabled={!canSave}
+          title="Ctrl+S"
+          onClick={() => void workspaceRef.current?.save()}
+        >
+          {status.saving ? "保存中…" : "保存"}
+        </Button>
       </div>
     </DialogFooter>
   );

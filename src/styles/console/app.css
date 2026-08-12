@@ -11385,18 +11385,18 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
 }
 
 .plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary {
-  background: color-mix(in srgb, var(--accent-soft) 16%, var(--plugin-store-hub-surface));
-  border-color: color-mix(in srgb, var(--accent) 26%, var(--border));
-  color: color-mix(in srgb, var(--accent) 72%, var(--text));
-  box-shadow: none;
+  background: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  color: var(--accent-contrast, #fff);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent-soft) 34%, var(--plugin-store-hub-surface));
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-  color: color-mix(in srgb, var(--accent) 86%, var(--text));
+  background: color-mix(in srgb, var(--accent) 90%, #000 10%);
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+  color: var(--accent-contrast, #fff);
   transform: translateY(-1px);
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 /* 卸载按钮：红色实心（危险动作） */

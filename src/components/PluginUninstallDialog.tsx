@@ -58,7 +58,9 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
   const displayTitle = pluginRow?.metadata?.name || pluginId;
   const targetText = pluginRow ? uninstallTargetText(pluginRow) : "";
   const isUninstallable = Boolean(pluginRow?.uninstallable);
-  const canConfirm = Boolean(pluginId && confirmText.trim() === pluginId && !busy && !finished);
+  const requireName = pluginRow?.uninstall_kind === "dir" || pluginRow?.uninstall_kind === "community";
+  const nameMatched = Boolean(pluginId && confirmText.trim() === pluginId);
+  const canConfirm = Boolean(isUninstallable && (!requireName || nameMatched) && !busy && !finished);
 
   useEffect(() => {
     if (!open) return;
@@ -137,17 +139,13 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
       >
         <AlertDialogContent className="bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle id="plugin-uninstall-dialog-title">卸载插件「{displayTitle}」</AlertDialogTitle>
+            <AlertDialogTitle id="plugin-uninstall-dialog-title">{requireName ? "删除" : "卸载"}插件「{displayTitle}」</AlertDialogTitle>
             <AlertDialogDescription>
-              {isUninstallable
-                ? `将${targetText}。此操作不可撤销，卸载后需重启 Bot 才能从内存移除。`
-                : "该插件为内置 / 核心插件，随 Bot 本体一同分发，不支持卸载。"}
+              将{targetText}。此操作不可撤销，卸载后需重启 Bot 才能从内存移除。
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          {!isUninstallable ? (
-            <p className="alert alert--err m-0">「{displayTitle}」为内置 / 核心插件，无法卸载。</p>
-          ) : finished ? (
+          {finished ? (
             <div className="space-y-3">
               <p className="plugin-store-page__hint plugin-store-page__hint--ok m-0">{resultMsg}</p>
               {needsRestart && restartAvailable ? (
@@ -174,31 +172,31 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
           ) : (
             <div className="space-y-3">
               <p className="alert alert--err m-0">
-                卸载会{targetText}。请确认后输入插件名以继续。
+                {requireName
+                  ? `删除会${targetText}。请确认后输入插件名以继续。`
+                  : `卸载会${targetText}。此操作不可撤销，确认后执行。`}
               </p>
-              <label className="block space-y-1.5">
-                <span className="text-[13px] text-muted-foreground">
-                  输入插件名 <code>{pluginId}</code> 以确认卸载
-                </span>
-                <Input
-                  className="h-9"
-                  value={confirmText}
-                  autoComplete="off"
-                  autoFocus
-                  placeholder={pluginId}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                />
-              </label>
+              {requireName ? (
+                <label className="block space-y-1.5">
+                  <span className="text-[13px] text-muted-foreground">
+                    输入插件名 <code>{pluginId}</code> 以确认删除
+                  </span>
+                  <Input
+                    className="h-9"
+                    value={confirmText}
+                    autoComplete="off"
+                    autoFocus
+                    placeholder={pluginId}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                  />
+                </label>
+              ) : null}
               {error ? <p className="alert alert--err m-0">{error}</p> : null}
             </div>
           )}
 
           <AlertDialogFooter>
-            {!isUninstallable ? (
-              <Button type="button" size="sm" onClick={onClose}>
-                完成
-              </Button>
-            ) : finished ? (
+            {finished ? (
               <Button type="button" size="sm" onClick={finishAndClose}>
                 完成
               </Button>
@@ -214,7 +212,7 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
                   disabled={!canConfirm}
                   onClick={() => void handleConfirm()}
                 >
-                  {busy ? "卸载中…" : "确认卸载"}
+                  {busy ? "处理中…" : requireName ? "确认删除" : "确认卸载"}
                 </Button>
               </>
             )}
