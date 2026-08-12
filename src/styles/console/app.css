@@ -11422,16 +11422,16 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
 }
 
 .plugin-store-page--hub .plugin-store-card__foot-btn.btn:not(.btn--primary):not(.btn--danger) {
-  background: color-mix(in srgb, var(--accent) 10%, var(--plugin-store-hub-surface));
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
-  color: color-mix(in srgb, var(--accent) 80%, var(--text));
+  background: color-mix(in srgb, var(--accent) 24%, var(--plugin-store-hub-surface));
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  color: color-mix(in srgb, var(--accent) 85%, var(--text));
   box-shadow: none;
   border-radius: var(--radius-control, 10px);
 }
 
 .plugin-store-page--hub .plugin-store-card__foot-btn.btn:not(.btn--primary):not(.btn--danger):hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 18%, var(--plugin-store-hub-surface));
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: color-mix(in srgb, var(--accent) 34%, var(--plugin-store-hub-surface));
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--border));
 }
 
 .plugin-store-page--hub .plugin-store-page__empty-panel {
@@ -11776,10 +11776,11 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
 }
 .plugin-store-card__meta-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
   margin-top: 4px;
+  overflow: hidden;
 }
 .plugin-store-card__title {
   margin: 0;
@@ -11811,6 +11812,7 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   align-items: center;
   justify-content: center;
   width: fit-content;
+  min-width: 0;
   min-height: 22px;
   padding: 2px 8px;
   border-radius: 999px;
@@ -11819,6 +11821,7 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   color: var(--text-muted);
   font-size: 11px;
   line-height: 1;
+  white-space: nowrap;
   text-decoration: none;
   vertical-align: middle;
 }
