@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ClipboardCopy, Copy, FileText, Files, Radio, Search, Trash2 } from "lucide-react";
+import { ChevronRight, ClipboardCopy, Copy, FileText, Files, Radio, Search, Trash2 } from "lucide-react";
 import { fetchLogErrors, postLogErrorsCleanup } from "@/api/fullConsole";
 import type { MatcherErrorLogEntry } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
@@ -24,7 +24,6 @@ import PagePinned from "@/components/layout/PagePinned";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -52,6 +51,7 @@ export default function LogErrorsPage() {
   const [clearing, setClearing] = useState(false);
   const [err, setErr] = useState("");
   const [logSource, setLogSource] = useState("all");
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
 
   const query = useQuery({
     queryKey: ["log-errors", logSource],
@@ -113,6 +113,15 @@ export default function LogErrorsPage() {
   async function copyFull(it: ErrorRow) {
     const timeLabel = formatLogDisplayDateTime(it.at);
     await runCopy("全部", formatLogErrorFull(it, timeLabel));
+  }
+
+  function toggleExpanded(key: string) {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
 
   async function clearLogErrors() {
@@ -210,43 +219,54 @@ export default function LogErrorsPage() {
         </ChromeTools>
       </PagePinned>
 
-      <Card className="log-errors-page__panel flex min-h-0 flex-1 flex-col overflow-hidden shadow-none">
-        <CardContent className="log-errors-page__panel-bd flex min-h-0 flex-1 flex-col p-0 px-4 pb-4 pt-2">
-          <div className="log-errors-page__scroll">
-            {query.isLoading && !entries.length ? (
-              <ConsoleBlockSkeleton lines={5} label="报错记录加载中" className="log-errors-page__empty" />
-            ) : !displayEntries.length ? (
-              <p className="muted log-errors-page__empty">
-                {entries.length && q ? "无匹配结果。" : "暂无报错记录。"}
-              </p>
-            ) : (
-              <div className="log-errors-page__list">
-                {displayEntries.map((it, idx) => {
-                  const key = cardKey(it, idx);
-                  const tb = (it.traceback ?? "").trim();
-                  return (
-                    <article key={key} className="log-error-card">
-                      <header className="log-error-card__hd">
-                        <time className="log-error-card__time">{formatLogDisplayDateTime(it.at)}</time>
-                        <Badge
-                          variant="destructive"
-                          className="log-error-card__type"
-                          title={it.exc_type !== it.displayExcType ? it.exc_type : undefined}
-                        >
-                          {it.displayExcType}
-                        </Badge>
-                        <span className="log-error-card__source">
-                          <span className="log-error-card__source-tag">{it.meta.source}</span>
-                          {it.meta.module && it.meta.module !== "log" ? (
-                            <span className="log-error-card__module">{it.meta.module}</span>
-                          ) : null}
-                        </span>
-                        {tb && isTracebackTruncated(it.traceback) ? (
-                          <Badge variant="muted">落盘时已截断</Badge>
-                        ) : null}
-                      </header>
+      <div className="log-errors-page__list-wrap">
+        {query.isLoading && !entries.length ? (
+          <ConsoleBlockSkeleton lines={5} label="报错记录加载中" className="log-errors-page__empty" />
+        ) : !displayEntries.length ? (
+          <p className="muted log-errors-page__empty">
+            {entries.length && q ? "无匹配结果。" : "暂无报错记录。"}
+          </p>
+        ) : (
+          <div className="log-errors-page__list">
+            {displayEntries.map((it, idx) => {
+              const key = cardKey(it, idx);
+              const tb = (it.traceback ?? "").trim();
+              const isOpen = expandedKeys.has(key);
+              return (
+                <article key={key} className={cn("log-error-card", isOpen && "log-error-card--expanded")}>
+                  <button
+                    type="button"
+                    className="log-error-card__hd"
+                    aria-expanded={isOpen}
+                    onClick={() => toggleExpanded(key)}
+                  >
+                    <time className="log-error-card__time">{formatLogDisplayDateTime(it.at)}</time>
+                    <Badge
+                      variant="destructive"
+                      className="log-error-card__type"
+                      title={it.exc_type !== it.displayExcType ? it.exc_type : undefined}
+                    >
+                      {it.displayExcType}
+                    </Badge>
+                    <span className="log-error-card__source">
+                      <span className="log-error-card__source-tag">{it.meta.source}</span>
+                      {it.meta.module && it.meta.module !== "log" ? (
+                        <span className="log-error-card__module">{it.meta.module}</span>
+                      ) : null}
+                    </span>
+                    {tb && isTracebackTruncated(it.traceback) ? (
+                      <Badge variant="muted">落盘时已截断</Badge>
+                    ) : null}
+                    <ChevronRight
+                      className={cn("log-error-card__chevron", isOpen && "log-error-card__chevron--open")}
+                      strokeWidth={1.75}
+                      aria-hidden
+                    />
+                  </button>
+                  {isOpen ? (
+                    <>
                       {tb ? (
-                        <pre className="log-error-card__tb log-error-card__tb--full">{it.traceback}</pre>
+                        <pre className="log-error-card__tb">{it.traceback}</pre>
                       ) : (
                         <p className="log-error-card__summary">{it.message || "（无摘要）"}</p>
                       )}
@@ -281,14 +301,18 @@ export default function LogErrorsPage() {
                           复制全部
                         </Button>
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
+                    </>
+                  ) : (
+                    <p className="log-error-card__summary log-error-card__summary--clamp" title={it.message || undefined}>
+                      {it.message || "（无摘要）"}
+                    </p>
+                  )}
+                </article>
+              );
+            })}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
       {confirmDialog}
     </PageFill>
   );
