@@ -1571,6 +1571,20 @@ html[data-layout="hub"] .inst-card-actions > .ui-btn:not(.btn-refresh-action--em
   container-name: plugin-card;
 }
 
+/* 商店卡片脚次级按钮：彩色预设下强调色浅染，避免纯白板与主按钮脱节；shadcn 由 ui-btn--default 黑白接管 */
+html[data-ui-preset="gs"] .plugin-store-page--hub .plugin-store-card__foot-btn.btn:not(.btn--primary):not(.btn--danger) {
+  background: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 12%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 32%, var(--border));
+  color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 82%, var(--text));
+  box-shadow: none;
+}
+
+html[data-ui-preset="gs"] .plugin-store-page--hub .plugin-store-card__foot-btn.btn:not(.btn--primary):not(.btn--danger):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 20%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 44%, var(--border));
+  color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 96%, var(--text));
+}
+
 @media (max-width: 767px) {
   @container plugin-card (max-width: 320px) {
     .plugin-store-card__foot-btn {
