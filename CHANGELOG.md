@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.3] - 2026-08-12
 
 ### 更新公告
 
@@ -31,6 +31,30 @@
 * fix(prefs): 主题色面板始终显示，开发模式开关去除多余刷新避免闪烁 ([5c0146f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5c0146f2435aed5b8f8b93c952c162cb87d950b3))
 
 **完整变更**: [`v0.9.2...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.2...HEAD)
+
+### 提交明细
+
+### Added
+
+* feat(theme): 跟随系统深浅色切换时实时应用主题 ([bcc786a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/bcc786ab6dc366a61f91711b21095cf7f7779d52))
+* feat(log-errors): 展开报错正文自适应可视区并内部滚动 ([86d10c0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/86d10c015f8436f060f2090b09ccd191e71fa705))
+* feat(ui): 幽灵按钮 hover/active 仅图标动效，去背景方块 ([c24eb55](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c24eb55eab6b0236e4a5bd9a283335ee6e76b356))
+* feat(logs): 固定日志详情新增复制整行按钮 ([3f66315](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3f66315d06b3f3f955f9773657eec4e9b022baa0))
+* feat(charts): 图表点击坐标固定 tooltip，再次点击或点击面板外取消 ([d46de3c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d46de3c35804c11fd757fff13eb0d2bddc03b1c5))
+
+### Fixed
+
+* fix(charts): 取消固定时隐藏 tooltip，趋势图 tooltip 位置阈值参数化 ([e294b73](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e294b73e07fb41e8984c4c583ce756ced6058188))
+* fix(prefs): 主题色面板始终显示，开发模式开关去除多余刷新避免闪烁 ([5c0146f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5c0146f2435aed5b8f8b93c952c162cb87d950b3))
+* fix(theme): 深色模式适配：开关钮/插件开关/上新点/链接 hover 对比，gs 选中态压暗 ([1d0f73f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1d0f73fa90aca08d58279469bf45e5e7409215ae))
+* fix(ui): 图表悬停提示深色模式可读性修复，并放宽控制台密钥下限至 6 位 ([3124b64](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3124b64dfea46aeb6231a2f7126299201000d56c))
+
+### Changed
+
+* chore(changelog): 补齐 0.9.2 提交明细 ([9e0e88e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9e0e88e7db6b355a903749931223da74a85b82dc))
+
+**完整变更**: [`v0.9.2...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.2...HEAD)
+
 
 ## [0.9.2] - 2026-08-12
 
@@ -74,7 +98,6 @@
 * chore(dev): 安装 playwright 便于浏览器测试 ([ae65a35](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ae65a353fb2600b84a0ccf7b2289319aec0eb9af))
 
 **完整变更**: [`v0.9.1...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.1...HEAD)
-
 
 ## [0.9.1] - 2026-08-11
 
