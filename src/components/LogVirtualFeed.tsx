@@ -14,6 +14,7 @@ import {
   formatLogScopeBadge,
   logScopeBadgeColorKey,
   scopeBadgeHue,
+  splitLogMessagePrefix,
 } from "@/utils/logDisplay";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,24 @@ function normalizeLogMessage(content: unknown): string {
   return text.replace(/^[\r\n]+|[\r\n]+$/g, "");
 }
 
+/** 消息正文：行首业务前缀 `[Label]` 用 scope 同款色相高亮，正文保持原样 */
+function LogMessageText({ text }: { text: string }) {
+  const msg = normalizeLogMessage(text);
+  const { prefix, body } = splitLogMessagePrefix(msg);
+  if (!prefix) {
+    return <span className="log-line__msg log-line__msg--wrap">{msg}</span>;
+  }
+  const hue = scopeBadgeHue(prefix);
+  return (
+    <span className="log-line__msg log-line__msg--wrap">
+      <span className="log-line__prefix" style={{ ["--scope-h" as string]: String(hue) }}>
+        [{prefix}]
+      </span>
+      {body}
+    </span>
+  );
+}
+
 const LogRow = memo(function LogRow({
   row,
   rowKey,
@@ -111,7 +130,7 @@ const LogRow = memo(function LogRow({
         {row.level}
       </Badge>
       <LogScopeChips scope={row.scope} />
-      <span className="log-line__msg log-line__msg--wrap">{normalizeLogMessage(row.message)}</span>
+      <LogMessageText text={row.message} />
     </div>
   );
 });

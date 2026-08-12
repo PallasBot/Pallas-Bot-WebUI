@@ -99,6 +99,14 @@ export function formatLogScopeBadge(scope: string): { label: string; title: stri
 export function logScopeBadgeColorKey(scope: string): string {
   return formatLogScopeBadge(scope).label;
 }
+
+/** 拆出消息行首业务前缀标签（如 `[WorkAux] `）；仅纯字母标签，避免误拆 `[Bot 1111]` 等正文。 */
+export function splitLogMessagePrefix(message: string): { prefix: string; body: string } {
+  const text = String(message ?? "");
+  const m = /^\[(?<prefix>[A-Za-z]+)\]\s?(?<body>[\s\S]*)$/.exec(text);
+  if (!m?.groups?.prefix) return { prefix: "", body: text };
+  return { prefix: String(m.groups.prefix), body: String(m.groups.body ?? "") };
+}
 /** 运行日志 feed 行首：仅 `HH:mm:ss`，缩短前置标签 */
 export function formatLogDisplayTime(raw: string | number): string {
   if (typeof raw === "number") {

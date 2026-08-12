@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { formatLogScopeBadge, logEntryMatchesSource, logEntrySourceKey, logScopeBadgeColorKey, splitLogScope } from "./logDisplay";
+import {
+  formatLogScopeBadge,
+  logEntryMatchesSource,
+  logEntrySourceKey,
+  logScopeBadgeColorKey,
+  splitLogMessagePrefix,
+  splitLogScope,
+} from "./logDisplay";
 
 describe("auxiliary log sources", () => {
   it("recognizes work and embed sources from structured log scopes", () => {
@@ -29,5 +36,28 @@ describe("log scope badges", () => {
   it("uses the module name as the stable badge color key", () => {
     expect(logScopeBadgeColorKey("hub/pallas.core.runtime")).toBe("Core");
     expect(logScopeBadgeColorKey("worker-1/pallas.core.runtime")).toBe("Core");
+  });
+});
+
+describe("message business prefix", () => {
+  it("splits a leading bracket label from the message body", () => {
+    expect(splitLogMessagePrefix("[WorkAux] claimed [3] jobs by owner [host:1:0]")).toEqual({
+      prefix: "WorkAux",
+      body: "claimed [3] jobs by owner [host:1:0]",
+    });
+  });
+
+  it("keeps messages without a leading bracket untouched", () => {
+    expect(splitLogMessagePrefix("plain event happened")).toEqual({ prefix: "", body: "plain event happened" });
+    expect(splitLogMessagePrefix("")).toEqual({ prefix: "", body: "" });
+  });
+
+  it("does not treat message-body brackets like [Bot 1111] as a business prefix", () => {
+    expect(splitLogMessagePrefix("[Bot 1111] [群 22] [用户 333] 正文")).toEqual({
+      prefix: "",
+      body: "[Bot 1111] [群 22] [用户 333] 正文",
+    });
+    expect(splitLogMessagePrefix("[群 1103771828] 消息")).toEqual({ prefix: "", body: "[群 1103771828] 消息" });
+    expect(splitLogMessagePrefix("[image:file=a.gif] xxx")).toEqual({ prefix: "", body: "[image:file=a.gif] xxx" });
   });
 });
