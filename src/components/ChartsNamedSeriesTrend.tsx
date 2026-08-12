@@ -48,7 +48,7 @@ export default function ChartsNamedSeriesTrend({
   const plotRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [animKey, setAnimKey] = useState(0);
-  const pin = useChartTooltipPin();
+  const pin = useChartTooltipPin({ belowThreshold: 96 });
 
   const pack = useMemo(
     () =>

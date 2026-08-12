@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * 固定后再次点击面板内任意位置取消固定（不跳转），点击面板外也会取消。
  * 固定期间指针移动不改变位置。
  */
-export function useChartTooltipPin() {
+export function useChartTooltipPin(options: { belowThreshold?: number } = {}) {
+  const { belowThreshold = 72 } = options;
   const [pinned, setPinned] = useState(false);
   const [index, setIndex] = useState<number | null>(null);
   const [tooltipX, setTooltipX] = useState(0);
@@ -25,8 +26,7 @@ export function useChartTooltipPin() {
       const pad = 12;
       const nextX = Math.max(pad, Math.min(rect.width - pad, clientX - rect.left));
       const relativeY = clientY - rect.top;
-      const nextBelow =
-        forceBelow != null ? forceBelow : relativeY < 72;
+      const nextBelow = forceBelow != null ? forceBelow : relativeY < belowThreshold;
       const nextY = nextBelow
         ? Math.min(rect.height - pad, relativeY + 8)
         : Math.max(pad, relativeY - 8);
@@ -34,11 +34,17 @@ export function useChartTooltipPin() {
       setTooltipY((prev) => (Math.abs(prev - nextY) < 0.5 ? prev : nextY));
       setBelow((prev) => (prev === nextBelow ? prev : nextBelow));
     },
-    [],
+    [belowThreshold],
   );
 
   const attachWrap = useCallback((wrap: HTMLDivElement | null) => {
     wrapRef.current = wrap;
+  }, []);
+
+  const clearPinned = useCallback(() => {
+    pinnedRef.current = false;
+    setPinned(false);
+    setIndex(null);
   }, []);
 
   /** 点击图表面板外取消固定。 */
@@ -49,12 +55,11 @@ export function useChartTooltipPin() {
       if (!wrap) return;
       const target = ev.target as Node | null;
       if (target && wrap.contains(target)) return;
-      pinnedRef.current = false;
-      setPinned(false);
+      clearPinned();
     }
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
-  }, [pinned]);
+  }, [pinned, clearPinned]);
 
   /** 指针移动时更新 index 与位置；固定态只更新坐标不更新 index。 */
   const handlePointerMove = useCallback(
@@ -82,8 +87,7 @@ export function useChartTooltipPin() {
     ) => {
       if (!wrap) return;
       if (pinnedRef.current) {
-        pinnedRef.current = false;
-        setPinned(false);
+        clearPinned();
         return;
       }
       const idx = resolveIndex(ev.clientX, ev.clientY);
@@ -92,7 +96,7 @@ export function useChartTooltipPin() {
       setIndex(idx);
       updatePosition(wrap, ev.clientX, ev.clientY);
     },
-    [updatePosition],
+    [clearPinned, updatePosition],
   );
 
   const handlePointerLeave = useCallback(() => {
