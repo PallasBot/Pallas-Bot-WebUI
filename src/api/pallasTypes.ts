@@ -668,6 +668,12 @@ export interface PluginRow {
   extra_package?: string | null;
   /** 相对仓库根的目录，如 local/plugins/draw */
   plugin_source_dir?: string | null;
+  /** 是否可在管理页卸载（配置弹窗提供「卸载」入口） */
+  uninstallable?: boolean;
+  /** 卸载方式：dir 删除源码目录 / pip 卸载 / community 社区插件 / official 官方扩展 */
+  uninstall_kind?: "dir" | "pip" | "community" | "official";
+  /** 卸载目标：目录相对路径或 pip 包名 */
+  uninstall_target?: string | null;
   icon?: string | null;
   cover?: string | null;
   avatar?: string | null;

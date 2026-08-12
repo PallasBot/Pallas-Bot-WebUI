@@ -271,6 +271,11 @@ export default function PluginsPage() {
         officialExtensions={officialQ.data || []}
         communityPlugins={communityQ.data?.plugins || []}
         onClose={closeConfigDialog}
+        onUninstalled={() => {
+          void pluginsQ.refetch();
+          void officialQ.refetch();
+          void communityQ.refetch();
+        }}
       />
     </div>
   );

@@ -2041,6 +2041,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/plugins/local-plugins/uninstall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plugins Local Plugins Uninstall */
+        post: operations["_plugins_local_plugins_uninstall_pallas_api_plugins_local_plugins_uninstall_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/plugins/local-plugins/uninstall-async": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plugins Local Plugins Uninstall Async */
+        post: operations["_plugins_local_plugins_uninstall_async_pallas_api_plugins_local_plugins_uninstall_async_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/git-mirror/info": {
         parameters: {
             query?: never;
@@ -6958,6 +6992,11 @@ export interface components {
             circuit_state?: string | null;
             /** Celery Enabled */
             celery_enabled?: boolean | null;
+        };
+        /** _LocalPluginActionBody */
+        _LocalPluginActionBody: {
+            /** Plugin Id */
+            plugin_id: string;
         };
         /** _MongoAggregateBody */
         _MongoAggregateBody: {
@@ -12319,6 +12358,80 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["_CommunityPluginActionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _plugins_local_plugins_uninstall_pallas_api_plugins_local_plugins_uninstall_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_LocalPluginActionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _plugins_local_plugins_uninstall_async_pallas_api_plugins_local_plugins_uninstall_async_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_LocalPluginActionBody"];
             };
         };
         responses: {

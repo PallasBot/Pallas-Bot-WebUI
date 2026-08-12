@@ -6,8 +6,6 @@ import {
   installCommunityPluginAsync,
   installOfficialExtensionAsync,
   openPluginInstallJobEventSource,
-  uninstallCommunityPluginAsync,
-  uninstallOfficialExtensionAsync,
   updateCommunityPluginAsync,
   updateOfficialExtensionAsync,
 } from "@/api/console";
@@ -64,12 +62,10 @@ import {
   FolderOpen,
   GitBranch,
   Package,
-  PackageX,
   RefreshCw,
   RotateCw,
   Search,
   Server,
-  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -205,8 +201,8 @@ export default function PluginStorePage() {
   const [storeActionNeedsRestart, setStoreActionNeedsRestart] = useState(false);
   const [storeBusyPackage, setStoreBusyPackage] = useState("");
   const [storeBusyPluginId, setStoreBusyPluginId] = useState("");
-  const [storeBusyOfficialAction, setStoreBusyOfficialAction] = useState<"" | "install" | "update" | "uninstall">("");
-  const [storeBusyCommunityAction, setStoreBusyCommunityAction] = useState<"" | "install" | "update" | "uninstall">("");
+  const [storeBusyOfficialAction, setStoreBusyOfficialAction] = useState<"" | "install" | "update">("");
+  const [storeBusyCommunityAction, setStoreBusyCommunityAction] = useState<"" | "install" | "update">("");
   const [installUpdateQueue, setInstallUpdateQueue] = useState<InstallUpdateQueueEntry[]>([]);
   const [installUpdateQueueRunning, setInstallUpdateQueueRunning] = useState(false);
   const installUpdateQueueRef = useRef<InstallUpdateQueueEntry[]>([]);
@@ -905,12 +901,12 @@ export default function PluginStorePage() {
       }
       if (kind === "official") {
         setStoreBusyPackage(target);
-        if (action === "install" || action === "update" || action === "uninstall") {
+        if (action === "install" || action === "update") {
           setStoreBusyOfficialAction(action);
         }
       } else if (kind === "community") {
         setStoreBusyPluginId(target);
-        if (action === "install" || action === "update" || action === "uninstall") {
+        if (action === "install" || action === "update") {
           setStoreBusyCommunityAction(action);
         }
       }
@@ -1098,96 +1094,6 @@ export default function PluginStorePage() {
     }
   }
 
-  async function uninstallExtension(row: OfficialExtensionRow, restart = false) {
-    if (storeBusyPackage) return;
-    const ok = await confirm({
-      title: restart ? "卸载并重启" : "卸载扩展",
-      subtitle: restart
-        ? `将卸载 ${row.package} 并重启 Bot。`
-        : `将卸载 ${row.package}。卸载后需重启 Bot，且不会删除 local/plugins 副本。`,
-      confirmLabel: restart ? "确认卸载并重启" : "确认卸载",
-    });
-    if (!ok) return;
-    setStoreErr("");
-    setStoreActionHint("");
-    setStoreActionNeedsRestart(false);
-    setStoreBusyPackage(row.package);
-    setStoreBusyOfficialAction("uninstall");
-    setCardProgress({ key: row.package, percent: 0, message: `正在卸载 ${row.package}…` });
-    let keepProgress = false;
-    try {
-      const job = await uninstallOfficialExtensionAsync(row.package, { restart });
-      const payload = await waitForPluginStoreJob(
-        job.job_id,
-        openPluginInstallJobEventSource,
-        applyCardProgress(row.package),
-        { kind: "official", target: row.package, action: "uninstall" },
-      );
-      const out = (payload.result ?? {}) as OfficialExtensionInstallResult;
-      setOfficialActionState((prev) => ({ ...prev, [row.package]: out }));
-      await noteStoreActionResult(out.message || payload.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。"), out);
-      await refreshOfficialStore();
-    } catch (e) {
-      if (e instanceof InstallJobStreamInterruptedError) {
-        setStoreActionHint("操作仍在后台进行，返回本页可续看进度");
-        keepProgress = true;
-      } else {
-        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
-      }
-    } finally {
-      if (!keepProgress) {
-        setStoreBusyPackage("");
-        setStoreBusyOfficialAction("");
-        setCardProgress(null);
-      }
-    }
-  }
-
-  async function uninstallCommunity(row: CommunityPluginRow, restart = false) {
-    if (storeBusyPluginId) return;
-    const ok = await confirm({
-      title: restart ? "删除并重启" : "删除社区插件",
-      subtitle: restart
-        ? `将删除 local/plugins/${row.plugin_id} 并重启 Bot。`
-        : `将删除 local/plugins/${row.plugin_id}。删除后需重启 Bot。`,
-      confirmLabel: restart ? "确认删除并重启" : "确认删除",
-    });
-    if (!ok) return;
-    setStoreErr("");
-    setStoreActionHint("");
-    setStoreActionNeedsRestart(false);
-    setStoreBusyPluginId(row.plugin_id);
-    setStoreBusyCommunityAction("uninstall");
-    setCardProgress({ key: row.plugin_id, percent: 0, message: `正在删除 ${row.plugin_id}…` });
-    let keepProgress = false;
-    try {
-      const job = await uninstallCommunityPluginAsync(row.plugin_id, { restart });
-      const payload = await waitForPluginStoreJob(
-        job.job_id,
-        openPluginInstallJobEventSource,
-        applyCardProgress(row.plugin_id),
-        { kind: "community", target: row.plugin_id, action: "uninstall" },
-      );
-      const out = (payload.result ?? {}) as CommunityPluginActionResult;
-      setCommunityActionState((prev) => ({ ...prev, [row.plugin_id]: out }));
-      await noteStoreActionResult(out.message || payload.message || "已卸载。", out);
-      await refreshCommunityStore();
-    } catch (e) {
-      if (e instanceof InstallJobStreamInterruptedError) {
-        setStoreActionHint("操作仍在后台进行，返回本页可续看进度");
-        keepProgress = true;
-      } else {
-        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
-      }
-    } finally {
-      if (!keepProgress) {
-        setStoreBusyPluginId("");
-        setStoreBusyCommunityAction("");
-        setCardProgress(null);
-      }
-    }
-  }
-
   async function installCommunityFromGit(restart = false) {
     if (gitInstallBusy || !gitInstallValid) return;
     const pluginId = gitPluginId.trim();
@@ -1257,9 +1163,6 @@ export default function PluginStorePage() {
     const items: PluginStoreMenuItem[] = [];
     const result = officialActionState[row.package] ?? null;
     if (row.can_install && row.restart_available) items.push({ id: "install-restart", label: "安装并重启" });
-    if (row.can_uninstall && row.restart_available) {
-      items.push({ id: "uninstall-restart", label: "卸载并重启", danger: true });
-    }
     if (officialUpdateEnabled(row, result) && row.restart_available) {
       items.push({ id: "update-restart", label: "更新并重启" });
     }
@@ -1273,9 +1176,6 @@ export default function PluginStorePage() {
     const items: PluginStoreMenuItem[] = [];
     const result = communityActionState[row.plugin_id] ?? null;
     if (row.can_install && communityRestartAvailable) items.push({ id: "install-restart", label: "安装并重启" });
-    if (row.can_uninstall && communityRestartAvailable) {
-      items.push({ id: "uninstall-restart", label: "删除并重启", danger: true });
-    }
     if (communityUpdateEnabled(row, result) && communityRestartAvailable) {
       items.push({ id: "update-restart", label: "更新并重启" });
     }
@@ -1287,7 +1187,6 @@ export default function PluginStorePage() {
 
   function handleOfficialMenu(row: OfficialExtensionRow, actionId: string) {
     if (actionId === "install-restart") enqueueInstallUpdate({ kind: "official", action: "install", restart: true, row });
-    if (actionId === "uninstall-restart") void uninstallExtension(row, true);
     if (actionId === "update-restart") enqueueInstallUpdate({ kind: "official", action: "update", restart: true, row });
     if (actionId === "restart-now") void restartBotNow();
     if (actionId === "copy-cli") void copyInstallCli(row);
@@ -1296,7 +1195,6 @@ export default function PluginStorePage() {
 
   function handleCommunityMenu(row: CommunityPluginRow, actionId: string) {
     if (actionId === "install-restart") enqueueInstallUpdate({ kind: "community", action: "install", restart: true, row });
-    if (actionId === "uninstall-restart") void uninstallCommunity(row, true);
     if (actionId === "update-restart") enqueueInstallUpdate({ kind: "community", action: "update", restart: true, row });
     if (actionId === "restart-now") void restartBotNow(Boolean(shardedRuntime));
     if (actionId === "open-homepage" && row.homepage) openExternalUrl(row.homepage);
@@ -1571,7 +1469,6 @@ export default function PluginStorePage() {
                   installed={extensionInstalled(row)}
                   installBusy={storeBusyPackage === row.package && storeBusyOfficialAction === "install"}
                   updateBusy={storeBusyPackage === row.package && storeBusyOfficialAction === "update"}
-                  uninstallBusy={storeBusyPackage === row.package && storeBusyOfficialAction === "uninstall"}
                   installQueued={isOfficialInstallUpdateQueued(row.package, "install")}
                   updateQueued={isOfficialInstallUpdateQueued(row.package, "update")}
                   repoUrl={row.repository_url || null}
@@ -1579,7 +1476,6 @@ export default function PluginStorePage() {
                   metaLinkUrl={row.repository_url || null}
                   menuItems={officialMenuItems(row)}
                   showInstall={Boolean(row.can_install)}
-                  showUninstall={Boolean(row.can_uninstall)}
                   showUpdate={officialUpdateEnabled(row, result)}
                   updateLabel={officialUpdateLabel(result)}
                   latestLabel={updateLatestLabel(row)}
@@ -1594,7 +1490,6 @@ export default function PluginStorePage() {
                   onOpen={() => void openOfficialReadme(row)}
                   onInstall={() => enqueueInstallUpdate({ kind: "official", action: "install", restart: false, row })}
                   onUpdate={() => enqueueInstallUpdate({ kind: "official", action: "update", restart: false, row })}
-                  onUninstall={() => void uninstallExtension(row, false)}
                   onMenuAction={(id) => handleOfficialMenu(row, id)}
                 />
               );
@@ -1634,7 +1529,6 @@ export default function PluginStorePage() {
                   installed={communityInstalled(row)}
                   installBusy={storeBusyPluginId === row.plugin_id && storeBusyCommunityAction === "install"}
                   updateBusy={storeBusyPluginId === row.plugin_id && storeBusyCommunityAction === "update"}
-                  uninstallBusy={storeBusyPluginId === row.plugin_id && storeBusyCommunityAction === "uninstall"}
                   installQueued={isCommunityInstallUpdateQueued(row.plugin_id, "install")}
                   updateQueued={isCommunityInstallUpdateQueued(row.plugin_id, "update")}
                   repoUrl={row.repository_url || null}
@@ -1642,9 +1536,7 @@ export default function PluginStorePage() {
                   metaLinkUrl={row.repository_url || row.homepage || null}
                   menuItems={communityMenuItems(row)}
                   showInstall={Boolean(row.can_install)}
-                  showUninstall={Boolean(row.can_uninstall)}
                   showUpdate={communityUpdateEnabled(row, result)}
-                  uninstallLabel="删除"
                   updateLabel={communityUpdateLabel(result)}
                   latestLabel={updateLatestLabel(row)}
                   installedVersionLabel={communityInstalledVersionLabel(row, result)}
@@ -1656,7 +1548,6 @@ export default function PluginStorePage() {
                   onOpen={() => void openCommunityReadme(row)}
                   onInstall={() => enqueueInstallUpdate({ kind: "community", action: "install", restart: false, row })}
                   onUpdate={() => enqueueInstallUpdate({ kind: "community", action: "update", restart: false, row })}
-                  onUninstall={() => void uninstallCommunity(row, false)}
                   onMenuAction={(id) => handleCommunityMenu(row, id)}
                 />
               );
@@ -1690,7 +1581,6 @@ export default function PluginStorePage() {
                 metaLinkUrl={localPluginRepoUrl(community)}
                 menuItems={[]}
                 showInstall={false}
-                showUninstall={false}
                 showUpdate={false}
                 detailLabel="配置"
                 canOpen
@@ -1838,22 +1728,6 @@ export default function PluginStorePage() {
                       更新
                     </Button>
                   ) : null}
-                  {detailTarget.official.can_uninstall ? (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      icon={PackageX}
-                      iconMotion="scale"
-                      disabled={
-                        storeBusyPackage === detailTarget.official.package
-                        && storeBusyOfficialAction === "uninstall"
-                      }
-                      onClick={() => void uninstallExtension(detailTarget.official!, false)}
-                    >
-                      卸载
-                    </Button>
-                  ) : null}
                 </>
               ) : null}
               {detailTarget.kind === "community" && detailTarget.community ? (
@@ -1905,22 +1779,6 @@ export default function PluginStorePage() {
                       }
                     >
                       更新
-                    </Button>
-                  ) : null}
-                  {detailTarget.community.can_uninstall ? (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      icon={Trash2}
-                      iconMotion="scale"
-                      disabled={
-                        storeBusyPluginId === detailTarget.community.plugin_id
-                        && storeBusyCommunityAction === "uninstall"
-                      }
-                      onClick={() => void uninstallCommunity(detailTarget.community!, false)}
-                    >
-                      删除
                     </Button>
                   ) : null}
                 </>

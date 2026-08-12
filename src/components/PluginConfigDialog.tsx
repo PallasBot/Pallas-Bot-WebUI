@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
   type PluginConfigWorkspaceStatus,
 } from "@/components/PluginConfigWorkspace";
+import PluginUninstallDialog from "@/components/PluginUninstallDialog";
 import type {
   CommunityPluginRow,
   OfficialExtensionRow,
@@ -11,7 +12,7 @@ import type {
 } from "@/api/pallasTypes";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
-import { Save, ShieldCheck } from "lucide-react";
+import { PackageX, Save, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,6 +31,7 @@ type Props = {
   officialExtensions: OfficialExtensionRow[];
   communityPlugins: CommunityPluginRow[];
   onClose: () => void;
+  onUninstalled?: () => void;
 };
 
 /** 插件配置弹窗：shadcn Dialog（居中实心底）。 */
@@ -40,8 +42,10 @@ export default function PluginConfigDialog({
   officialExtensions,
   communityPlugins,
   onClose,
+  onUninstalled,
 }: Props) {
   const workspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
+  const [uninstallOpen, setUninstallOpen] = useState(false);
   const [status, setStatus] = useState<PluginConfigWorkspaceStatus>({
     saving: false,
     checking: false,
@@ -81,10 +85,60 @@ export default function PluginConfigDialog({
   const canSave = status.hasData && !status.loading && !status.saving && !status.checking;
   const busy = status.saving;
 
+  useEffect(() => {
+    if (!open) setUninstallOpen(false);
+  }, [open]);
+
   function requestClose() {
     if (busy) return;
     onClose();
   }
+
+  const footer = (
+    <DialogFooter className="plugin-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3">
+      <div className="flex w-full flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {pluginRow?.uninstallable ? (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              icon={PackageX}
+              iconMotion="scale"
+              onClick={() => setUninstallOpen(true)}
+            >
+              卸载插件
+            </Button>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {status.supportsConfigCheck ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              icon={ShieldCheck}
+              disabled={!canSave}
+              onClick={() => void workspaceRef.current?.runConfigCheck()}
+            >
+              {status.checking ? "检测中…" : AI_ENTRY_PLUGIN_CONFIG_CHECK.label}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            icon={Save}
+            iconMotion="scale"
+            disabled={!canSave}
+            title="Ctrl+S"
+            onClick={() => void workspaceRef.current?.save()}
+          >
+            {status.saving ? "保存中…" : "保存"}
+          </Button>
+        </div>
+      </div>
+    </DialogFooter>
+  );
 
   return (
     <Dialog
@@ -133,32 +187,15 @@ export default function PluginConfigDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="plugin-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
-          {status.supportsConfigCheck ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              icon={ShieldCheck}
-              disabled={!canSave}
-              onClick={() => void workspaceRef.current?.runConfigCheck()}
-            >
-              {status.checking ? "检测中…" : AI_ENTRY_PLUGIN_CONFIG_CHECK.label}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            size="sm"
-            icon={Save}
-            iconMotion="scale"
-            disabled={!canSave}
-            title="Ctrl+S"
-            onClick={() => void workspaceRef.current?.save()}
-          >
-            {status.saving ? "保存中…" : "保存"}
-          </Button>
-        </DialogFooter>
+        {footer}
       </DialogContent>
+
+      <PluginUninstallDialog
+        open={uninstallOpen}
+        pluginRow={pluginRow}
+        onClose={() => setUninstallOpen(false)}
+        onUninstalled={onUninstalled}
+      />
     </Dialog>
   );
 }

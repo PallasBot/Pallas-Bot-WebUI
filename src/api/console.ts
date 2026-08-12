@@ -972,6 +972,15 @@ export async function uninstallCommunityPlugin(
   return envelopeData(body) || body;
 }
 
+export async function uninstallLocalPluginAsync(pluginId: string): Promise<ExtensionInstallJob> {
+  const { data: body } = await http.post(
+    "/plugins/local-plugins/uninstall-async",
+    { plugin_id: pluginId },
+    { timeout: 60_000 },
+  );
+  return envelopeData<ExtensionInstallJob>(body);
+}
+
 export async function updateCommunityPlugin(
   pluginId: string,
   options?: { restart?: boolean; ref?: string },
