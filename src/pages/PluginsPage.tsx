@@ -17,6 +17,7 @@ import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import PluginCatalogCard from "@/components/PluginCatalogCard";
 import PluginConfigDialog from "@/components/PluginConfigDialog";
+import PluginUninstallDialog from "@/components/PluginUninstallDialog";
 import PageMasthead from "@/components/PageMasthead";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ export default function PluginsPage() {
   const [q, setQ] = useState("");
   const [activeCategory, setActiveCategory] = useState<PluginCategory | "all">("all");
   const [iconByPlugin, setIconByPlugin] = useState<Record<string, string>>({});
+  const [uninstallRow, setUninstallRow] = useState<PluginRow | null>(null);
 
   const pluginsQ = useQuery<PluginRow[]>({ queryKey: ["plugins"], queryFn: () => fetchPlugins() });
   const officialQ = useQuery<OfficialExtensionRow[]>({
@@ -257,6 +259,7 @@ export default function PluginsPage() {
                   avatarUrl={pluginAvatarUrl(p)}
                   active={selectedPluginName === p.name && configDialogOpen}
                   onSelect={() => selectPlugin(p.name)}
+                  onUninstall={() => setUninstallRow(p)}
                 />
               ))}
             </div>
@@ -271,6 +274,17 @@ export default function PluginsPage() {
         officialExtensions={officialQ.data || []}
         communityPlugins={communityQ.data?.plugins || []}
         onClose={closeConfigDialog}
+      />
+
+      <PluginUninstallDialog
+        open={Boolean(uninstallRow)}
+        pluginRow={uninstallRow}
+        onClose={() => setUninstallRow(null)}
+        onUninstalled={() => {
+          void pluginsQ.refetch();
+          void officialQ.refetch();
+          void communityQ.refetch();
+        }}
       />
     </div>
   );

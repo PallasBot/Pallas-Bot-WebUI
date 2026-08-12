@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { formatLogScopeBadge, logEntryMatchesSource, logEntrySourceKey, logScopeBadgeColorKey, splitLogScope } from "./logDisplay";
+import {
+  formatLogScopeBadge,
+  logEntryMatchesSource,
+  logEntrySourceKey,
+  logScopeBadgeColorKey,
+  splitLogMessagePrefix,
+  splitLogScope,
+} from "./logDisplay";
 
 describe("auxiliary log sources", () => {
   it("recognizes work and embed sources from structured log scopes", () => {
@@ -29,5 +36,44 @@ describe("log scope badges", () => {
   it("uses the module name as the stable badge color key", () => {
     expect(logScopeBadgeColorKey("hub/pallas.core.runtime")).toBe("Core");
     expect(logScopeBadgeColorKey("worker-1/pallas.core.runtime")).toBe("Core");
+  });
+});
+
+describe("message business prefix", () => {
+  it("splits a leading bracket label from the message body", () => {
+    expect(splitLogMessagePrefix("[WorkAux] claimed [3] jobs by owner [host:1:0]")).toEqual({
+      prefix: "WorkAux",
+      body: "claimed [3] jobs by owner [host:1:0]",
+    });
+  });
+
+  it("keeps messages without a leading bracket untouched", () => {
+    expect(splitLogMessagePrefix("plain event happened")).toEqual({ prefix: "", body: "plain event happened" });
+    expect(splitLogMessagePrefix("")).toEqual({ prefix: "", body: "" });
+  });
+
+  it("does not treat message-body brackets like [Bot 1111] as a business prefix", () => {
+    expect(splitLogMessagePrefix("[Bot 1111] [群 22] [用户 333] 正文")).toEqual({
+      prefix: "",
+      body: "[Bot 1111] [群 22] [用户 333] 正文",
+    });
+    expect(splitLogMessagePrefix("[群 1103771828] 消息")).toEqual({ prefix: "", body: "[群 1103771828] 消息" });
+    expect(splitLogMessagePrefix("[image:file=a.gif] xxx")).toEqual({ prefix: "", body: "[image:file=a.gif] xxx" });
+    expect(splitLogMessagePrefix("[用户发送了 3 张图片：看图失败]")).toEqual({
+      prefix: "",
+      body: "[用户发送了 3 张图片：看图失败]",
+    });
+  });
+
+  it("splits spaced and punctuated labels like [HTTP 服务] and [corpus-cleanup]", () => {
+    expect(splitLogMessagePrefix("[HTTP 服务] Application startup complete.")).toEqual({
+      prefix: "HTTP 服务",
+      body: "Application startup complete.",
+    });
+    expect(splitLogMessagePrefix("[corpus-cleanup] 清理完成")).toEqual({
+      prefix: "corpus-cleanup",
+      body: "清理完成",
+    });
+    expect(splitLogMessagePrefix("[初始化] 插件载入中")).toEqual({ prefix: "初始化", body: "插件载入中" });
   });
 });

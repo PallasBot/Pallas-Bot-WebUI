@@ -141,6 +141,16 @@ html[data-theme="dark"] .log-line__scope-badge {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.log-line__prefix {
+  --scope-s: 85%;
+  --scope-l: 60%;
+  color: hsl(var(--scope-h) var(--scope-s) var(--scope-l));
+  font-weight: 700;
+  margin-right: 0.35em;
+}
+html[data-theme="dark"] .log-line__prefix {
+  --scope-l: 70%;
+}
 .log-line--virtual .log-line__msg--wrap {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

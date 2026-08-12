@@ -86,6 +86,36 @@ export default function PluginConfigDialog({
     onClose();
   }
 
+  const footer = (
+    <DialogFooter className="plugin-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
+      <div className="flex flex-wrap items-center gap-2">
+        {status.supportsConfigCheck ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            icon={ShieldCheck}
+            disabled={!canSave}
+            onClick={() => void workspaceRef.current?.runConfigCheck()}
+          >
+            {status.checking ? "检测中…" : AI_ENTRY_PLUGIN_CONFIG_CHECK.label}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          size="sm"
+          icon={Save}
+          iconMotion="scale"
+          disabled={!canSave}
+          title="Ctrl+S"
+          onClick={() => void workspaceRef.current?.save()}
+        >
+          {status.saving ? "保存中…" : "保存"}
+        </Button>
+      </div>
+    </DialogFooter>
+  );
+
   return (
     <Dialog
       open={open && Boolean(pluginName)}
@@ -133,31 +163,7 @@ export default function PluginConfigDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="plugin-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
-          {status.supportsConfigCheck ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              icon={ShieldCheck}
-              disabled={!canSave}
-              onClick={() => void workspaceRef.current?.runConfigCheck()}
-            >
-              {status.checking ? "检测中…" : AI_ENTRY_PLUGIN_CONFIG_CHECK.label}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            size="sm"
-            icon={Save}
-            iconMotion="scale"
-            disabled={!canSave}
-            title="Ctrl+S"
-            onClick={() => void workspaceRef.current?.save()}
-          >
-            {status.saving ? "保存中…" : "保存"}
-          </Button>
-        </DialogFooter>
+        {footer}
       </DialogContent>
     </Dialog>
   );

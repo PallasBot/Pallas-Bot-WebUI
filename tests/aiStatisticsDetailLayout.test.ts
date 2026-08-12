@@ -79,7 +79,7 @@ describe("AI 观测明细布局", () => {
       'import ConsoleHint from "@/components/ConsoleHint";',
     );
     expect(page).toContain(
-      "stickerVision.recent.length || stickerVision.recent_error ? (",
+      "stickerVisionData.recent.length || stickerVisionData.recent_error ? (",
     );
     expect(page).toContain(
       '<ConsoleHint className="mb-3 border-rose-300/70 bg-rose-50/70 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-300">',

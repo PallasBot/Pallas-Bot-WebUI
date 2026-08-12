@@ -212,6 +212,9 @@ function applyShadcnAccentVars(
   el.style.setProperty("--ui-sidebar-primary", primary);
   el.style.setProperty("--ui-sidebar-primary-foreground", primaryFg);
   el.style.setProperty("--ui-sidebar-ring", primary);
+  // 插件卡片按钮用的「真强调色」：shadcn 预设会把 --accent 覆写成前景色，这里单独导出强调色与其可读前景
+  el.style.setProperty("--accent-hue", theme === "dark" ? `hsl(${row.dark})` : `hsl(${row.light})`);
+  el.style.setProperty("--accent-fg", theme === "dark" ? `hsl(${row.fgDark})` : `hsl(${row.fgLight})`);
 }
 
 export function applyShellTheme(): void {

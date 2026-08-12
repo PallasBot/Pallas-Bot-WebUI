@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpToLine, Download, PackageX } from "lucide-react";
+import { ArrowUpToLine, Download, ExternalLink, PackageX, type LucideIcon } from "lucide-react";
 import BtnIco from "@/components/BtnIco";
 import NoticeDot from "@/components/NoticeDot";
 import PluginIcon from "@/components/PluginIcon";
@@ -38,6 +38,7 @@ type Props = {
   updateLabel?: string;
   latestLabel?: string;
   detailLabel?: string;
+  detailIcon?: LucideIcon;
   canOpen?: boolean;
   metaLinkLabel?: string;
   metaLinkUrl?: string | null;
@@ -77,6 +78,7 @@ export default function PluginStoreCard({
   updateLabel = "更新",
   latestLabel = "最新",
   detailLabel = "详情",
+  detailIcon = ExternalLink,
   canOpen = true,
   metaLinkLabel = "",
   metaLinkUrl = null,
@@ -276,41 +278,45 @@ export default function PluginStoreCard({
       <div className="ui-card__footer">
         <div className="plugin-store-card__foot" onClick={(e) => e.stopPropagation()}>
           <div className="plugin-store-card__foot-main">
-            {showUninstall ? (
+            {showUninstall || showUpdate ? (
               <>
-                <button
-                  type="button"
-                  className={cn(
-                    "group btn ui-btn plugin-store-card__foot-btn",
-                    showUpdate ? "ui-btn--primary btn--primary" : "plugin-store-card__foot-btn--latest ui-btn--latest",
-                  )}
-                  disabled={footLocked || !showUpdate || updateQueued}
-                  onClick={() => showUpdate && !updateQueued && onUpdate?.()}
-                >
-                  <BtnIco
-                    icon={ArrowUpToLine}
-                    motion="up"
-                    busy={updateBusy}
-                    className="plugin-store-card__foot-ico"
-                  />
-                  <span>
-                    {updateBusy ? "更新中…" : updateQueued ? "排队中" : showUpdate ? updateLabel : latestLabel}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="group btn ui-btn ui-btn--destructive btn--danger plugin-store-card__foot-btn"
-                  disabled={footLocked}
-                  onClick={() => onUninstall?.()}
-                >
-                  <BtnIco
-                    icon={PackageX}
-                    motion="scale"
-                    busy={uninstallBusy}
-                    className="plugin-store-card__foot-ico"
-                  />
-                  <span>{uninstallBusy ? "卸载中…" : uninstallLabel}</span>
-                </button>
+                {showUpdate ? (
+                  <button
+                    type="button"
+                    className={cn(
+                      "group btn ui-btn plugin-store-card__foot-btn",
+                      showUpdate ? "ui-btn--primary btn--primary" : "plugin-store-card__foot-btn--latest ui-btn--latest",
+                    )}
+                    disabled={footLocked || !showUpdate || updateQueued}
+                    onClick={() => showUpdate && !updateQueued && onUpdate?.()}
+                  >
+                    <BtnIco
+                      icon={ArrowUpToLine}
+                      motion="up"
+                      busy={updateBusy}
+                      className="plugin-store-card__foot-ico"
+                    />
+                    <span>
+                      {updateBusy ? "更新中…" : updateQueued ? "排队中" : showUpdate ? updateLabel : latestLabel}
+                    </span>
+                  </button>
+                ) : null}
+                {showUninstall ? (
+                  <button
+                    type="button"
+                    className="group btn ui-btn ui-btn--destructive btn--danger plugin-store-card__foot-btn"
+                    disabled={footLocked}
+                    onClick={() => onUninstall?.()}
+                  >
+                    <BtnIco
+                      icon={PackageX}
+                      motion="scale"
+                      busy={uninstallBusy}
+                      className="plugin-store-card__foot-ico"
+                    />
+                    <span>{uninstallBusy ? "卸载中…" : uninstallLabel}</span>
+                  </button>
+                ) : null}
               </>
             ) : showInstall ? (
               <>
@@ -330,15 +336,21 @@ export default function PluginStoreCard({
                 </button>
                 {repoUrl ? (
                   <a
-                    className="btn ui-btn plugin-store-card__foot-btn"
+                    className="btn ui-btn ui-btn--default plugin-store-card__foot-btn"
                     href={repoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
+                    <BtnIco icon={detailIcon} className="plugin-store-card__foot-ico" />
                     {detailLabel}
                   </a>
                 ) : canOpen ? (
-                  <button type="button" className="btn ui-btn plugin-store-card__foot-btn" onClick={() => onOpen?.()}>
+                  <button
+                    type="button"
+                    className="btn ui-btn ui-btn--default plugin-store-card__foot-btn"
+                    onClick={() => onOpen?.()}
+                  >
+                    <BtnIco icon={detailIcon} className="plugin-store-card__foot-ico" />
                     {detailLabel}
                   </button>
                 ) : null}
@@ -346,18 +358,20 @@ export default function PluginStoreCard({
             ) : canOpen ? (
               <button
                 type="button"
-                className="btn ui-btn plugin-store-card__foot-btn plugin-store-card__foot-btn--full"
+                className="btn ui-btn ui-btn--default plugin-store-card__foot-btn plugin-store-card__foot-btn--full"
                 onClick={() => onOpen?.()}
               >
+                <BtnIco icon={detailIcon} className="plugin-store-card__foot-ico" />
                 {detailLabel}
               </button>
             ) : repoUrl ? (
               <a
-                className="btn ui-btn plugin-store-card__foot-btn plugin-store-card__foot-btn--full"
+                className="btn ui-btn ui-btn--default plugin-store-card__foot-btn plugin-store-card__foot-btn--full"
                 href={repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >
+                <BtnIco icon={detailIcon} className="plugin-store-card__foot-ico" />
                 {detailLabel}
               </a>
             ) : null}

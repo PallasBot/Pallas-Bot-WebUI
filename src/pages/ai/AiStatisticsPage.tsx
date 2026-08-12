@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Boxes,
   CheckCircle2,
+  CircleOff,
   Cloud,
   Coins,
   Database,
@@ -82,9 +83,23 @@ import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
 import { fixedChartPalette } from "@/utils/chartTheme";
 import { countShareRows } from "@/utils/shareDistribution";
 import { labelLlmRoute } from "@/utils/aiHistoryLabels";
+import type { LlmStickerVisionStats } from "@/api/pallasTypes";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 
 const TAB_STORAGE_KEY = "pallas.ai-statistics.active-tab";
+const EMPTY_STICKER_VISION: LlmStickerVisionStats = {
+  requests: 0,
+  selected: 0,
+  failed: 0,
+  skipped: 0,
+  no_match: 0,
+  sent: 0,
+  delivery_failed: 0,
+  candidate_total: 0,
+  avg_duration_ms: null,
+  recent_error: null,
+  recent: [],
+};
 const TAB_OPTIONS = [
   { value: "overview", label: "概览" },
   { value: "token", label: "Token" },
@@ -624,6 +639,8 @@ export default function AiStatisticsPage() {
     [end, historyRows, start],
   );
   const stickerVision = taskStatsQ.data?.ai?.sticker_vision;
+  const stickerLabel = taskStatsQ.data?.ai?.sticker_label;
+  const stickerVisionData = stickerVision ?? EMPTY_STICKER_VISION;
   const stickerVisionTokens = useMemo(
     () => rangeTokenTaskRows.find((row) => row.key === "sticker_vision"),
     [rangeTokenTaskRows],
@@ -2106,7 +2123,93 @@ export default function AiStatisticsPage() {
               />
             </div>
 
-            {stickerVision ? (
+            {stickerLabel ? (
+              <>
+                <StatsSectionLabel>表情标签</StatsSectionLabel>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-base font-semibold">
+                      <PanelTitleIcon icon={ImageIcon} />
+                      表情语义标签
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      对候选表情图建立语义标签的当日状态；缓存命中不消耗模型调用。
+                    </p>
+                  </div>
+                  <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">
+                    <IconStatCard
+                      title="入队"
+                      value={formatCompactNumber(stickerLabel.submitted ?? 0)}
+                      icon={ImageIcon}
+                      subtitle={`待处理 ${stickerLabel.pending ?? 0}`}
+                    />
+                    <IconStatCard
+                      title="已标注"
+                      value={formatCompactNumber(stickerLabel.labeled ?? 0)}
+                      icon={CheckCircle2}
+                      subtitle={`成功建立语义标签`}
+                    />
+                    <IconStatCard
+                      title="失败"
+                      value={formatCompactNumber((stickerLabel.failed ?? 0) + (stickerLabel.timeout ?? 0) + (stickerLabel.parse_error ?? 0))}
+                      icon={XCircle}
+                      subtitle={`超时 ${stickerLabel.timeout ?? 0} · 解析失败 ${stickerLabel.parse_error ?? 0}`}
+                      valueClassName={
+                        (stickerLabel.failed ?? 0) + (stickerLabel.timeout ?? 0) + (stickerLabel.parse_error ?? 0) > 0
+                          ? "text-rose-600 dark:text-rose-400"
+                          : undefined
+                      }
+                    />
+                    <IconStatCard
+                      title="跳过"
+                      value={formatCompactNumber((stickerLabel.no_vision ?? 0) + (stickerLabel.circuit_open ?? 0))}
+                      icon={CircleOff}
+                      subtitle={`无视觉模型 ${stickerLabel.no_vision ?? 0} · 熔断 ${stickerLabel.circuit_open ?? 0}`}
+                    />
+                  </div>
+                  {stickerLabel.recent_errors?.length ? (
+                    <Card>
+                      <CardHeader className="p-3 pb-0 sm:p-4 sm:pb-0">
+                        <CardTitle className="text-sm">最近错误</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[30rem] table-fixed text-sm">
+                            <colgroup>
+                              <col className="w-[28%]" />
+                              <col className="w-[15%]" />
+                              <col className="w-[57%]" />
+                            </colgroup>
+                            <thead className="text-xs text-muted-foreground">
+                              <tr>
+                                <th className="pb-2 pr-2 text-left font-medium">任务</th>
+                                <th className="pb-2 pr-2 text-left font-medium">状态</th>
+                                <th className="pb-2 text-left font-medium">错误</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stickerLabel.recent_errors.map((row) => (
+                                <tr key={row.job_id} className="border-t border-border/60">
+                                  <td className="truncate py-2 pr-2 font-mono text-xs" title={row.job_id}>
+                                    {row.job_id}
+                                  </td>
+                                  <td className="truncate py-2 pr-2 text-xs">{row.state}</td>
+                                  <td className="truncate py-2 text-xs" title={row.error}>
+                                    {row.error}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
+
+            {stickerVisionData && (
               <>
                 <StatsSectionLabel>表情视觉</StatsSectionLabel>
                 <div className="space-y-3">
@@ -2123,25 +2226,25 @@ export default function AiStatisticsPage() {
                   <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">
                     <IconStatCard
                       title="调用 / 命中"
-                      value={`${stickerVision.requests} / ${stickerVision.selected}`}
+                      value={`${stickerVisionData.requests} / ${stickerVisionData.selected}`}
                       icon={ImageIcon}
-                      subtitle={`候选 ${stickerVision.candidate_total ?? 0} · 未匹配 ${stickerVision.no_match ?? 0}`}
+                      subtitle={`候选 ${stickerVisionData.candidate_total ?? 0} · 未匹配 ${stickerVisionData.no_match ?? 0}`}
                     />
                     <IconStatCard
                       title="发送"
-                      value={formatCompactNumber(stickerVision.sent ?? 0)}
+                      value={formatCompactNumber(stickerVisionData.sent ?? 0)}
                       icon={Send}
-                      subtitle={`投递失败 ${stickerVision.delivery_failed ?? 0}`}
+                      subtitle={`投递失败 ${stickerVisionData.delivery_failed ?? 0}`}
                     />
                     <IconStatCard
                       title="平均耗时"
                       value={formatCallLatency(
-                        stickerVision.avg_duration_ms ?? null,
+                        stickerVisionData.avg_duration_ms ?? null,
                       )}
                       icon={LineChart}
-                      subtitle={`模型失败 ${stickerVision.failed} · 跳过 ${stickerVision.skipped ?? 0}`}
+                      subtitle={`模型失败 ${stickerVisionData.failed} · 跳过 ${stickerVisionData.skipped ?? 0}`}
                       valueClassName={
-                        stickerVision.failed > 0
+                        stickerVisionData.failed > 0
                           ? "text-rose-600 dark:text-rose-400"
                           : undefined
                       }
@@ -2159,18 +2262,18 @@ export default function AiStatisticsPage() {
                       }
                     />
                   </div>
-                  {stickerVision.recent.length || stickerVision.recent_error ? (
+                  {stickerVisionData.recent.length || stickerVisionData.recent_error ? (
                     <Card>
                       <CardHeader className="p-3 pb-0 sm:p-4 sm:pb-0">
                         <CardTitle className="text-sm">最近任务</CardTitle>
                       </CardHeader>
                       <CardContent className="p-3 sm:p-4">
-                        {stickerVision.recent_error ? (
+                        {stickerVisionData.recent_error ? (
                           <ConsoleHint className="mb-3 border-rose-300/70 bg-rose-50/70 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-300">
-                            最近错误：{stickerVision.recent_error}
+                            最近错误：{stickerVisionData.recent_error}
                           </ConsoleHint>
                         ) : null}
-                        {stickerVision.recent.length ? (
+                        {stickerVisionData.recent.length ? (
                           <div className="overflow-x-auto">
                             <table className="w-full min-w-[34rem] table-fixed text-sm">
                               <colgroup>
@@ -2204,7 +2307,7 @@ export default function AiStatisticsPage() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {stickerVision.recent.map((row) => (
+                                {stickerVisionData.recent.map((row) => (
                                   <tr
                                     key={row.job_id}
                                     className="border-t border-border/60"
@@ -2251,7 +2354,7 @@ export default function AiStatisticsPage() {
                   ) : null}
                 </div>
               </>
-            ) : null}
+            )}
 
             <StatsSectionLabel>成功率趋势</StatsSectionLabel>
             <Card>
