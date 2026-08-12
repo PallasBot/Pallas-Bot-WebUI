@@ -13268,10 +13268,10 @@ button.plugin-card__link {
 .plugin-catalog-card .plugin-catalog-card__meta-row {
   grid-column: 2;
   grid-row: 2;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px 6px;
   margin-top: 0;
-  overflow: visible;
+  overflow: hidden;
   min-width: 0;
 }
 
