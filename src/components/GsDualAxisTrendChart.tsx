@@ -6,6 +6,8 @@ import {
   type GsTrendSeriesId,
 } from "@/utils/gsTrendChart";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
+import { useChartTooltipPin } from "@/hooks/useChartTooltipPin";
+import { cn } from "@/lib/utils";
 import "@/styles/gs-trend-chart.css";
 
 type Props = {
@@ -41,17 +43,15 @@ export default function GsDualAxisTrendChart({
   const uid = chartUid || `gs-trend-${autoId}`;
   const plotRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [tooltipX, setTooltipX] = useState(0);
-  const [tooltipY, setTooltipY] = useState(0);
-  const [tooltipBelow, setTooltipBelow] = useState(false);
   const [animKey, setAnimKey] = useState(0);
+  const pin = useChartTooltipPin();
 
   const pack = useMemo(() => buildGsTrendChartPack(rows), [rows]);
 
   useEffect(() => {
     setAnimKey((k) => k + 1);
-    setHoverIndex(null);
+    pin.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rows change resets tooltip
   }, [rows]);
 
   const monthSummary = useMemo(() => {
@@ -68,35 +68,38 @@ export default function GsDualAxisTrendChart({
     return { sent, received, matcher, api };
   }, [rows]);
 
-  const hoverRow = hoverIndex != null && pack ? pack.rows[hoverIndex] ?? null : null;
-  const hoverX = hoverIndex != null && pack ? pack.xAt(hoverIndex) : null;
+  const hoverRow = pin.index != null && pack ? pack.rows[pin.index] ?? null : null;
+  const hoverX = pin.index != null && pack ? pack.xAt(pin.index) : null;
+
+  const resolveIndex = useCallback(
+    (clientX: number, clientY: number) => {
+      const svg = svgRef.current;
+      const p = pack;
+      if (!svg || !p) return 0;
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return 0;
+      const pt = svg.createSVGPoint();
+      pt.x = clientX;
+      pt.y = clientY;
+      const svgPt = pt.matrixTransform(ctm.inverse());
+      const ratio = (svgPt.x - p.left) / p.innerW;
+      return Math.max(0, Math.min(p.rows.length - 1, Math.round(ratio * (p.rows.length - 1))));
+    },
+    [pack],
+  );
 
   const onPlotMove = useCallback(
     (ev: React.PointerEvent) => {
-      const svg = svgRef.current;
-      const p = pack;
-      const wrap = plotRef.current;
-      if (!svg || !p || !wrap) return;
-      const ctm = svg.getScreenCTM();
-      if (!ctm) return;
-      const pt = svg.createSVGPoint();
-      pt.x = ev.clientX;
-      pt.y = ev.clientY;
-      const svgPt = pt.matrixTransform(ctm.inverse());
-      const ratio = (svgPt.x - p.left) / p.innerW;
-      const idx = Math.max(0, Math.min(p.rows.length - 1, Math.round(ratio * (p.rows.length - 1))));
-      setHoverIndex((prev) => (prev === idx ? prev : idx));
-      const rect = wrap.getBoundingClientRect();
-      const pad = 12;
-      const nextX = Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left));
-      const relativeY = ev.clientY - rect.top;
-      const below = relativeY < 96;
-      const nextY = below ? Math.min(rect.height - pad, relativeY + 8) : Math.max(pad, relativeY - 8);
-      setTooltipX((prev) => (Math.abs(prev - nextX) < 0.5 ? prev : nextX));
-      setTooltipY((prev) => (Math.abs(prev - nextY) < 0.5 ? prev : nextY));
-      setTooltipBelow((prev) => (prev === below ? prev : below));
+      pin.handlePointerMove(ev, resolveIndex, plotRef.current);
     },
-    [pack],
+    [pin, resolveIndex],
+  );
+
+  const onPlotClick = useCallback(
+    (ev: React.MouseEvent) => {
+      pin.handleClick(ev, resolveIndex, plotRef.current);
+    },
+    [pin, resolveIndex],
   );
 
   return (
@@ -118,10 +121,14 @@ export default function GsDualAxisTrendChart({
       ) : (
         <>
           <div
-            ref={plotRef}
-            className="gs-trend-chart__plot"
+            ref={(node) => {
+              plotRef.current = node;
+              pin.attachWrap(node);
+            }}
+            className={cn("gs-trend-chart__plot", pin.pinned && "gs-trend-chart__plot--pinned")}
             onPointerMove={onPlotMove}
-            onPointerLeave={() => setHoverIndex(null)}
+            onPointerLeave={pin.handlePointerLeave}
+            onClick={onPlotClick}
           >
             <svg
               ref={svgRef}
@@ -206,7 +213,7 @@ export default function GsDualAxisTrendChart({
                 />
               ))}
 
-              {hoverIndex != null ? (
+              {pin.index != null ? (
                 <line
                   className="gs-trend-chart__crosshair"
                   x1={hoverX ?? 0}
@@ -221,12 +228,12 @@ export default function GsDualAxisTrendChart({
                   <circle
                     key={`${s.def.id}-${di}`}
                     className="gs-trend-chart__dot"
-                    style={hoverIndex === di ? { r: 6 } : undefined}
+                    style={pin.index === di ? { r: 6 } : undefined}
                     cx={p.x}
                     cy={p.y}
-                    r={hoverIndex === di ? 6 : 4}
+                    r={pin.index === di ? 6 : 4}
                     fill={s.def.color}
-                    stroke={hoverIndex === di ? "var(--bg-card, #fff)" : "transparent"}
+                    stroke={pin.index === di ? "var(--bg-card, #fff)" : "transparent"}
                     strokeWidth={2}
                   />
                 )),
@@ -242,10 +249,10 @@ export default function GsDualAxisTrendChart({
               />
             </svg>
 
-            {hoverRow && hoverIndex != null ? (
+            {hoverRow && pin.index != null ? (
               <div
-                className={`gs-trend-chart__tooltip${tooltipBelow ? " gs-trend-chart__tooltip--below" : ""}`}
-                style={{ left: `${tooltipX}px`, top: `${tooltipY}px` }}
+                className={`gs-trend-chart__tooltip${pin.below ? " gs-trend-chart__tooltip--below" : ""}${pin.pinned ? " gs-trend-chart__tooltip--pinned" : ""}`}
+                style={{ left: `${pin.tooltipX}px`, top: `${pin.tooltipY}px` }}
                 role="status"
               >
                 <div className="gs-trend-chart__tooltip-date">{fmtDateLabel(hoverRow.date)}</div>

@@ -17158,6 +17158,16 @@ html[data-theme="light"] .corpus-hot__pill-score {
 
 .charts-daily-bar__tooltip--below { transform: translateX(-50%); }
 
+.charts-daily-bar__tooltip--pinned {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--bg-deep) 35%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.charts-daily-bar__viz--pinned {
+  cursor: pointer;
+}
+
 .home-plugin-hourly-chart__tooltip {
   position: absolute;
   z-index: 2;

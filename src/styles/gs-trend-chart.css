@@ -123,6 +123,16 @@
   transform: translateX(-50%);
 }
 
+.gs-trend-chart__tooltip--pinned {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--bg-deep) 35%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.gs-trend-chart__plot--pinned {
+  cursor: pointer;
+}
+
 .gs-trend-chart__tooltip-date {
   font-size: 12px;
   font-weight: 700;

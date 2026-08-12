@@ -1,4 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
+import { useChartTooltipPin } from "@/hooks/useChartTooltipPin";
+import { cn } from "@/lib/utils";
 
 export type ChartsDailyBarPoint = {
   date: string;
@@ -38,12 +40,9 @@ export default function ChartsDailyBarChart({
   emptyText?: string;
   xTickAngle?: number;
 }) {
-  const plotRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [tooltipX, setTooltipX] = useState(0);
-  const [tooltipY, setTooltipY] = useState(0);
-  const [tooltipBelow, setTooltipBelow] = useState(false);
+  const plotRef = useRef<HTMLDivElement | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const pin = useChartTooltipPin();
 
   const pack = useMemo(() => {
     const pts = points.filter((p) => p.date);
@@ -91,28 +90,37 @@ export default function ChartsDailyBarChart({
   }
 
   const chart = pack;
-  const hoverBar = hoverIndex != null ? chart.bars[hoverIndex] : null;
+  const hoverBar = pin.index != null ? chart.bars[pin.index] : null;
 
-  function onPlotMove(ev: React.PointerEvent) {
-    const svg = svgRef.current;
-    const wrap = plotRef.current;
-    if (!svg || !wrap || !chart.bars.length) return;
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return;
-    const pt = svg.createSVGPoint();
-    pt.x = ev.clientX;
-    pt.y = ev.clientY;
-    const svgPt = pt.matrixTransform(ctm.inverse());
-    const idx = Math.floor((svgPt.x - chart.left) / (chart.barW + chart.gap));
-    setHoverIndex(Math.max(0, Math.min(chart.bars.length - 1, idx)));
-    const rect = wrap.getBoundingClientRect();
-    const pad = 12;
-    const relativeY = ev.clientY - rect.top;
-    const below = relativeY < 72;
-    setTooltipX(Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left)));
-    setTooltipY(below ? Math.min(rect.height - pad, relativeY + 8) : Math.max(pad, relativeY - 8));
-    setTooltipBelow(below);
-  }
+  const resolveIndex = useCallback(
+    (clientX: number, clientY: number) => {
+      const svg = svgRef.current;
+      if (!svg || !chart.bars.length) return 0;
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return 0;
+      const pt = svg.createSVGPoint();
+      pt.x = clientX;
+      pt.y = clientY;
+      const svgPt = pt.matrixTransform(ctm.inverse());
+      const idx = Math.floor((svgPt.x - chart.left) / (chart.barW + chart.gap));
+      return Math.max(0, Math.min(chart.bars.length - 1, idx));
+    },
+    [chart],
+  );
+
+  const onPlotMove = useCallback(
+    (ev: React.PointerEvent) => {
+      pin.handlePointerMove(ev, resolveIndex, plotRef.current);
+    },
+    [pin, resolveIndex],
+  );
+
+  const onPlotClick = useCallback(
+    (ev: React.MouseEvent) => {
+      pin.handleClick(ev, resolveIndex, plotRef.current);
+    },
+    [pin, resolveIndex],
+  );
 
   return (
     <div className="charts-daily-bar">
@@ -122,10 +130,14 @@ export default function ChartsDailyBarChart({
         </div>
       ) : null}
       <div
-        ref={plotRef}
-        className="charts-daily-bar__viz charts-daily-bar__viz--interactive"
+        ref={(node) => {
+          plotRef.current = node;
+          pin.attachWrap(node);
+        }}
+        className={cn("charts-daily-bar__viz charts-daily-bar__viz--interactive", pin.pinned && "charts-daily-bar__viz--pinned")}
         onPointerMove={onPlotMove}
-        onPointerLeave={() => setHoverIndex(null)}
+        onPointerLeave={pin.handlePointerLeave}
+        onClick={onPlotClick}
       >
         <svg ref={svgRef} viewBox={`0 0 ${chart.W} ${chart.H}`} className="charts-daily-bar__svg" role="img">
           {chart.yTicks.map((t) => (
@@ -145,14 +157,14 @@ export default function ChartsDailyBarChart({
           {chart.bars.map((b, i) => (
             <rect
               key={b.date}
-              className={hoverIndex === i ? "charts-daily-bar__bar charts-daily-bar__bar--active" : "charts-daily-bar__bar"}
+              className={pin.index === i ? "charts-daily-bar__bar charts-daily-bar__bar--active" : "charts-daily-bar__bar"}
               x={b.x}
               y={b.y}
               width={b.w}
               height={Math.max(b.h, b.v > 0 ? 2 : 0)}
               rx={3}
               fill={accent}
-              opacity={hoverIndex == null || hoverIndex === i ? 0.92 : 0.35}
+              opacity={pin.index == null || pin.index === i ? 0.92 : 0.35}
             />
           ))}
           {chart.xTicks.map((t) => (
@@ -171,8 +183,8 @@ export default function ChartsDailyBarChart({
         </svg>
         {hoverBar ? (
           <div
-            className={`charts-daily-bar__tooltip${tooltipBelow ? " charts-daily-bar__tooltip--below" : ""}`}
-            style={{ left: tooltipX, top: tooltipY }}
+            className={`charts-daily-bar__tooltip${pin.below ? " charts-daily-bar__tooltip--below" : ""}${pin.pinned ? " charts-daily-bar__tooltip--pinned" : ""}`}
+            style={{ left: pin.tooltipX, top: pin.tooltipY }}
           >
             <div className="charts-daily-bar__tooltip-date">{hoverBar.date}</div>
             <div className="charts-daily-bar__tooltip-val">
