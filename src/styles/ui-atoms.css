@@ -1564,38 +1564,38 @@ html[data-layout="hub"] .inst-card-actions > .ui-btn:not(.btn-refresh-action--em
   justify-content: center;
 }
 
-/* 插件卡片脚按钮：窄屏（≤767px）下再按卡片自身宽度堆叠，覆盖 >560px 视口的窄卡片（平板 / 横屏手机 / 窄窗口） */
-.plugin-catalog-card,
-.plugin-store-page--hub .plugin-store-card {
-  container-type: inline-size;
-  container-name: plugin-card;
-}
-
-/* 商店卡片脚次级按钮：彩色预设下强调色浅染，避免纯白板与主按钮脱节；shadcn 由 ui-btn--default 黑白接管 */
+/* 商店卡片脚次级按钮：彩色预设下与主按钮一致用实心强调色；shadcn 由 ui-btn--default 黑白接管 */
 html[data-ui-preset="gs"] .plugin-store-page--hub .plugin-store-card__foot-btn.btn:not(.btn--primary):not(.btn--danger) {
-  background: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 12%, var(--bg-card));
-  border-color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 32%, var(--border));
-  color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 82%, var(--text));
-  box-shadow: none;
+  color: var(--accent-fg, var(--accent-contrast, #fff));
+  background: var(--accent-hue, var(--accent, #0ea5e9));
+  border-color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 38%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 22%, transparent);
 }
 
 html[data-ui-preset="gs"] .plugin-store-page--hub .plugin-store-card__foot-btn.btn:not(.btn--primary):not(.btn--danger):hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 20%, var(--bg-card));
-  border-color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 44%, var(--border));
-  color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 96%, var(--text));
+  background: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 90%, #000 10%);
+  border-color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 48%, transparent);
+  filter: none;
 }
 
-@media (max-width: 767px) {
-  @container plugin-card (max-width: 320px) {
-    .plugin-store-card__foot-btn {
-      flex: 1 1 100%;
-      min-width: 0;
-    }
+html[data-ui-preset="gs"] .plugin-store-page--hub .plugin-store-card__foot-btn.btn:not(.btn--primary):not(.btn--danger):active:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 82%, #000 18%);
+  filter: none;
+  box-shadow: none;
+}
 
-    .plugin-store-page--hub .plugin-store-card__foot-main {
-      grid-template-columns: 1fr;
-    }
-  }
+/* 管理页卡片脚按钮：窄屏下与商店卡片一致保持一行并排，不做上下堆叠 */
+.plugin-catalog-card .ui-card__footer {
+  flex-wrap: nowrap;
+}
+
+.plugin-catalog-card .ui-card__footer .plugin-store-card__foot-btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.plugin-catalog-card .ui-card__footer .plugin-store-card__foot-btn--full {
+  flex: 1 1 100%;
 }
 
 /* 侧栏滚动条：与 app.css 一致（细圆角；勿再加粗） */
