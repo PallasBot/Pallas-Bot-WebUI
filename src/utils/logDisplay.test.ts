@@ -59,5 +59,21 @@ describe("message business prefix", () => {
     });
     expect(splitLogMessagePrefix("[群 1103771828] 消息")).toEqual({ prefix: "", body: "[群 1103771828] 消息" });
     expect(splitLogMessagePrefix("[image:file=a.gif] xxx")).toEqual({ prefix: "", body: "[image:file=a.gif] xxx" });
+    expect(splitLogMessagePrefix("[用户发送了 3 张图片：看图失败]")).toEqual({
+      prefix: "",
+      body: "[用户发送了 3 张图片：看图失败]",
+    });
+  });
+
+  it("splits spaced and punctuated labels like [HTTP 服务] and [corpus-cleanup]", () => {
+    expect(splitLogMessagePrefix("[HTTP 服务] Application startup complete.")).toEqual({
+      prefix: "HTTP 服务",
+      body: "Application startup complete.",
+    });
+    expect(splitLogMessagePrefix("[corpus-cleanup] 清理完成")).toEqual({
+      prefix: "corpus-cleanup",
+      body: "清理完成",
+    });
+    expect(splitLogMessagePrefix("[初始化] 插件载入中")).toEqual({ prefix: "初始化", body: "插件载入中" });
   });
 });
