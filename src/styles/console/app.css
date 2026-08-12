@@ -659,6 +659,10 @@ nav.shell__nav .shell__nav-link.is-router-active .shell__nav-ico {
   flex-shrink: 0;
 }
 
+html[data-theme="dark"] .shell__nav-notice-dot {
+  background: color-mix(in srgb, var(--ok, #3dd68c) 70%, transparent);
+}
+
 .console-notice-dot--inline-start {
   margin-left: 0;
   margin-right: 6px;
@@ -10474,6 +10478,7 @@ html[data-theme="light"] .shell__topbar-dev--active .shell__topbar-dev__label {
   left: auto;
   right: auto;
   transform: none;
+  background: var(--accent-contrast, #fff);
 }
 .console-bool-switch__label {
   font-size: 13px;
