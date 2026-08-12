@@ -2051,6 +2051,7 @@ html[data-layout="hub"][data-surface="solid"][data-theme="light"] .log-errors-pa
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 100%;
 }
 
 .log-error-card {
@@ -2203,6 +2204,18 @@ html[data-layout="hub"][data-surface="solid"][data-theme="light"] .log-errors-pa
   max-height: min(70vh, 720px);
   overflow-x: auto;
   overflow-y: auto;
+}
+
+.log-error-card--expanded {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.log-error-card--expanded .log-error-card__tb {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .panel__hd--split {
