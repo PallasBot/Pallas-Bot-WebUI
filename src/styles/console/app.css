@@ -11422,15 +11422,16 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
 }
 
 .plugin-store-page--hub .plugin-store-card__foot-btn.btn:not(.btn--primary):not(.btn--danger) {
-  background: var(--plugin-store-hub-surface);
-  border-color: var(--border);
+  background: color-mix(in srgb, var(--accent) 10%, var(--plugin-store-hub-surface));
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  color: color-mix(in srgb, var(--accent) 80%, var(--text));
   box-shadow: none;
   border-radius: var(--radius-control, 10px);
 }
 
 .plugin-store-page--hub .plugin-store-card__foot-btn.btn:not(.btn--primary):not(.btn--danger):hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent-soft) 18%, var(--plugin-store-hub-surface));
-  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
+  background: color-mix(in srgb, var(--accent) 18%, var(--plugin-store-hub-surface));
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
 }
 
 .plugin-store-page--hub .plugin-store-page__empty-panel {
