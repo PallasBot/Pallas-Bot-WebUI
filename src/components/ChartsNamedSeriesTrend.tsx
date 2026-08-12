@@ -239,7 +239,7 @@ export default function ChartsNamedSeriesTrend({
                     cy={p.y}
                     r={hoverIndex === di ? 6 : 4}
                     fill={s.def.color}
-                    stroke={hoverIndex === di ? "var(--panel, #fff)" : "transparent"}
+                    stroke={hoverIndex === di ? "var(--bg-card, #fff)" : "transparent"}
                     strokeWidth={2}
                   />
                 )),

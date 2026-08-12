@@ -43,8 +43,8 @@ export default function SetupWizardPage() {
   async function submitPassword() {
     setPwdErr("");
     setPwdOk("");
-    if (p1.length < 8) {
-      setPwdErr("新密钥至少 8 位。");
+    if (p1.length < 6) {
+      setPwdErr("新密钥至少 6 位。");
       return;
     }
     if (p1 !== p2) {
@@ -100,7 +100,7 @@ export default function SetupWizardPage() {
           <div className="setup-wizard-page__card-head">
             <div>
               <h3 className="setup-wizard-page__title">步骤 1 · 改控制台密钥</h3>
-              <p className="muted setup-wizard-page__lead">密钥至少 8 位；保存后会自动刷新 setup 状态。</p>
+              <p className="muted setup-wizard-page__lead">密钥至少 6 位；保存后会自动刷新 setup 状态。</p>
             </div>
             <span className={`setup-wizard-page__pill${setupCompleted ? " is-done" : requiresSetup ? " is-warn" : ""}`}>
               {setupCompleted ? "已完成" : "待处理"}

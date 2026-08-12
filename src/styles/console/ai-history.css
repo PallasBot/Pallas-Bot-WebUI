@@ -1218,7 +1218,7 @@
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
 }
 
 .ai-history-page__maintain-section-title {

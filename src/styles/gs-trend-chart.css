@@ -113,7 +113,7 @@
   padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  background: color-mix(in srgb, var(--panel, #fff) 92%, transparent);
+  background: color-mix(in srgb, var(--bg-card, #fff) 92%, transparent);
   box-shadow: var(--shadow-md, 0 8px 24px rgba(15, 23, 42, 0.12));
   pointer-events: none;
   animation: gs-trend-tip-in 0.16s ease;

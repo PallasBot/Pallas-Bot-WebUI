@@ -130,8 +130,8 @@ export default function PreferencesPage() {
   async function submitPassword() {
     setPwdErr("");
     setPwdOk("");
-    if (pwd.length < 8) {
-      setPwdErr("新密钥至少 8 位。");
+    if (pwd.length < 6) {
+      setPwdErr("新密钥至少 6 位。");
       return;
     }
     if (pwd !== pwd2) {
@@ -447,7 +447,7 @@ export default function PreferencesPage() {
           </div>
         </PrefsSettingCard>
 
-        <PrefsSettingCard cardId="console-password" title="控制台密钥" lead="用于登录 WebUI，至少 8 位。" wide>
+        <PrefsSettingCard cardId="console-password" title="控制台密钥" lead="用于登录 WebUI，至少 6 位。" wide>
           {pwdErr ? (
             <div className="alert alert--err" style={{ marginBottom: 12 }}>
               {pwdErr}

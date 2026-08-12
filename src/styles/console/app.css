@@ -7134,13 +7134,13 @@ html[data-theme="light"] .home-account-metrics__bar--sent {
 
 .home-account-metrics__throughput-dot--msg-sum {
   fill: #f472b6;
-  stroke: color-mix(in srgb, var(--panel) 88%, #831843 12%);
+  stroke: color-mix(in srgb, var(--bg-card) 88%, #831843 12%);
   stroke-width: 0.12;
 }
 
 .home-account-metrics__throughput-dot--matcher {
   fill: #a78bfa;
-  stroke: color-mix(in srgb, var(--panel) 88%, #4c1d95 12%);
+  stroke: color-mix(in srgb, var(--bg-card) 88%, #4c1d95 12%);
   stroke-width: 0.12;
 }
 
@@ -15528,7 +15528,7 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-group-card {
   padding: 12px 14px;
   border-radius: var(--radius-control, 10px);
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  background: color-mix(in srgb, var(--panel) 92%, var(--bg));
+  background: color-mix(in srgb, var(--bg-card) 92%, var(--bg));
 }
 .community-page__probe-card.is-ok {
   border-color: color-mix(in srgb, var(--ok, #16a34a) 35%, var(--border));
@@ -17354,7 +17354,7 @@ html[data-theme="light"] .corpus-hot__pill-score {
 }
 
 .charts-page .home-plugin-daily__dot {
-  stroke: color-mix(in srgb, var(--panel) 82%, #1f2937 18%);
+  stroke: color-mix(in srgb, var(--bg-card) 82%, #1f2937 18%);
   stroke-width: 1px;
 }
 
