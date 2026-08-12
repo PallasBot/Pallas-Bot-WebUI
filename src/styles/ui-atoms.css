@@ -1366,30 +1366,30 @@ html[data-surface="glass"] .ui-card {
   padding: 0 14px 14px;
 }
 
-/* 插件卡片（管理页 / 商店页 hub）脚部按钮：实心强调色，与页内默认按钮一致 */
-.plugin-catalog-card .ui-card__footer .btn--primary,
-.plugin-catalog-card .ui-card__footer .ui-btn--primary,
-.plugin-store-page--hub .plugin-store-card__foot-btn.btn--primary,
-.plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary {
+/* 插件卡片（管理页 / 商店页 hub）脚部按钮：彩色预设下用真强调色实心；shadcn 黑白预设由全局主按钮规则接管 */
+html[data-ui-preset="gs"] .plugin-catalog-card .ui-card__footer .btn--primary,
+html[data-ui-preset="gs"] .plugin-catalog-card .ui-card__footer .ui-btn--primary,
+html[data-ui-preset="gs"] .plugin-store-page--hub .plugin-store-card__foot-btn.btn--primary,
+html[data-ui-preset="gs"] .plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary {
   color: var(--accent-fg, var(--accent-contrast, #fff));
   background: var(--accent-hue, var(--accent, #0ea5e9));
   border-color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 38%, transparent);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 22%, transparent);
 }
 
-.plugin-catalog-card .ui-card__footer .btn--primary:hover:not(:disabled),
-.plugin-catalog-card .ui-card__footer .ui-btn--primary:hover:not(:disabled),
-.plugin-store-page--hub .plugin-store-card__foot-btn.btn--primary:hover:not(:disabled),
-.plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary:hover:not(:disabled) {
+html[data-ui-preset="gs"] .plugin-catalog-card .ui-card__footer .btn--primary:hover:not(:disabled),
+html[data-ui-preset="gs"] .plugin-catalog-card .ui-card__footer .ui-btn--primary:hover:not(:disabled),
+html[data-ui-preset="gs"] .plugin-store-page--hub .plugin-store-card__foot-btn.btn--primary:hover:not(:disabled),
+html[data-ui-preset="gs"] .plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 90%, #000 10%);
   border-color: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 48%, transparent);
   filter: none;
 }
 
-.plugin-catalog-card .ui-card__footer .btn--primary:active:not(:disabled),
-.plugin-catalog-card .ui-card__footer .ui-btn--primary:active:not(:disabled),
-.plugin-store-page--hub .plugin-store-card__foot-btn.btn--primary:active:not(:disabled),
-.plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary:active:not(:disabled) {
+html[data-ui-preset="gs"] .plugin-catalog-card .ui-card__footer .btn--primary:active:not(:disabled),
+html[data-ui-preset="gs"] .plugin-catalog-card .ui-card__footer .ui-btn--primary:active:not(:disabled),
+html[data-ui-preset="gs"] .plugin-store-page--hub .plugin-store-card__foot-btn.btn--primary:active:not(:disabled),
+html[data-ui-preset="gs"] .plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary:active:not(:disabled) {
   background: color-mix(in srgb, var(--accent-hue, var(--accent, #0ea5e9)) 82%, #000 18%);
   filter: none;
   box-shadow: none;
@@ -1564,6 +1564,26 @@ html[data-layout="hub"] .inst-card-actions > .ui-btn:not(.btn-refresh-action--em
   justify-content: center;
 }
 
+/* 插件卡片脚按钮：窄屏（≤767px）下再按卡片自身宽度堆叠，覆盖 >560px 视口的窄卡片（平板 / 横屏手机 / 窄窗口） */
+.plugin-catalog-card,
+.plugin-store-page--hub .plugin-store-card {
+  container-type: inline-size;
+  container-name: plugin-card;
+}
+
+@media (max-width: 767px) {
+  @container plugin-card (max-width: 320px) {
+    .plugin-store-card__foot-btn {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+
+    .plugin-store-page--hub .plugin-store-card__foot-main {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
 /* 侧栏滚动条：与 app.css 一致（细圆角；勿再加粗） */
 .shell__nav {
   scrollbar-width: thin;
@@ -1654,6 +1674,22 @@ html[data-ui-preset="shadcn"] .ui-btn--destructive {
   background: color-mix(in srgb, var(--foreground, var(--text)) 14%, transparent);
   border-color: color-mix(in srgb, var(--foreground, var(--text)) 22%, transparent);
   color: var(--foreground, var(--text));
+  box-shadow: none;
+}
+
+/* 黑白预设：危险按钮整体走中性灰，勿让通用红色 hover/active 漏入 */
+html[data-ui-preset="shadcn"] .btn--danger:hover:not(:disabled),
+html[data-ui-preset="shadcn"] .ui-btn--destructive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground, var(--text)) 22%, transparent);
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 28%, transparent);
+  filter: none;
+  box-shadow: none;
+}
+
+html[data-ui-preset="shadcn"] .btn--danger:active:not(:disabled),
+html[data-ui-preset="shadcn"] .ui-btn--destructive:active:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground, var(--text)) 26%, transparent);
+  filter: none;
   box-shadow: none;
 }
 
