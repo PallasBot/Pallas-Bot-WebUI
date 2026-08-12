@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.2] - 2026-08-12
 
 ### 更新公告
 
@@ -14,6 +14,11 @@
 - 插件管理页与商店卡片按钮配色、版本标签不换行与窄屏布局优化。
 - 统计页新增表情标签区与表情视觉空状态。
 - 日志行首业务前缀高亮支持中文空格、连字符与纯字母前缀。
+
+### 提交明细
+
+**完整变更**: [`v0.9.1...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.1...HEAD)
+
 
 ## [0.9.1] - 2026-08-11
 
@@ -68,7 +73,6 @@
 * chore(api): 同步控制台 OpenAPI 类型 ([e6ee1bf](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e6ee1bfbd336fc398805a60a451c047763610dcf))
 
 **完整变更**: [`v0.9.0...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.0...HEAD)
-
 
 ## [0.9.0] - 2026-08-11
 
