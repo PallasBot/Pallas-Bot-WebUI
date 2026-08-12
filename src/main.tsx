@@ -21,9 +21,10 @@ import "./styles/ui-atoms.css";
 import "./styles/react-parity-pass.css";
 import "./index.css";
 import App from "./App";
-import { applyShellTheme } from "./theme/applyShellTheme";
+import { applyShellTheme, installSystemThemeWatcher } from "./theme/applyShellTheme";
 
 applyShellTheme();
+installSystemThemeWatcher();
 
 const queryClient = new QueryClient({
   defaultOptions: {
