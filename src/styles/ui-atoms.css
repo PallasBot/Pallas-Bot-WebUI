@@ -1366,8 +1366,11 @@ html[data-surface="glass"] .ui-card {
   padding: 0 14px 14px;
 }
 
+/* 插件卡片（管理页 / 商店页 hub）脚部按钮：实心强调色，与页内默认按钮一致 */
 .plugin-catalog-card .ui-card__footer .btn--primary,
-.plugin-catalog-card .ui-card__footer .ui-btn--primary {
+.plugin-catalog-card .ui-card__footer .ui-btn--primary,
+.plugin-store-page--hub .plugin-store-card__foot-btn.btn--primary,
+.plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary {
   color: var(--accent-contrast, #fff);
   background: var(--accent, #0ea5e9);
   border-color: color-mix(in srgb, var(--accent, #0ea5e9) 38%, transparent);
@@ -1375,14 +1378,18 @@ html[data-surface="glass"] .ui-card {
 }
 
 .plugin-catalog-card .ui-card__footer .btn--primary:hover:not(:disabled),
-.plugin-catalog-card .ui-card__footer .ui-btn--primary:hover:not(:disabled) {
+.plugin-catalog-card .ui-card__footer .ui-btn--primary:hover:not(:disabled),
+.plugin-store-page--hub .plugin-store-card__foot-btn.btn--primary:hover:not(:disabled),
+.plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent, #0ea5e9) 90%, #000 10%);
   border-color: color-mix(in srgb, var(--accent, #0ea5e9) 48%, transparent);
   filter: none;
 }
 
 .plugin-catalog-card .ui-card__footer .btn--primary:active:not(:disabled),
-.plugin-catalog-card .ui-card__footer .ui-btn--primary:active:not(:disabled) {
+.plugin-catalog-card .ui-card__footer .ui-btn--primary:active:not(:disabled),
+.plugin-store-page--hub .plugin-store-card__foot-btn.btn--primary:active:not(:disabled),
+.plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary:active:not(:disabled) {
   background: color-mix(in srgb, var(--accent, #0ea5e9) 82%, #000 18%);
   filter: none;
   box-shadow: none;

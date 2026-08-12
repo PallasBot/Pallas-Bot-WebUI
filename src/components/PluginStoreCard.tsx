@@ -336,7 +336,7 @@ export default function PluginStoreCard({
                 </button>
                 {repoUrl ? (
                   <a
-                    className="btn ui-btn plugin-store-card__foot-btn"
+                    className="btn ui-btn ui-btn--default plugin-store-card__foot-btn"
                     href={repoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -345,7 +345,11 @@ export default function PluginStoreCard({
                     {detailLabel}
                   </a>
                 ) : canOpen ? (
-                  <button type="button" className="btn ui-btn plugin-store-card__foot-btn" onClick={() => onOpen?.()}>
+                  <button
+                    type="button"
+                    className="btn ui-btn ui-btn--default plugin-store-card__foot-btn"
+                    onClick={() => onOpen?.()}
+                  >
                     <BtnIco icon={detailIcon} className="plugin-store-card__foot-ico" />
                     {detailLabel}
                   </button>
@@ -354,7 +358,7 @@ export default function PluginStoreCard({
             ) : canOpen ? (
               <button
                 type="button"
-                className="btn ui-btn plugin-store-card__foot-btn plugin-store-card__foot-btn--full"
+                className="btn ui-btn ui-btn--default plugin-store-card__foot-btn plugin-store-card__foot-btn--full"
                 onClick={() => onOpen?.()}
               >
                 <BtnIco icon={detailIcon} className="plugin-store-card__foot-ico" />
@@ -362,7 +366,7 @@ export default function PluginStoreCard({
               </button>
             ) : repoUrl ? (
               <a
-                className="btn ui-btn plugin-store-card__foot-btn plugin-store-card__foot-btn--full"
+                className="btn ui-btn ui-btn--default plugin-store-card__foot-btn plugin-store-card__foot-btn--full"
                 href={repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
