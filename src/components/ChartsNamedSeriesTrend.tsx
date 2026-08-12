@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
+import { useChartTooltipPin } from "@/hooks/useChartTooltipPin";
+import { cn } from "@/lib/utils";
 import "@/styles/gs-trend-chart.css";
 import {
   buildNamedSeriesTrendPack,
@@ -45,11 +47,8 @@ export default function ChartsNamedSeriesTrend({
   const uid = chartUid || `named-trend-${autoId}`;
   const plotRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [tooltipX, setTooltipX] = useState(0);
-  const [tooltipY, setTooltipY] = useState(0);
-  const [tooltipBelow, setTooltipBelow] = useState(false);
   const [animKey, setAnimKey] = useState(0);
+  const pin = useChartTooltipPin({ belowThreshold: 96 });
 
   const pack = useMemo(
     () =>
@@ -65,7 +64,8 @@ export default function ChartsNamedSeriesTrend({
 
   useEffect(() => {
     setAnimKey((k) => k + 1);
-    setHoverIndex(null);
+    pin.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- series change resets tooltip
   }, [series]);
 
   const summaryTotal = useMemo(
@@ -73,38 +73,41 @@ export default function ChartsNamedSeriesTrend({
     [series],
   );
 
-  const hoverTime = hoverIndex != null && pack ? pack.timesSec[hoverIndex] ?? null : null;
-  const hoverX = hoverIndex != null && pack ? pack.xAt(hoverIndex) : null;
+  const hoverTime = pin.index != null && pack ? pack.timesSec[pin.index] ?? null : null;
+  const hoverX = pin.index != null && pack ? pack.xAt(pin.index) : null;
 
-  const onPlotMove = useCallback(
-    (ev: React.PointerEvent) => {
+  const resolveIndex = useCallback(
+    (clientX: number, clientY: number) => {
       const svg = svgRef.current;
       const p = pack;
-      const wrap = plotRef.current;
-      if (!svg || !p || !wrap) return;
+      if (!svg || !p) return 0;
       const ctm = svg.getScreenCTM();
-      if (!ctm) return;
+      if (!ctm) return 0;
       const pt = svg.createSVGPoint();
-      pt.x = ev.clientX;
-      pt.y = ev.clientY;
+      pt.x = clientX;
+      pt.y = clientY;
       const svgPt = pt.matrixTransform(ctm.inverse());
       const ratio = (svgPt.x - p.left) / p.innerW;
-      const idx = Math.max(
+      return Math.max(
         0,
         Math.min(p.timesSec.length - 1, Math.round(ratio * (p.timesSec.length - 1))),
       );
-      setHoverIndex((prev) => (prev === idx ? prev : idx));
-      const rect = wrap.getBoundingClientRect();
-      const pad = 12;
-      const nextX = Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left));
-      const relativeY = ev.clientY - rect.top;
-      const below = relativeY < 96;
-      const nextY = below ? Math.min(rect.height - pad, relativeY + 8) : Math.max(pad, relativeY - 8);
-      setTooltipX((prev) => (Math.abs(prev - nextX) < 0.5 ? prev : nextX));
-      setTooltipY((prev) => (Math.abs(prev - nextY) < 0.5 ? prev : nextY));
-      setTooltipBelow((prev) => (prev === below ? prev : below));
     },
     [pack],
+  );
+
+  const onPlotMove = useCallback(
+    (ev: React.PointerEvent) => {
+      pin.handlePointerMove(ev, resolveIndex, plotRef.current);
+    },
+    [pin, resolveIndex],
+  );
+
+  const onPlotClick = useCallback(
+    (ev: React.MouseEvent) => {
+      pin.handleClick(ev, resolveIndex, plotRef.current);
+    },
+    [pin, resolveIndex],
   );
 
   return (
@@ -131,10 +134,14 @@ export default function ChartsNamedSeriesTrend({
       ) : (
         <>
           <div
-            ref={plotRef}
-            className="gs-trend-chart__plot"
+            ref={(node) => {
+              plotRef.current = node;
+              pin.attachWrap(node);
+            }}
+            className={cn("gs-trend-chart__plot", pin.pinned && "gs-trend-chart__plot--pinned")}
             onPointerMove={onPlotMove}
-            onPointerLeave={() => setHoverIndex(null)}
+            onPointerLeave={pin.handlePointerLeave}
+            onClick={onPlotClick}
           >
             <svg
               ref={svgRef}
@@ -220,7 +227,7 @@ export default function ChartsNamedSeriesTrend({
                 />
               ))}
 
-              {hoverIndex != null ? (
+              {pin.index != null ? (
                 <line
                   className="gs-trend-chart__crosshair"
                   x1={hoverX ?? 0}
@@ -237,9 +244,9 @@ export default function ChartsNamedSeriesTrend({
                     className="gs-trend-chart__dot"
                     cx={p.x}
                     cy={p.y}
-                    r={hoverIndex === di ? 6 : 4}
+                    r={pin.index === di ? 6 : 4}
                     fill={s.def.color}
-                    stroke={hoverIndex === di ? "var(--panel, #fff)" : "transparent"}
+                    stroke={pin.index === di ? "var(--bg-card, #fff)" : "transparent"}
                     strokeWidth={2}
                   />
                 )),
@@ -255,10 +262,10 @@ export default function ChartsNamedSeriesTrend({
               />
             </svg>
 
-            {hoverTime != null && hoverIndex != null ? (
+            {hoverTime != null && pin.index != null ? (
               <div
-                className={`gs-trend-chart__tooltip${tooltipBelow ? " gs-trend-chart__tooltip--below" : ""}`}
-                style={{ left: `${tooltipX}px`, top: `${tooltipY}px` }}
+                className={`gs-trend-chart__tooltip${pin.below ? " gs-trend-chart__tooltip--below" : ""}${pin.pinned ? " gs-trend-chart__tooltip--pinned" : ""}`}
+                style={{ left: `${pin.tooltipX}px`, top: `${pin.tooltipY}px` }}
                 role="status"
               >
                 <div className="gs-trend-chart__tooltip-date">{fmtNamedSeriesHoverTime(hoverTime)}</div>
@@ -267,7 +274,7 @@ export default function ChartsNamedSeriesTrend({
                     id: s.def.id,
                     label: s.def.label,
                     color: s.def.color,
-                    value: s.values[hoverIndex] ?? 0,
+                    value: s.values[pin.index ?? 0] ?? 0,
                   }))
                   .filter((r) => r.value > 0)
                   .map((r) => (

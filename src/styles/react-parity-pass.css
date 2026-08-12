@@ -484,7 +484,7 @@ html[data-theme="light"] .plugin-config-form-item .ui-field__control .sel {
 
 /* Switch：开=实心 accent，关=浅灰 */
 .plugin-config-form-item .console-bool-switch__track {
-  background: color-mix(in srgb, var(--text-muted) 22%, #e5e7eb 55%);
+  background: color-mix(in srgb, var(--text-muted) 28%, transparent);
 }
 
 html[data-theme="light"] .plugin-config-form-item .console-bool-switch__track {

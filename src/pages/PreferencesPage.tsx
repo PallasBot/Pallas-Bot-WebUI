@@ -124,14 +124,13 @@ export default function PreferencesPage() {
           }
         : prev,
     );
-    void qc.invalidateQueries({ queryKey: ["health"] });
   }
 
   async function submitPassword() {
     setPwdErr("");
     setPwdOk("");
-    if (pwd.length < 8) {
-      setPwdErr("新密钥至少 8 位。");
+    if (pwd.length < 6) {
+      setPwdErr("新密钥至少 6 位。");
       return;
     }
     if (pwd !== pwd2) {
@@ -332,25 +331,23 @@ export default function PreferencesPage() {
           </>
         ) : null}
 
-        {uiPreset === "gs" ? (
-          <PrefsSettingCard title="主题色" lead="影响按钮、链接与选中高亮。">
-            <div className="prefs-accent-row">
-              {ACCENT_PRESET_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  className={cn("prefs-accent-swatch", accentPreset === opt.id && "prefs-accent-swatch--on")}
-                  aria-label={opt.label}
-                  aria-pressed={accentPreset === opt.id}
-                  onClick={() => patchPrefs({ accentPreset: opt.id })}
-                >
-                  <span className="prefs-accent-swatch__dot" style={{ background: opt.swatch }} />
-                  <span className="prefs-accent-swatch__label">{opt.label}</span>
-                </button>
-              ))}
-            </div>
-          </PrefsSettingCard>
-        ) : null}
+        <PrefsSettingCard title="主题色" lead="影响按钮、链接与选中高亮。">
+          <div className="prefs-accent-row">
+            {ACCENT_PRESET_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={cn("prefs-accent-swatch", accentPreset === opt.id && "prefs-accent-swatch--on")}
+                aria-label={opt.label}
+                aria-pressed={accentPreset === opt.id}
+                onClick={() => patchPrefs({ accentPreset: opt.id })}
+              >
+                <span className="prefs-accent-swatch__dot" style={{ background: opt.swatch }} />
+                <span className="prefs-accent-swatch__label">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </PrefsSettingCard>
 
         <PrefsSettingCard
           title="圆角风格"
@@ -447,7 +444,7 @@ export default function PreferencesPage() {
           </div>
         </PrefsSettingCard>
 
-        <PrefsSettingCard cardId="console-password" title="控制台密钥" lead="用于登录 WebUI，至少 8 位。" wide>
+        <PrefsSettingCard cardId="console-password" title="控制台密钥" lead="用于登录 WebUI，至少 6 位。" wide>
           {pwdErr ? (
             <div className="alert alert--err" style={{ marginBottom: 12 }}>
               {pwdErr}

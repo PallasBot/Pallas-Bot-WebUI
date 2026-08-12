@@ -26,7 +26,7 @@ const buttonVariants = cva(
         secondary:
           "border border-[color-mix(in_srgb,var(--foreground,var(--text))_10%,transparent)] bg-[var(--control-bg,#fff)] text-[var(--text)] shadow-[0_1px_2px_color-mix(in_srgb,var(--foreground,var(--text))_4%,transparent)] hover:bg-[color-mix(in_srgb,var(--text)_4%,var(--control-bg,#fff))] hover:border-[color-mix(in_srgb,var(--foreground,var(--text))_14%,transparent)] active:bg-[color-mix(in_srgb,var(--text)_7%,var(--control-bg,#fff))]",
         ghost:
-          "border border-transparent bg-transparent text-[var(--text-muted)] shadow-none hover:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] hover:text-[var(--text)] active:bg-[color-mix(in_srgb,var(--text)_8%,transparent)]",
+          "border border-transparent bg-transparent text-[var(--text-muted)] shadow-none hover:bg-transparent hover:text-[var(--text)] active:bg-transparent",
         link: "border-transparent bg-transparent text-[var(--accent)] underline-offset-4 hover:underline shadow-none",
       },
       size: {

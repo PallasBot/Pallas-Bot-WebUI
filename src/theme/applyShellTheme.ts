@@ -243,3 +243,20 @@ export function applyShellTheme(): void {
   el.style.setProperty("--glass-saturate", saturate.toFixed(2));
   el.style.setProperty("--shadow-intensity", String(clampShadowIntensity(prefs.shadowIntensity)));
 }
+
+let _systemThemeWatcherInstalled = false;
+
+/**
+ * 监听系统深浅色切换：主题为 system 时实时重应用主题。
+ * 仅安装一次；写入偏好或手动切主题时由 writePrefs 自行重应用。
+ */
+export function installSystemThemeWatcher(): void {
+  if (_systemThemeWatcherInstalled || typeof window === "undefined") return;
+  _systemThemeWatcherInstalled = true;
+  const mql = window.matchMedia("(prefers-color-scheme: dark)");
+  const onChange = () => {
+    if (readPrefs().theme !== "system") return;
+    applyShellTheme();
+  };
+  mql.addEventListener("change", onChange);
+}

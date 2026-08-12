@@ -25,7 +25,7 @@
   --text-dim: #71717a;
   --accent: #a78bfa;
   /* 实心 accent 按钮上的字色；shadcn 黑白预设会覆写为 --background */
-  --accent-contrast: #ffffff;
+  --accent-contrast: var(--accent-fg, #ffffff);
   /*
    * Hub 语义桥：全部是「完整色值」，给 color-mix / 传统 CSS 用。
    * Tailwind/shadcn 只用 --ui-* HSL 分量（见 index.css / tailwind.config）。
@@ -687,5 +687,5 @@ a {
   transition: color 0.15s var(--ease);
 }
 a:hover {
-  color: #7dd3fc;
+  color: color-mix(in srgb, var(--accent) 80%, var(--text));
 }

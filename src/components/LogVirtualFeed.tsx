@@ -18,6 +18,8 @@ import {
 } from "@/utils/logDisplay";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { copyTextToClipboard } from "@/utils/clipboard";
+import CopyIconButton from "@/components/CopyIconButton";
 import "@/styles/log-virtual-feed.css";
 
 export type LogVirtualFeedHandle = {
@@ -268,6 +270,21 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
             >
               取消固定
             </button>
+            <CopyIconButton
+              className="log-virtual-feed__detail-copy"
+              label="复制整行日志"
+              onClick={() => {
+                const line = [
+                  formatLogDisplayTime(pinnedRow.time),
+                  pinnedRow.level,
+                  pinnedRow.scope,
+                  normalizeLogMessage(pinnedRow.message),
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+                return copyTextToClipboard(line);
+              }}
+            />
           </div>
           <pre className="log-virtual-feed__detail-body">{normalizeLogMessage(pinnedRow.message)}</pre>
         </div>

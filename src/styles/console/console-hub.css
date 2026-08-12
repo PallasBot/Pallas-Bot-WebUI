@@ -2996,9 +2996,9 @@ html[data-theme="light"][data-layout="hub"] nav.shell__nav .shell__nav-link:hove
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active {
-  background: color-mix(in srgb, var(--accent) 16%, var(--bg-card));
-  border-color: color-mix(in srgb, var(--accent) 36%, transparent);
-  color: color-mix(in srgb, var(--accent) 92%, var(--text));
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--accent) 26%, transparent);
+  color: color-mix(in srgb, var(--accent) 88%, var(--text));
   box-shadow: none;
   font-weight: 500;
 }
@@ -3377,6 +3377,12 @@ html[data-layout="hub"] .shell--sidebar-collapsed .shell__brand-slot--avatar .sh
   html[data-layout="hub"] .shell-mobile-nav__link.is-router-active {
     background: color-mix(in srgb, var(--accent) 11%, #fff);
     color: var(--accent);
+    box-shadow: none;
+  }
+
+  html[data-theme="dark"][data-layout="hub"] .shell-mobile-nav__link.is-router-active {
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+    color: color-mix(in srgb, var(--accent) 88%, var(--text));
     box-shadow: none;
   }
 }

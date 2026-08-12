@@ -153,8 +153,9 @@ html[data-theme="light"] .ui-btn--outline:hover:not(:disabled) {
   color: var(--text-muted);
 }
 
-.ui-btn--ghost:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text) 6%, transparent);
+.ui-btn--ghost:hover:not(:disabled),
+.ui-btn--ghost:active:not(:disabled) {
+  background: transparent;
   color: var(--text);
 }
 

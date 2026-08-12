@@ -295,6 +295,10 @@ html[data-theme="dark"] .log-line__prefix {
   min-height: 0;
   font-size: 12px;
 }
+.log-virtual-feed__detail-copy {
+  padding: 4px 8px;
+  min-height: 0;
+}
 .log-virtual-feed__detail-body {
   margin: 0;
   max-height: min(280px, 36vh);
