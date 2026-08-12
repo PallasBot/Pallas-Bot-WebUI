@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Settings2 } from "lucide-react";
+import { PackageX, Settings2 } from "lucide-react";
 import type { PluginRow } from "@/api/pallasTypes";
 import {
   pluginDisplayDescription,
@@ -30,9 +30,10 @@ type Props = {
   avatarUrl?: string | null;
   active?: boolean;
   onSelect: () => void;
+  onUninstall?: () => void;
 };
 
-export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, onSelect }: Props) {
+export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, onSelect, onUninstall }: Props) {
   const { favorites, toggleFavorite } = usePluginFavorites();
   const [avatarImageFailed, setAvatarImageFailed] = useState(false);
 
@@ -46,6 +47,7 @@ export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, 
   const sourceLabel = pluginSourceLabel(plugin.plugin_source);
   const versionLabel = pluginVersionLabel(plugin);
   const isFavorite = favorites.has(pluginIdValue);
+  const uninstallLabel = plugin.uninstall_kind === "dir" || plugin.uninstall_kind === "community" ? "删除" : "卸载";
 
   const resolvedAvatarUrl =
     !avatarImageFailed && (avatarUrl || "").trim() ? (avatarUrl || "").trim() : null;
@@ -156,8 +158,15 @@ export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, 
       <div className="ui-card__footer">
         <button
           type="button"
+          className="group btn ui-btn ui-btn--destructive btn--danger plugin-store-card__foot-btn"
+          onClick={onUninstall}
+        >
+          <BtnIco icon={PackageX} motion="scale" className="plugin-store-card__foot-ico" />
+          {uninstallLabel}
+        </button>
+        <button
+          type="button"
           className="group btn btn--primary ui-btn ui-btn--primary plugin-store-card__foot-btn"
-          style={{ width: "100%" }}
           onClick={onSelect}
         >
           <BtnIco icon={Settings2} motion="settings" className="plugin-store-card__foot-ico" />

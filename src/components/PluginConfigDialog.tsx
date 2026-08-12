@@ -1,10 +1,9 @@
-import { useMemo, useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
   type PluginConfigWorkspaceStatus,
 } from "@/components/PluginConfigWorkspace";
-import PluginUninstallDialog from "@/components/PluginUninstallDialog";
 import type {
   CommunityPluginRow,
   OfficialExtensionRow,
@@ -31,7 +30,7 @@ type Props = {
   officialExtensions: OfficialExtensionRow[];
   communityPlugins: CommunityPluginRow[];
   onClose: () => void;
-  onUninstalled?: () => void;
+  onUninstall?: () => void;
 };
 
 /** 插件配置弹窗：shadcn Dialog（居中实心底）。 */
@@ -42,10 +41,9 @@ export default function PluginConfigDialog({
   officialExtensions,
   communityPlugins,
   onClose,
-  onUninstalled,
+  onUninstall,
 }: Props) {
   const workspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
-  const [uninstallOpen, setUninstallOpen] = useState(false);
   const [status, setStatus] = useState<PluginConfigWorkspaceStatus>({
     saving: false,
     checking: false,
@@ -85,10 +83,6 @@ export default function PluginConfigDialog({
   const canSave = status.hasData && !status.loading && !status.saving && !status.checking;
   const busy = status.saving;
 
-  useEffect(() => {
-    if (!open) setUninstallOpen(false);
-  }, [open]);
-
   function requestClose() {
     if (busy) return;
     onClose();
@@ -98,14 +92,14 @@ export default function PluginConfigDialog({
     <DialogFooter className="plugin-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3">
       <div className="flex w-full flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          {pluginRow?.uninstallable ? (
+          {pluginRow?.uninstallable && onUninstall ? (
             <Button
               type="button"
               variant="destructive"
               size="sm"
               icon={PackageX}
               iconMotion="scale"
-              onClick={() => setUninstallOpen(true)}
+              onClick={onUninstall}
             >
               卸载插件
             </Button>
@@ -189,13 +183,6 @@ export default function PluginConfigDialog({
 
         {footer}
       </DialogContent>
-
-      <PluginUninstallDialog
-        open={uninstallOpen}
-        pluginRow={pluginRow}
-        onClose={() => setUninstallOpen(false)}
-        onUninstalled={onUninstalled}
-      />
     </Dialog>
   );
 }

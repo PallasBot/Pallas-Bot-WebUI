@@ -57,6 +57,7 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
   const pluginId = (pluginRow?.name || "").trim();
   const displayTitle = pluginRow?.metadata?.name || pluginId;
   const targetText = pluginRow ? uninstallTargetText(pluginRow) : "";
+  const isUninstallable = Boolean(pluginRow?.uninstallable);
   const canConfirm = Boolean(pluginId && confirmText.trim() === pluginId && !busy && !finished);
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
   }
 
   async function handleConfirm() {
-    if (!pluginRow || busy || finished) return;
+    if (!pluginRow || !isUninstallable || busy || finished) return;
     setBusy(true);
     setError("");
     setPercent(0);
@@ -138,11 +139,15 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
           <AlertDialogHeader>
             <AlertDialogTitle id="plugin-uninstall-dialog-title">卸载插件「{displayTitle}」</AlertDialogTitle>
             <AlertDialogDescription>
-              将{targetText}。此操作不可撤销，卸载后需重启 Bot 才能从内存移除。
+              {isUninstallable
+                ? `将${targetText}。此操作不可撤销，卸载后需重启 Bot 才能从内存移除。`
+                : "该插件为内置 / 核心插件，随 Bot 本体一同分发，不支持卸载。"}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          {finished ? (
+          {!isUninstallable ? (
+            <p className="alert alert--err m-0">「{displayTitle}」为内置 / 核心插件，无法卸载。</p>
+          ) : finished ? (
             <div className="space-y-3">
               <p className="plugin-store-page__hint plugin-store-page__hint--ok m-0">{resultMsg}</p>
               {needsRestart && restartAvailable ? (
@@ -189,7 +194,11 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
           )}
 
           <AlertDialogFooter>
-            {finished ? (
+            {!isUninstallable ? (
+              <Button type="button" size="sm" onClick={onClose}>
+                完成
+              </Button>
+            ) : finished ? (
               <Button type="button" size="sm" onClick={finishAndClose}>
                 完成
               </Button>
