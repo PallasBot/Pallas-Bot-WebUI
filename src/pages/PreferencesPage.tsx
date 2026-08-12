@@ -124,7 +124,6 @@ export default function PreferencesPage() {
           }
         : prev,
     );
-    void qc.invalidateQueries({ queryKey: ["health"] });
   }
 
   async function submitPassword() {
@@ -332,25 +331,23 @@ export default function PreferencesPage() {
           </>
         ) : null}
 
-        {uiPreset === "gs" ? (
-          <PrefsSettingCard title="主题色" lead="影响按钮、链接与选中高亮。">
-            <div className="prefs-accent-row">
-              {ACCENT_PRESET_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  className={cn("prefs-accent-swatch", accentPreset === opt.id && "prefs-accent-swatch--on")}
-                  aria-label={opt.label}
-                  aria-pressed={accentPreset === opt.id}
-                  onClick={() => patchPrefs({ accentPreset: opt.id })}
-                >
-                  <span className="prefs-accent-swatch__dot" style={{ background: opt.swatch }} />
-                  <span className="prefs-accent-swatch__label">{opt.label}</span>
-                </button>
-              ))}
-            </div>
-          </PrefsSettingCard>
-        ) : null}
+        <PrefsSettingCard title="主题色" lead="影响按钮、链接与选中高亮。">
+          <div className="prefs-accent-row">
+            {ACCENT_PRESET_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={cn("prefs-accent-swatch", accentPreset === opt.id && "prefs-accent-swatch--on")}
+                aria-label={opt.label}
+                aria-pressed={accentPreset === opt.id}
+                onClick={() => patchPrefs({ accentPreset: opt.id })}
+              >
+                <span className="prefs-accent-swatch__dot" style={{ background: opt.swatch }} />
+                <span className="prefs-accent-swatch__label">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </PrefsSettingCard>
 
         <PrefsSettingCard
           title="圆角风格"
