@@ -8212,11 +8212,20 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   border-radius: var(--radius-md, 10px);
   background: var(--card, #fff);
   box-shadow: var(--shadow-card);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    transform 0.2s var(--ease),
+    box-shadow 0.18s ease;
+}
+
+.protocol-runtime-card--selectable {
+  cursor: pointer;
 }
 
 .protocol-runtime-card--selected {
-  border-color: color-mix(in srgb, var(--primary, #2563eb) 45%, var(--border, #e5e7eb));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary, #2563eb) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--border));
+  box-shadow: none;
 }
 
 .protocol-runtime-card__hd {

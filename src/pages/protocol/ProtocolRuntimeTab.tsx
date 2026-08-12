@@ -495,30 +495,36 @@ export default function ProtocolRuntimeTab() {
                     <div
                       key={rt.id}
                       className={cn(
-                        "protocol-runtime-card",
+                        "protocol-runtime-card protocol-runtime-card--selectable",
                         checked && "protocol-runtime-card--selected",
                       )}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={checked}
+                      aria-label={`选择 Runtime ${runtimeTitle(rt)}`}
+                      onClick={() => {
+                        if (actionsBusy) return;
+                        setSelectedId(rt.id, !checked);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.target !== e.currentTarget) return;
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          if (!actionsBusy) setSelectedId(rt.id, !checked);
+                        }
+                      }}
                     >
                       <div className="protocol-runtime-card__hd">
-                        <label
-                          className="inst-db-card-select"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={actionsBusy}
-                            aria-label={`选择 Runtime ${runtimeTitle(rt)}`}
-                            onChange={(e) => setSelectedId(rt.id, e.target.checked)}
-                          />
-                        </label>
                         <div className="protocol-runtime-card__identity">
                           <div className="protocol-runtime-card__title-line">
                             <button
                               type="button"
                               className="protocol-runtime-card__title-btn"
                               title="打开配置"
-                              onClick={() => setConfigRuntimeId(rt.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfigRuntimeId(rt.id);
+                              }}
                             >
                               {rt.display_name || rt.id}
                             </button>
@@ -597,7 +603,10 @@ export default function ProtocolRuntimeTab() {
                           title="删除 Runtime"
                           aria-label="删除 Runtime"
                           disabled={runtimeBusy}
-                          onClick={() => void deleteSnowlumaRuntime(rt)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void deleteSnowlumaRuntime(rt);
+                          }}
                         >
                           <Trash2 className="size-3.5" aria-hidden />
                           删除
@@ -609,7 +618,10 @@ export default function ProtocolRuntimeTab() {
                           className="gap-1"
                           title="配置挂载与 QQ 进程"
                           disabled={actionsBusy}
-                          onClick={() => setConfigRuntimeId(rt.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfigRuntimeId(rt.id);
+                          }}
                         >
                           <Settings2 className="size-3.5" aria-hidden />
                           配置
@@ -632,7 +644,8 @@ export default function ProtocolRuntimeTab() {
                           }
                           aria-label={rt.process_running ? "停止 Runtime" : "启动 Runtime"}
                           disabled={runtimeBusy}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (rt.process_running) {
                               again.run(`runtime-stop:${rt.id}`, () => stopSnowlumaRuntime(rt.id));
                             } else {
