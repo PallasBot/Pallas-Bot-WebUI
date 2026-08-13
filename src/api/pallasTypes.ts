@@ -2663,6 +2663,7 @@ export interface IngressDispatchConversationScheduler {
   active_peak?: number;
   ready_peak?: number;
   wait_ms_p95?: number | null;
+  run_ms_p95?: number | null;
   backpressure_waits?: number;
 }
 
@@ -2675,6 +2676,7 @@ export interface IngressDispatchWorker {
 export interface IngressDispatchHistoryPoint {
   at: number;
   ingress_p95_ms: number;
+  ingress_full_p95_ms: number;
   scheduler_wait_p95_ms: number;
   scheduler_pending: number;
   scheduler_active: number;
@@ -2717,6 +2719,7 @@ export interface IngressDispatchData {
   prefetch_paused?: number;
   preprocessor_dropped?: number;
   ingress_duration_ms_p95?: number | null;
+  ingress_full_ms_p95?: number | null;
   send_queue?: IngressDispatchSendQueueStatus;
   pool_budget?: IngressDispatchPoolBudget;
   hotpath?: IngressDispatchHotpath;
