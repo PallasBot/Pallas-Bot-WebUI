@@ -2,9 +2,10 @@ import { useRef, useState, type PointerEvent } from "react";
 import type { IngressPressurePoint } from "@/utils/ingressDispatchHistory";
 
 const ROWS: Array<{ key: keyof Omit<IngressPressurePoint, "at">; label: string; color: string; suffix?: string }> = [
-  { key: "ingressP95", label: "入站 P95", color: "#ef4444", suffix: " ms" },
+  { key: "ingressP95", label: "入站分发", color: "#ef4444", suffix: " ms" },
+  { key: "ingressFullP95", label: "入站全执行", color: "#f97316", suffix: " ms" },
   { key: "schedulerWaitP95", label: "调度等待", color: "#a855f7", suffix: " ms" },
-  { key: "queue", label: "排队", color: "#f97316" },
+  { key: "queue", label: "排队", color: "#fb923c" },
   { key: "concurrency", label: "并发", color: "#2563eb", suffix: "%" },
   { key: "learnEnqueued", label: "学习入队", color: "#10b981" },
   { key: "work", label: "后台", color: "#06b6d4" },

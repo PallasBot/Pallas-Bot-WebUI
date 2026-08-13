@@ -4,6 +4,7 @@ import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 export type IngressPressurePoint = {
   at: number;
   ingressP95: number;
+  ingressFullP95: number;
   schedulerWaitP95: number;
   queue: number;
   concurrency: number;
@@ -29,7 +30,8 @@ export function buildIngressHistoryView(history: IngressDispatchHistoryData | un
   const points = history?.points ?? [];
   return {
     latency: [
-      { id: "ingress", label: "入站 P95", axis: "left", points: points.map((p) => ({ at: p.at, total: p.ingress_p95_ms })) },
+      { id: "ingress", label: "入站分发 P95", axis: "left", points: points.map((p) => ({ at: p.at, total: p.ingress_p95_ms })) },
+      { id: "ingressFull", label: "入站全执行 P95", axis: "left", points: points.map((p) => ({ at: p.at, total: p.ingress_full_p95_ms })) },
       { id: "scheduler", label: "调度等待 P95", axis: "left", points: points.map((p) => ({ at: p.at, total: p.scheduler_wait_p95_ms })) },
     ],
     learning: [
@@ -40,6 +42,7 @@ export function buildIngressHistoryView(history: IngressDispatchHistoryData | un
     pressure: points.map((p) => ({
       at: p.at,
       ingressP95: p.ingress_p95_ms,
+      ingressFullP95: p.ingress_full_p95_ms,
       schedulerWaitP95: p.scheduler_wait_p95_ms,
       queue: p.scheduler_pending,
       concurrency: p.scheduler_capacity > 0 ? Math.round((p.scheduler_active / p.scheduler_capacity) * 100) : 0,

@@ -12736,20 +12736,12 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .he
   border-top: 1px solid var(--border);
 }
 @media (max-width: 560px) {
-  .plugin-store-page__git-foot > .btn,
-  .plugin-store-page__git-foot > .ui-btn {
-    flex: 1 1 calc(50% - 4px);
-    min-width: 0;
-  }
   .plugin-store-page--hub .plugin-store-page__masthead-actions {
     flex-wrap: wrap;
     justify-content: flex-end;
   }
-  .plugin-store-page__action-hint {
-    align-items: stretch;
-  }
   .plugin-store-page__action-hint-btn {
-    width: 100%;
+    margin-left: auto;
   }
 }
 .plugin-store-page__detail-sub {
@@ -13689,6 +13681,37 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
     width: auto;
     min-width: 0;
     white-space: nowrap;
+  }
+}
+
+/* 与 Tailwind sm 断点对齐：<640px 时 DialogFooter 默认纵向，这里强制保持一行靠右 */
+@media (max-width: 640px) {
+  .plugin-config-dialog__foot {
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .plugin-config-dialog__foot > .ui-btn {
+    width: auto;
+  }
+
+  .backup-dir-picker__actions {
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .ai-history-page__pattern-edit-foot {
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .plugin-store-page__git-foot {
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: flex-end;
   }
 }
 

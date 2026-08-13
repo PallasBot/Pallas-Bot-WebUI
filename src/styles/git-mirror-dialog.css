@@ -184,12 +184,8 @@
   }
 
   .git-mirror-dialog__confirm-actions {
-    flex-direction: column-reverse;
-  }
-
-  .git-mirror-dialog__confirm-actions .btn,
-  .git-mirror-dialog__confirm-actions .ui-btn {
-    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
   }
 
   .git-mirror-dialog__table-wrap {

@@ -25,6 +25,7 @@ export interface IngressSchedulerSource {
   active_peak?: number;
   ready_peak?: number;
   wait_ms_p95?: number | null;
+  run_ms_p95?: number | null;
   backpressure_waits?: number;
 }
 
@@ -71,6 +72,7 @@ export function ingressSchedulerMetrics(source: IngressSchedulerSource | undefin
     activePeak: source?.active_peak ?? 0,
     readyPeak: source?.ready_peak ?? 0,
     waitP95Ms: source?.wait_ms_p95 ?? 0,
+    runP95Ms: source?.run_ms_p95 ?? 0,
     backpressureWaits: source?.backpressure_waits ?? 0,
   };
 }

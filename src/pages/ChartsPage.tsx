@@ -612,8 +612,9 @@ export default function ChartsPage() {
             </div>
             <div className="charts-page__kpi home-kpi-bar charts-page__kpi--ingress-key" aria-label="入站调度关键指标">
               <MetricTile label="群消息" value={ingressMetric(ingress?.group_messages)} hint="今日累计" />
-              <MetricTile label="入站 P95" value={ingressMetric(ingress?.ingress_duration_ms_p95, " ms")} hint={`背压 ${ingressMetric(ingress?.overload_signals)}`} />
-              <MetricTile label="调度等待 P95" value={ingressMetric(scheduler.waitP95Ms, " ms")} hint={`背压 ${ingressMetric(scheduler.backpressureWaits)}`} />
+              <MetricTile label="入站分发 P95" value={ingressMetric(ingress?.ingress_duration_ms_p95, " ms")} hint={`背压 ${ingressMetric(ingress?.overload_signals)}`} />
+              <MetricTile label="入站全执行 P95" value={ingressMetric(ingress?.ingress_full_ms_p95, " ms")} hint="含 matcher/handler 执行" />
+              <MetricTile label="调度等待 P95" value={ingressMetric(scheduler.waitP95Ms, " ms")} hint={`执行 ${ingressMetric(scheduler.runP95Ms, " ms")} · 背压 ${ingressMetric(scheduler.backpressureWaits)}`} />
               <MetricTile label="Matcher 完成率" value={completionRate} hint={`完成 ${ingressMetric(capacity.completed)}/${ingressMetric(capacity.selected)} · 忙 ${ingressMetric(capacity.laneBusy)}`} />
               <MetricTile label="Chat Lane" value={chatLane} hint="执行中 / 上限" />
               <MetricTile label="后台任务" value={ingressMetric(workAux.pending)} hint={`执行中 ${ingressMetric(workAux.leased)} · ${ingressMetric(workAux.consumers)} 路`} />

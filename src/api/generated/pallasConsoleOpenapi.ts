@@ -5064,6 +5064,11 @@ export interface components {
             at: number;
             /** Ingress P95 Ms */
             ingress_p95_ms: number;
+            /**
+             * Ingress Full P95 Ms
+             * @default 0
+             */
+            ingress_full_p95_ms: number;
             /** Scheduler Wait P95 Ms */
             scheduler_wait_p95_ms: number;
             /** Scheduler Pending */
@@ -5410,6 +5415,11 @@ export interface components {
              * @default false
              */
             global_disable: boolean;
+            /**
+             * Global Disable Revision
+             * @default
+             */
+            global_disable_revision: string;
             /**
              * Help Hidden
              * @default false
@@ -6300,6 +6310,8 @@ export interface components {
         _GlobalPluginDisableBody: {
             /** Disabled Plugins */
             disabled_plugins?: string[];
+            /** Expected Revision */
+            expected_revision?: string | null;
         };
         /** _GroupConfigPatch */
         _GroupConfigPatch: {

@@ -1294,6 +1294,13 @@ html[data-theme="dark"] .ui-dialog__panel {
   width: auto;
 }
 
+/* 与 Tailwind sm 断点对齐：<640px 时 DialogFooter 默认纵向，这里强制保持一行靠右 */
+@media (max-width: 640px) {
+  .social-config-dialog__foot {
+    flex-direction: row !important;
+  }
+}
+
 /* ── UiCard（不用 Vue ui.css，避免 --card HSL 分量破坏 background） ── */
 .ui-card {
   position: relative;

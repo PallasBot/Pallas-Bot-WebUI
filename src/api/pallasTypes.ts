@@ -614,6 +614,7 @@ export interface PluginGovernanceMenuItem {
 
 export interface PluginGovernanceRuntime {
   global_disable: boolean;
+  global_disable_revision?: string;
   help_hidden: boolean;
   global_disable_protected?: boolean;
   help_ignored?: boolean;
@@ -636,6 +637,7 @@ export interface PluginGovernanceBody {
   command_permission_overrides?: Record<string, string>;
   command_limit_overrides?: Record<string, number>;
   global_disable?: boolean;
+  global_disable_revision?: string;
   help_hidden?: boolean;
   blocked_user_ids?: number[];
 }
@@ -693,6 +695,7 @@ export interface HelpMenuVisibilityData {
 
 export interface GlobalPluginDisableData {
   disabled_plugins: string[];
+  revision: string;
   protected_plugins: string[];
 }
 
@@ -2663,6 +2666,7 @@ export interface IngressDispatchConversationScheduler {
   active_peak?: number;
   ready_peak?: number;
   wait_ms_p95?: number | null;
+  run_ms_p95?: number | null;
   backpressure_waits?: number;
 }
 
@@ -2675,6 +2679,7 @@ export interface IngressDispatchWorker {
 export interface IngressDispatchHistoryPoint {
   at: number;
   ingress_p95_ms: number;
+  ingress_full_p95_ms: number;
   scheduler_wait_p95_ms: number;
   scheduler_pending: number;
   scheduler_active: number;
@@ -2717,6 +2722,7 @@ export interface IngressDispatchData {
   prefetch_paused?: number;
   preprocessor_dropped?: number;
   ingress_duration_ms_p95?: number | null;
+  ingress_full_ms_p95?: number | null;
   send_queue?: IngressDispatchSendQueueStatus;
   pool_budget?: IngressDispatchPoolBudget;
   hotpath?: IngressDispatchHotpath;

@@ -169,7 +169,13 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
       }))
     )
       return;
-    await saveGov.mutateAsync({ action: { kind, value: next } });
+    await saveGov.mutateAsync({
+      action: {
+        kind,
+        value: next,
+        ...(kind === "global_disable" ? { revision: g.runtime.global_disable_revision } : {}),
+      },
+    });
   }
 
   async function persistBlocked(next: number[]) {

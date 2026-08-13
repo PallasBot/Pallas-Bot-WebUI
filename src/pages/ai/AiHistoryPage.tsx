@@ -1285,7 +1285,7 @@ export default function AiHistoryPage() {
                 spellCheck={false}
               />
             </details>
-            <DialogFooter className="gap-2 sm:justify-between">
+            <DialogFooter className="ai-history-page__pattern-edit-foot gap-2 sm:justify-between">
               <Button
                 size="sm"
                 variant="ghost"
