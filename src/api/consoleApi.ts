@@ -818,10 +818,11 @@ export async function fetchPluginsGlobalDisable(): Promise<GlobalPluginDisableDa
 
 export async function putPluginsGlobalDisable(
   disabledPlugins: string[],
+  expectedRevision?: string,
 ): Promise<GlobalPluginDisableData> {
   const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/global-disable"]["put"]>(
     "/plugins/global-disable",
-    { disabled_plugins: disabledPlugins },
+    { disabled_plugins: disabledPlugins, expected_revision: expectedRevision },
   )) as GlobalPluginDisableData;
   invalidatePluginsCache();
   return out;

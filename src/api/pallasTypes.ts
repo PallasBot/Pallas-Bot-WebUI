@@ -614,6 +614,7 @@ export interface PluginGovernanceMenuItem {
 
 export interface PluginGovernanceRuntime {
   global_disable: boolean;
+  global_disable_revision?: string;
   help_hidden: boolean;
   global_disable_protected?: boolean;
   help_ignored?: boolean;
@@ -636,6 +637,7 @@ export interface PluginGovernanceBody {
   command_permission_overrides?: Record<string, string>;
   command_limit_overrides?: Record<string, number>;
   global_disable?: boolean;
+  global_disable_revision?: string;
   help_hidden?: boolean;
   blocked_user_ids?: number[];
 }
@@ -693,6 +695,7 @@ export interface HelpMenuVisibilityData {
 
 export interface GlobalPluginDisableData {
   disabled_plugins: string[];
+  revision: string;
   protected_plugins: string[];
 }
 

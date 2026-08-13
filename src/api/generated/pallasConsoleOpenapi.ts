@@ -5416,6 +5416,11 @@ export interface components {
              */
             global_disable: boolean;
             /**
+             * Global Disable Revision
+             * @default
+             */
+            global_disable_revision: string;
+            /**
              * Help Hidden
              * @default false
              */
@@ -6305,6 +6310,8 @@ export interface components {
         _GlobalPluginDisableBody: {
             /** Disabled Plugins */
             disabled_plugins?: string[];
+            /** Expected Revision */
+            expected_revision?: string | null;
         };
         /** _GroupConfigPatch */
         _GroupConfigPatch: {
