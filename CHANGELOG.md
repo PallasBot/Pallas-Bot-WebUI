@@ -4,6 +4,31 @@
 
 <!-- entries -->
 
+## [Unreleased]
+
+### 更新公告
+
+- 需要 Bot ≥ 4.2.2；请勿只升控制台。
+- **图表**：
+  - 入站 P95 拆分为分派/全执行两段，并展示调度执行耗时
+- **插件**：
+  - 修复插件状态旧快照覆盖导致的显示异常
+- **弹窗**：
+  - 窄屏下保存与操作按钮保持靠右一行，不再换行全宽
+
+### 提交明细
+
+### Added
+
+* feat(charts): 入站 P95 拆分发/全执行并展示调度执行耗时 ([df31b0c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/df31b0c51d239d2327dfd8af5ca1ba716214e9a0))
+
+### Fixed
+
+* fix(governance): 防止插件状态旧快照覆盖 ([dd5e0f1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dd5e0f12af4476af21e6bbbdae6765ec1129c102))
+* fix(ui): 窄屏下弹窗操作按钮保持靠右一行，避免换行全宽 ([e8ecc59](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e8ecc598411dc3db5ec7f7bbc667e44e26563f2e))
+
+**完整变更**: [`v0.9.3...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.3...HEAD)
+
 ## [0.9.3] - 2026-08-12
 
 ### 更新公告
