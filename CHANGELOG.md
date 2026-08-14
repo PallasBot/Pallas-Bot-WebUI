@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.4] - 2026-08-13
 
 ### 更新公告
 
@@ -28,6 +28,24 @@
 * fix(ui): 窄屏下弹窗操作按钮保持靠右一行，避免换行全宽 ([e8ecc59](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e8ecc598411dc3db5ec7f7bbc667e44e26563f2e))
 
 **完整变更**: [`v0.9.3...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.3...HEAD)
+
+### 提交明细
+
+### Added
+
+* feat(charts): 入站 P95 拆分发/全执行并展示调度执行耗时 ([df31b0c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/df31b0c51d239d2327dfd8af5ca1ba716214e9a0))
+
+### Fixed
+
+* fix(ui): 窄屏下弹窗操作按钮保持靠右一行，避免换行全宽 ([e8ecc59](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e8ecc598411dc3db5ec7f7bbc667e44e26563f2e))
+* fix(governance): 防止插件状态旧快照覆盖 ([dd5e0f1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dd5e0f12af4476af21e6bbbdae6765ec1129c102))
+
+### Changed
+
+* docs(changelog): 最近版本更新公告按功能分类排版 ([a0de4c0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a0de4c065ac311f801f0fb2cee3f1c68b531ce31))
+
+**完整变更**: [`v0.9.3...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.3...HEAD)
+
 
 ## [0.9.3] - 2026-08-12
 
@@ -86,7 +104,6 @@
 * chore(changelog): 补齐 0.9.2 提交明细 ([9e0e88e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9e0e88e7db6b355a903749931223da74a85b82dc))
 
 **完整变更**: [`v0.9.2...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.2...HEAD)
-
 
 ## [0.9.2] - 2026-08-12
 
