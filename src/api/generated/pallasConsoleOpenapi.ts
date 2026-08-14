@@ -7096,6 +7096,8 @@ export interface components {
             } | null;
             /** Global Disable */
             global_disable?: boolean | null;
+            /** Global Disable Revision */
+            global_disable_revision?: string | null;
             /** Help Hidden */
             help_hidden?: boolean | null;
             /** Blocked User Ids */
