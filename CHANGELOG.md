@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.5] - 2026-08-14
 
 ### 更新公告
 
@@ -21,6 +21,19 @@
 ### Changed
 
 * chore: 同步 pallasConsoleOpenapi 生成类型
+
+### 提交明细
+
+### Added
+
+* feat(ai): 回复路径展示触发方式与接话拆分 ([d4ba2b0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d4ba2b05cf8a1713daff1238559f49f67252a74e))
+
+### Changed
+
+* chore: 同步 pallasConsoleOpenapi 生成类型 ([f08bbc5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f08bbc54fa1637c3bcc85e7802abc3d7a149562b))
+
+**完整变更**: [`v0.9.4...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.4...HEAD)
+
 
 ## [0.9.4] - 2026-08-13
 
@@ -63,7 +76,6 @@
 * docs(changelog): 最近版本更新公告按功能分类排版 ([a0de4c0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a0de4c065ac311f801f0fb2cee3f1c68b531ce31))
 
 **完整变更**: [`v0.9.3...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.3...HEAD)
-
 
 ## [0.9.3] - 2026-08-12
 
