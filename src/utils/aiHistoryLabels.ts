@@ -111,6 +111,9 @@ export function labelRepeaterMode(raw?: string | null): string {
  * 「现编」≠ @对话：是接话路径语料不够时模型现写一句。 */
 const LLM_ROUTE_LABELS: Record<string, string> = {
   plain_llm_chat: "@对话·直出",
+  alias: "别名感知",
+  ambient: "主动发言",
+  followup: "续聊",
   corpus_select: "语料选句",
   corpus_polish_lite: "语料轻改口气",
   corpus_polish: "语料完整润色",
