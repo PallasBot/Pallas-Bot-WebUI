@@ -1174,8 +1174,7 @@ export default function AiStatisticsPage() {
                     回复路径
                   </CardTitle>
                   <CardDescription>
-                    接话走语料/现编；明确 @
-                    才是完整对话。下列为实际发出时的路径占比
+                    实际发出按来源/触发拆分：接话·语料选句、@ 直出、别名感知、主动发言、续聊
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="min-h-[260px] p-3 pt-0 sm:p-6 sm:pt-0">
