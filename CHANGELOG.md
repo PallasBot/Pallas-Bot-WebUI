@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.6] - 2026-08-16
 
 ### 更新公告
 
@@ -13,6 +13,10 @@
   - 新增「文件管理」页面：可下拉面包屑导航，浏览项目根目录、查看/编辑文本、新建/重命名/删除、上传/下载与图片预览
 - **生命周期**：
   - 新增「图片缓存文件」数据集，可预估并清理无引用孤儿文件
+
+### 提交明细
+
+**完整变更**: [`v0.9.5...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.5...HEAD)
 
 ## [0.9.5] - 2026-08-14
 
@@ -43,7 +47,6 @@
 * chore: 同步 pallasConsoleOpenapi 生成类型 ([f08bbc5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f08bbc54fa1637c3bcc85e7802abc3d7a149562b))
 
 **完整变更**: [`v0.9.4...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.4...HEAD)
-
 
 ## [0.9.4] - 2026-08-13
 
