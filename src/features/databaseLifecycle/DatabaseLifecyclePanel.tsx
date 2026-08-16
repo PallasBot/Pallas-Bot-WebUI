@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { pushConsoleToast } from "@/utils/consoleToast";
 import { formatLifecycleBytes, lifecycleRiskMeta } from "./model";
 import "./databaseLifecycle.css";
 
@@ -102,8 +103,11 @@ export default function DatabaseLifecyclePanel() {
     try {
       await putDbLifecyclePolicies({ [selected.dataset_id]: draft });
       await queryClient.invalidateQueries({ queryKey: ["db-lifecycle-catalog"] });
+      pushConsoleToast("生命周期策略已保存", "ok");
     } catch (cause) {
-      setError(axiosErrorDetail(cause));
+      const detail = axiosErrorDetail(cause) || "保存失败";
+      setError(detail);
+      pushConsoleToast(detail, "err");
       throw cause;
     } finally {
       setSaving(false);
