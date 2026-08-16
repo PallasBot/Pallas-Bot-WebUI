@@ -1264,7 +1264,7 @@ export default function PluginStorePage() {
       {storeSection !== "local" ? (
         <Button
           type="button"
-          variant="secondary"
+          variant="ghost"
           size="sm"
           icon={RefreshCw}
           iconMotion="spin"

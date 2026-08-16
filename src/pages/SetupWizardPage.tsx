@@ -73,7 +73,7 @@ export default function SetupWizardPage() {
         actions={
           <Button
             type="button"
-            variant="secondary"
+            variant="ghost"
             size="sm"
             icon={RefreshCw}
             iconMotion="spin"

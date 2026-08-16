@@ -175,7 +175,7 @@ export default function AiConfigBehaviorSection() {
             <p className="text-sm text-muted-foreground">
               群画像、语义样例、质量评价和重建操作统一在 AI 观测的「群表达」中维护。
             </p>
-            <Button asChild size="sm" variant="outline">
+            <Button asChild size="sm" variant="ghost">
               <Link to="/ai/persona">前往群表达</Link>
             </Button>
           </section>

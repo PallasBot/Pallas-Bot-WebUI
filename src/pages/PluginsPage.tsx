@@ -219,7 +219,7 @@ export default function PluginsPage() {
           <div className={CHROME_TOOLS_TRAILING}>
             <Button
               type="button"
-              variant="secondary"
+              variant="ghost"
               size="sm"
               icon={RefreshCw}
               iconMotion="spin"

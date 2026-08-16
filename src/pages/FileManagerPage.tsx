@@ -313,7 +313,7 @@ export default function FileManagerPage() {
           })}
         </div>
         <div className="file-manager__actions">
-          <Button type="button" variant="ghost" size="sm" onClick={() => enterDir(parts.slice(0, -1).join("/"))} disabled={!path} icon={ArrowUp}>
+          <Button type="button" variant="outline" size="sm" onClick={() => enterDir(parts.slice(0, -1).join("/"))} disabled={!path} icon={ArrowUp}>
             上级
           </Button>
           <span className="file-manager__actions-sep" />

@@ -940,7 +940,7 @@ export default function AiHistoryPage() {
           </label>
           <Button
             size="sm"
-            variant="outline"
+            variant="ghost"
             className="h-7"
             icon={RefreshCw}
             iconMotion="spin"

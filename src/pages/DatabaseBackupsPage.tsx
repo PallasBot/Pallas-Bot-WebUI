@@ -398,7 +398,7 @@ export default function DatabaseBackupsPage() {
         description="创建、下载与清理数据库备份。"
         actions={
           <div className="flex flex-nowrap items-center gap-1.5">
-            <Button asChild variant="secondary" size="sm" className="group">
+            <Button asChild variant="ghost" size="sm" className="group">
               <Link to="/database">
                 <BtnIco icon={ArrowLeft} motion="back" />
                 返回数据库
@@ -406,7 +406,7 @@ export default function DatabaseBackupsPage() {
             </Button>
             <Button
               type="button"
-              variant="secondary"
+              variant="ghost"
               size="sm"
               icon={RefreshCw}
               iconMotion="spin"

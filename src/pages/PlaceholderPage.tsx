@@ -21,7 +21,7 @@ export default function PlaceholderPage({
           <CardDescription>此路由已挂在 React + shadcn Shell 下，业务 UI 分期迁入。</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="group">
+          <Button asChild variant="ghost" className="group">
             <Link to="/">
               <BtnIco icon={LayoutDashboard} motion="back" />
               回仪表盘
