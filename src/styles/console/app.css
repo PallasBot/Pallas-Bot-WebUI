@@ -371,16 +371,18 @@ html[data-theme="light"][data-ui-preset="shadcn"][data-surface="glass"] .shell__
   height: 40px;
   margin: 0;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-card) 80%, transparent);
-  color: var(--text);
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
 }
 
 .shell__mobile-topbar-btn:hover {
-  border-color: var(--border);
+  border-color: transparent;
   background: color-mix(in srgb, var(--foreground) 6%, var(--bg-card));
+  color: var(--text);
 }
 
 .shell__mobile-topbar-brand {
