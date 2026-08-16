@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { pushConsoleToast } from "@/utils/consoleToast";
 import { formatLifecycleBytes, lifecycleRiskMeta } from "./model";
 import "./databaseLifecycle.css";
 
@@ -54,6 +55,13 @@ function datasetState(dataset: Dataset): { label: string; className: string } {
   return dataset.policy.enabled
     ? { label: "已启用", className: "badge badge--ok" }
     : { label: "未启用", className: "badge" };
+}
+
+function policySummary(dataset: Dataset): string {
+  if (dataset.dataset_id === "image_cache_files") return "仅孤儿文件";
+  const retention = dataset.policy.retention_days == null ? "不按天数" : `${dataset.policy.retention_days} 天`;
+  const capacity = dataset.policy.max_bytes == null ? "" : ` / ${formatLifecycleBytes(dataset.policy.max_bytes)}`;
+  return `${retention}${capacity}`;
 }
 
 export default function DatabaseLifecyclePanel() {
@@ -102,8 +110,11 @@ export default function DatabaseLifecyclePanel() {
     try {
       await putDbLifecyclePolicies({ [selected.dataset_id]: draft });
       await queryClient.invalidateQueries({ queryKey: ["db-lifecycle-catalog"] });
+      pushConsoleToast("生命周期策略已保存", "ok");
     } catch (cause) {
-      setError(axiosErrorDetail(cause));
+      const detail = axiosErrorDetail(cause) || "保存失败";
+      setError(detail);
+      pushConsoleToast(detail, "err");
       throw cause;
     } finally {
       setSaving(false);
@@ -195,8 +206,7 @@ export default function DatabaseLifecyclePanel() {
                       <td className="database-lifecycle__numeric">{formatRows(dataset.row_count)}</td>
                       <td className="database-lifecycle__numeric">{formatLifecycleBytes(dataset.size_bytes)}</td>
                       <td>
-                        {dataset.policy.retention_days == null ? "不按天数" : `${dataset.policy.retention_days} 天`}
-                        {dataset.policy.max_bytes == null ? "" : ` / ${formatLifecycleBytes(dataset.policy.max_bytes)}`}
+                        {policySummary(dataset)}
                       </td>
                       <td><span className={state.className}>{state.label}</span></td>
                       <td>
@@ -316,7 +326,7 @@ export default function DatabaseLifecyclePanel() {
       <ConsoleConfirmModal
         open={Boolean(preview && selected && draft)}
         title={`确认维护${selected ? `：${selected.label}` : ""}`}
-        subtitle={preview ? `预计清理 ${formatRows(preview.candidate_rows)} 条记录，预计释放 ${formatLifecycleBytes(preview.candidate_bytes)}。操作不可逆。` : ""}
+        subtitle={preview ? `预计清理 ${formatRows(preview.candidate_rows)} ${selected?.dataset_id === "image_cache_files" ? "个孤儿文件" : "条记录"}，预计释放 ${formatLifecycleBytes(preview.candidate_bytes)}。操作不可逆。` : ""}
         warnings={["该操作会删除符合当前生命周期策略的数据。请确认策略和预估影响。"]}
         confirmLabel="开始维护"
         busy={previewing}

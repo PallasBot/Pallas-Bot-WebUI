@@ -5,6 +5,7 @@ import {
   Blocks,
   Database,
   Download,
+  FolderOpen,
   LayoutDashboard,
   LineChart,
   Palette,
@@ -50,6 +51,7 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/ai/config/provider", label: "AI 配置", section: "AI", icon: Sparkles },
   { to: "/database", label: "数据库", section: "数据", icon: Database, notice: DATABASE_LIFECYCLE_NOTICE },
   { to: "/database/backups", label: "备份管理", section: "数据", icon: Archive },
+  { to: "/files", label: "文件管理", section: "数据", icon: FolderOpen },
   {
     to: "/community",
     label: "统计与语料",
