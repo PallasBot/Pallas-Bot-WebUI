@@ -1,11 +1,15 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { LucideIcon } from "lucide-react";
 import {
+  Archive,
   ArrowUp,
   Braces,
   ChevronRight,
   Download,
   Eye,
+  File,
+  FileCode2,
   FileImage,
   FileText,
   Folder,
@@ -15,6 +19,8 @@ import {
   Pencil,
   Plus,
   Save,
+  ScrollText,
+  Settings2,
   Trash2,
   Upload,
   X,
@@ -60,10 +66,22 @@ function joinPath(parent: string, name: string): string {
   return parent ? `${parent}/${name}` : name;
 }
 
-function fileIcon(entry: FilesEntry) {
-  if (entry.is_dir) return Folder;
-  if (entry.is_image) return FileImage;
-  return FileText;
+const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "ico", "avif"]);
+const CODE_EXTS = new Set(["py", "js", "ts", "tsx", "jsx", "vue", "go", "rs", "c", "cpp", "sql", "sh", "html", "css"]);
+const CONFIG_EXTS = new Set(["toml", "yaml", "yml", "ini", "conf", "env", "gitignore"]);
+const ARCHIVE_EXTS = new Set(["zip", "7z", "rar", "tar", "gz", "xz", "bz2"]);
+
+function fileVisual(entry: FilesEntry): { Icon: LucideIcon; color: string } {
+  if (entry.is_dir) return { Icon: Folder, color: "var(--accent)" };
+  const ext = entry.name.includes(".") ? entry.name.split(".").pop()!.toLowerCase() : "";
+  if (IMAGE_EXTS.has(ext)) return { Icon: FileImage, color: "var(--success)" };
+  if (ext === "json" || ext === "jsonl") return { Icon: Braces, color: "var(--warn)" };
+  if (ext === "log") return { Icon: ScrollText, color: "var(--accent)" };
+  if (CONFIG_EXTS.has(ext)) return { Icon: Settings2, color: "var(--warn)" };
+  if (CODE_EXTS.has(ext)) return { Icon: FileCode2, color: "var(--accent)" };
+  if (ARCHIVE_EXTS.has(ext)) return { Icon: Archive, color: "var(--warn)" };
+  if (ext === "md" || ext === "txt") return { Icon: FileText, color: "var(--text-muted)" };
+  return { Icon: File, color: "var(--text-muted)" };
 }
 
 export default function FileManagerPage() {
@@ -279,7 +297,7 @@ export default function FileManagerPage() {
                   <ChevronRight className={cn("file-manager__tree-chevron", isExpanded && "file-manager__tree-chevron--open")} aria-hidden="true" />
                 </button>
                 <button type="button" className="file-manager__tree-label" onClick={() => enterDir(childPath)}>
-                  <FolderOpen aria-hidden="true" className="file-manager__tree-folder" />
+                  <FolderOpen aria-hidden="true" className="file-manager__tree-folder" style={{ color: "var(--accent)" }} />
                   <span className="file-manager__tree-name">{name}</span>
                   {hasChildren === 0 ? <span className="file-manager__tree-empty">空</span> : null}
                 </button>
@@ -368,14 +386,16 @@ export default function FileManagerPage() {
           ) : (
             <div className="file-manager__list">
               {entries.map((entry) => {
-                const Icon = fileIcon(entry);
+                const { Icon, color } = fileVisual(entry);
                 return (
                   <div
                     key={entry.name}
-                    className={cn("file-manager__item", !entry.is_dir && "file-manager__item--file")}
+                    className="file-manager__item"
                     onClick={() => void openEntry(entry)}
                   >
-                    <Icon aria-hidden="true" className="file-manager__item-icon" />
+                    <span className="file-manager__item-icon" style={{ color }}>
+                      <Icon aria-hidden="true" />
+                    </span>
                     <span className="file-manager__item-name" title={entry.name}>{entry.name}</span>
                     <span className="file-manager__item-size">{entry.is_dir ? "" : formatBytes(entry.size)}</span>
                     <span className="file-manager__item-mtime">
