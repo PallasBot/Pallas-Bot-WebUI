@@ -15,7 +15,6 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
-  PanelLeft,
   Pencil,
   Plus,
   Save,
@@ -23,7 +22,6 @@ import {
   Settings2,
   Trash2,
   Upload,
-  X,
 } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -87,7 +85,6 @@ function fileVisual(entry: FilesEntry): { Icon: LucideIcon; color: string } {
 export default function FileManagerPage() {
   const queryClient = useQueryClient();
   const [path, setPath] = useState("");
-  const [treeOpen, setTreeOpen] = useState(true);
   const [dirChildren, setDirChildren] = useState<Record<string, string[] | undefined>>({ "": undefined });
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editPath, setEditPath] = useState<string | null>(null);
@@ -151,10 +148,6 @@ export default function FileManagerPage() {
 
   useEffect(() => {
     void loadDirChildren("");
-  }, []);
-
-  useEffect(() => {
-    if (window.matchMedia("(max-width: 900px)").matches) setTreeOpen(false);
   }, []);
 
   const doDelete = async () => {
@@ -331,9 +324,6 @@ export default function FileManagerPage() {
         />
         <div className="file-manager__toolbar">
           <div className="file-manager__breadcrumb" aria-label="当前路径">
-            <button type="button" className="file-manager__tree-open" onClick={() => setTreeOpen((open) => !open)} aria-label="打开目录树" title="目录树">
-              <PanelLeft aria-hidden="true" />
-            </button>
             <button type="button" className={cn(!path && "file-manager__crumb--active")} onClick={() => enterDir("")}>
               项目根
             </button>
@@ -379,20 +369,12 @@ export default function FileManagerPage() {
       </PagePinned>
 
       <div className="file-manager__layout">
-        {treeOpen ? (
-          <>
-            <div className="file-manager__backdrop" onClick={() => setTreeOpen(false)} aria-hidden="true" />
-            <aside className="file-manager__tree" aria-label="目录树">
-              <div className="file-manager__tree-header">
-                <span>目录</span>
-                <Button type="button" size="icon" variant="ghost" onClick={() => setTreeOpen(false)}>
-                  <X aria-hidden="true" />
-                </Button>
-              </div>
-              <div className="file-manager__tree-scroll">{renderTreeNodes("", 0)}</div>
-            </aside>
-          </>
-        ) : null}
+        <aside className="file-manager__tree" aria-label="目录树">
+          <div className="file-manager__tree-header">
+            <span>目录</span>
+          </div>
+          <div className="file-manager__tree-scroll">{renderTreeNodes("", 0)}</div>
+        </aside>
 
         <div className="file-manager__content">
           {error ? <div className="alert alert--err">{error}</div> : null}
