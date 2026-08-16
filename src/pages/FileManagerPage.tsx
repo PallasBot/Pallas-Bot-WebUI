@@ -153,6 +153,10 @@ export default function FileManagerPage() {
     void loadDirChildren("");
   }, []);
 
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 900px)").matches) setTreeOpen(false);
+  }, []);
+
   const doDelete = async () => {
     if (!deleteEntry) return;
     try {
@@ -269,6 +273,14 @@ export default function FileManagerPage() {
   };
 
   const entries = listQ.data?.entries ?? [];
+  const sortedEntries = useMemo(
+    () =>
+      [...entries].sort((a, b) => {
+        if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
+        return a.name.localeCompare(b.name, "zh-CN");
+      }),
+    [entries],
+  );
   const editingIsJson = editPath?.toLowerCase().endsWith(".json") === true;
   const parts = useMemo(() => (path ? path.split("/") : []), [path]);
 
@@ -319,7 +331,7 @@ export default function FileManagerPage() {
         />
         <div className="file-manager__toolbar">
           <div className="file-manager__breadcrumb" aria-label="当前路径">
-            <button type="button" className="file-manager__tree-open" onClick={() => setTreeOpen((open) => !open)} aria-label="目录树">
+            <button type="button" className="file-manager__tree-open" onClick={() => setTreeOpen((open) => !open)} aria-label="打开目录树" title="目录树">
               <PanelLeft aria-hidden="true" />
             </button>
             <button type="button" className={cn(!path && "file-manager__crumb--active")} onClick={() => enterDir("")}>
@@ -368,15 +380,18 @@ export default function FileManagerPage() {
 
       <div className="file-manager__layout">
         {treeOpen ? (
-          <aside className="file-manager__tree" aria-label="目录树">
-            <div className="file-manager__tree-header">
-              <span>目录</span>
-              <Button type="button" size="icon" variant="ghost" onClick={() => setTreeOpen(false)}>
-                <X aria-hidden="true" />
-              </Button>
-            </div>
-            <div className="file-manager__tree-scroll">{renderTreeNodes("", 0)}</div>
-          </aside>
+          <>
+            <div className="file-manager__backdrop" onClick={() => setTreeOpen(false)} aria-hidden="true" />
+            <aside className="file-manager__tree" aria-label="目录树">
+              <div className="file-manager__tree-header">
+                <span>目录</span>
+                <Button type="button" size="icon" variant="ghost" onClick={() => setTreeOpen(false)}>
+                  <X aria-hidden="true" />
+                </Button>
+              </div>
+              <div className="file-manager__tree-scroll">{renderTreeNodes("", 0)}</div>
+            </aside>
+          </>
         ) : null}
 
         <div className="file-manager__content">
@@ -385,7 +400,7 @@ export default function FileManagerPage() {
             <p className="muted">正在读取目录…</p>
           ) : (
             <div className="file-manager__list">
-              {entries.map((entry) => {
+              {sortedEntries.map((entry) => {
                 const { Icon, color } = fileVisual(entry);
                 return (
                   <div
