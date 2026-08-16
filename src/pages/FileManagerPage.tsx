@@ -1,0 +1,429 @@
+import { useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowUp,
+  Braces,
+  Download,
+  Eye,
+  FileImage,
+  FileText,
+  Folder,
+  FolderPlus,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { axiosErrorDetail } from "@/api/http";
+import {
+  createFileItem,
+  deleteFileItem,
+  downloadFileItem,
+  fetchFileContent,
+  fetchFileList,
+  fetchImageFile,
+  renameFileItem,
+  uploadFileItem,
+  writeFileContent,
+} from "@/api/consoleApi";
+import type { FilesEntry } from "@/api/pallasTypes";
+import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
+import PageFill from "@/components/layout/PageFill";
+import PageMasthead from "@/components/PageMasthead";
+import PagePinned from "@/components/layout/PagePinned";
+import RefreshIconButton from "@/components/RefreshIconButton";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { pushConsoleToast } from "@/utils/consoleToast";
+import "./fileManager.css";
+
+function formatBytes(value: number): string {
+  if (value <= 0) return "0 B";
+  const units = ["B", "KiB", "MiB", "GiB"];
+  let index = 0;
+  let n = value;
+  while (n >= 1024 && index < units.length - 1) {
+    n /= 1024;
+    index += 1;
+  }
+  return `${n.toFixed(index === 0 ? 0 : n >= 100 ? 0 : 1)} ${units[index]}`;
+}
+
+function joinPath(parent: string, name: string): string {
+  return parent ? `${parent}/${name}` : name;
+}
+
+function fileIcon(entry: FilesEntry) {
+  if (entry.is_dir) return Folder;
+  if (entry.is_image) return FileImage;
+  return FileText;
+}
+
+export default function FileManagerPage() {
+  const queryClient = useQueryClient();
+  const [path, setPath] = useState("");
+  const [editPath, setEditPath] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [editOriginal, setEditOriginal] = useState("");
+  const [editingBusy, setEditingBusy] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageName, setImageName] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createIsDir, setCreateIsDir] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [renameEntry, setRenameEntry] = useState<FilesEntry | null>(null);
+  const [renameName, setRenameName] = useState("");
+  const [deleteEntry, setDeleteEntry] = useState<FilesEntry | null>(null);
+  const [error, setError] = useState("");
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+
+  const listQ = useQuery({
+    queryKey: ["file-manager-list", path],
+    queryFn: () => fetchFileList(path),
+    refetchInterval: 30_000,
+  });
+
+  const invalidate = () => void queryClient.invalidateQueries({ queryKey: ["file-manager-list"] });
+
+  const parts = useMemo(() => (path ? path.split("/") : []), [path]);
+
+  const doDelete = async () => {
+    if (!deleteEntry) return;
+    try {
+      await deleteFileItem(joinPath(path, deleteEntry.name));
+      pushConsoleToast(`已删除 ${deleteEntry.name}`, "ok");
+      setDeleteEntry(null);
+      invalidate();
+    } catch (cause) {
+      pushConsoleToast(axiosErrorDetail(cause) || "删除失败", "err");
+    }
+  };
+
+  const openEntry = async (entry: FilesEntry) => {
+    if (entry.is_dir) {
+      setPath(joinPath(path, entry.name));
+      return;
+    }
+    if (entry.is_image) {
+      try {
+        const blob = await fetchImageFile(joinPath(path, entry.name));
+        setImageName(entry.name);
+        setImageUrl(URL.createObjectURL(blob));
+      } catch (cause) {
+        pushConsoleToast(axiosErrorDetail(cause) || "图片预览失败", "err");
+      }
+      return;
+    }
+    try {
+      const data = await fetchFileContent(joinPath(path, entry.name));
+      setEditPath(joinPath(path, entry.name));
+      setEditContent(data.content);
+      setEditOriginal(data.content);
+      setError("");
+    } catch (cause) {
+      pushConsoleToast(axiosErrorDetail(cause) || "无法打开文件", "err");
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editPath) return;
+    setEditingBusy(true);
+    try {
+      await writeFileContent(editPath, editContent);
+      pushConsoleToast("已保存", "ok");
+      setEditPath(null);
+    } catch (cause) {
+      setError(axiosErrorDetail(cause) || "保存失败");
+    } finally {
+      setEditingBusy(false);
+    }
+  };
+
+  const formatJson = () => {
+    try {
+      setEditContent(JSON.stringify(JSON.parse(editContent), null, 2));
+    } catch {
+      pushConsoleToast("内容不是合法 JSON", "err");
+    }
+  };
+
+  const doCreate = async () => {
+    const name = createName.trim();
+    if (!name) return;
+    try {
+      await createFileItem(path, name, createIsDir);
+      pushConsoleToast(`已创建 ${createIsDir ? "文件夹" : "文件"} ${name}`, "ok");
+      setCreateOpen(false);
+      setCreateName("");
+      invalidate();
+    } catch (cause) {
+      pushConsoleToast(axiosErrorDetail(cause) || "创建失败", "err");
+    }
+  };
+
+  const doRename = async () => {
+    if (!renameEntry) return;
+    const newName = renameName.trim();
+    if (!newName) return;
+    try {
+      await renameFileItem(joinPath(path, renameEntry.name), newName);
+      pushConsoleToast("已重命名", "ok");
+      setRenameEntry(null);
+      invalidate();
+    } catch (cause) {
+      pushConsoleToast(axiosErrorDetail(cause) || "重命名失败", "err");
+    }
+  };
+
+  const doUpload = async (file: File) => {
+    try {
+      await uploadFileItem(path, file);
+      pushConsoleToast(`已上传 ${file.name}`, "ok");
+      invalidate();
+    } catch (cause) {
+      pushConsoleToast(axiosErrorDetail(cause) || "上传失败", "err");
+    }
+  };
+
+  const doDownload = async (entry: FilesEntry) => {
+    try {
+      const blob = await downloadFileItem(joinPath(path, entry.name));
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = entry.name;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (cause) {
+      pushConsoleToast(axiosErrorDetail(cause) || "下载失败", "err");
+    }
+  };
+
+  const entries = listQ.data?.entries ?? [];
+  const editingIsJson = editPath?.toLowerCase().endsWith(".json") === true;
+
+  return (
+    <PageFill className="file-manager">
+      <PagePinned>
+        <PageMasthead
+          title="文件管理"
+          description="浏览项目根目录下的文件与数据；文本可直接编辑保存。"
+        />
+        <div className="file-manager__toolbar">
+          <div className="file-manager__breadcrumb" aria-label="当前路径">
+            <button type="button" className={cn(!path && "file-manager__crumb--active")} onClick={() => setPath("")}>
+              项目根
+            </button>
+            {parts.map((part, index) => {
+              const target = parts.slice(0, index + 1).join("/");
+              const active = index === parts.length - 1;
+              return (
+                <span key={target} className="file-manager__crumb-sep">
+                  <span aria-hidden>/</span>
+                  <button type="button" className={cn(active && "file-manager__crumb--active")} onClick={() => setPath(target)}>
+                    {part}
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+          <div className="file-manager__tools">
+            <Button type="button" variant="outline" size="sm" onClick={() => setPath(path.split("/").slice(0, -1).join("/"))} disabled={!path} icon={ArrowUp}>
+              上级
+            </Button>
+            <RefreshIconButton onClick={invalidate} busy={listQ.isFetching} />
+            <Button type="button" size="sm" variant="outline" icon={FolderPlus} onClick={() => { setCreateIsDir(true); setCreateName(""); setCreateOpen(true); }}>
+              新建文件夹
+            </Button>
+            <Button type="button" size="sm" variant="outline" icon={Plus} onClick={() => { setCreateIsDir(false); setCreateName(""); setCreateOpen(true); }}>
+              新建文件
+            </Button>
+            <Button type="button" size="sm" icon={Upload} onClick={() => uploadInputRef.current?.click()}>
+              上传
+            </Button>
+            <input
+              ref={uploadInputRef}
+              type="file"
+              className="file-manager__hidden-input"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void doUpload(file);
+                event.target.value = "";
+              }}
+            />
+          </div>
+        </div>
+      </PagePinned>
+
+      {error ? <div className="alert alert--err">{error}</div> : null}
+
+      <div className="file-manager__table-wrap">
+        {listQ.isLoading ? (
+          <p className="muted">正在读取目录…</p>
+        ) : (
+          <table className="data console-data-table file-manager__table">
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th className="file-manager__col-size">大小</th>
+                <th className="file-manager__col-mtime">修改时间</th>
+                <th className="file-manager__col-actions">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry) => {
+                const Icon = fileIcon(entry);
+                return (
+                  <tr key={entry.name} className={cn("file-manager__row", !entry.is_dir && "file-manager__row--file")} onDoubleClick={() => void openEntry(entry)}>
+                    <td>
+                      <button type="button" className="file-manager__name" onClick={() => void openEntry(entry)}>
+                        <Icon aria-hidden="true" className="file-manager__name-icon" />
+                        <span className="file-manager__name-text">{entry.name}</span>
+                      </button>
+                    </td>
+                    <td className="file-manager__col-size">{entry.is_dir ? "—" : formatBytes(entry.size)}</td>
+                    <td className="file-manager__col-mtime">
+                      {new Date(entry.mtime * 1000).toLocaleString("zh-CN", { hour12: false })}
+                    </td>
+                    <td className="file-manager__col-actions">
+                      <div className="file-manager__row-actions">
+                        {entry.is_image ? (
+                          <Button type="button" size="icon" variant="ghost" title="预览" onClick={() => void openEntry(entry)}>
+                            <Eye aria-hidden="true" />
+                          </Button>
+                        ) : null}
+                        {!entry.is_dir ? (
+                          <Button type="button" size="icon" variant="ghost" title="下载" onClick={() => void doDownload(entry)}>
+                            <Download aria-hidden="true" />
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          title="重命名"
+                          onClick={() => { setRenameEntry(entry); setRenameName(entry.name); }}
+                        >
+                          <Pencil aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          title="删除"
+                          onClick={() => setDeleteEntry(entry)}
+                        >
+                          <Trash2 aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {entries.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="muted">目录为空</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <Dialog open={Boolean(editPath)} onOpenChange={(open) => !open && setEditPath(null)}>
+        <DialogContent className="file-manager__edit-dialog gap-0 overflow-hidden bg-card p-0">
+          <DialogHeader className="border-b px-4 py-3 text-left">
+            <DialogTitle>编辑文件</DialogTitle>
+            <p className="muted m-0 text-sm break-all">{editPath}</p>
+          </DialogHeader>
+          {editPath ? (
+            <div className="file-manager__edit-body">
+              <textarea
+                className="file-manager__editor"
+                value={editContent}
+                onChange={(event) => setEditContent(event.target.value)}
+                spellCheck={false}
+              />
+              {error ? <p className="alert alert--err m-0">{error}</p> : null}
+              <div className="file-manager__edit-actions">
+                {editingIsJson ? (
+                  <Button type="button" variant="outline" icon={Braces} onClick={formatJson}>
+                    格式化 JSON
+                  </Button>
+                ) : null}
+                <span className="file-manager__edit-actions-spacer" />
+                {editContent !== editOriginal ? (
+                  <Button type="button" variant="outline" onClick={() => setEditContent(editOriginal)}>
+                    撤销修改
+                  </Button>
+                ) : null}
+                <Button type="button" icon={Save} onClick={() => void saveEdit()} disabled={editingBusy}>
+                  {editingBusy ? "保存中…" : "保存"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(imageUrl)} onOpenChange={(open) => !open && setImageUrl(null)}>
+        <DialogContent className="file-manager__image-dialog gap-0 overflow-hidden bg-card p-0">
+          <DialogHeader className="border-b px-4 py-3 text-left">
+            <DialogTitle>图片预览</DialogTitle>
+            <p className="muted m-0 text-sm break-all">{imageName}</p>
+          </DialogHeader>
+          <div className="file-manager__image-body">
+            {imageUrl ? <img src={imageUrl} alt={imageName} /> : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createOpen} onOpenChange={(open) => !open && setCreateOpen(false)}>
+        <DialogContent className="file-manager__small-dialog gap-0 overflow-hidden bg-card p-0">
+          <DialogHeader className="border-b px-4 py-3 text-left">
+            <DialogTitle>{createIsDir ? "新建文件夹" : "新建文件"}</DialogTitle>
+            <p className="muted m-0 text-sm break-all">{path || "项目根"}</p>
+          </DialogHeader>
+          <div className="file-manager__small-body">
+            <Input value={createName} onChange={(event) => setCreateName(event.target.value)} placeholder={createIsDir ? "文件夹名" : "文件名"} autoFocus />
+            <div className="file-manager__edit-actions">
+              <span className="file-manager__edit-actions-spacer" />
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>取消</Button>
+              <Button type="button" onClick={() => void doCreate()} disabled={!createName.trim()}>创建</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(renameEntry)} onOpenChange={(open) => !open && setRenameEntry(null)}>
+        <DialogContent className="file-manager__small-dialog gap-0 overflow-hidden bg-card p-0">
+          <DialogHeader className="border-b px-4 py-3 text-left">
+            <DialogTitle>重命名</DialogTitle>
+            <p className="muted m-0 text-sm break-all">{path || "项目根"}</p>
+          </DialogHeader>
+          <div className="file-manager__small-body">
+            <Input value={renameName} onChange={(event) => setRenameName(event.target.value)} placeholder="新名称" autoFocus />
+            <div className="file-manager__edit-actions">
+              <span className="file-manager__edit-actions-spacer" />
+              <Button type="button" variant="outline" onClick={() => setRenameEntry(null)}>取消</Button>
+              <Button type="button" onClick={() => void doRename()} disabled={!renameName.trim()}>重命名</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ConsoleDeleteConfirmModal
+        open={Boolean(deleteEntry)}
+        title={`删除${deleteEntry?.is_dir ? "文件夹" : "文件"}`}
+        subtitle={deleteEntry?.is_dir ? "文件夹及其全部内容将被永久删除，操作不可逆。" : "文件将被永久删除，操作不可逆。"}
+        items={[{ key: deleteEntry?.name ?? "", label: deleteEntry?.name ?? "" }]}
+        warnings={["删除操作不可撤销，请确认路径无误。"]}
+        onClose={() => setDeleteEntry(null)}
+        onConfirm={() => void doDelete()}
+      />
+    </PageFill>
+  );
+}

@@ -1857,6 +1857,10 @@ export type DbLifecyclePreviewData = OpenapiOkData<
 export type DbLifecycleJobData = OpenapiOkData<
   ConsoleOpenapiPaths["/pallas/api/db/lifecycle/jobs"]["post"]
 >;
+export type FilesListData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/files/list"]["get"]>;
+export type FilesEntry = FilesListData["entries"][number];
+export type FilesReadData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/files/read"]["get"]>;
+export type FilesOkData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/files/write"]["post"]>;
 
 export type DbBackendKind = "postgresql" | "mongodb";
 

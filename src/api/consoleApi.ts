@@ -44,6 +44,9 @@ import type {
   DbMigrateMongoPgInfo,
   DbMigrateMongoPgJob,
   DbOverviewData,
+  FilesListData,
+  FilesOkData,
+  FilesReadData,
   DbTableRowsData,
   DbTablesData,
   FriendListData,
@@ -2697,6 +2700,74 @@ export async function fetchDbLifecycleJob(jobId: string): Promise<DbLifecycleJob
   return consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/lifecycle/jobs/{job_id}"]["get"]>(
     `/db/lifecycle/jobs/${encodeURIComponent(jobId)}`,
   );
+}
+
+export async function fetchFileList(path: string): Promise<FilesListData> {
+  return consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/files/list"]["get"]>("/files/list", {
+    params: { path },
+    timeout: DB_HEAVY_READ_TIMEOUT_MS,
+  });
+}
+
+export async function fetchFileContent(path: string): Promise<FilesReadData> {
+  return consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/files/read"]["get"]>("/files/read", {
+    params: { path },
+    timeout: DB_HEAVY_READ_TIMEOUT_MS,
+  });
+}
+
+export async function writeFileContent(path: string, content: string): Promise<FilesOkData> {
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/files/write"]["post"]>("/files/write", {
+    path,
+    content,
+  });
+}
+
+export async function createFileItem(parent: string, name: string, isDir: boolean): Promise<FilesOkData> {
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/files/create"]["post"]>("/files/create", {
+    parent,
+    name,
+    is_dir: isDir,
+  });
+}
+
+export async function renameFileItem(path: string, newName: string): Promise<FilesOkData> {
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/files/rename"]["post"]>("/files/rename", {
+    path,
+    new_name: newName,
+  });
+}
+
+export async function deleteFileItem(path: string): Promise<FilesOkData> {
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/files/delete"]["post"]>("/files/delete", {
+    path,
+  });
+}
+
+export async function uploadFileItem(path: string, file: File): Promise<FilesOkData> {
+  const form = new FormData();
+  form.append("file", file);
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/files/upload"]["post"]>(
+    `/files/upload?path=${encodeURIComponent(path)}`,
+    form,
+    { timeout: 60_000 },
+  );
+}
+
+export async function downloadFileItem(path: string): Promise<Blob> {
+  const { data } = await http.get<Blob>(`/files/download?path=${encodeURIComponent(path)}`, {
+    responseType: "blob",
+    timeout: 60_000,
+  });
+  return data;
+}
+
+export async function fetchImageFile(path: string): Promise<Blob> {
+  const { data } = await http.get<Blob>(`/files/image?path=${encodeURIComponent(path)}`, {
+    responseType: "blob",
+    timeout: 60_000,
+  });
+  return data;
 }
 
 export async function fetchDbTableRows(params: {

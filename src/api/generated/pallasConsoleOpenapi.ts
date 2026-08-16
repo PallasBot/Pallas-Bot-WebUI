@@ -3912,6 +3912,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/files/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Files List */
+        get: operations["_files_list_pallas_api_files_list_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/files/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Files Read */
+        get: operations["_files_read_pallas_api_files_read_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/files/write": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Files Write */
+        post: operations["_files_write_pallas_api_files_write_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/files/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Files Create */
+        post: operations["_files_create_pallas_api_files_create_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/files/rename": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Files Rename */
+        post: operations["_files_rename_pallas_api_files_rename_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/files/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Files Delete */
+        post: operations["_files_delete_pallas_api_files_delete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/files/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Files Upload */
+        post: operations["_files_upload_pallas_api_files_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/files/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Files Download */
+        get: operations["_files_download_pallas_api_files_download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/files/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Files Image */
+        get: operations["_files_image_pallas_api_files_image_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/instances": {
         parameters: {
             query?: never;
@@ -4834,6 +4987,11 @@ export interface components {
             keywords: string;
             /** Image */
             image?: string | null;
+        };
+        /** Body__files_upload_pallas_api_files_upload_post */
+        Body__files_upload_pallas_api_files_upload_post: {
+            /** File */
+            file: string;
         };
         /** BotFavoritesUpdate */
         BotFavoritesUpdate: {
@@ -6305,6 +6463,109 @@ export interface components {
             data?: {
                 [key: string]: unknown;
             };
+        };
+        /** _FilesCreateBody */
+        _FilesCreateBody: {
+            /**
+             * Parent
+             * @default
+             */
+            parent: string;
+            /** Name */
+            name: string;
+            /**
+             * Is Dir
+             * @default false
+             */
+            is_dir: boolean;
+        };
+        /** _FilesDeleteBody */
+        _FilesDeleteBody: {
+            /**
+             * Path
+             * @default
+             */
+            path: string;
+        };
+        /** _FilesEntry */
+        _FilesEntry: {
+            /** Name */
+            name: string;
+            /** Is Dir */
+            is_dir: boolean;
+            /** Is Image */
+            is_image: boolean;
+            /** Size */
+            size: number;
+            /** Mtime */
+            mtime: number;
+        };
+        /** _FilesListData */
+        _FilesListData: {
+            /** Path */
+            path: string;
+            /** Entries */
+            entries: components["schemas"]["_FilesEntry"][];
+        };
+        /** _FilesListResponse */
+        _FilesListResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            data: components["schemas"]["_FilesListData"];
+        };
+        /** _FilesOkData */
+        _FilesOkData: {
+            /** Path */
+            path: string;
+            /**
+             * Size
+             * @default 0
+             */
+            size: number;
+        };
+        /** _FilesOkResponse */
+        _FilesOkResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            data: components["schemas"]["_FilesOkData"];
+        };
+        /** _FilesReadData */
+        _FilesReadData: {
+            /** Path */
+            path: string;
+            /** Content */
+            content: string;
+            /** Size */
+            size: number;
+        };
+        /** _FilesReadResponse */
+        _FilesReadResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            data: components["schemas"]["_FilesReadData"];
+        };
+        /** _FilesRenameBody */
+        _FilesRenameBody: {
+            /** Path */
+            path: string;
+            /** New Name */
+            new_name: string;
+        };
+        /** _FilesWriteBody */
+        _FilesWriteBody: {
+            /** Path */
+            path: string;
+            /** Content */
+            content: string;
         };
         /** _GlobalPluginDisableBody */
         _GlobalPluginDisableBody: {
@@ -17020,6 +17281,328 @@ export interface operations {
                 table: string;
                 /** @description 主键值 */
                 row_id: number;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _files_list_pallas_api_files_list_get: {
+        parameters: {
+            query?: {
+                path?: string;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_FilesListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _files_read_pallas_api_files_read_get: {
+        parameters: {
+            query: {
+                path: string;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_FilesReadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _files_write_pallas_api_files_write_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_FilesWriteBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_FilesOkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _files_create_pallas_api_files_create_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_FilesCreateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_FilesOkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _files_rename_pallas_api_files_rename_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_FilesRenameBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_FilesOkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _files_delete_pallas_api_files_delete_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_FilesDeleteBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_FilesOkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _files_upload_pallas_api_files_upload_post: {
+        parameters: {
+            query?: {
+                path?: string;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body__files_upload_pallas_api_files_upload_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_FilesOkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _files_download_pallas_api_files_download_get: {
+        parameters: {
+            query: {
+                path: string;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _files_image_pallas_api_files_image_get: {
+        parameters: {
+            query: {
+                path: string;
                 token?: string | null;
             };
             header?: {

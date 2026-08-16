@@ -1,0 +1,200 @@
+.file-manager__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.file-manager__breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  min-width: 0;
+}
+
+.file-manager__breadcrumb button {
+  border: none;
+  background: none;
+  padding: 0.25rem 0.4rem;
+  border-radius: 6px;
+  color: var(--color-muted, inherit);
+  cursor: pointer;
+  font: inherit;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-manager__breadcrumb button:hover {
+  background: var(--surface-hover, rgba(127, 127, 127, 0.12));
+  color: inherit;
+}
+
+.file-manager__breadcrumb .file-manager__crumb--active {
+  color: var(--color-text, inherit);
+  font-weight: 600;
+}
+
+.file-manager__crumb-sep {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.file-manager__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.file-manager__hidden-input {
+  display: none;
+}
+
+.file-manager__table-wrap {
+  margin-top: 0.75rem;
+  overflow-x: auto;
+}
+
+.file-manager__table .file-manager__col-size {
+  width: 6.5rem;
+  text-align: right;
+}
+
+.file-manager__table .file-manager__col-mtime {
+  width: 10.5rem;
+}
+
+.file-manager__table .file-manager__col-actions {
+  width: 8.5rem;
+  text-align: right;
+}
+
+.file-manager__row--file {
+  cursor: pointer;
+}
+
+.file-manager__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: none;
+  background: none;
+  padding: 0.25rem 0.35rem;
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.file-manager__name:hover {
+  background: var(--surface-hover, rgba(127, 127, 127, 0.12));
+}
+
+.file-manager__name-icon {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-muted, inherit);
+}
+
+.file-manager__name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-manager__row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  justify-content: flex-end;
+}
+
+.file-manager__edit-dialog {
+  width: min(56rem, 94vw);
+  max-height: 86vh;
+}
+
+.file-manager__edit-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  min-height: 0;
+}
+
+.file-manager__editor {
+  width: 100%;
+  min-height: 26rem;
+  resize: vertical;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  tab-size: 2;
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, rgba(127, 127, 127, 0.35));
+  background: var(--surface-muted, rgba(0, 0, 0, 0.03));
+  color: inherit;
+}
+
+.file-manager__edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.file-manager__edit-actions-spacer {
+  flex: 1;
+}
+
+.file-manager__image-dialog {
+  width: min(48rem, 94vw);
+}
+
+.file-manager__image-body {
+  padding: 0.75rem;
+  display: flex;
+  justify-content: center;
+  max-height: 72vh;
+  overflow: auto;
+}
+
+.file-manager__image-body img {
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.file-manager__small-dialog {
+  width: min(26rem, 94vw);
+}
+
+.file-manager__small-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+@media (max-width: 560px) {
+  .file-manager__toolbar {
+    align-items: flex-start;
+  }
+
+  .file-manager__table .file-manager__col-mtime {
+    display: none;
+  }
+
+  .file-manager__table .file-manager__col-actions {
+    width: 6.5rem;
+  }
+}

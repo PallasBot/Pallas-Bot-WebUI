@@ -13,6 +13,7 @@ const CommunityGalleryPage = lazy(() => import("@/pages/CommunityGalleryPage"));
 const CommunityPage = lazy(() => import("@/pages/CommunityPage"));
 const DatabaseBackupsPage = lazy(() => import("@/pages/DatabaseBackupsPage"));
 const DatabasePage = lazy(() => import("@/pages/DatabasePage"));
+const FileManagerPage = lazy(() => import("@/pages/FileManagerPage"));
 const FriendsGroupsPage = lazy(() => import("@/pages/FriendsGroupsPage"));
 const InstancesPage = lazy(() => import("@/pages/InstancesPage"));
 const LogErrorsPage = lazy(() => import("@/pages/LogErrorsPage"));
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="groups" element={<Navigate to="/friends-groups" replace />} />
         <Route path="database" element={<DatabasePage />} />
         <Route path="database/backups" element={<DatabaseBackupsPage />} />
+        <Route path="files" element={<FileManagerPage />} />
         <Route path="community" element={<CommunityPage />} />
         <Route path="community-gallery" element={<CommunityGalleryPage />} />
         <Route path="corpus-config" element={<Navigate to="/plugins/pb_core" replace />} />
