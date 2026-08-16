@@ -293,50 +293,49 @@ export default function FileManagerPage() {
         <PageMasthead
           title="文件管理"
           description="浏览项目根目录下的文件与数据；文本可直接编辑保存。"
+          actions={<RefreshIconButton busy={listQ.isFetching} label="刷新" showLabel onClick={invalidate} />}
         />
-        <div className="file-manager__toolbar">
-          <div className="file-manager__breadcrumb" aria-label="当前路径">
-            {segments.map((segment, index) => {
-              const active = index === segments.length - 1;
-              return (
-                <span key={segment.path} className="file-manager__crumb">
-                  <button
-                    type="button"
-                    className={cn("file-manager__crumb-link", active && "file-manager__crumb--active")}
-                    onClick={() => enterDir(segment.path)}
-                  >
-                    {segment.label}
-                  </button>
-                  {renderCrumbMenu(segment)}
-                </span>
-              );
-            })}
-          </div>
-          <div className="file-manager__tools">
-            <Button type="button" variant="outline" size="sm" onClick={() => enterDir(parts.slice(0, -1).join("/"))} disabled={!path} icon={ArrowUp}>
-              上级
-            </Button>
-            <RefreshIconButton onClick={invalidate} busy={listQ.isFetching} />
-            <Button type="button" size="sm" variant="outline" icon={FolderPlus} onClick={() => { setCreateIsDir(true); setCreateName(""); setCreateOpen(true); }}>
-              新建文件夹
-            </Button>
-            <Button type="button" size="sm" variant="outline" icon={Plus} onClick={() => { setCreateIsDir(false); setCreateName(""); setCreateOpen(true); }}>
-              新建文件
-            </Button>
-            <Button type="button" size="sm" icon={Upload} onClick={() => uploadInputRef.current?.click()}>
-              上传
-            </Button>
-            <input
-              ref={uploadInputRef}
-              type="file"
-              className="file-manager__hidden-input"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void doUpload(file);
-                event.target.value = "";
-              }}
-            />
-          </div>
+        <div className="file-manager__breadcrumb" aria-label="当前路径">
+          {segments.map((segment, index) => {
+            const active = index === segments.length - 1;
+            return (
+              <span key={segment.path} className="file-manager__crumb">
+                <button
+                  type="button"
+                  className={cn("file-manager__crumb-link", active && "file-manager__crumb--active")}
+                  onClick={() => enterDir(segment.path)}
+                >
+                  {segment.label}
+                </button>
+                {renderCrumbMenu(segment)}
+              </span>
+            );
+          })}
+        </div>
+        <div className="file-manager__actions">
+          <Button type="button" variant="ghost" size="sm" onClick={() => enterDir(parts.slice(0, -1).join("/"))} disabled={!path} icon={ArrowUp}>
+            上级
+          </Button>
+          <span className="file-manager__actions-sep" />
+          <Button type="button" size="sm" variant="outline" icon={FolderPlus} onClick={() => { setCreateIsDir(true); setCreateName(""); setCreateOpen(true); }}>
+            新建文件夹
+          </Button>
+          <Button type="button" size="sm" variant="outline" icon={Plus} onClick={() => { setCreateIsDir(false); setCreateName(""); setCreateOpen(true); }}>
+            新建文件
+          </Button>
+          <Button type="button" size="sm" icon={Upload} onClick={() => uploadInputRef.current?.click()}>
+            上传
+          </Button>
+          <input
+            ref={uploadInputRef}
+            type="file"
+            className="file-manager__hidden-input"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void doUpload(file);
+              event.target.value = "";
+            }}
+          />
         </div>
       </PagePinned>
 
