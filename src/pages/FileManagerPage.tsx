@@ -36,7 +36,7 @@ import {
 } from "@/api/consoleApi";
 import type { FilesEntry } from "@/api/pallasTypes";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
-import ChromeTools, { CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
+import ChromeTools from "@/components/ChromeTools";
 import PageFill from "@/components/layout/PageFill";
 import PageMasthead from "@/components/PageMasthead";
 import PagePinned from "@/components/layout/PagePinned";
@@ -317,27 +317,25 @@ export default function FileManagerPage() {
           <Button type="button" variant="outline" size="sm" onClick={() => enterDir(parts.slice(0, -1).join("/"))} disabled={!path} icon={ArrowUp}>
             上级
           </Button>
-          <div className={CHROME_TOOLS_TRAILING}>
-            <Button type="button" size="sm" variant="outline" icon={FolderPlus} onClick={() => { setCreateIsDir(true); setCreateName(""); setCreateOpen(true); }}>
-              新建文件夹
-            </Button>
-            <Button type="button" size="sm" variant="outline" icon={Plus} onClick={() => { setCreateIsDir(false); setCreateName(""); setCreateOpen(true); }}>
-              新建文件
-            </Button>
-            <Button type="button" size="sm" icon={Upload} onClick={() => uploadInputRef.current?.click()}>
-              上传
-            </Button>
-            <input
-              ref={uploadInputRef}
-              type="file"
-              className="file-manager__hidden-input"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void doUpload(file);
-                event.target.value = "";
-              }}
-            />
-          </div>
+          <Button type="button" size="sm" variant="outline" icon={FolderPlus} onClick={() => { setCreateIsDir(true); setCreateName(""); setCreateOpen(true); }}>
+            新建文件夹
+          </Button>
+          <Button type="button" size="sm" variant="outline" icon={Plus} onClick={() => { setCreateIsDir(false); setCreateName(""); setCreateOpen(true); }}>
+            新建文件
+          </Button>
+          <Button type="button" size="sm" icon={Upload} onClick={() => uploadInputRef.current?.click()}>
+            上传
+          </Button>
+          <input
+            ref={uploadInputRef}
+            type="file"
+            className="file-manager__hidden-input"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void doUpload(file);
+              event.target.value = "";
+            }}
+          />
         </ChromeTools>
       </PagePinned>
 
