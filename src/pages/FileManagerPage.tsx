@@ -1,11 +1,11 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
 import {
   Archive,
   ArrowUp,
   Braces,
-  ChevronRight,
+  ChevronDown,
   Download,
   Eye,
   File,
@@ -13,7 +13,6 @@ import {
   FileImage,
   FileText,
   Folder,
-  FolderOpen,
   FolderPlus,
   Pencil,
   Plus,
@@ -42,6 +41,12 @@ import PageMasthead from "@/components/PageMasthead";
 import PagePinned from "@/components/layout/PagePinned";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -85,8 +90,7 @@ function fileVisual(entry: FilesEntry): { Icon: LucideIcon; color: string } {
 export default function FileManagerPage() {
   const queryClient = useQueryClient();
   const [path, setPath] = useState("");
-  const [dirChildren, setDirChildren] = useState<Record<string, string[] | undefined>>({ "": undefined });
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [menuChildren, setMenuChildren] = useState<Record<string, string[] | undefined>>({});
   const [editPath, setEditPath] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [editOriginal, setEditOriginal] = useState("");
@@ -110,45 +114,20 @@ export default function FileManagerPage() {
 
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ["file-manager-list"] });
 
-  const loadDirChildren = async (dirPath: string) => {
-    if (dirChildren[dirPath] !== undefined) return;
+  const enterDir = (dirPath: string) => setPath(dirPath);
+
+  const loadMenuChildren = async (dirPath: string) => {
+    if (menuChildren[dirPath] !== undefined) return;
     try {
       const data = await fetchFileList(dirPath);
-      setDirChildren((prev) => ({
+      setMenuChildren((prev) => ({
         ...prev,
         [dirPath]: data.entries.filter((entry) => entry.is_dir).map((entry) => entry.name),
       }));
     } catch {
-      // 树加载失败静默，右侧列表会暴露错误
+      setMenuChildren((prev) => ({ ...prev, [dirPath]: [] }));
     }
   };
-
-  const enterDir = (dirPath: string) => {
-    setPath(dirPath);
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      next.add(dirPath);
-      return next;
-    });
-    void loadDirChildren(dirPath);
-  };
-
-  const toggleDir = (dirPath: string) => {
-    if (expanded.has(dirPath)) {
-      setExpanded((prev) => {
-        const next = new Set(prev);
-        next.delete(dirPath);
-        return next;
-      });
-      return;
-    }
-    setExpanded((prev) => new Set(prev).add(dirPath));
-    void loadDirChildren(dirPath);
-  };
-
-  useEffect(() => {
-    void loadDirChildren("");
-  }, []);
 
   const doDelete = async () => {
     if (!deleteEntry) return;
@@ -157,7 +136,6 @@ export default function FileManagerPage() {
       pushConsoleToast(`已删除 ${deleteEntry.name}`, "ok");
       setDeleteEntry(null);
       invalidate();
-      void loadDirChildren(path);
     } catch (cause) {
       pushConsoleToast(axiosErrorDetail(cause) || "删除失败", "err");
     }
@@ -220,7 +198,6 @@ export default function FileManagerPage() {
       setCreateOpen(false);
       setCreateName("");
       invalidate();
-      if (createIsDir) void loadDirChildren(path);
     } catch (cause) {
       pushConsoleToast(axiosErrorDetail(cause) || "创建失败", "err");
     }
@@ -235,7 +212,6 @@ export default function FileManagerPage() {
       pushConsoleToast("已重命名", "ok");
       setRenameEntry(null);
       invalidate();
-      void loadDirChildren(path);
     } catch (cause) {
       pushConsoleToast(axiosErrorDetail(cause) || "重命名失败", "err");
     }
@@ -276,42 +252,38 @@ export default function FileManagerPage() {
   );
   const editingIsJson = editPath?.toLowerCase().endsWith(".json") === true;
   const parts = useMemo(() => (path ? path.split("/") : []), [path]);
+  const segments = useMemo(() => {
+    const result: { path: string; label: string }[] = [{ path: "", label: "项目根" }];
+    parts.forEach((part, index) => {
+      result.push({ path: parts.slice(0, index + 1).join("/"), label: part });
+    });
+    return result;
+  }, [parts]);
 
-  const renderTreeNodes = (parentPath: string, depth: number) => {
-    const children = dirChildren[parentPath];
-    if (children === undefined) return null;
+  const renderCrumbMenu = (segment: { path: string; label: string }) => {
+    const children = menuChildren[segment.path];
     return (
-      <Fragment key={parentPath || "root"}>
-        {children.map((name) => {
-          const childPath = joinPath(parentPath, name);
-          const isExpanded = expanded.has(childPath);
-          const isActive = childPath === path;
-          const hasChildren = dirChildren[childPath]?.length;
-          return (
-            <Fragment key={childPath}>
-              <div
-                className={cn("file-manager__tree-row", isActive && "file-manager__tree-row--active")}
-                style={{ paddingLeft: `${depth * 14 + 6}px` }}
-              >
-                <button
-                  type="button"
-                  className="file-manager__tree-toggle"
-                  aria-label={isExpanded ? "折叠" : "展开"}
-                  onClick={() => toggleDir(childPath)}
-                >
-                  <ChevronRight className={cn("file-manager__tree-chevron", isExpanded && "file-manager__tree-chevron--open")} aria-hidden="true" />
-                </button>
-                <button type="button" className="file-manager__tree-label" onClick={() => enterDir(childPath)}>
-                  <FolderOpen aria-hidden="true" className="file-manager__tree-folder" style={{ color: "var(--accent)" }} />
-                  <span className="file-manager__tree-name">{name}</span>
-                  {hasChildren === 0 ? <span className="file-manager__tree-empty">空</span> : null}
-                </button>
-              </div>
-              {isExpanded ? renderTreeNodes(childPath, depth + 1) : null}
-            </Fragment>
-          );
-        })}
-      </Fragment>
+      <DropdownMenu onOpenChange={(open) => open && loadMenuChildren(segment.path)}>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className="file-manager__crumb-caret" aria-label={`${segment.label} 子目录`} title="子目录">
+            <ChevronDown aria-hidden="true" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="file-manager__crumb-menu">
+          {children === undefined ? (
+            <DropdownMenuItem disabled>加载中…</DropdownMenuItem>
+          ) : children.length === 0 ? (
+            <DropdownMenuItem disabled>无子目录</DropdownMenuItem>
+          ) : (
+            children.map((name) => (
+              <DropdownMenuItem key={name} onSelect={() => enterDir(joinPath(segment.path, name))}>
+                <Folder aria-hidden="true" className="file-manager__crumb-menu-icon" />
+                <span className="file-manager__crumb-menu-name">{name}</span>
+              </DropdownMenuItem>
+            ))
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   };
 
@@ -324,18 +296,18 @@ export default function FileManagerPage() {
         />
         <div className="file-manager__toolbar">
           <div className="file-manager__breadcrumb" aria-label="当前路径">
-            <button type="button" className={cn(!path && "file-manager__crumb--active")} onClick={() => enterDir("")}>
-              项目根
-            </button>
-            {parts.map((part, index) => {
-              const target = parts.slice(0, index + 1).join("/");
-              const active = index === parts.length - 1;
+            {segments.map((segment, index) => {
+              const active = index === segments.length - 1;
               return (
-                <span key={target} className="file-manager__crumb-sep">
-                  <span aria-hidden>/</span>
-                  <button type="button" className={cn(active && "file-manager__crumb--active")} onClick={() => enterDir(target)}>
-                    {part}
+                <span key={segment.path} className="file-manager__crumb">
+                  <button
+                    type="button"
+                    className={cn("file-manager__crumb-link", active && "file-manager__crumb--active")}
+                    onClick={() => enterDir(segment.path)}
+                  >
+                    {segment.label}
                   </button>
+                  {renderCrumbMenu(segment)}
                 </span>
               );
             })}
@@ -368,68 +340,57 @@ export default function FileManagerPage() {
         </div>
       </PagePinned>
 
-      <div className="file-manager__layout">
-        <aside className="file-manager__tree" aria-label="目录树">
-          <div className="file-manager__tree-header">
-            <span>目录</span>
-          </div>
-          <div className="file-manager__tree-scroll">{renderTreeNodes("", 0)}</div>
-        </aside>
-
-        <div className="file-manager__content">
-          {error ? <div className="alert alert--err">{error}</div> : null}
-          {listQ.isLoading ? (
-            <p className="muted">正在读取目录…</p>
-          ) : (
-            <div className="file-manager__list">
-              {sortedEntries.map((entry) => {
-                const { Icon, color } = fileVisual(entry);
-                return (
-                  <div
-                    key={entry.name}
-                    className="file-manager__item"
-                    onClick={() => void openEntry(entry)}
+      {error ? <div className="alert alert--err">{error}</div> : null}
+      {listQ.isLoading ? (
+        <p className="muted">正在读取目录…</p>
+      ) : (
+        <div className="file-manager__list">
+          {sortedEntries.map((entry) => {
+            const { Icon, color } = fileVisual(entry);
+            return (
+              <div
+                key={entry.name}
+                className="file-manager__item"
+                onClick={() => void openEntry(entry)}
+              >
+                <span className="file-manager__item-icon" style={{ color }}>
+                  <Icon aria-hidden="true" />
+                </span>
+                <span className="file-manager__item-name" title={entry.name}>{entry.name}</span>
+                <span className="file-manager__item-size">{entry.is_dir ? "" : formatBytes(entry.size)}</span>
+                <span className="file-manager__item-mtime">
+                  {new Date(entry.mtime * 1000).toLocaleString("zh-CN", { hour12: false })}
+                </span>
+                <span className="file-manager__item-actions" onClick={(event) => event.stopPropagation()}>
+                  {entry.is_image ? (
+                    <Button type="button" size="icon" variant="ghost" title="预览" onClick={() => void openEntry(entry)}>
+                      <Eye aria-hidden="true" />
+                    </Button>
+                  ) : null}
+                  {!entry.is_dir ? (
+                    <Button type="button" size="icon" variant="ghost" title="下载" onClick={() => void doDownload(entry)}>
+                      <Download aria-hidden="true" />
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    title="重命名"
+                    onClick={() => { setRenameEntry(entry); setRenameName(entry.name); }}
                   >
-                    <span className="file-manager__item-icon" style={{ color }}>
-                      <Icon aria-hidden="true" />
-                    </span>
-                    <span className="file-manager__item-name" title={entry.name}>{entry.name}</span>
-                    <span className="file-manager__item-size">{entry.is_dir ? "" : formatBytes(entry.size)}</span>
-                    <span className="file-manager__item-mtime">
-                      {new Date(entry.mtime * 1000).toLocaleString("zh-CN", { hour12: false })}
-                    </span>
-                    <span className="file-manager__item-actions" onClick={(event) => event.stopPropagation()}>
-                      {entry.is_image ? (
-                        <Button type="button" size="icon" variant="ghost" title="预览" onClick={() => void openEntry(entry)}>
-                          <Eye aria-hidden="true" />
-                        </Button>
-                      ) : null}
-                      {!entry.is_dir ? (
-                        <Button type="button" size="icon" variant="ghost" title="下载" onClick={() => void doDownload(entry)}>
-                          <Download aria-hidden="true" />
-                        </Button>
-                      ) : null}
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        title="重命名"
-                        onClick={() => { setRenameEntry(entry); setRenameName(entry.name); }}
-                      >
-                        <Pencil aria-hidden="true" />
-                      </Button>
-                      <Button type="button" size="icon" variant="ghost" title="删除" onClick={() => setDeleteEntry(entry)}>
-                        <Trash2 aria-hidden="true" />
-                      </Button>
-                    </span>
-                  </div>
-                );
-              })}
-              {entries.length === 0 ? <p className="muted file-manager__empty">目录为空</p> : null}
-            </div>
-          )}
+                    <Pencil aria-hidden="true" />
+                  </Button>
+                  <Button type="button" size="icon" variant="ghost" title="删除" onClick={() => setDeleteEntry(entry)}>
+                    <Trash2 aria-hidden="true" />
+                  </Button>
+                </span>
+              </div>
+            );
+          })}
+          {sortedEntries.length === 0 ? <p className="muted file-manager__empty">目录为空</p> : null}
         </div>
-      </div>
+      )}
 
       <Dialog open={Boolean(editPath)} onOpenChange={(open) => !open && setEditPath(null)}>
         <DialogContent className="file-manager__edit-dialog gap-0 overflow-hidden bg-card p-0">
