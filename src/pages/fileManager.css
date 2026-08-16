@@ -81,21 +81,6 @@
   white-space: nowrap;
 }
 
-.file-manager__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.75rem;
-}
-
-.file-manager__actions-sep {
-  width: 1px;
-  height: 1.25rem;
-  background: var(--border-strong);
-  margin: 0 0.15rem;
-}
-
 .file-manager__hidden-input {
   display: none;
 }

@@ -76,7 +76,7 @@ export default function CommonConfigPage() {
         title={sectionId}
         description="通用配置段编辑"
         actions={
-          <Button type="button" variant="ghost" size="sm" icon={ArrowLeft} iconMotion="back" onClick={() => navigate("/common-config")}>
+          <Button type="button" variant="secondary" size="sm" icon={ArrowLeft} iconMotion="back" onClick={() => navigate("/common-config")}>
             返回列表
           </Button>
         }
