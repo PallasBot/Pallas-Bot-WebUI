@@ -7,6 +7,7 @@ import {
   fetchOfficialExtensions,
   fetchPlugins,
 } from "@/api/console";
+import { fetchPluginsGlobalDisable } from "@/api/fullConsole";
 import type { OfficialExtensionRow, PluginRow } from "@/api/console";
 import {
   PLUGIN_LIST_CATEGORY_TABS,
@@ -54,6 +55,10 @@ export default function PluginsPage() {
   const communityQ = useQuery({
     queryKey: ["community-store"],
     queryFn: () => fetchCommunityPluginStore().catch(() => ({ plugins: [] })),
+  });
+  const globalDisableQ = useQuery({
+    queryKey: ["plugins-global-disable"],
+    queryFn: fetchPluginsGlobalDisable,
   });
 
   const selectedPluginName = (routeName || "").trim();
@@ -258,6 +263,7 @@ export default function PluginsPage() {
                   iconUrl={pluginIconUrl(p)}
                   avatarUrl={pluginAvatarUrl(p)}
                   active={selectedPluginName === p.name && configDialogOpen}
+                  globalDisableRevision={globalDisableQ.data?.revision}
                   onSelect={() => selectPlugin(p.name)}
                   onUninstall={() => setUninstallRow(p)}
                 />

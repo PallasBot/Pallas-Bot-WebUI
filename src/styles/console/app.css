@@ -13340,7 +13340,59 @@ button.plugin-card__link {
 }
 
 .plugin-catalog-card .plugin-store-card__info {
-  padding-right: 28px;
+  padding-right: 56px;
+}
+
+.plugin-catalog-card__corner {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.plugin-catalog-card__corner .plugin-catalog-card__fav {
+  position: static;
+  margin: 0;
+}
+
+.plugin-catalog-card__corner .plugin-store-card__menu {
+  top: calc(100% + 4px);
+  bottom: auto;
+  right: 0;
+}
+
+.plugin-catalog-card__menu-trigger {
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0 4px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: color-mix(in srgb, var(--text) 62%, var(--text-muted));
+  font-size: 0.8125rem;
+  line-height: 1;
+  opacity: 0.78;
+}
+
+.plugin-catalog-card__menu-trigger:hover:not(:disabled) {
+  opacity: 1;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.plugin-catalog-card__foot {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 6px;
+  padding: 2px 0 0;
+  width: 100%;
+}
+
+.plugin-catalog-card__foot .plugin-store-card__foot-btn {
+  min-width: 0;
 }
 
 .plugin-catalog-card__fav {
