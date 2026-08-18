@@ -1477,9 +1477,10 @@ export default function PluginStorePage() {
                   metaLinkUrl={row.repository_url || null}
                   menuItems={officialMenuItems(row)}
                   showInstall={Boolean(row.can_install)}
-                  showUpdate={officialUpdateEnabled(row, result)}
+                  showUpdate={Boolean(extensionInstalled(row))}
+                  updateDisabled={!officialUpdateEnabled(row, result)}
                   updateLabel={officialUpdateLabel(result)}
-                  latestLabel={updateLatestLabel(row)}
+                  latestLabel={resultNeedsRestart(result) ? "待重启" : updateLatestLabel(row)}
                   installedVersionLabel={officialInstalledVersionLabel(row, result)}
                   progressPercent={cardProgress?.key === row.package ? cardProgress.percent : null}
                   progressMessage={cardProgress?.key === row.package ? cardProgress.message : ""}
@@ -1537,9 +1538,10 @@ export default function PluginStorePage() {
                   metaLinkUrl={row.repository_url || row.homepage || null}
                   menuItems={communityMenuItems(row)}
                   showInstall={Boolean(row.can_install)}
-                  showUpdate={communityUpdateEnabled(row, result)}
+                  showUpdate={Boolean(communityInstalled(row))}
+                  updateDisabled={!communityUpdateEnabled(row, result)}
                   updateLabel={communityUpdateLabel(result)}
-                  latestLabel={updateLatestLabel(row)}
+                  latestLabel={resultNeedsRestart(result) ? "待重启" : updateLatestLabel(row)}
                   installedVersionLabel={communityInstalledVersionLabel(row, result)}
                   progressPercent={cardProgress?.key === row.plugin_id ? cardProgress.percent : null}
                   progressMessage={cardProgress?.key === row.plugin_id ? cardProgress.message : ""}

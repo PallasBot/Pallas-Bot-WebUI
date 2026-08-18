@@ -33,6 +33,8 @@ type Props = {
   showInstall?: boolean;
   showUninstall?: boolean;
   showUpdate?: boolean;
+  /** 已安装但无可更新内容时置灰更新按钮 */
+  updateDisabled?: boolean;
   installLabel?: string;
   uninstallLabel?: string;
   updateLabel?: string;
@@ -73,6 +75,7 @@ export default function PluginStoreCard({
   showInstall = false,
   showUninstall = false,
   showUpdate = false,
+  updateDisabled = false,
   installLabel = "安装",
   uninstallLabel = "卸载",
   updateLabel = "更新",
@@ -285,10 +288,10 @@ export default function PluginStoreCard({
                     type="button"
                     className={cn(
                       "group btn ui-btn plugin-store-card__foot-btn",
-                      showUpdate ? "ui-btn--primary btn--primary" : "plugin-store-card__foot-btn--latest ui-btn--latest",
+                      updateDisabled ? "ui-btn--default" : "ui-btn--primary btn--primary",
                     )}
-                    disabled={footLocked || !showUpdate || updateQueued}
-                    onClick={() => showUpdate && !updateQueued && onUpdate?.()}
+                    disabled={footLocked || updateDisabled}
+                    onClick={() => !updateDisabled && onUpdate?.()}
                   >
                     <BtnIco
                       icon={ArrowUpToLine}
@@ -297,7 +300,7 @@ export default function PluginStoreCard({
                       className="plugin-store-card__foot-ico"
                     />
                     <span>
-                      {updateBusy ? "更新中…" : updateQueued ? "排队中" : showUpdate ? updateLabel : latestLabel}
+                      {updateBusy ? "更新中…" : updateQueued ? "排队中" : updateDisabled ? latestLabel : updateLabel}
                     </span>
                   </button>
                 ) : null}

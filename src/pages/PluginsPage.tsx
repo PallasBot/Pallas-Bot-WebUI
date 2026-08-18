@@ -7,6 +7,7 @@ import {
   fetchOfficialExtensions,
   fetchPlugins,
 } from "@/api/console";
+import { fetchPluginsGlobalDisable } from "@/api/fullConsole";
 import type { OfficialExtensionRow, PluginRow } from "@/api/console";
 import {
   PLUGIN_LIST_CATEGORY_TABS,
@@ -35,7 +36,6 @@ import {
   resolvePluginIconForRow,
   shouldShowPluginAvatar,
 } from "@/utils/pluginIconUrl";
-import { catalogProcessHint } from "@/utils/pluginLoadRoleLabel";
 
 export default function PluginsPage() {
   const { name: routeName } = useParams();
@@ -54,6 +54,10 @@ export default function PluginsPage() {
   const communityQ = useQuery({
     queryKey: ["community-store"],
     queryFn: () => fetchCommunityPluginStore().catch(() => ({ plugins: [] })),
+  });
+  const globalDisableQ = useQuery({
+    queryKey: ["plugins-global-disable"],
+    queryFn: fetchPluginsGlobalDisable,
   });
 
   const selectedPluginName = (routeName || "").trim();
@@ -117,13 +121,6 @@ export default function PluginsPage() {
     [pluginsQ.data, selectedPluginName],
   );
 
-  const catalogProcessRole = useMemo(
-    () => (pluginsQ.data || []).find((p) => p.catalog_process_role)?.catalog_process_role,
-    [pluginsQ.data],
-  );
-
-  const processHint = catalogProcessHint(catalogProcessRole);
-
   function pluginIconUrl(row: PluginRow): string {
     return resolvePluginIconForRow(row, iconByPlugin);
   }
@@ -158,10 +155,6 @@ export default function PluginsPage() {
           title="插件管理"
           description="编辑已加载插件的权限、冷却与参数。"
         />
-
-        {processHint ? (
-          <p className="muted console-hub-page__lead plugins-page__hero-note--shard">{processHint}</p>
-        ) : null}
 
         <ChromeTools>
           <div className="relative min-w-[8rem] flex-1">
@@ -258,6 +251,7 @@ export default function PluginsPage() {
                   iconUrl={pluginIconUrl(p)}
                   avatarUrl={pluginAvatarUrl(p)}
                   active={selectedPluginName === p.name && configDialogOpen}
+                  globalDisableRevision={globalDisableQ.data?.revision}
                   onSelect={() => selectPlugin(p.name)}
                   onUninstall={() => setUninstallRow(p)}
                 />

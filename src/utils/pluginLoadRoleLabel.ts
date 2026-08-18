@@ -114,16 +114,3 @@ export function hasPluginLoadWhere(
 ): boolean {
   return Boolean(p.load_role);
 }
-
-export function catalogProcessHint(catalog?: PluginCatalogProcessRole): string {
-  if (catalog === "unified") {
-    return "单进程部署：下列加载状态均指本进程。";
-  }
-  if (catalog === "hub") {
-    return "目录来自主节点；分片插件在各节点运行属正常。";
-  }
-  if (catalog === "worker") {
-    return "目录来自当前分片节点。";
-  }
-  return "";
-}
