@@ -36,7 +36,6 @@ import {
   resolvePluginIconForRow,
   shouldShowPluginAvatar,
 } from "@/utils/pluginIconUrl";
-import { catalogProcessHint } from "@/utils/pluginLoadRoleLabel";
 
 export default function PluginsPage() {
   const { name: routeName } = useParams();
@@ -122,13 +121,6 @@ export default function PluginsPage() {
     [pluginsQ.data, selectedPluginName],
   );
 
-  const catalogProcessRole = useMemo(
-    () => (pluginsQ.data || []).find((p) => p.catalog_process_role)?.catalog_process_role,
-    [pluginsQ.data],
-  );
-
-  const processHint = catalogProcessHint(catalogProcessRole);
-
   function pluginIconUrl(row: PluginRow): string {
     return resolvePluginIconForRow(row, iconByPlugin);
   }
@@ -163,10 +155,6 @@ export default function PluginsPage() {
           title="插件管理"
           description="编辑已加载插件的权限、冷却与参数。"
         />
-
-        {processHint ? (
-          <p className="muted console-hub-page__lead plugins-page__hero-note--shard">{processHint}</p>
-        ) : null}
 
         <ChromeTools>
           <div className="relative min-w-[8rem] flex-1">
