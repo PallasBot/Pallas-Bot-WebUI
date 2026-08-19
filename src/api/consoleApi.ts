@@ -3118,7 +3118,11 @@ export async function putBotConfig(
     auto_accept_group: boolean;
     security: boolean;
     community_roster_show_qq: boolean;
-    persona: { account_profile?: AccountPersonaProfile | null } | null;
+    persona: {
+      account_profile?: AccountPersonaProfile | null;
+      seed_override?: { prefs: string[] } | null;
+      disposition?: Record<string, unknown> | null;
+    } | null;
     group_style_enabled: boolean;
   }>,
 ): Promise<BotConfigPublic> {

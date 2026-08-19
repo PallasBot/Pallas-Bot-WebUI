@@ -5229,12 +5229,42 @@ export interface components {
             ingress_full_p95_ms: number;
             /** Scheduler Wait P95 Ms */
             scheduler_wait_p95_ms: number;
+            /**
+             * Scheduler Run P95 Ms
+             * @default 0
+             */
+            scheduler_run_p95_ms: number;
             /** Scheduler Pending */
             scheduler_pending: number;
             /** Scheduler Active */
             scheduler_active: number;
             /** Scheduler Capacity */
             scheduler_capacity: number;
+            /**
+             * Scheduler Backpressure Waits
+             * @default 0
+             */
+            scheduler_backpressure_waits: number;
+            /**
+             * Scheduler Per Key Backpressure Waits
+             * @default 0
+             */
+            scheduler_per_key_backpressure_waits: number;
+            /**
+             * Send Queue Depth
+             * @default 0
+             */
+            send_queue_depth: number;
+            /**
+             * Send Queue Capacity
+             * @default 0
+             */
+            send_queue_capacity: number;
+            /**
+             * Pg Pool Utilization
+             * @default 0
+             */
+            pg_pool_utilization: number;
             /** Work Pending */
             work_pending: number;
             /** Work Leased */
@@ -6245,6 +6275,14 @@ export interface components {
         /** _BotPersonaPatch */
         _BotPersonaPatch: {
             account_profile?: components["schemas"]["AccountPersonaProfile"] | null;
+            /** Seed Override */
+            seed_override?: {
+                [key: string]: unknown;
+            } | null;
+            /** Disposition */
+            disposition?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** _CommonConfigSectionPatchBody */
         _CommonConfigSectionPatchBody: {
