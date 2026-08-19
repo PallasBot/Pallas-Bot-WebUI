@@ -299,7 +299,6 @@ export const HIDDEN_LLM_STRATEGY_FIELDS = new Set([
   "llm_memory_graph_extract_on_write",
   "llm_memory_hiergraph_max_layers",
   "llm_relationship_notes_enabled",
-  "llm_current_turn_decision_model",
   "mcp_servers",
   "llm_mcp_http_allowlist",
 ]);
