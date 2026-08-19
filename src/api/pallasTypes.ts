@@ -797,6 +797,8 @@ export interface PluginConfigFieldGroup {
   field_names: string[];
   /** 通用配置跳转用；插件内分组可省略 */
   plugin_config_path?: string;
+  /** 进阶分组默认折叠展示 */
+  advanced?: boolean;
 }
 
 export interface PluginConfigData {

@@ -46,6 +46,7 @@ function groupsForDefs(defs: ReadonlyArray<LlmBotFieldGroupDef>): PluginConfigFi
     title: group.title,
     field_names: [...group.keys],
     plugin_config_path: "llm",
+    advanced: group.tier === "advanced",
   }));
 }
 

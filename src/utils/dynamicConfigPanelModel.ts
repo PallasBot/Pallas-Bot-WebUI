@@ -77,6 +77,7 @@ export function buildDynamicConfigGroups(
       .map((group) => ({
         id: group.id,
         title: group.title,
+        advanced: group.advanced === true,
         fields: fieldsForGroup(group, visible),
       }))
       .filter((group) => group.fields.length);
