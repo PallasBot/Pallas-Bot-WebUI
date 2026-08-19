@@ -212,7 +212,7 @@ function BotPersonaCard({
           {showAccountUnder ? (
             <div className="mt-0.5 text-xs tabular-nums text-muted-foreground">{row.account}</div>
           ) : null}
-          <div className="mt-1.5 text-xs text-muted-foreground">账号稳定气质</div>
+          <div className="mt-1.5 text-xs text-muted-foreground">牛牛稳定气质</div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <Badge
@@ -231,9 +231,9 @@ function BotPersonaCard({
         )}
       >
         {accountProfile ? (
-          <section className="space-y-3 rounded-lg border border-border/60 px-3.5 py-3 sm:col-span-2" aria-label="账号稳定气质四轴">
+          <section className="space-y-3 rounded-lg border border-border/60 px-3.5 py-3 sm:col-span-2" aria-label="牛牛稳定气质四轴">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-medium">账号稳定气质</h3>
+              <h3 className="text-sm font-medium">牛牛稳定气质</h3>
               <Badge variant="outline">来源 {personaValueZh(accountProfile.source)}</Badge>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

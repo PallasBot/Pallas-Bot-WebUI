@@ -2025,6 +2025,8 @@ export interface BotConfigPublic {
   community_roster_show_qq: boolean;
   /** 账号 persona JSON；编辑面仅写 account_profile，其他字段为运行时兼容数据。 */
   persona?: Record<string, unknown> | null;
+  /** 当前生效的账号稳定气质（含自动派生），供弹窗展示。 */
+  account_profile_effective?: AccountPersonaProfile | null;
   group_style_enabled?: boolean;
 }
 

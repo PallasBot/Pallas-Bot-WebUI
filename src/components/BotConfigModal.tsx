@@ -59,6 +59,8 @@ type Draft = {
   admins: number[];
   accountProfile: AccountPersonaProfile;
   accountProfileManual: boolean;
+  /** 恢复自动时的兜底派生值（保存不写入，仅界面回显）。 */
+  effectiveAccountProfile: AccountPersonaProfile;
   seed: BotPersonaDraftSeed;
   disposition: PersonaDispositionDraft;
 };
@@ -83,13 +85,18 @@ function defaultDraft(): Draft {
     admins: [],
     accountProfile: { ...EMPTY_ACCOUNT_PERSONA_PROFILE },
     accountProfileManual: false,
+    effectiveAccountProfile: { ...EMPTY_ACCOUNT_PERSONA_PROFILE },
     seed: { prefs: [], manual: false },
     disposition: readPersonaDisposition(null),
   };
 }
 
 function draftFromConfig(c: BotConfigPublic): Draft {
-  const accountProfile = readManualAccountPersonaProfile(c.persona ?? null);
+  const manualProfile = readManualAccountPersonaProfile(c.persona ?? null);
+  const effectiveProfile = manualProfile ?? (c.account_profile_effective ?? null);
+  const accountProfile: AccountPersonaProfile = effectiveProfile
+    ? { ...effectiveProfile, source: "manual" }
+    : { ...EMPTY_ACCOUNT_PERSONA_PROFILE };
   return {
     security: c.security,
     auto_accept_friend: c.auto_accept_friend,
@@ -97,8 +104,9 @@ function draftFromConfig(c: BotConfigPublic): Draft {
     community_roster_show_qq: c.community_roster_show_qq !== false,
     disabled_plugins: [...(c.disabled_plugins ?? [])],
     admins: [...(c.admins ?? [])],
-    accountProfile: accountProfile ?? { ...EMPTY_ACCOUNT_PERSONA_PROFILE },
-    accountProfileManual: accountProfile != null,
+    accountProfile,
+    accountProfileManual: manualProfile != null,
+    effectiveAccountProfile: c.account_profile_effective ?? { ...EMPTY_ACCOUNT_PERSONA_PROFILE },
     seed: readBotPersonaSeedPrefs(c.persona ?? null),
     disposition: readPersonaDisposition(c.persona ?? null),
   };
@@ -198,7 +206,7 @@ export default function BotConfigModal({
   function clearAccountProfile() {
     setDraft((prev) => prev ? {
       ...prev,
-      accountProfile: { ...EMPTY_ACCOUNT_PERSONA_PROFILE },
+      accountProfile: { ...prev.effectiveAccountProfile, source: "manual" },
       accountProfileManual: false,
     } : prev);
   }
@@ -360,7 +368,7 @@ export default function BotConfigModal({
               </div>
 
               <div className="bot-config-dialog__block">
-                <FormSectionDivider title="小姑娘稳定气质" />
+                <FormSectionDivider title="牛牛稳定气质" />
                 <div className="bot-config-dialog__section-body">
                   <SettingsFormField
                     label="四轴气质"
