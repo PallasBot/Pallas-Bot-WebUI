@@ -1501,6 +1501,7 @@ export interface ConversationKernelRelationshipNote {
   content: string;
   source?: string;
   weight?: number;
+  affinity?: number;
   created_at?: number;
   updated_at?: number;
 }

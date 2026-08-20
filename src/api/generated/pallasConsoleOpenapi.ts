@@ -3352,6 +3352,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/llm/conversation-kernel/relationship-notes/set-affinity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Conversation Kernel Relationship Notes Set Affinity */
+        post: operations["_llm_conversation_kernel_relationship_notes_set_affinity_pallas_api_llm_conversation_kernel_relationship_notes_set_affinity_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/llm/conversation-kernel/knowledge-sources": {
         parameters: {
             query?: never;
@@ -5250,6 +5267,26 @@ export interface components {
              * @default 0
              */
             scheduler_per_key_backpressure_waits: number;
+            /**
+             * Passive Repeater Pending
+             * @default 0
+             */
+            passive_repeater_pending: number;
+            /**
+             * Passive Repeater Active
+             * @default 0
+             */
+            passive_repeater_active: number;
+            /**
+             * Passive Llm Pending
+             * @default 0
+             */
+            passive_llm_pending: number;
+            /**
+             * Passive Llm Active
+             * @default 0
+             */
+            passive_llm_active: number;
             /**
              * Send Queue Depth
              * @default 0
@@ -16030,6 +16067,45 @@ export interface operations {
         };
     };
     _llm_conversation_kernel_relationship_notes_delete_pallas_api_llm_conversation_kernel_relationship_notes_delete_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_conversation_kernel_relationship_notes_set_affinity_pallas_api_llm_conversation_kernel_relationship_notes_set_affinity_post: {
         parameters: {
             query?: {
                 token?: string | null;

@@ -1515,6 +1515,21 @@ export async function postConversationKernelRelationshipNoteDelete(body: {
   return envelopeData(res) || res;
 }
 
+export async function postConversationKernelRelationshipNoteSetAffinity(body: {
+  botId: number;
+  groupId?: number | null;
+  userId: number;
+  affinity: number;
+}): Promise<{ affinity?: number }> {
+  const { data: res } = await http.post("/llm/conversation-kernel/relationship-notes/set-affinity", {
+    bot_id: body.botId,
+    ...(body.groupId != null && body.groupId > 0 ? { group_id: body.groupId } : {}),
+    user_id: body.userId,
+    affinity: body.affinity,
+  });
+  return envelopeData(res) || res;
+}
+
 export async function fetchConversationKernelKnowledgeSources(): Promise<ConversationKernelKnowledgeSourcesData> {
   const { data: body } = await http.get("/llm/conversation-kernel/knowledge-sources");
   return envelopeData<ConversationKernelKnowledgeSourcesData>(body) || {};
