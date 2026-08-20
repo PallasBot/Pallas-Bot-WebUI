@@ -49,7 +49,7 @@ export default function UiField({
               </span>
             ) : null}
             {secret ? (
-              <span className="rounded-[var(--radius-control,6px)] bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <span className="shrink-0 rounded-[var(--radius-control,6px)] bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                 密钥
               </span>
             ) : null}
