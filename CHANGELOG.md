@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.10] - 2026-08-20
 
 ### 更新公告
 
@@ -20,6 +20,25 @@
 - **AI 配置**：
   - 移除「会话内核」配置段，关系备注 / 好感度改挂到 AI 观测「人物」段
 
+### 提交明细
+
+### Added
+
+* feat(update): 更新页 Commit 历史面板默认折叠只显示最新一条 ([ea1eb6e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ea1eb6e75b31483e30086dea739f6b660f917a1b))
+* feat(ai): 关系笔记好感度面板支持手动改数并补越界校验 ([ea7d1e7](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ea7d1e7e39d620209b491416c7cece80a0b72ddc))
+
+### Fixed
+
+* fix(ui): 下拉弹出贴近触发控件不再越出屏幕，窄屏控件字号 16px 防 iOS 聚焦放大 ([a898f3e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a898f3e0d12f42d7ac8e4a24cb1e9cf939435f2d))
+* fix(ai): 好感度输入越界时提示数值范围 ([6494c59](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6494c59e4d511980cc6223a8f2358f8c64e87582))
+
+### Changed
+
+* chore(ai): 移除会话内核配置段残留图标映射 ([fd9ee6c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fd9ee6cd20e6bd857b3d9c9c13840b988b56729c))
+
+**完整变更**: [`v0.9.9...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.9...HEAD)
+
+
 ## [0.9.9] - 2026-08-20
 
 ### Added
@@ -31,7 +50,6 @@
 * fix(ui): 密钥标签在窄标签行时换行 ([0c1e326](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0c1e326e4b506db6ea75882d24a760a93c7ae536))
 
 **完整变更**: [`v0.9.8...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.8...HEAD)
-
 
 ## [0.9.8] - 2026-08-20
 
@@ -63,7 +81,6 @@
 * chore(webui): 移除已废弃的决策模型配置项 ([1c3bd7a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1c3bd7ae056deba48d2ceadeb4047e6467b0268a))
 
 **完整变更**: [`v0.9.7...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.7...HEAD)
-
 
 ## [0.9.7] - 2026-08-18
 
