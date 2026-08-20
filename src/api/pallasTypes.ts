@@ -970,10 +970,8 @@ export interface LlmLocalRoutingModels {
 export interface LlmLocalRoutingTaskModels {
   llm_chat: string;
   drunk: string;
-  repeater_fallback: string;
-  repeater_polish: string;
-  repeater_polish_lite: string;
-  repeater_select: string;
+  affect_refine: string;
+  turn_decision: string;
 }
 
 export interface LlmLocalRoutingConfig {
