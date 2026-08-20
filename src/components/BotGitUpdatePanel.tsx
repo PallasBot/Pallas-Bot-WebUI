@@ -91,6 +91,8 @@ export default function BotGitUpdatePanel({
   const [mode, setMode] = useState<BotGitUiMode>("release");
   const [branch, setBranch] = useState("");
   const [configBusy, setConfigBusy] = useState(false);
+  /** 仅 Commit 模式折叠历史列表：默认只看最新一条 */
+  const [expanded, setExpanded] = useState(false);
 
   const statusQ = useQuery({
     queryKey: ["bot-git-status"],
@@ -130,6 +132,9 @@ export default function BotGitUpdatePanel({
   const branches = [...ALLOWED_TRACK_BRANCHES];
 
   const items = historyQ.data?.items || [];
+  // Commit 模式默认只展示最新一条；超过时提供「展开 / 收起」
+  const collapsed = mode === "commit" && !expanded && items.length > 1;
+  const visibleItems = collapsed ? items.slice(0, 1) : items;
   const headIndex = useMemo(() => items.findIndex((it) => it.is_head), [items]);
   const head = statusQ.data?.head || historyQ.data?.head;
   const metaParts: string[] = [];
@@ -378,7 +383,7 @@ export default function BotGitUpdatePanel({
                 </td>
               </tr>
             ) : (
-              items.map((item, index) => {
+              visibleItems.map((item, index) => {
                 const rollback = headIndex >= 0 ? index > headIndex : !item.is_latest;
                 const safeLabel = rollback ? "回退到此" : "更新到此";
                 const forceLabel = rollback ? "强制回退" : "强制更新";
@@ -468,6 +473,23 @@ export default function BotGitUpdatePanel({
           </tbody>
         </table>
       </div>
+      {collapsed ? (
+        <button
+          type="button"
+          className="bot-git-panel__toggle collapsed-toggle"
+          onClick={() => setExpanded(true)}
+        >
+          展开近 {items.length} 条
+        </button>
+      ) : mode === "commit" && items.length > 1 && expanded ? (
+        <button
+          type="button"
+          className="bot-git-panel__toggle collapsed-toggle"
+          onClick={() => setExpanded(false)}
+        >
+          收起
+        </button>
+      ) : null}
       <p className="bot-git-panel__note muted">
         默认展示近 {HISTORY_LIMIT} 条。相对当前：更新用「更新到此 / 强制更新」，更旧版本用「回退到此 /
         强制回退」。安全操作优先快进/checkout（必要时 stash）；强制为 reset --hard。
