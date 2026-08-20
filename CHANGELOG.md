@@ -4,6 +4,19 @@
 
 <!-- entries -->
 
+## [0.9.9] - 2026-08-20
+
+### Added
+
+* feat(ai): 恢复「会话内核」配置段入口 ([96bdef9](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/96bdef9b2725b5583ea9c41bd845dcd2e9c6fb3c))
+
+### Fixed
+
+* fix(ui): 密钥标签在窄标签行时换行 ([0c1e326](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0c1e326e4b506db6ea75882d24a760a93c7ae536))
+
+**完整变更**: [`v0.9.8...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.8...HEAD)
+
+
 ## [0.9.8] - 2026-08-20
 
 ### 更新公告
