@@ -1,4 +1,4 @@
-import { Cpu, Layers, Server, Sparkles, type LucideIcon } from "lucide-react";
+import { Layers, Server, Sparkles, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   AI_CONFIG_SECTIONS,
@@ -24,7 +24,6 @@ const SECTION_ICONS: Record<AiConfigSectionId, LucideIcon> = {
   provider: Server,
   dialogue: Sparkles,
   media: Layers,
-  kernel: Cpu,
 };
 
 /**

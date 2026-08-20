@@ -650,6 +650,14 @@ html[data-density="compact"] .card__body {
   padding: 10px 12px;
 }
 
+/* 窄屏 / 触屏：控件字号抬到 16px，避免 iOS 聚焦输入框时自动放大页面 */
+@media (max-width: 560px) {
+  :root {
+    --console-control-font-size: 16px;
+    --ui-ctrl-font: 16px;
+  }
+}
+
 *,
 *::before,
 *::after {

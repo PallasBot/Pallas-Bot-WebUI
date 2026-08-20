@@ -146,10 +146,10 @@ export default function AiConfigBehaviorSection() {
 
         {panel === "patterns" ? (
           <StateBlock loading={patternsQ.isLoading} error={patternsQ.error} empty={!patternsQ.data?.items?.length}>
-            {(patternsQ.data?.items || []).map((row, i) => {
+            {(patternsQ.data?.items || []).map((row) => {
               const pid = String(row.pattern_id || row.id || "");
               return (
-                <div key={i} className="flex items-start justify-between gap-2 rounded-md border p-2 text-xs">
+                <div key={pid} className="flex items-start justify-between gap-2 rounded-md border p-2 text-xs">
                   <pre className="min-w-0 flex-1">{JSON.stringify(row, null, 2)}</pre>
                   {pid ? (
                     <Button
@@ -183,10 +183,10 @@ export default function AiConfigBehaviorSection() {
 
         {panel === "promotion" ? (
           <StateBlock loading={promoQ.isLoading} error={promoQ.error} empty={!promoQ.data?.items?.length}>
-            {(promoQ.data?.items || []).map((row, i) => {
+            {(promoQ.data?.items || []).map((row) => {
               const cid = String(row.candidate_id || row.id || "");
               return (
-                <div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-xs">
+                <div key={cid} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-xs">
                   <pre className="min-w-0 flex-1">{JSON.stringify(row, null, 2)}</pre>
                   {cid ? (
                     <div className="flex gap-1">
