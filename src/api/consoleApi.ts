@@ -1707,6 +1707,22 @@ export async function postConversationKernelRelationshipNoteDelete(body: {
   >("/llm/conversation-kernel/relationship-notes/delete", { id: body.id, bot_id: body.botId });
 }
 
+export async function postConversationKernelRelationshipNoteSetAffinity(body: {
+  botId: number;
+  groupId?: number | null;
+  userId: number;
+  affinity: number;
+}): Promise<{ affinity: number }> {
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/relationship-notes/set-affinity"]["post"]
+  >("/llm/conversation-kernel/relationship-notes/set-affinity", {
+    bot_id: body.botId,
+    ...(body.groupId != null && body.groupId > 0 ? { group_id: body.groupId } : {}),
+    user_id: body.userId,
+    affinity: body.affinity,
+  });
+}
+
 export async function fetchConversationKernelKnowledgeSources(): Promise<ConversationKernelKnowledgeSourcesData> {
   return (await consoleOpenapiGet<
     ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/knowledge-sources"]["get"]
@@ -3118,7 +3134,11 @@ export async function putBotConfig(
     auto_accept_group: boolean;
     security: boolean;
     community_roster_show_qq: boolean;
-    persona: { account_profile?: AccountPersonaProfile | null } | null;
+    persona: {
+      account_profile?: AccountPersonaProfile | null;
+      seed_override?: { prefs: string[] } | null;
+      disposition?: Record<string, unknown> | null;
+    } | null;
     group_style_enabled: boolean;
   }>,
 ): Promise<BotConfigPublic> {

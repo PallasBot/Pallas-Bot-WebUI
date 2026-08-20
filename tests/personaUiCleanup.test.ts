@@ -3,11 +3,10 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("牛格 UI 清理", () => {
-  it("账号编辑不再展示旧 seed、length 与 disposition", () => {
+  it("账号编辑不再展示旧 seed、length 字段", () => {
     const source = readFileSync(resolve(process.cwd(), "src/components/BotConfigModal.tsx"), "utf8");
     expect(source).not.toContain("seedPrefs");
     expect(source).not.toContain("length_pref");
-    expect(source).not.toContain("disposition");
   });
 
   it("群表达成为语义风格唯一管理入口", () => {

@@ -797,6 +797,8 @@ export interface PluginConfigFieldGroup {
   field_names: string[];
   /** 通用配置跳转用；插件内分组可省略 */
   plugin_config_path?: string;
+  /** 进阶分组默认折叠展示 */
+  advanced?: boolean;
 }
 
 export interface PluginConfigData {
@@ -1499,6 +1501,7 @@ export interface ConversationKernelRelationshipNote {
   content: string;
   source?: string;
   weight?: number;
+  affinity?: number;
   created_at?: number;
   updated_at?: number;
 }
@@ -2025,6 +2028,8 @@ export interface BotConfigPublic {
   community_roster_show_qq: boolean;
   /** 账号 persona JSON；编辑面仅写 account_profile，其他字段为运行时兼容数据。 */
   persona?: Record<string, unknown> | null;
+  /** 当前生效的账号稳定气质（含自动派生），供弹窗展示。 */
+  account_profile_effective?: AccountPersonaProfile | null;
   group_style_enabled?: boolean;
 }
 

@@ -15,6 +15,14 @@
 
 文档入口：[网页控制台](https://PallasBot.github.io/Pallas-Bot-Docs/guide/web-console)、[快速开始](https://PallasBot.github.io/Pallas-Bot-Docs/guide/quickstart)、[FAQ](https://PallasBot.github.io/Pallas-Bot-Docs/deploy/faq)。
 
+## 控制台预览
+
+以下界面使用脱敏演示数据：仪表盘汇总 Bot 状态、消息收发、插件与社区统计；插件商店展示官方扩展的实际图标、GitHub、版本与安装动作。
+
+![仪表盘](docs/assets/console-dashboard.png)
+
+![插件商店](docs/assets/console-plugin-store.png)
+
 ## 仓库结构（简要）
 
 ```

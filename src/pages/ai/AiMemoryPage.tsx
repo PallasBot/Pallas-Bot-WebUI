@@ -23,6 +23,23 @@ import {
   Upload,
 } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
+
+function relativeTimeAgo(raw: string | number | null | undefined): string {
+  if (!raw) return "";
+  const ts = Number(raw);
+  if (!Number.isFinite(ts) || ts <= 0) return "";
+  const sec = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  if (sec < 60) return "刚刚";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} 分钟前`;
+  const hour = Math.floor(min / 60);
+  if (hour < 24) return `${hour} 小时前`;
+  const day = Math.floor(hour / 24);
+  if (day < 30) return `${day} 天前`;
+  const month = Math.floor(day / 30);
+  if (month < 12) return `${month} 个月前`;
+  return `${Math.floor(month / 12)} 年前`;
+}
 import {
   fetchConversationKernelMemoryPreferences,
   fetchConversationKernelMidTerm,
@@ -784,7 +801,7 @@ export default function AiMemoryPage() {
                         <TruncatedText text={item.content} lines={2} />
                       </p>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {item.source || "memory"} · 群 {item.group_id ?? "—"}
+                        {item.source || "memory"} · 群 {item.group_id ?? "—"} · {relativeTimeAgo(item.updated_at ?? item.created_at)}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <Button
