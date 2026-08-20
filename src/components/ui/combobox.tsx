@@ -128,9 +128,11 @@ export function Combobox({
         </button>
       </PopoverTrigger>
       <PopoverContent
+        side="bottom"
         align="start"
+        collisionPadding={8}
         className={cn(
-          "w-auto min-w-[var(--radix-popover-trigger-width)] max-w-[min(24rem,calc(100vw-2rem))] p-0",
+          "flex max-h-[min(var(--radix-popover-content-available-height,100dvh),calc(100dvh-1rem))] w-auto min-w-[var(--radix-popover-trigger-width)] max-w-[min(24rem,calc(100vw-2rem))] flex-col gap-0 overflow-hidden p-0",
           contentClassName,
         )}
       >
