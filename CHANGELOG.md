@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.8] - 2026-08-20
 
 ### 更新公告
 
@@ -19,6 +19,28 @@
 - **记忆**：
   - 记忆条目显示相对时间新鲜度（如「3 小时前」）。
 
+### 提交明细
+
+### Added
+
+* feat: 记忆条目显示相对时间新鲜度 ([024412f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/024412fefbab20a6c7aab9daf887c4a3e5e279c2))
+* feat(webui): LLM 进阶配置分组默认折叠 ([1a448e4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1a448e420eb1f5e5df3b4f150922dfa803cfc222))
+* feat(webui): 归纳 LLM 策略配置分组并收纳散落字段 ([2f71de8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2f71de82f7898293a9d7e65920225815d4f0f37c))
+* feat: LLM 配置分组——新增记忆知识组并隐藏开发项 ([843522d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/843522da306b7ae66583804f838588be3d231257))
+* feat(webui): 账号 persona 支持配置 seed 与处事风格 ([3bf6fbf](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3bf6fbfa28bc5098302931310aee02c1e4643d6c))
+
+### Fixed
+
+* fix(webui): 账号稳定气质回显自动派生值并统一文案 ([891fd65](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/891fd6583dc36bd302f42d5c34428e605f5288e7))
+
+### Changed
+
+* docs: 控制台截图入 README ([ccf594e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ccf594e07a7cf6307fb741882e355c0a996c1c18))
+* chore(webui): 移除已废弃的决策模型配置项 ([1c3bd7a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1c3bd7ae056deba48d2ceadeb4047e6467b0268a))
+
+**完整变更**: [`v0.9.7...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.7...HEAD)
+
+
 ## [0.9.7] - 2026-08-18
 
 ### 更新公告
@@ -31,7 +53,6 @@
 ### 提交明细
 
 **完整变更**: [`v0.9.6...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.6...HEAD)
-
 
 ## [0.9.6] - 2026-08-16
 
