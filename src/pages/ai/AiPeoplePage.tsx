@@ -481,6 +481,11 @@ export default function AiPeoplePage() {
                             setAffinityDrafts((prev) => ({ ...prev, [String(userId)]: e.target.value }))
                           }
                         />
+                        {draft != null &&
+                        Number.isFinite(Number(draft)) &&
+                        (Number(draft) < -1 || Number(draft) > 1) ? (
+                          <span className="text-xs text-destructive">范围 -1 ~ 1</span>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="outline"
