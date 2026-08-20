@@ -4,13 +4,22 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.11] - 2026-08-20
 
 ### 更新公告
 
 - 需要 Bot ≥ 4.3.7；请勿只升控制台。
 - **本地模型路由**：
   - 移除已废弃的接话（repeater_*）路由任务，路由只跟踪存活任务，更准确反映实际负载
+
+### 提交明细
+
+### Fixed
+
+* fix(llm): 本地路由任务收敛为存活任务 ([03486e1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/03486e125df3a365f5e71a05ccbcd2b582f59332))
+
+**完整变更**: [`v0.9.10...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.10...HEAD)
+
 
 ## [0.9.10] - 2026-08-20
 
@@ -45,7 +54,6 @@
 * chore(ai): 移除会话内核配置段残留图标映射 ([fd9ee6c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fd9ee6cd20e6bd857b3d9c9c13840b988b56729c))
 
 **完整变更**: [`v0.9.9...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.9...HEAD)
-
 
 ## [0.9.9] - 2026-08-20
 
