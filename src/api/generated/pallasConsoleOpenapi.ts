@@ -3369,6 +3369,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/llm/conversation-kernel/relationship-notes/set-content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Conversation Kernel Relationship Notes Set Content */
+        post: operations["_llm_conversation_kernel_relationship_notes_set_content_pallas_api_llm_conversation_kernel_relationship_notes_set_content_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/llm/conversation-kernel/knowledge-sources": {
         parameters: {
             query?: never;
@@ -6858,6 +6875,16 @@ export interface components {
              * @default
              */
             drunk: string;
+            /**
+             * Affect Refine
+             * @default
+             */
+            affect_refine: string;
+            /**
+             * Turn Decision
+             * @default
+             */
+            turn_decision: string;
         };
         /** _LlmMediaTaskCapabilityRow */
         _LlmMediaTaskCapabilityRow: {
@@ -7909,6 +7936,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -7946,6 +7974,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -7979,6 +8008,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8020,6 +8050,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8055,6 +8086,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8094,6 +8126,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8133,6 +8166,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 rule_id: string;
@@ -8170,6 +8204,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8207,6 +8242,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8242,6 +8278,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8281,6 +8318,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 member_id: string;
@@ -8321,6 +8359,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8354,6 +8393,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8393,6 +8433,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8432,6 +8473,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8471,6 +8513,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8504,6 +8547,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8543,6 +8587,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8576,6 +8621,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8617,6 +8663,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8650,6 +8697,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8689,6 +8737,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8728,6 +8777,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8770,6 +8820,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8803,6 +8854,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8842,6 +8894,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8884,6 +8937,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8921,6 +8975,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8955,6 +9010,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8988,6 +9044,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9027,6 +9084,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 example_id: string;
@@ -9068,6 +9126,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 example_id: string;
@@ -9108,6 +9167,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9145,6 +9205,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9178,6 +9239,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9211,6 +9273,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9252,6 +9315,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9287,6 +9351,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9325,6 +9390,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9362,6 +9428,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9401,6 +9468,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9434,6 +9502,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9473,6 +9542,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9517,6 +9587,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9550,6 +9621,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9589,6 +9661,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9628,6 +9701,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9667,6 +9741,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9706,6 +9781,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9749,6 +9825,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9782,6 +9859,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9821,6 +9899,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9860,6 +9939,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9899,6 +9979,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9941,6 +10022,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9974,6 +10056,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10013,6 +10096,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10055,6 +10139,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10088,6 +10173,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10127,6 +10213,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10166,6 +10253,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10208,6 +10296,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10241,6 +10330,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10280,6 +10370,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10319,6 +10410,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10356,6 +10448,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10393,6 +10486,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10426,6 +10520,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10465,6 +10560,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10506,6 +10602,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10539,6 +10636,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10582,6 +10680,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10617,6 +10716,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10650,6 +10750,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10693,6 +10794,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10726,6 +10828,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10765,6 +10868,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10798,6 +10902,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10831,6 +10936,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10864,6 +10970,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10901,6 +11008,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10934,6 +11042,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10967,6 +11076,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11001,6 +11111,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11034,6 +11145,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11068,6 +11180,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11101,6 +11214,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11134,6 +11248,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11168,6 +11283,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11201,6 +11317,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11234,6 +11351,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11270,6 +11388,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11305,6 +11424,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11338,6 +11458,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11375,6 +11496,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 post_id: string;
@@ -11413,6 +11535,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11446,6 +11569,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11479,6 +11603,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11519,6 +11644,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11558,6 +11684,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11591,6 +11718,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11629,6 +11757,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11662,6 +11791,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11695,6 +11825,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11734,6 +11865,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11773,6 +11905,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11806,6 +11939,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 plugin_name: string;
@@ -11841,6 +11975,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 plugin_name: string;
@@ -11876,6 +12011,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 plugin_name: string;
@@ -11915,6 +12051,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 plugin_name: string;
@@ -11952,6 +12089,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11985,6 +12123,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12022,6 +12161,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12059,6 +12199,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12096,6 +12237,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12133,6 +12275,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12166,6 +12309,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -12201,6 +12345,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -12236,6 +12381,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -12271,6 +12417,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -12306,6 +12453,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12343,6 +12491,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12384,6 +12533,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12417,6 +12567,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12450,6 +12601,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12483,6 +12635,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12516,6 +12669,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12553,6 +12707,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12590,6 +12745,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12627,6 +12783,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12664,6 +12821,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12701,6 +12859,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12738,6 +12897,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12775,6 +12935,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12812,6 +12973,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12845,6 +13007,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12882,6 +13045,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12919,6 +13083,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12956,6 +13121,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -12993,6 +13159,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 package: string;
@@ -13032,6 +13199,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 plugin_id: string;
@@ -13071,6 +13239,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13108,6 +13277,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13141,6 +13311,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13178,6 +13349,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13211,6 +13383,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13248,6 +13421,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13281,6 +13455,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13318,6 +13493,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 plugin_name: string;
@@ -13353,6 +13529,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 plugin_name: string;
@@ -13392,6 +13569,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 plugin_name: string;
@@ -13427,6 +13605,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 plugin_name: string;
@@ -13466,6 +13645,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 plugin_name: string;
@@ -13505,6 +13685,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13538,6 +13719,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 section_id: string;
@@ -13573,6 +13755,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 section_id: string;
@@ -13612,6 +13795,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 section_id: string;
@@ -13647,6 +13831,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 section_id: string;
@@ -13686,6 +13871,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13723,6 +13909,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13756,6 +13943,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13793,6 +13981,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13830,6 +14019,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13863,6 +14053,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13900,6 +14091,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13937,6 +14129,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -13970,6 +14163,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14007,6 +14201,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14040,6 +14235,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14073,6 +14269,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14110,6 +14307,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14143,6 +14341,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14180,6 +14379,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 provider_id: string;
@@ -14219,6 +14419,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 provider_id: string;
@@ -14254,6 +14455,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 provider_id: string;
@@ -14293,6 +14495,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 provider_id: string;
@@ -14336,6 +14539,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14369,6 +14573,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14402,6 +14607,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14441,6 +14647,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14480,6 +14687,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14513,6 +14721,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -14548,6 +14757,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14581,6 +14791,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14614,6 +14825,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14647,6 +14859,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14684,6 +14897,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14717,6 +14931,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14750,6 +14965,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14789,6 +15005,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14822,6 +15039,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14861,6 +15079,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14901,6 +15120,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14941,6 +15161,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -14974,6 +15195,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15019,6 +15241,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15052,6 +15275,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15091,6 +15315,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15139,6 +15364,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15172,6 +15398,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 request_id: string;
@@ -15208,6 +15435,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 request_id: string;
@@ -15243,6 +15471,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 request_id: string;
@@ -15286,6 +15515,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15322,6 +15552,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15355,6 +15586,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15395,6 +15627,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15431,6 +15664,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15464,6 +15698,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15508,6 +15743,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15541,6 +15777,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15585,6 +15822,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15618,6 +15856,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15657,6 +15896,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15697,6 +15937,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15737,6 +15978,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15770,6 +16012,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15809,6 +16052,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15842,6 +16086,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15875,6 +16120,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15914,6 +16160,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -15953,6 +16200,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 tool_name: string;
@@ -15994,6 +16242,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16040,6 +16289,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16073,6 +16323,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16112,6 +16363,47 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_conversation_kernel_relationship_notes_set_content_pallas_api_llm_conversation_kernel_relationship_notes_set_content_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16151,6 +16443,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16186,6 +16479,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 source_id: string;
@@ -16221,6 +16515,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16265,6 +16560,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16303,6 +16599,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16343,6 +16640,7 @@ export interface operations {
             header?: {
                 "Last-Event-ID"?: number | null;
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16376,6 +16674,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16409,6 +16708,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16442,6 +16742,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16479,6 +16780,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16516,6 +16818,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16553,6 +16856,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -16588,6 +16892,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16621,6 +16926,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16654,6 +16960,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16691,6 +16998,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16724,6 +17032,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16757,6 +17066,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16794,6 +17104,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16827,6 +17138,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -16862,6 +17174,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16895,6 +17208,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16932,6 +17246,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -16969,6 +17284,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17002,6 +17318,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17039,6 +17356,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17072,6 +17390,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -17108,6 +17427,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17142,6 +17462,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17175,6 +17496,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17214,6 +17536,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17247,6 +17570,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17284,6 +17608,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17325,6 +17650,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17358,6 +17684,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17399,6 +17726,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17433,6 +17761,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17467,6 +17796,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17500,6 +17830,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17537,6 +17868,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17574,6 +17906,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17611,6 +17944,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17649,6 +17983,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17687,6 +18022,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17721,6 +18057,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17754,6 +18091,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17787,6 +18125,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17820,6 +18159,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 account: number;
@@ -17855,6 +18195,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 account: number;
@@ -17897,6 +18238,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -17930,6 +18272,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 group_id: number;
@@ -17965,6 +18308,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 group_id: number;
@@ -18005,6 +18349,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18038,6 +18383,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 user_id: number;
@@ -18073,6 +18419,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 user_id: number;
@@ -18112,6 +18459,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 qq: number;
@@ -18147,6 +18495,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18180,6 +18529,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18217,6 +18567,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18252,6 +18603,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18289,6 +18641,7 @@ export interface operations {
             header?: {
                 "Last-Event-ID"?: number | null;
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18322,6 +18675,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18355,6 +18709,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18392,6 +18747,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18425,6 +18781,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -18460,6 +18817,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -18495,6 +18853,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18528,6 +18887,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18565,6 +18925,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18598,6 +18959,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18635,6 +18997,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18668,6 +19031,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18705,6 +19069,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18742,6 +19107,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18779,6 +19145,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18815,6 +19182,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18851,6 +19219,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18888,6 +19257,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18921,6 +19291,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18958,6 +19329,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -18995,6 +19367,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19028,6 +19401,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19061,6 +19435,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19097,6 +19472,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19130,6 +19506,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19164,6 +19541,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19197,6 +19575,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19235,6 +19614,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19268,6 +19648,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19306,6 +19687,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19339,6 +19721,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19372,6 +19755,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19405,6 +19789,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19438,6 +19823,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19471,6 +19857,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -19504,6 +19891,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -19539,6 +19927,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path: {
                 job_id: string;
@@ -19579,6 +19968,7 @@ export interface operations {
             };
             header?: {
                 "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
             };
             path?: never;
             cookie?: never;

@@ -18,14 +18,8 @@ export type LocalTierState = {
   low: { primary: string; backup: string };
 };
 
-export const HIGH_TIER_TASKS = ["llm_chat", "drunk", "repeater_polish"] as const;
-export const LOW_TIER_TASKS = [
-  "repeater_select",
-  "repeater_polish_lite",
-  "repeater_fallback",
-  "affect_refine",
-  "turn_decision",
-] as const;
+export const HIGH_TIER_TASKS = ["llm_chat", "drunk"] as const;
+export const LOW_TIER_TASKS = ["affect_refine", "turn_decision"] as const;
 
 export const VISION_TASKS = ["sticker_vision"] as const;
 
@@ -51,26 +45,6 @@ export const TASK_ROUTE_META: Record<
     title: "醉聊",
     description: "酒后玩法专用对话；与日常 @ 分开配模型",
     kind: "high",
-  },
-  repeater_polish: {
-    title: "接话·完整润色",
-    description: "强场景下把接话整段改得更顺，相对更费",
-    kind: "high",
-  },
-  repeater_select: {
-    title: "接话·语料选句",
-    description: "从已有语料里挑一句发出，轻量常用",
-    kind: "low",
-  },
-  repeater_polish_lite: {
-    title: "接话·轻改口气",
-    description: "语料命中后只轻轻改口气，比完整润色便宜",
-    kind: "low",
-  },
-  repeater_fallback: {
-    title: "接话·现编（非@）",
-    description: "日常接话语料不够时现写一句；不是 @ 对话",
-    kind: "low",
   },
   affect_refine: {
     title: "群情感 refine",
