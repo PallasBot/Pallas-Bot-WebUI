@@ -7,9 +7,9 @@ import {
 } from "../src/config/aiConfigSections";
 
 describe("aiConfigSections", () => {
-  it("keeps three top-level sections with stable ids", () => {
-    expect(AI_CONFIG_SECTIONS.map((s) => s.id)).toEqual(["provider", "dialogue", "media", "kernel"]);
-    expect(AI_CONFIG_SECTIONS.map((s) => s.label)).toEqual(["接入", "接话", "媒体", "会话内核"]);
+  it("keeps top-level sections with stable ids", () => {
+    expect(AI_CONFIG_SECTIONS.map((s) => s.id)).toEqual(["provider", "dialogue", "media"]);
+    expect(AI_CONFIG_SECTIONS.map((s) => s.label)).toEqual(["接入", "接话", "媒体"]);
   });
 
   it("normalizes legacy section aliases", () => {

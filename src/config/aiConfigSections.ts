@@ -30,13 +30,7 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
     lead: "唱歌、语音、画画、网易云等媒体能力（与文字聊天提供方分开）。",
     icon: "layers",
   },
-  {
-    id: "kernel",
-    label: "会话内核",
-    lead: "会话状态、运行轨迹、记忆条目与关系笔记（含好感度）。",
-    icon: "cpu",
-  },
-];
+  ];
 
 export type AiConfigSectionId = (typeof AI_CONFIG_SECTIONS)[number]["id"];
 

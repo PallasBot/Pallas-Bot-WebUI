@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CircleOff, PenLine, X } from "lucide-react";
+import { Check, CircleOff, Heart, PenLine, Search, Trash2, X } from "lucide-react";
 import {
   fetchAgentCatchphrases,
   fetchAgentObservations,
@@ -8,6 +8,12 @@ import {
   resolveAgentCatchphrase,
   saveAgentPersonFact,
 } from "@/api/agentPlatformApi";
+import {
+  fetchConversationKernelRelationshipNotes,
+  postConversationKernelRelationshipNoteDelete,
+  postConversationKernelRelationshipNoteSetAffinity,
+  postConversationKernelRelationshipNoteSetContent,
+} from "@/api/console";
 import { fetchFriendList } from "@/api/console";
 import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChromeContext";
 import AiScopeHint from "@/components/ai/AiScopeHint";
@@ -17,14 +23,32 @@ import {
   useAiObservationScope,
 } from "@/components/ai/AiObservationScopeContext";
 import StateBlock from "@/components/StateBlock";
+import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 type CatchStatusFilter = "candidate" | "active" | "all";
 const CATCHPHRASE_PAGE_SIZE = 50;
+
+const AFFINITY_LEVELS: Array<{ max: number; label: string }> = [
+  { max: -0.5, label: "厌恶" },
+  { max: -0.15, label: "冷淡" },
+  { max: 0.15, label: "陌生" },
+  { max: 0.4, label: "认识" },
+  { max: 0.6, label: "熟人" },
+  { max: 0.8, label: "朋友" },
+];
+
+function affinityLevel(affinity: number): string {
+  for (const level of AFFINITY_LEVELS) {
+    if (affinity < level.max) return level.label;
+  }
+  return "挚友";
+}
 
 function truncateText(raw: string, max = 72): string {
   const text = String(raw || "").trim();
@@ -67,6 +91,7 @@ export default function AiPeoplePage() {
   const [content, setContent] = useState("");
   const [catchFilter, setCatchFilter] = useState<CatchStatusFilter>("candidate");
   const [catchOffset, setCatchOffset] = useState(0);
+  const [notesSearch, setNotesSearch] = useState("");
 
   useRegisterAiObservationChrome({ middle: null });
 
@@ -104,6 +129,20 @@ export default function AiPeoplePage() {
     queryFn: () => fetchFriendList(scopeBot!),
   });
 
+  const notesQuery = useQuery({
+    queryKey: ["conversation-kernel-notes", scopeBot, scopeGroup, notesSearch],
+    enabled: Boolean(scopeBot),
+    queryFn: () =>
+      fetchConversationKernelRelationshipNotes({
+        botId: scopeBot!,
+        groupId: scopeGroup,
+        query: notesSearch || undefined,
+        limit: 80,
+      }),
+  });
+
+  const notes = useMemo(() => notesQuery.data?.items || [], [notesQuery.data]);
+
   const saveFact = useMutation({
     mutationFn: async () => {
       if (!scopeBot || scopeGroup == null) throw new Error("需要 Bot 与群号");
@@ -127,6 +166,54 @@ export default function AiPeoplePage() {
       resolveAgentCatchphrase(entryId, action),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["agent-catchphrases"] });
+    },
+  });
+
+  const [affinityDrafts, setAffinityDrafts] = useState<Record<string, string>>({});
+  const [contentDrafts, setContentDrafts] = useState<Record<string, string>>({});
+  const [editingNote, setEditingNote] = useState<number | null>(null);
+
+  const setContentMut = useMutation({
+    mutationFn: (args: { userId: number; content: string }) =>
+      postConversationKernelRelationshipNoteSetContent({
+        botId: scopeBot!,
+        groupId: scopeGroup,
+        userId: args.userId,
+        content: args.content,
+      }),
+    onSuccess: async () => {
+      pushConsoleToast("关系备注已更新", "ok");
+      setEditingNote(null);
+      setContentDrafts({});
+      await qc.invalidateQueries({ queryKey: ["conversation-kernel-notes"] });
+    },
+  });
+
+  const setAffinityMut = useMutation({
+    mutationFn: (args: { userId: number; affinity: number }) =>
+      postConversationKernelRelationshipNoteSetAffinity({
+        botId: scopeBot!,
+        groupId: scopeGroup,
+        userId: args.userId,
+        affinity: args.affinity,
+      }),
+    onSuccess: async (_data, vars) => {
+      pushConsoleToast("好感度已更新", "ok");
+      setAffinityDrafts((prev) => {
+        const next = { ...prev };
+        delete next[String(vars.userId)];
+        return next;
+      });
+      await qc.invalidateQueries({ queryKey: ["conversation-kernel-notes"] });
+    },
+  });
+
+  const deleteNoteMut = useMutation({
+    mutationFn: (id: number) =>
+      postConversationKernelRelationshipNoteDelete({ id, botId: scopeBot! }),
+    onSuccess: async () => {
+      pushConsoleToast("关系笔记已删除", "ok");
+      await qc.invalidateQueries({ queryKey: ["conversation-kernel-notes"] });
     },
   });
 
@@ -257,6 +344,185 @@ export default function AiPeoplePage() {
               ))}
               {!observations.length ? (
                 <li className="text-sm text-muted-foreground">队列是空的。</li>
+              ) : null}
+            </ul>
+          </StateBlock>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-1.5">
+            <Heart className="size-4 text-muted-foreground" /> 关系笔记
+          </CardTitle>
+          <CardDescription className="flex flex-col gap-2">
+            <span>与成员的关系备注与好感度。好感度直接改数后保存，档位随数值自动更新。</span>
+            <span className="relative max-w-xs">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <Input
+                type="search"
+                className={CHROME_SEARCH_INPUT}
+                placeholder="搜索关系笔记…"
+                aria-label="搜索关系笔记"
+                autoComplete="off"
+                value={notesSearch}
+                onChange={(e) => setNotesSearch(e.target.value)}
+              />
+            </span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <StateBlock loading={notesQuery.isLoading} error={notesQuery.error}>
+            <ul className="max-h-[min(24rem,55vh)] space-y-1.5 overflow-y-auto overscroll-contain pr-1">
+              {notes.map((note) => {
+                const id = Number(note.id);
+                const userId = Number(note.user_id);
+                const affinity = typeof note.affinity === "number" ? note.affinity : null;
+                const draft = affinityDrafts[String(userId)];
+                return (
+                  <li
+                    key={String(note.id)}
+                    className="rounded-md border px-2.5 py-2 text-sm leading-snug"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">QQ {String(note.user_id)}</span>
+                      {Number.isFinite(id) ? (
+                        <div className="flex shrink-0 gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            icon={PenLine}
+                            disabled={deleteNoteMut.isPending}
+                            onClick={() => {
+                              if (editingNote === id) {
+                                setEditingNote(null);
+                                setContentDrafts((prev) => {
+                                  const next = { ...prev };
+                                  delete next[String(userId)];
+                                  return next;
+                                });
+                              } else {
+                                setEditingNote(id);
+                                setContentDrafts((prev) => ({
+                                  ...prev,
+                                  [String(userId)]: String(note.content || ""),
+                                }));
+                              }
+                            }}
+                          >
+                            {editingNote === id ? "取消" : "编辑"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            icon={Trash2}
+                            disabled={deleteNoteMut.isPending}
+                            onClick={() => deleteNoteMut.mutate(id)}
+                          >
+                            删除
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                    {editingNote === id ? (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <Input
+                          className="h-7 min-w-0 flex-1 text-sm"
+                          placeholder="关系备注（不自动改写好感度）"
+                          value={contentDrafts[String(userId)] ?? ""}
+                          onChange={(e) =>
+                            setContentDrafts((prev) => ({
+                              ...prev,
+                              [String(userId)]: e.target.value,
+                            }))
+                          }
+                        />
+                        <Button
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          disabled={
+                            setContentMut.isPending ||
+                            !(contentDrafts[String(userId)] ?? "").trim()
+                          }
+                          onClick={() => {
+                            setContentMut.mutate({
+                              userId,
+                              content: (contentDrafts[String(userId)] ?? "").trim(),
+                            });
+                          }}
+                        >
+                          保存
+                        </Button>
+                      </div>
+                    ) : note.content ? (
+                      <p className="mt-0.5 text-muted-foreground">{String(note.content)}</p>
+                    ) : null}
+                    {affinity != null ? (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary">{affinityLevel(affinity)}</Badge>
+                        <span className="tabular-nums text-xs text-muted-foreground">
+                          好感度 {affinity > 0 ? `+${affinity.toFixed(2)}` : affinity.toFixed(2)}
+                        </span>
+                        <Input
+                          className="h-7 w-24"
+                          type="number"
+                          min={-1}
+                          max={1}
+                          step={0.05}
+                          placeholder={affinity > 0 ? `+${affinity.toFixed(2)}` : affinity.toFixed(2)}
+                          value={draft ?? ""}
+                          onChange={(e) =>
+                            setAffinityDrafts((prev) => ({ ...prev, [String(userId)]: e.target.value }))
+                          }
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          disabled={setAffinityMut.isPending || draft == null}
+                          onClick={() =>
+                            setAffinityDrafts((prev) => {
+                              const next = { ...prev };
+                              delete next[String(userId)];
+                              return next;
+                            })
+                          }
+                        >
+                          重置
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          disabled={
+                            setAffinityMut.isPending ||
+                            !draft?.trim() ||
+                            !Number.isFinite(Number(draft)) ||
+                            Number(draft) < -1 ||
+                            Number(draft) > 1
+                          }
+                          onClick={() => {
+                            const value = Number(draft);
+                            if (Number.isFinite(value)) {
+                              setAffinityMut.mutate({ userId, affinity: value });
+                            }
+                          }}
+                        >
+                          保存
+                        </Button>
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+              {!notes.length ? (
+                <li className="text-sm text-muted-foreground">还没有关系笔记。</li>
               ) : null}
             </ul>
           </StateBlock>

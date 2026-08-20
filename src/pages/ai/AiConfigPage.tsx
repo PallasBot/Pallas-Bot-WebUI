@@ -14,7 +14,6 @@ import AiConfigChromeTools from "@/components/ai/AiConfigChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import AiConfigBehaviorSection from "@/pages/ai/sections/AiConfigBehaviorSection";
 import AiConfigDialogueSection from "@/pages/ai/sections/AiConfigDialogueSection";
-import AiConfigKernelSection from "@/pages/ai/sections/AiConfigKernelSection";
 import AiConfigMediaSection from "@/pages/ai/sections/AiConfigMediaSection";
 import AiConfigProviderSection from "@/pages/ai/sections/AiConfigProviderSection";
 
@@ -22,7 +21,6 @@ const SECTION_BODY: Record<string, ComponentType> = {
   provider: AiConfigProviderSection,
   dialogue: AiConfigDialogueSection,
   media: AiConfigMediaSection,
-  kernel: AiConfigKernelSection,
   behavior: AiConfigBehaviorSection,
 };
 
@@ -40,12 +38,6 @@ const SECTION_REFRESH_KEYS: Record<string, string[][]> = {
     ["plugin-config", "draw"],
     ["plugin-config-raw", "draw"],
     ["ai-ncm"],
-  ],
-  kernel: [
-    ["conversation-kernel-status"],
-    ["conversation-kernel-traces"],
-    ["conversation-kernel-memory"],
-    ["conversation-kernel-notes"],
   ],
   behavior: [
     ["llm-behavior-runs"],
