@@ -264,6 +264,7 @@ export default function LlmProvidersForm() {
   const apiKeysInputRef = useRef<TagsInputHandle>(null);
   const [useEnvVar, setUseEnvVar] = useState(false);
   const [editErr, setEditErr] = useState("");
+  const [registeredModelDraft, setRegisteredModelDraft] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [modelsBusy, setModelsBusy] = useState(false);
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({});
@@ -470,7 +471,10 @@ export default function LlmProvidersForm() {
 
   function registerProviderModel(nameRaw: string) {
     const name = nameRaw.trim();
-    if (!name) return;
+    if (!name) {
+      setRegisteredModelDraft("");
+      return;
+    }
     setDraft((d) => ({
       ...d,
       models: [
@@ -478,6 +482,7 @@ export default function LlmProvidersForm() {
         { model_id: `model-${Date.now()}`, name, capabilities: [], pricing_rules: [] },
       ],
     }));
+    setRegisteredModelDraft("");
   }
 
   function removeRegisteredProviderModel(name: string) {
