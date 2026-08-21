@@ -100,7 +100,7 @@ const PROVIDER_TABS: Array<{ id: Tab; label: string; icon: LucideIcon; lead: str
     id: "tasks",
     label: "任务编排",
     icon: ListTree,
-    lead: "按场景指定主用/备用：@ 对话、接话选句、本轮动作决策等。",
+    lead: "按场景指定主用/备用：@ LLM 对话、醉聊、本轮动作决策等。",
   },
   {
     id: "runtime",

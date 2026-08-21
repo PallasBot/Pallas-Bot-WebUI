@@ -1454,7 +1454,6 @@ export interface ConversationKernelStatus {
   feature_level: string;
   llm_chat_enabled: boolean;
   conversation_feature_level_raw?: string;
-  llm_repeater_mode?: string;
   llm_repeater_feedback_enabled?: boolean;
   llm_repeater_bias_enabled?: boolean;
   llm_repeater_writeback_enabled?: boolean;

@@ -4,8 +4,6 @@
 export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_chat_enabled: "启用智能对话",
   chat_enable: "启用酒后 RWKV（独立通道）",
-  llm_repeater_mode: "接话时如何用智能对话",
-  llm_polish_lite_sample_rate: "轻润色抽样比例",
   llm_session_enabled: "记住多轮上下文",
   llm_session_user_window: "用户上下文条数",
   llm_session_group_window: "群旁听上下文条数",
@@ -69,12 +67,7 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_output_filter_enabled: "回复输出过滤",
   llm_output_filter_chat_hard_phrases: "LLM 对话硬拦截词",
   llm_output_filter_chat_soft_phrases: "LLM 对话软拦截词",
-  llm_output_filter_polish_lite_hard_phrases: "轻润色硬拦截词",
-  llm_output_filter_polish_lite_soft_phrases: "轻润色软拦截词",
   llm_chat_max_concurrency: "LLM 对话并发上限",
-  llm_repeater_group_cooldown_sec: "接话群冷却（秒）",
-  llm_repeater_max_inflight: "接话并发上限",
-  llm_repeater_global_rpm: "接话全局限流（次/分）",
   llm_reply_gate_enabled: "过滤无意义 @",
   llm_current_turn_decision_enabled: "启用本轮动作决策",
   llm_chat_queue_merge: "冷却期合并多条 @",
@@ -85,7 +78,6 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_reply_split_max_chars: "拆条单段字数上限",
   llm_sticker_fit_enabled: "表情适配与反馈",
   llm_reply_effect_eval_enabled: "记录回复效果评分",
-  llm_reply_style_variants: "本轮回复风格变体",
   llm_persona_output_firewall: "人设输出防火墙",
 };
 
@@ -106,10 +98,9 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
     tier: "essential",
     keys: [
       "llm_chat_enabled",
-      "llm_repeater_mode",
       "llm_tools_enabled",
     ],
-    hint: "先开「智能对话」，再选接话怎么用模型、要不要给工具。本轮动作决策默认关：关着不额外花钱；若开启，模型在「接入 → 任务编排」里配。",
+    hint: "先开「智能对话」。本轮动作决策默认关：关着不额外花钱；若开启，模型在「接入 → 任务编排」里配。",
   },
   {
     title: "发言感知",
@@ -162,7 +153,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_governance_enabled", "conversation_feature_level",
       "llm_current_turn_decision_enabled", "llm_tools_selective", "llm_tools_soft_recall_enabled",
       "llm_tools_soft_recall_min_score", "llm_tools_soft_recall_max_candidates", "llm_tools_max_rounds",
-      "llm_tools_blacklist", "llm_tools_desc_max_len", "llm_polish_lite_sample_rate",
+      "llm_tools_blacklist", "llm_tools_desc_max_len",
     ],
     hint: "默认无需调整；用于兼容旧通道、工具筛选与维护者策略调优。",
   },
@@ -189,8 +180,6 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_output_filter_enabled",
       "llm_output_filter_chat_hard_phrases",
       "llm_output_filter_chat_soft_phrases",
-      "llm_output_filter_polish_lite_hard_phrases",
-      "llm_output_filter_polish_lite_soft_phrases",
       "llm_persona_output_firewall",
     ],
     hint: "拦住客服腔、乱邀约等怪句；人设防火墙另拦泄提示词、舞台旁白、自称模型。硬拦=直接挡；接话被拦时优先退回语料原文。",
@@ -211,12 +200,9 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
     tier: "advanced",
     keys: [
       "llm_chat_max_concurrency",
-      "llm_repeater_group_cooldown_sec",
-      "llm_repeater_max_inflight",
-      "llm_repeater_global_rpm",
       "llm_reply_gate_enabled",
     ],
-    hint: "控制同一时间能跑几路对话/接话、群冷却多久，以及无意义 @ 是否直接忽略。默认偏保守，活跃群可再调严省额度。",
+    hint: "控制 LLM 对话并发，以及无意义 @ 是否直接忽略。默认偏保守，活跃群可再调严省额度。",
   },
   {
     title: "表情图",
@@ -242,12 +228,6 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_expression_retrieve_limit",
     ],
     hint: "让牛牛从群聊里学习群体表达习惯（黑话、口癖）并在回复中自然使用；自动晋升会把高频表达提升为常用偏好。",
-  },
-  {
-    title: "风格变体",
-    tier: "advanced",
-    keys: ["llm_reply_style_variants"],
-    hint: "按当前情绪临时换口气（俏皮、冷静等），只影响当轮，不改长期人设。默认大约四分之一概率触发；没有情感数据时用默认口气组。",
   },
   {
     title: "回复后处理",

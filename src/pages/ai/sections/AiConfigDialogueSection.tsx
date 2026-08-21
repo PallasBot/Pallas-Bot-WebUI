@@ -47,7 +47,7 @@ const SELECT_OPTIONS: Array<{ value: ContentPanel; label: string; icon: LucideIc
     value: "form",
     label: "策略",
     icon: ClipboardList,
-    lead: "总开关、接话怎么用模型、工具与「搜一下」、过滤与限流。",
+    lead: "总开关、工具与「搜一下」、过滤与限流。",
   },
   {
     value: "session",

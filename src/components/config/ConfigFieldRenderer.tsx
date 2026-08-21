@@ -7,7 +7,6 @@ import BotAccountCombobox from "@/components/BotAccountCombobox";
 import ConsoleSwitch from "@/components/ConsoleSwitch";
 import StringMapField, { tryParseStringMap } from "@/components/config/StringMapField";
 import PersonaOutputFirewallField from "@/components/config/PersonaOutputFirewallField";
-import ReplyStyleVariantsField from "@/components/config/ReplyStyleVariantsField";
 import TagsInput from "@/components/config/TagsInput";
 import { ChromeOptionLabel } from "@/components/ChromeField";
 import UiInput from "@/components/ui/UiInput";
@@ -71,9 +70,8 @@ export default function ConfigFieldRenderer({
   const usesTags = isChipListField(field);
   const usesIdTags = isIdListField(field);
   const usesStringMap = field.kind === "json" && tryParseStringMap(modelValue) != null;
-  const usesReplyStyleVariants = field.name === "llm_reply_style_variants";
   const usesPersonaOutputFirewall = field.name === "llm_persona_output_firewall";
-  const usesStructuredJsonForm = usesReplyStyleVariants || usesPersonaOutputFirewall;
+  const usesStructuredJsonForm = usesPersonaOutputFirewall;
 
   const { favorites } = useBotFavorites();
   const instQ = useQuery({
@@ -254,10 +252,6 @@ export default function ConfigFieldRenderer({
           inputMode={usesIdTags ? "numeric" : undefined}
           acceptPattern={usesIdTags ? /^\d+$/ : undefined}
         />
-      ) : null}
-
-      {usesReplyStyleVariants ? (
-        <ReplyStyleVariantsField value={modelValue} onValueChange={onValueChange} />
       ) : null}
 
       {usesPersonaOutputFirewall ? (
