@@ -1011,7 +1011,9 @@ export function aggregateHistoryRoutes(
     const date = String(row.date || "").slice(0, 10);
     if (!date || date < start || date > end) continue;
     const byTask = row.bot?.by_task ?? {};
-    for (const taskRow of Object.values(byTask)) {
+    for (const [task, taskRow] of Object.entries(byTask)) {
+      // AI 观测只统计 LLM 任务的路由；repeater 语料接话（corpus_select）不属 LLM，剔除
+      if (task === "repeater") continue;
       const rc = taskRow?.route_counts;
       if (!rc) continue;
       for (const [route, count] of Object.entries(rc)) {
