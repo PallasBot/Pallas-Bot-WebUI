@@ -478,6 +478,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/persona/group-style/manage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Persona Group Style Manage Get */
+        get: operations["_llm_persona_group_style_manage_get_pallas_api_common_config_llm_persona_group_style_manage_get"];
+        put?: never;
+        /** Llm Persona Group Style Manage Post */
+        post: operations["_llm_persona_group_style_manage_post_pallas_api_common_config_llm_persona_group_style_manage_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/persona/base-prompt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Persona Base Prompt Get */
+        get: operations["_llm_persona_base_prompt_get_pallas_api_common_config_llm_persona_base_prompt_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/persona/base-prompt/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Persona Base Prompt Content */
+        post: operations["_llm_persona_base_prompt_content_pallas_api_common_config_llm_persona_base_prompt_content_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/persona/base-prompt/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Persona Base Prompt Save */
+        post: operations["_llm_persona_base_prompt_save_pallas_api_common_config_llm_persona_base_prompt_save_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/persona/base-prompt/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Persona Base Prompt Restore */
+        post: operations["_llm_persona_base_prompt_restore_pallas_api_common_config_llm_persona_base_prompt_restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/persona/base-prompt/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Persona Base Prompt Clear */
+        post: operations["_llm_persona_base_prompt_clear_pallas_api_common_config_llm_persona_base_prompt_clear_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/persona/base-prompt/enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Persona Base Prompt Enabled */
+        post: operations["_llm_persona_base_prompt_enabled_pallas_api_common_config_llm_persona_base_prompt_enabled_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/persona/sticker-labels": {
         parameters: {
             query?: never;
@@ -6176,6 +6296,18 @@ export interface components {
             /** Error */
             error?: null;
         };
+        /** _ApiOkResponse[_BasePromptPreviewData] */
+        _ApiOkResponse__BasePromptPreviewData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_BasePromptPreviewData"];
+            /** Error */
+            error?: null;
+        };
         /** _ApiOkResponse[_ConsoleLoginChangeData] */
         _ApiOkResponse__ConsoleLoginChangeData_: {
             /**
@@ -6197,6 +6329,18 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_ConsoleSetupStatusData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[_GroupStyleGovernanceData] */
+        _ApiOkResponse__GroupStyleGovernanceData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_GroupStyleGovernanceData"];
             /** Error */
             error?: null;
         };
@@ -6307,6 +6451,81 @@ export interface components {
             data: components["schemas"]["_StickerLabelOverviewData"];
             /** Error */
             error?: null;
+        };
+        /** _BasePromptEnabledBody */
+        _BasePromptEnabledBody: {
+            /** Enabled */
+            enabled: boolean;
+        };
+        /** _BasePromptPreviewData */
+        _BasePromptPreviewData: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Mode
+             * @default append
+             */
+            mode: string;
+            /**
+             * Builtin Sha256
+             * @default
+             */
+            builtin_sha256: string;
+            /**
+             * Builtin Updated
+             * @default false
+             */
+            builtin_updated: boolean;
+            /**
+             * Updated At
+             * @default
+             */
+            updated_at: string;
+            /**
+             * Text Preview
+             * @default
+             */
+            text_preview: string;
+            /** Versions */
+            versions?: components["schemas"]["_BasePromptPreviewVersion"][];
+        };
+        /** _BasePromptPreviewVersion */
+        _BasePromptPreviewVersion: {
+            /** Id */
+            id: string;
+            /**
+             * Mode
+             * @default append
+             */
+            mode: string;
+            /**
+             * Builtin Sha256
+             * @default
+             */
+            builtin_sha256: string;
+            /**
+             * Updated At
+             * @default
+             */
+            updated_at: string;
+        };
+        /** _BasePromptRestoreBody */
+        _BasePromptRestoreBody: {
+            /** Version Id */
+            version_id: string;
+        };
+        /** _BasePromptSaveBody */
+        _BasePromptSaveBody: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "append" | "replace";
+            /** Text */
+            text: string;
         };
         /** _BotConfigPatch */
         _BotConfigPatch: {
@@ -6688,6 +6907,29 @@ export interface components {
             group_id: number;
             /** Plugins */
             plugins?: string[];
+        };
+        /** _GroupStyleGovernanceData */
+        _GroupStyleGovernanceData: {
+            /** Collection Enabled */
+            collection_enabled: boolean;
+            /** Injection Enabled */
+            injection_enabled: boolean;
+        };
+        /** _GroupStyleManageBody */
+        _GroupStyleManageBody: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "collection" | "injection" | "clear" | "rebuild";
+            /** Bot Id */
+            bot_id?: number | null;
+            /** Group Id */
+            group_id?: number | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Continue Learning */
+            continue_learning?: boolean | null;
         };
         /** _HelpMenuVisibilityBody */
         _HelpMenuVisibilityBody: {
@@ -7533,7 +7775,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable";
+            action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance";
             /** Bot Id */
             bot_id?: number | null;
             /** Group Id */
@@ -7544,6 +7786,12 @@ export interface components {
              */
             scene: string;
             overrides?: components["schemas"]["_SemanticStyleOverridesPatch"] | null;
+            /** Collection Enabled */
+            collection_enabled?: boolean | null;
+            /** Injection Enabled */
+            injection_enabled?: boolean | null;
+            /** Continue Learning */
+            continue_learning?: boolean | null;
         };
         /** _SemanticStyleOverridesData */
         _SemanticStyleOverridesData: {
@@ -7649,6 +7897,16 @@ export interface components {
              * @default true
              */
             enabled: boolean;
+            /**
+             * Collection Enabled
+             * @default true
+             */
+            collection_enabled: boolean;
+            /**
+             * Injection Enabled
+             * @default true
+             */
+            injection_enabled: boolean;
             overrides?: components["schemas"]["_SemanticStyleOverridesData"] | null;
             /**
              * Example Count
@@ -9219,6 +9477,298 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["_ApiOkResponse_GroupExpressionProfile_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_group_style_manage_get_pallas_api_common_config_llm_persona_group_style_manage_get: {
+        parameters: {
+            query: {
+                /** @description Bot QQ */
+                bot_id: number;
+                /** @description 群号 */
+                group_id: number;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__GroupStyleGovernanceData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_group_style_manage_post_pallas_api_common_config_llm_persona_group_style_manage_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_GroupStyleManageBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__GroupStyleGovernanceData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_base_prompt_get_pallas_api_common_config_llm_persona_base_prompt_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__BasePromptPreviewData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_base_prompt_content_pallas_api_common_config_llm_persona_base_prompt_content_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_base_prompt_save_pallas_api_common_config_llm_persona_base_prompt_save_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_BasePromptSaveBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_base_prompt_restore_pallas_api_common_config_llm_persona_base_prompt_restore_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_BasePromptRestoreBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_base_prompt_clear_pallas_api_common_config_llm_persona_base_prompt_clear_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_base_prompt_enabled_pallas_api_common_config_llm_persona_base_prompt_enabled_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_BasePromptEnabledBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

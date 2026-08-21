@@ -9,6 +9,9 @@ import type {
   LlmToolIntentPreview,
   SemanticStyleQualityData,
   SemanticStyleStatusData,
+  GroupStyleGovernanceData,
+  BasePromptOverrideData,
+  BasePromptPreviewData,
   LlmStickerLabelMaintenanceResult,
   LlmStickerLabelManageRequest,
   LlmStickerLabelOverviewData,
@@ -1670,6 +1673,70 @@ export type LlmRepeaterSemanticStyleOverrides = {
   image?: boolean;
 };
 
+export async function fetchGroupStyleGovernance(params: {
+  botId: number;
+  groupId: number;
+}): Promise<GroupStyleGovernanceData> {
+  const { data: body } = await http.get("/common-config/llm/persona/group-style/manage", {
+    params: { bot_id: params.botId, group_id: params.groupId },
+  });
+  return envelopeData(body) || {};
+}
+
+type GroupStyleGovernanceManageBody = {
+  action: "collection" | "injection" | "clear" | "rebuild";
+  botId: number;
+  groupId: number;
+  enabled?: boolean;
+  continueLearning?: boolean;
+};
+
+export async function postGroupStyleGovernanceManage(
+  body: GroupStyleGovernanceManageBody,
+): Promise<GroupStyleGovernanceData> {
+  const { data: res } = await http.post("/common-config/llm/persona/group-style/manage", {
+    action: body.action,
+    bot_id: body.botId,
+    group_id: body.groupId,
+    ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
+    ...(body.continueLearning !== undefined ? { continue_learning: body.continueLearning } : {}),
+  });
+  return envelopeData(res) || res;
+}
+
+export async function fetchBasePromptPreview(): Promise<BasePromptPreviewData> {
+  const { data: body } = await http.get("/common-config/llm/persona/base-prompt");
+  return envelopeData(body) || {};
+}
+
+export async function postBasePromptContent(): Promise<BasePromptOverrideData> {
+  const { data: body } = await http.post("/common-config/llm/persona/base-prompt/content");
+  return envelopeData(body) || {};
+}
+
+export async function postBasePromptSave(body: {
+  mode: "append" | "replace";
+  text: string;
+}): Promise<BasePromptOverrideData> {
+  const { data: response } = await http.post("/common-config/llm/persona/base-prompt/save", body);
+  return envelopeData(response) || response;
+}
+
+export async function postBasePromptRestore(versionId: string): Promise<BasePromptOverrideData> {
+  const { data: response } = await http.post("/common-config/llm/persona/base-prompt/restore", { version_id: versionId });
+  return envelopeData(response) || response;
+}
+
+export async function postBasePromptClear(): Promise<{ cleared: boolean }> {
+  const { data: response } = await http.post("/common-config/llm/persona/base-prompt/clear");
+  return envelopeData(response) || response;
+}
+
+export async function postBasePromptEnabled(enabled: boolean): Promise<BasePromptOverrideData> {
+  const { data: response } = await http.post("/common-config/llm/persona/base-prompt/enabled", { enabled });
+  return envelopeData(response) || response;
+}
+
 export async function fetchLlmRepeaterSemanticStyle(params?: {
   botId?: number;
   groupId?: number;
@@ -1687,21 +1754,27 @@ type SemanticStyleManageBase = {
   overrides?: LlmRepeaterSemanticStyleOverrides;
   botId?: number;
   groupId?: number;
+  collectionEnabled?: boolean;
+  injectionEnabled?: boolean;
+  continueLearning?: boolean;
 };
 
 export function postLlmRepeaterSemanticStyleManage(
   body: SemanticStyleManageBase & { action: "quality" },
 ): Promise<SemanticStyleQualityData>;
 export function postLlmRepeaterSemanticStyleManage(
-  body: SemanticStyleManageBase & { action: "status" | "overrides" | "clear" | "rebuild" | "recover" | "disable" },
+  body: SemanticStyleManageBase & { action: "status" | "overrides" | "clear" | "rebuild" | "recover" | "disable" | "enable" | "set_governance" },
 ): Promise<SemanticStyleStatusData>;
 export async function postLlmRepeaterSemanticStyleManage(body: SemanticStyleManageBase & {
-  action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable";
+  action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance";
 }): Promise<SemanticStyleStatusData | SemanticStyleQualityData> {
   const { data: res } = await http.post("/llm/repeater-semantic-style/manage", {
     action: body.action,
     ...(body.overrides ? { overrides: body.overrides } : {}),
     ...(body.botId && body.groupId ? { bot_id: body.botId, group_id: body.groupId } : {}),
+    ...(body.collectionEnabled !== undefined ? { collection_enabled: body.collectionEnabled } : {}),
+    ...(body.injectionEnabled !== undefined ? { injection_enabled: body.injectionEnabled } : {}),
+    ...(body.continueLearning !== undefined ? { continue_learning: body.continueLearning } : {}),
   });
   return envelopeData(res) || res;
 }

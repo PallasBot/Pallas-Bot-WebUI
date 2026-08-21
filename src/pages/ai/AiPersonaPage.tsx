@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, Download, RefreshCw } from "lucide-react";
+import { Ban, Download, RefreshCw, Trash2 } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchLlmStickerLabelOverview,
+  fetchGroupStyleGovernance,
   fetchLlmRepeaterSemanticStyle,
+  postGroupStyleGovernanceManage,
   postLlmStickerLabelManage,
   postLlmRepeaterSemanticStyleManage,
 } from "@/api/console";
@@ -16,6 +18,7 @@ import {
 } from "@/api/fullConsole";
 import type {
   GroupStyleProfileSnapshot,
+  GroupStyleGovernanceData,
   GroupExpressionProfile,
   LlmStickerLabelManageRequest,
   LlmStickerLabelOverviewData,
@@ -36,6 +39,7 @@ import {
 } from "@/components/ai/AiObservationScopeContext";
 import CopyIconButton from "@/components/CopyIconButton";
 import StateBlock from "@/components/StateBlock";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -429,7 +433,14 @@ function StickerLabelOverview({
 }
 
 type SemanticStyleOverrides = { aggressive: boolean; nonsense: boolean; direct: boolean; image: boolean };
-type SemanticStyleAction = "overrides" | "rebuild" | "quality" | "disable";
+type SemanticStyleAction = "overrides" | "rebuild" | "quality" | "disable" | "enable" | "set_governance" | "clear";
+type GroupStyleAction = "collection" | "injection" | "clear" | "rebuild";
+type SemanticStyleActionRequest = {
+  action: SemanticStyleAction;
+  continueLearning?: boolean;
+  collectionEnabled?: boolean;
+  injectionEnabled?: boolean;
+};
 
 function isSemanticStyleQuality(
   data: SemanticStyleStatusData | SemanticStyleQualityData,
@@ -449,19 +460,37 @@ function SemanticStyleControls({
   overrides: SemanticStyleOverrides;
   setOverrides: (value: SemanticStyleOverrides) => void;
   busy: boolean;
-  onAction: (action: SemanticStyleAction) => void;
+  onAction: (request: SemanticStyleActionRequest) => void;
 }) {
   const options: Array<[keyof SemanticStyleOverrides, string]> = [
     ["aggressive", "攻击性"], ["nonsense", "无厘头"], ["direct", "直给"], ["image", "图片倾向"],
   ];
   return (
     <section className="space-y-3 border-t pt-4" aria-label="群表达质量与管理">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={data?.enabled === false ? "muted" : "success"}>{data?.enabled === false ? "已停用" : "已启用"}</Badge>
+       <div className="flex flex-wrap items-center gap-2">
+         <Badge variant={data?.injection_enabled === false ? "muted" : "success"}>{data?.injection_enabled === false ? "未注入" : "正在注入"}</Badge>
         <Badge variant="outline">样例 {num(data?.example_count)}</Badge>
         <Badge variant="outline">画像 {num(data?.profile_count)}</Badge>
         <span className="text-xs text-muted-foreground">范围：当前 Bot + 当前群；未指定时不开放管理。</span>
-      </div>
+       </div>
+       <div className="grid gap-2 sm:grid-cols-2">
+         <label className="flex min-h-10 items-center justify-between gap-2 rounded-md border px-3 text-sm">
+           <span>继续学习</span>
+           <Switch
+             checked={data?.collection_enabled !== false}
+             disabled={busy}
+              onCheckedChange={(collectionEnabled) => onAction({ action: "set_governance", collectionEnabled })}
+           />
+         </label>
+         <label className="flex min-h-10 items-center justify-between gap-2 rounded-md border px-3 text-sm">
+           <span>参与注入</span>
+           <Switch
+             checked={data?.injection_enabled !== false}
+             disabled={busy}
+              onCheckedChange={(injectionEnabled) => onAction({ action: "set_governance", injectionEnabled })}
+           />
+         </label>
+       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {options.map(([key, label]) => (
           <label key={key} className="flex min-h-10 items-center justify-between gap-2 rounded-md border px-3 text-sm">
@@ -471,10 +500,13 @@ function SemanticStyleControls({
         ))}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" disabled={busy} onClick={() => onAction("overrides")}>应用开关</Button>
-        <Button size="sm" variant="outline" icon={RefreshCw} iconMotion="spin" disabled={busy} onClick={() => onAction("rebuild")}>重建</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction("quality")}>质量评价</Button>
-        <Button size="sm" variant="destructive" icon={Ban} disabled={busy} onClick={() => onAction("disable")}>停用</Button>
+         <Button size="sm" disabled={busy} onClick={() => onAction({ action: "overrides" })}>应用开关</Button>
+         <Button size="sm" variant="outline" icon={RefreshCw} iconMotion="spin" disabled={busy} onClick={() => onAction({ action: "rebuild" })}>重建</Button>
+         <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction({ action: "quality" })}>质量评价</Button>
+         <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction({ action: "enable" })}>全部启用</Button>
+         <Button size="sm" variant="destructive" icon={Ban} disabled={busy} onClick={() => onAction({ action: "disable" })}>全部停用</Button>
+         <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onAction({ action: "clear", continueLearning: true })}>清空并继续学习</Button>
+         <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onAction({ action: "clear", continueLearning: false })}>清空并暂停学习</Button>
       </div>
       {qualityData ? (
         <div className="grid gap-1 rounded-md border p-3 sm:grid-cols-2">
@@ -483,6 +515,42 @@ function SemanticStyleControls({
           ))}
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function GroupStyleControls({
+  data,
+  busy,
+  onAction,
+}: {
+  data: GroupStyleGovernanceData | undefined;
+  busy: boolean;
+  onAction: (action: GroupStyleAction, value?: boolean) => void;
+}) {
+  return (
+    <section className="space-y-3 border-t pt-4" aria-label="群风格治理">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant={data?.injection_enabled === false ? "muted" : "success"}>
+          {data?.injection_enabled === false ? "未注入" : "正在注入"}
+        </Badge>
+        <span className="text-xs text-muted-foreground">采集按群范围生效；注入按当前 Bot + 群生效。</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="flex min-h-10 items-center justify-between gap-2 rounded-md border px-3 text-sm">
+          <span>继续采集</span>
+          <Switch checked={data?.collection_enabled !== false} disabled={busy} onCheckedChange={(value) => onAction("collection", value)} />
+        </label>
+        <label className="flex min-h-10 items-center justify-between gap-2 rounded-md border px-3 text-sm">
+          <span>参与注入</span>
+          <Switch checked={data?.injection_enabled !== false} disabled={busy} onCheckedChange={(value) => onAction("injection", value)} />
+        </label>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" icon={RefreshCw} iconMotion="spin" disabled={busy} onClick={() => onAction("rebuild")}>立即重建</Button>
+        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onAction("clear", true)}>清空并继续学习</Button>
+        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onAction("clear", false)}>清空并暂停学习</Button>
+      </div>
     </section>
   );
 }
@@ -609,6 +677,7 @@ function ExportCard({
 
 export default function AiPersonaPage() {
   const qc = useQueryClient();
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const { botId, groupId } = useAiObservationScope();
   const [plainText, setPlainText] = useState("");
   const [semanticOverrides, setSemanticOverrides] = useState<SemanticStyleOverrides>({
@@ -656,6 +725,11 @@ export default function AiPersonaPage() {
     enabled: botReady && groupReady,
     queryFn: () => fetchLlmRepeaterSemanticStyle({ botId: bot, groupId: group as number }),
   });
+  const groupGovernanceQ = useQuery({
+    queryKey: ["llm-group-style-governance", bot || null, group],
+    enabled: botReady && groupReady,
+    queryFn: () => fetchGroupStyleGovernance({ botId: bot, groupId: group as number }),
+  });
   const stickerLabelQ = useQuery({
     queryKey: ["llm-sticker-label-overview"],
     queryFn: () => fetchLlmStickerLabelOverview(),
@@ -675,24 +749,49 @@ export default function AiPersonaPage() {
   const semanticMut = useMutation<
     SemanticStyleStatusData | SemanticStyleQualityData,
     Error,
-    SemanticStyleAction
+    { action: SemanticStyleAction; continueLearning?: boolean; collectionEnabled?: boolean; injectionEnabled?: boolean }
   >({
-    mutationFn: (action) => {
+    mutationFn: ({ action, continueLearning, collectionEnabled, injectionEnabled }) => {
       const body = {
         action,
         botId: bot,
         groupId: group as number,
         ...(action === "overrides" ? { overrides: semanticOverrides } : {}),
+        ...(action === "set_governance" ? {
+          collectionEnabled: collectionEnabled ?? semanticQ.data?.collection_enabled ?? true,
+          injectionEnabled: injectionEnabled ?? semanticQ.data?.injection_enabled ?? true,
+        } : {}),
+        ...(action === "clear" ? { continueLearning } : {}),
       };
       if (action === "quality") return postLlmRepeaterSemanticStyleManage({ ...body, action });
       return postLlmRepeaterSemanticStyleManage({ ...body, action });
     },
-    onSuccess: async (data, action) => {
-      if (action === "quality" && isSemanticStyleQuality(data)) {
+    onSuccess: async (data, variables) => {
+      if (variables.action === "quality" && isSemanticStyleQuality(data)) {
         setSemanticQuality({ scopeKey: semanticStyleScopeKey(bot, group), data });
       }
       pushConsoleToast("群表达已更新", "ok");
       await qc.invalidateQueries({ queryKey: ["llm-repeater-semantic-style"] });
+    },
+    onError: (error) => pushConsoleToast(axiosErrorDetail(error), "err"),
+  });
+  const groupGovernanceMut = useMutation({
+    mutationFn: ({ action, value }: { action: GroupStyleAction; value?: boolean }) =>
+      postGroupStyleGovernanceManage({
+        action,
+        botId: bot,
+        groupId: group as number,
+        ...(action === "collection" || action === "injection" ? { enabled: value } : {}),
+        ...(action === "clear" ? { continueLearning: value } : {}),
+      }),
+    onSuccess: async () => {
+      pushConsoleToast("群风格已更新", "ok");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["llm-group-style-governance"] }),
+        qc.invalidateQueries({ queryKey: ["llm-persona-group-style"] }),
+        qc.invalidateQueries({ queryKey: ["llm-persona-observe"] }),
+        qc.invalidateQueries({ queryKey: ["llm-persona-export"] }),
+      ]);
     },
     onError: (error) => pushConsoleToast(axiosErrorDetail(error), "err"),
   });
@@ -710,6 +809,7 @@ export default function AiPersonaPage() {
     void qc.invalidateQueries({ queryKey: ["llm-persona-export"] });
     void qc.invalidateQueries({ queryKey: ["llm-persona-group-style"] });
     void qc.invalidateQueries({ queryKey: ["llm-repeater-semantic-style"] });
+    void qc.invalidateQueries({ queryKey: ["llm-group-style-governance"] });
     void qc.invalidateQueries({ queryKey: ["llm-sticker-label-overview"] });
     void qc.invalidateQueries({ queryKey: ["instances"] });
   }, [qc]);
@@ -735,6 +835,14 @@ export default function AiPersonaPage() {
   }, [instQ.data?.bot_profiles]);
 
   const styleLive = styleQ.data;
+  const confirmClear = useCallback(async (kind: "群风格" | "语义风格", continueLearning: boolean) => {
+    return confirm({
+      title: `清空${kind}`,
+      subtitle: `范围为当前 Bot + 当前群。${continueLearning ? "历史记录会被删除，之后继续学习。" : "历史记录会被删除，并暂停后续学习。"}`,
+      warnings: ["此操作不能恢复。"],
+      confirmLabel: continueLearning ? "清空并继续学习" : "清空并暂停学习",
+    });
+  }, [confirm]);
 
   return (
     <div className="space-y-3">
@@ -795,16 +903,41 @@ export default function AiPersonaPage() {
               <div className="space-y-4">
                 <GroupExpressionCard data={styleLive} />
                 {botReady ? (
-                  <StateBlock loading={semanticQ.isLoading} error={semanticQ.error}>
-                    <SemanticStyleControls
-                      data={semanticQ.data}
-                      qualityData={scopedSemanticStyleQuality(semanticQuality, bot, group)}
-                      overrides={semanticOverrides}
-                      setOverrides={setSemanticOverrides}
-                      busy={semanticMut.isPending}
-                      onAction={(action) => void semanticMut.mutateAsync(action)}
-                    />
-                  </StateBlock>
+                  <div className="space-y-4">
+                    <StateBlock loading={groupGovernanceQ.isLoading} error={groupGovernanceQ.error}>
+                      <GroupStyleControls
+                        data={groupGovernanceQ.data}
+                        busy={groupGovernanceMut.isPending}
+                        onAction={(action, value) => {
+                          if (action !== "clear") {
+                            void groupGovernanceMut.mutateAsync({ action, value });
+                            return;
+                          }
+                          void confirmClear("群风格", value !== false).then((accepted) => {
+                            if (accepted) void groupGovernanceMut.mutateAsync({ action, value });
+                          });
+                        }}
+                      />
+                    </StateBlock>
+                    <StateBlock loading={semanticQ.isLoading} error={semanticQ.error}>
+                      <SemanticStyleControls
+                        data={semanticQ.data}
+                        qualityData={scopedSemanticStyleQuality(semanticQuality, bot, group)}
+                        overrides={semanticOverrides}
+                        setOverrides={setSemanticOverrides}
+                        busy={semanticMut.isPending}
+                        onAction={({ action, continueLearning, collectionEnabled, injectionEnabled }) => {
+                          if (action !== "clear") {
+                            void semanticMut.mutateAsync({ action, collectionEnabled, injectionEnabled });
+                            return;
+                          }
+                          void confirmClear("语义风格", continueLearning !== false).then((accepted) => {
+                            if (accepted) void semanticMut.mutateAsync({ action, continueLearning });
+                          });
+                        }}
+                      />
+                    </StateBlock>
+                  </div>
                 ) : (
                   <AiScopeHint>填写 Bot QQ 后可查看当前 Bot + 群范围的语义样例质量与管理操作。</AiScopeHint>
                 )}
@@ -828,6 +961,7 @@ export default function AiPersonaPage() {
           onReload={() => void exportQ.refetch()}
         />
       </StateBlock>
+      {confirmDialog}
     </div>
   );
 }

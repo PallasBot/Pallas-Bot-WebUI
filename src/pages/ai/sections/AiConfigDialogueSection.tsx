@@ -35,6 +35,7 @@ import {
 } from "@/config/configFieldLabels";
 import AiLlmFieldPanel from "@/pages/ai/sections/AiLlmFieldPanel";
 import AiEmbeddingStatusCard from "@/pages/ai/sections/AiEmbeddingStatusCard";
+import BasePromptGovernanceSection from "@/pages/ai/sections/BasePromptGovernanceSection";
 
 type ContentPanel = "form" | "session" | "memory" | "budget" | "arknights" | "sources" | "tools";
 type EditMode = "form" | "raw";
@@ -218,12 +219,15 @@ export default function AiConfigDialogueSection() {
         <AiSectionHeader icon={panelMeta.icon} title={panelMeta.label} lead={panelMeta.lead} />
       ) : null}
       {contentPanel === "form" && editMode === "form" ? (
-        <CommonConfigForm
-          sectionId="llm"
-          savedMessage="对话配置已保存"
-          inlineSave={false}
-          onSaveState={onSaveState}
-        />
+        <div className="space-y-4">
+          <CommonConfigForm
+            sectionId="llm"
+            savedMessage="对话配置已保存"
+            inlineSave={false}
+            onSaveState={onSaveState}
+          />
+          <BasePromptGovernanceSection />
+        </div>
       ) : null}
       {contentPanel === "form" && editMode === "raw" ? (
         <CommonConfigForm
