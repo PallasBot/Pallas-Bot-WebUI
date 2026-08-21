@@ -193,6 +193,40 @@ function ModelPriceField({
   );
 }
 
+function fmtPrice(v: number | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "0";
+  return String(parseFloat(v.toFixed(6)));
+}
+
+function formatPricingRuleSummary(rule: LlmProviderPricingRule): string {
+  const parts: string[] = [];
+  if (rule.kind === "per_request") {
+    parts.push(
+      rule.price_per_request != null && rule.price_per_request > 0
+        ? `按次 ¥${fmtPrice(rule.price_per_request)}`
+        : "按次",
+    );
+  } else {
+    const hasTokenPrice = (rule.price_in ?? 0) > 0 || (rule.price_out ?? 0) > 0;
+    if (hasTokenPrice) {
+      parts.push(`¥${fmtPrice(rule.price_in)}/¥${fmtPrice(rule.price_out)}`);
+    }
+    if ((rule.cache_price_in ?? 0) > 0 || (rule.cache_price_out ?? 0) > 0) {
+      parts.push(`缓存 ¥${fmtPrice(rule.cache_price_in)}/¥${fmtPrice(rule.cache_price_out)}`);
+    }
+    if (!hasTokenPrice && !(rule.cache_price_in ?? 0) && !(rule.cache_price_out ?? 0)) {
+      parts.push("按 Token");
+    }
+  }
+  if (rule.input_tokens_min != null || rule.input_tokens_max != null) {
+    parts.push(`[${rule.input_tokens_min ?? ""}-${rule.input_tokens_max ?? ""}]`);
+  }
+  if (rule.daily_start || rule.daily_end) {
+    parts.push(`${rule.daily_start || "00:00"}~${rule.daily_end || "24:00"}`);
+  }
+  return parts.join(" · ");
+}
+
 function DailyTimeSelect({ value, onValueChange, label }: { value?: string; onValueChange: (value: string) => void; label: string }) {
   const hours = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`);
   return <Popover>
@@ -1512,7 +1546,19 @@ export default function LlmProvidersForm() {
                               </Button>
                             </div>
                           </div>
-                          {collapsed ? <p className="text-xs text-muted-foreground">价格条件：{(model.pricing_rules || []).length} 条</p> : <>
+                          {collapsed ? (
+                            <div className="space-y-1 text-xs text-muted-foreground">
+                              {(model.pricing_rules || []).length ? (
+                                (model.pricing_rules || []).map((rule) => (
+                                  <p key={rule.id} className="truncate font-mono">
+                                    {formatPricingRuleSummary(rule)}
+                                  </p>
+                                ))
+                              ) : (
+                                <p>未配置价格条件</p>
+                              )}
+                            </div>
+                          ) : <>
                           {(model.pricing_rules || []).map((rule) => (
                             <div key={rule.id} className="space-y-2 rounded bg-muted/20 p-2 text-xs text-muted-foreground">
                               <div className="flex items-center justify-between gap-2">
