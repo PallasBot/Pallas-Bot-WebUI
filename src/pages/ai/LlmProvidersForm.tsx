@@ -264,7 +264,6 @@ export default function LlmProvidersForm() {
   const apiKeysInputRef = useRef<TagsInputHandle>(null);
   const [useEnvVar, setUseEnvVar] = useState(false);
   const [editErr, setEditErr] = useState("");
-  const [registeredModelDraft, setRegisteredModelDraft] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [modelsBusy, setModelsBusy] = useState(false);
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({});
@@ -479,7 +478,6 @@ export default function LlmProvidersForm() {
         { model_id: `model-${Date.now()}`, name, capabilities: [], pricing_rules: [] },
       ],
     }));
-    setRegisteredModelDraft("");
   }
 
   function removeRegisteredProviderModel(name: string) {
@@ -1593,19 +1591,16 @@ export default function LlmProvidersForm() {
                         </div>
                       })}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div>
                       <AiModelSelect
                         value={registeredModelDraft}
                         options={modelDiscoveryOptionsForProvider(draft.id, [draft], { [draft.id]: models })}
                         presetOptions={providerCommonModels(draft.id, [draft])}
                         isFetching={modelsBusy}
                         onDiscover={() => void refreshModels()}
-                        placeholder="选择或输入模型名称"
-                        onValueChange={setRegisteredModelDraft}
+                        placeholder="选择或输入模型名，选中后即加入已注册模型"
+                        onValueChange={registerProviderModel}
                       />
-                      <Button type="button" size="sm" variant="outline" className="h-8" icon={Plus} onClick={() => registerProviderModel(registeredModelDraft)}>
-                        注册模型
-                      </Button>
                     </div>
                   </div>
 

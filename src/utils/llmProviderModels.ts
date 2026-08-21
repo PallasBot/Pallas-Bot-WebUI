@@ -31,7 +31,7 @@ export function providerCommonModels(providerId: string, providers: ProviderMode
   return [...new Set(values.filter(Boolean))];
 }
 
-/** 实时发现里排除已经登记到该提供方的模型。 */
+/** 实时发现列表（不排除已常用/已注册的模型，均可在「模型发现」中直接选用）。 */
 export function modelDiscoveryOptionsForProvider(
   providerId: string,
   providers: ProviderModelSource[],
@@ -40,8 +40,7 @@ export function modelDiscoveryOptionsForProvider(
   const provider = providerForId(providerId, providers);
   const id = (providerId || "").trim();
   if (!provider || !id) return [];
-  const known = new Set(providerCommonModels(id, providers));
-  return (fetchedByProvider[id] || []).map((model) => String(model || "").trim()).filter((model) => model && !known.has(model));
+  return (fetchedByProvider[id] || []).map((model) => String(model || "").trim()).filter(Boolean);
 }
 
 export function modelOptionsForProvider(
