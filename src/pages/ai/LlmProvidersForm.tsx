@@ -49,7 +49,7 @@ import {
 } from "@/utils/llmProviderModels";
 import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
-import { AlertTriangle, ChevronDown, ChevronUp, Cloud, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Save, Server, SlidersHorizontal, Trash2, Unplug, X, type LucideIcon } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, Cloud, Copy, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Save, Server, SlidersHorizontal, Trash2, Unplug, X, type LucideIcon } from "lucide-react";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { normalizeDrawCostCurrency } from "@/utils/drawGateways";
 import { decimalInputDraft, formatDecimalInput } from "@/utils/decimalInput";
@@ -388,6 +388,28 @@ export default function LlmProvidersForm() {
     setDraftApiKeys([]);
     setKeepStoredApiKey(false);
     setUseEnvVar(false);
+    setEditErr("");
+    setModels([]);
+    setEditing(true);
+  }
+
+  function duplicateProvider(index: number) {
+    const row = doc.providers[index];
+    if (!row) return;
+    setEditIndex(null);
+    const next = JSON.parse(JSON.stringify(row)) as LlmProviderRow;
+    if (!Array.isArray(next.capabilities)) next.capabilities = ["text"];
+    if (typeof next.model_effort !== "string") next.model_effort = "";
+    if (!next.request_method) next.request_method = "chat_completions";
+    if (!next.model_pricing || typeof next.model_pricing !== "object") next.model_pricing = {};
+    next.id = `${row.id}-副本`;
+    if (!next.enabled) next.enabled = true;
+    setDraft(next);
+    const keys = Array.isArray(row.api_keys) ? row.api_keys.map((k) => String(k || "").trim()).filter(Boolean) : [];
+    if (!keys.length && row.api_key?.trim()) keys.push(row.api_key.trim());
+    setDraftApiKeys(keys);
+    setKeepStoredApiKey(Boolean(row.api_key_set) && keys.length === 0);
+    setUseEnvVar(Boolean(row.api_key_env?.trim()) && !row.api_key_set && keys.length === 0);
     setEditErr("");
     setModels([]);
     setEditing(true);
@@ -1159,13 +1181,30 @@ export default function LlmProvidersForm() {
                       )}
                       <span className="min-w-0 truncate font-medium">{p.id}</span>
                     </div>
-                    <Switch
-                      checked={p.enabled}
-                      aria-label={`${p.id} 启用`}
-                      onCheckedChange={(checked) => toggleProviderEnabled(index, checked)}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    />
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title={`复制 ${p.id} 为新提供方`}
+                        aria-label={`复制 ${p.id} 为新提供方`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          duplicateProvider(index);
+                        }}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <Copy className="size-4" />
+                      </Button>
+                      <Switch
+                        checked={p.enabled}
+                        aria-label={`${p.id} 启用`}
+                        onCheckedChange={(checked) => toggleProviderEnabled(index, checked)}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      />
+                    </div>
                   </div>
                   <div className="truncate text-xs text-muted-foreground">
                     {p.base_url || "本地推理端点"}
