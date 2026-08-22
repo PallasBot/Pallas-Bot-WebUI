@@ -1,13 +1,6 @@
 /** AI 观测页分段（工具条 Select，对齐协议连接 / AI 配置） */
 
-export type AiObservationSectionId =
-  | "statistics"
-  | "session"
-  | "memory"
-  | "people"
-  | "tasks"
-  | "persona"
-  | "logs";
+export type AiObservationSectionId = "statistics" | "session" | "tasks" | "logs";
 
 /** 顶栏 Bot / 群过滤；未声明则不显示对应输入。 */
 export type AiObservationScopeNeeds = {
@@ -40,31 +33,10 @@ export const AI_OBSERVATION_SECTIONS: readonly AiObservationSectionMeta[] = [
     scope: { bot: true, group: true },
   },
   {
-    id: "memory",
-    label: "记忆",
-    lead: "群内长期记忆：图谱、条目与偏好。",
-    path: "/ai/memory",
-    scope: { bot: true, group: true },
-  },
-  {
-    id: "people",
-    label: "人物",
-    lead: "人物事实、待整理观察与口癖审批。",
-    path: "/ai/people",
-    scope: { bot: true, group: true },
-  },
-  {
     id: "tasks",
     label: "任务",
     lead: "提醒与异步任务，默认看未完成。",
     path: "/ai/tasks",
-    scope: { bot: true, group: true },
-  },
-  {
-    id: "persona",
-    label: "牛格",
-    lead: "牛格状态、群风格，以及发给模型的人设。",
-    path: "/ai/persona",
     scope: { bot: true, group: true },
   },
   {
@@ -85,10 +57,7 @@ export function aiObservationSectionFromPath(pathname: string): AiObservationSec
   if (p === "/ai/statistics" || p.startsWith("/ai/statistics/")) return "statistics";
   if (p === "/ai/session" || p.startsWith("/ai/session/")) return "session";
   if (p === "/ai/history" || p.startsWith("/ai/history/")) return "session";
-  if (p === "/ai/memory" || p.startsWith("/ai/memory/")) return "memory";
-  if (p === "/ai/people" || p.startsWith("/ai/people/")) return "people";
   if (p === "/ai/tasks" || p.startsWith("/ai/tasks/")) return "tasks";
-  if (p === "/ai/persona" || p.startsWith("/ai/persona/")) return "persona";
   if (p === "/ai/logs" || p.startsWith("/ai/logs/")) return "logs";
   return null;
 }

@@ -19,7 +19,10 @@ describe("牛格 UI 清理", () => {
   });
 
   it("群表达只展示最终契约字段且不输出原始 JSON", () => {
-    const persona = readFileSync(resolve(process.cwd(), "src/pages/ai/AiPersonaPage.tsx"), "utf8");
+    const persona = readFileSync(
+      resolve(process.cwd(), "src/pages/ai/governance/GovernanceStyleTab.tsx"),
+      "utf8",
+    );
     expect(persona).not.toContain("length_pref");
     expect(persona).not.toContain("outcome_counts");
     expect(persona).not.toContain("reuse_counts");

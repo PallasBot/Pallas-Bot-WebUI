@@ -5,6 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useSearchParams } from "react-router-dom";
 
 export type AiObservationScope = {
   botId: string;
@@ -16,8 +17,9 @@ export type AiObservationScope = {
 const AiObservationScopeContext = createContext<AiObservationScope | null>(null);
 
 export function AiObservationScopeProvider({ children }: { children: ReactNode }) {
-  const [botId, setBotId] = useState("");
-  const [groupId, setGroupId] = useState("");
+  const [searchParams] = useSearchParams();
+  const [botId, setBotId] = useState(() => searchParams.get("bot") || "");
+  const [groupId, setGroupId] = useState(() => searchParams.get("group") || "");
   const value = useMemo(
     () => ({ botId, groupId, setBotId, setGroupId }),
     [botId, groupId],

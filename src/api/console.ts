@@ -1418,6 +1418,71 @@ export async function putCommonConfigRaw(sectionId: string, toml: string): Promi
   return envelopeData<PluginConfigData>(body);
 }
 
+export type PromptPreviewSection = {
+  id: string;
+  title: string;
+  source: string;
+  active: boolean;
+  content: string;
+};
+
+export type PromptSectionOverride = {
+  mode: "replace" | "append" | "disable";
+  content: string;
+};
+
+export type PromptOverridesData = Record<string, PromptSectionOverride>;
+
+export type PromptPreviewData = {
+  preview_mode: boolean;
+  decision_source: string;
+  bot_id: number;
+  group_id: number | null;
+  user_id: number;
+  query_text: string;
+  sections: PromptPreviewSection[];
+  system_prompt: string;
+  traces?: Record<string, unknown>;
+};
+
+export async function fetchLlmPromptPreview(params: {
+  botId: number;
+  groupId: number;
+  userId: number;
+  queryText: string;
+}): Promise<PromptPreviewData> {
+  const { data: body } = await http.post("/common-config/llm/persona/prompt-preview", {
+    bot_id: params.botId,
+    group_id: params.groupId,
+    user_id: params.userId,
+    query_text: params.queryText,
+  });
+  return envelopeData<PromptPreviewData>(body);
+}
+
+export async function fetchLlmPromptOverrides(params: {
+  botId: number;
+  groupId: number;
+}): Promise<PromptOverridesData> {
+  const { data: body } = await http.get("/common-config/llm/persona/prompt-overrides", {
+    params: { bot_id: params.botId, group_id: params.groupId },
+  });
+  return envelopeData<PromptOverridesData>(body) || {};
+}
+
+export async function saveLlmPromptOverrides(params: {
+  botId: number;
+  groupId: number;
+  sections: PromptOverridesData;
+}): Promise<PromptOverridesData> {
+  const { data: body } = await http.put("/common-config/llm/persona/prompt-overrides", {
+    bot_id: params.botId,
+    group_id: params.groupId,
+    sections: params.sections,
+  });
+  return envelopeData<PromptOverridesData>(body) || {};
+}
+
 export type ConversationKernelStatus = Record<string, unknown>;
 export type ConversationKernelTracesData = { items?: Array<Record<string, unknown>> };
 export type ConversationKernelMemoryData = { items?: Array<Record<string, unknown>> };
@@ -1635,10 +1700,15 @@ export async function postLlmBehaviorPatternDelete(patternId: string): Promise<{
 
 export async function fetchLlmRepeaterFeedback(params: {
   groupId: number;
+  botId: number;
   limit?: number;
 }): Promise<{ items?: Array<Record<string, unknown>> }> {
   const { data: body } = await http.get("/llm/repeater-feedback", {
-    params: { group_id: params.groupId, ...(params.limit ? { limit: params.limit } : {}) },
+    params: {
+      group_id: params.groupId,
+      bot_id: params.botId,
+      ...(params.limit ? { limit: params.limit } : {}),
+    },
   });
   return envelopeData(body) || {};
 }
@@ -1655,13 +1725,19 @@ export async function fetchLlmRepeaterFeedbackSummary(params: {
 
 export async function postLlmRepeaterFeedbackManage(body: {
   entryId?: string;
+  requestId?: string;
   action: "invalidate" | "restore" | "delete" | "correct" | "clear_correction";
   correctedReplyText?: string;
+  botId: number;
+  groupId: number;
 }): Promise<Record<string, unknown>> {
   const { data: res } = await http.post("/llm/repeater-feedback/manage", {
     entry_id: body.entryId ?? "",
+    request_id: body.requestId ?? "",
     action: body.action,
     corrected_reply_text: body.correctedReplyText ?? "",
+    bot_id: body.botId,
+    group_id: body.groupId,
   });
   return envelopeData(res) || res;
 }
@@ -1740,11 +1816,12 @@ export async function postBasePromptEnabled(enabled: boolean): Promise<BasePromp
 export async function fetchLlmRepeaterSemanticStyle(params?: {
   botId?: number;
   groupId?: number;
+  scene?: string;
 }): Promise<SemanticStyleStatusData> {
   const { data: body } = await http.get("/llm/repeater-semantic-style", {
     params:
       params?.botId && params.groupId
-        ? { bot_id: params.botId, group_id: params.groupId }
+        ? { bot_id: params.botId, group_id: params.groupId, scene: params.scene || "group_chat" }
         : undefined,
   });
   return envelopeData(body) || {};
@@ -1754,6 +1831,7 @@ type SemanticStyleManageBase = {
   overrides?: LlmRepeaterSemanticStyleOverrides;
   botId?: number;
   groupId?: number;
+  scene?: string;
   collectionEnabled?: boolean;
   injectionEnabled?: boolean;
   continueLearning?: boolean;
@@ -1771,7 +1849,9 @@ export async function postLlmRepeaterSemanticStyleManage(body: SemanticStyleMana
   const { data: res } = await http.post("/llm/repeater-semantic-style/manage", {
     action: body.action,
     ...(body.overrides ? { overrides: body.overrides } : {}),
-    ...(body.botId && body.groupId ? { bot_id: body.botId, group_id: body.groupId } : {}),
+    ...(body.botId && body.groupId
+      ? { bot_id: body.botId, group_id: body.groupId, scene: body.scene || "group_chat" }
+      : {}),
     ...(body.collectionEnabled !== undefined ? { collection_enabled: body.collectionEnabled } : {}),
     ...(body.injectionEnabled !== undefined ? { injection_enabled: body.injectionEnabled } : {}),
     ...(body.continueLearning !== undefined ? { continue_learning: body.continueLearning } : {}),
@@ -1798,6 +1878,7 @@ export async function postLlmStickerLabelManage(
 }
 
 export async function fetchLlmPromotionCandidates(params: {
+  botId: number;
   groupId: number;
   limit?: number;
   includeResolved?: boolean;
@@ -1805,6 +1886,7 @@ export async function fetchLlmPromotionCandidates(params: {
   const { data: body } = await http.get("/llm/repeater-feedback/promotion-candidates", {
     params: {
       group_id: params.groupId,
+      bot_id: params.botId,
       limit: params.limit ?? 20,
       include_resolved: Boolean(params.includeResolved),
     },
@@ -1815,11 +1897,15 @@ export async function fetchLlmPromotionCandidates(params: {
 export async function postLlmPromotionCandidateResolve(body: {
   candidateId: string;
   action: "promote" | "reject";
+  botId: number;
+  groupId: number;
   reason?: string;
 }): Promise<Record<string, unknown>> {
   const { data: res } = await http.post("/llm/repeater-feedback/promotion-candidates/resolve", {
     candidate_id: body.candidateId,
     action: body.action,
+    bot_id: body.botId,
+    group_id: body.groupId,
     reason: body.reason ?? "",
   });
   return envelopeData(res) || res;

@@ -15,13 +15,7 @@ import {
   postConversationKernelRelationshipNoteSetContent,
 } from "@/api/console";
 import { fetchFriendList } from "@/api/console";
-import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChromeContext";
-import AiScopeHint from "@/components/ai/AiScopeHint";
-import {
-  parseScopeBotId,
-  parseScopeGroupId,
-  useAiObservationScope,
-} from "@/components/ai/AiObservationScopeContext";
+import { useAiGovernanceScope } from "@/components/ai/AiGovernanceScope";
 import StateBlock from "@/components/StateBlock";
 import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import { Badge } from "@/components/ui/badge";
@@ -82,60 +76,62 @@ function factScopeLabel(scope: string): string {
   return scope || "—";
 }
 
-export default function AiPeoplePage() {
+export default function GovernancePeopleTab() {
   const qc = useQueryClient();
-  const { botId, groupId } = useAiObservationScope();
-  const scopeBot = parseScopeBotId(botId);
-  const scopeGroup = parseScopeGroupId(groupId);
+  const { scope } = useAiGovernanceScope();
+  const botReady = scope != null;
+  const groupReady = scope != null && scope.groupId != null;
+  const bot = scope?.botId ?? 0;
+  const group = scope?.groupId ?? null;
   const [userId, setUserId] = useState("");
   const [content, setContent] = useState("");
   const [catchFilter, setCatchFilter] = useState<CatchStatusFilter>("candidate");
   const [catchOffset, setCatchOffset] = useState(0);
   const [notesSearch, setNotesSearch] = useState("");
 
-  useRegisterAiObservationChrome({ middle: null });
-
   const factsQuery = useQuery({
-    queryKey: ["agent-person-facts", scopeBot, scopeGroup],
-    enabled: Boolean(scopeBot),
+    queryKey: ["agent-person-facts", bot, group],
+    enabled: groupReady,
     queryFn: () =>
       fetchAgentPersonFacts({
-        botId: scopeBot!,
-        groupId: scopeGroup,
+        botId: bot,
+        groupId: group,
       }),
   });
   const observationsQuery = useQuery({
-    queryKey: ["agent-observations", scopeBot, scopeGroup],
+    queryKey: ["agent-observations", bot, group],
+    enabled: groupReady,
     queryFn: () =>
       fetchAgentObservations({
-        botId: scopeBot,
-        groupId: scopeGroup,
+        botId: bot,
+        groupId: group,
         status: "all",
       }),
   });
   const catchphrasesQuery = useQuery({
-    queryKey: ["agent-catchphrases", scopeBot, catchFilter, catchOffset],
+    queryKey: ["agent-catchphrases", bot, catchFilter, catchOffset],
+    enabled: groupReady,
     queryFn: () =>
       fetchAgentCatchphrases({
-        botId: scopeBot,
+        botId: bot,
         status: catchFilter === "all" ? undefined : catchFilter,
         offset: catchOffset,
         limit: CATCHPHRASE_PAGE_SIZE,
       }),
   });
   const friendsQuery = useQuery({
-    queryKey: ["friend-list", scopeBot],
-    enabled: Boolean(scopeBot),
-    queryFn: () => fetchFriendList(scopeBot!),
+    queryKey: ["friend-list", bot],
+    enabled: groupReady,
+    queryFn: () => fetchFriendList(bot),
   });
 
   const notesQuery = useQuery({
-    queryKey: ["conversation-kernel-notes", scopeBot, scopeGroup, notesSearch],
-    enabled: Boolean(scopeBot),
+    queryKey: ["conversation-kernel-notes", bot, group, notesSearch],
+    enabled: groupReady,
     queryFn: () =>
       fetchConversationKernelRelationshipNotes({
-        botId: scopeBot!,
-        groupId: scopeGroup,
+        botId: bot,
+        groupId: group,
         query: notesSearch || undefined,
         limit: 80,
       }),
@@ -145,12 +141,12 @@ export default function AiPeoplePage() {
 
   const saveFact = useMutation({
     mutationFn: async () => {
-      if (!scopeBot || scopeGroup == null) throw new Error("需要 Bot 与群号");
+      if (!botReady || group == null) throw new Error("需要 Bot 与群号");
       const uid = Number(userId);
       if (!Number.isFinite(uid) || uid <= 0) throw new Error("用户 ID 无效");
       return saveAgentPersonFact({
-        botId: scopeBot,
-        groupId: scopeGroup,
+        botId: bot,
+        groupId: group,
         userId: uid,
         content,
       });
@@ -176,8 +172,8 @@ export default function AiPeoplePage() {
   const setContentMut = useMutation({
     mutationFn: (args: { userId: number; content: string }) =>
       postConversationKernelRelationshipNoteSetContent({
-        botId: scopeBot!,
-        groupId: scopeGroup,
+        botId: bot,
+        groupId: group,
         userId: args.userId,
         content: args.content,
       }),
@@ -192,8 +188,8 @@ export default function AiPeoplePage() {
   const setAffinityMut = useMutation({
     mutationFn: (args: { userId: number; affinity: number }) =>
       postConversationKernelRelationshipNoteSetAffinity({
-        botId: scopeBot!,
-        groupId: scopeGroup,
+        botId: bot,
+        groupId: group,
         userId: args.userId,
         affinity: args.affinity,
       }),
@@ -209,8 +205,7 @@ export default function AiPeoplePage() {
   });
 
   const deleteNoteMut = useMutation({
-    mutationFn: (id: number) =>
-      postConversationKernelRelationshipNoteDelete({ id, botId: scopeBot! }),
+    mutationFn: (id: number) => postConversationKernelRelationshipNoteDelete({ id, botId: bot }),
     onSuccess: async () => {
       pushConsoleToast("关系笔记已删除", "ok");
       await qc.invalidateQueries({ queryKey: ["conversation-kernel-notes"] });
@@ -248,8 +243,11 @@ export default function AiPeoplePage() {
   const catchTotal = catchphrasesQuery.data?.total ?? 0;
   const catchPageEnd = catchOffset + catchphrases.length;
 
-  if (!scopeBot) {
-    return <AiScopeHint>请在顶栏指定 Bot QQ。</AiScopeHint>;
+  if (!botReady) {
+    return <p className="mt-4 text-sm text-muted-foreground">请先选择 Bot QQ。</p>;
+  }
+  if (!groupReady) {
+    return <p className="mt-4 text-sm text-muted-foreground">请在顶部选择群号，以查看群内人物资料。</p>;
   }
 
   return (
@@ -284,7 +282,7 @@ export default function AiPeoplePage() {
             />
             <Button
               icon={PenLine}
-              disabled={!content.trim() || saveFact.isPending || scopeGroup == null || !userId.trim()}
+              disabled={!content.trim() || saveFact.isPending || !userId.trim()}
               onClick={() => saveFact.mutate()}
             >
               写入
@@ -296,7 +294,6 @@ export default function AiPeoplePage() {
               : friends.length
                 ? `已加载 ${friends.length} 位好友，可搜索或直接输入 QQ。`
                 : "可搜索好友，或直接输入 QQ。"}
-            {scopeGroup == null ? " 写入前请先在顶栏选择群。" : ""}
           </p>
           {saveFact.error ? <p className="text-xs text-destructive">{String(saveFact.error)}</p> : null}
           <StateBlock loading={factsQuery.isLoading} error={factsQuery.error}>
@@ -323,8 +320,7 @@ export default function AiPeoplePage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">待整理观察</CardTitle>
           <CardDescription>
-            尚未写入长期记忆的候选片段，当前 {observationsQuery.data?.queue_size ?? 0}{" "}
-            条。
+            尚未写入长期记忆的候选片段，当前 {observationsQuery.data?.queue_size ?? 0} 条。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -447,8 +443,7 @@ export default function AiPeoplePage() {
                           size="sm"
                           className="h-7 px-2 text-xs"
                           disabled={
-                            setContentMut.isPending ||
-                            !(contentDrafts[String(userId)] ?? "").trim()
+                            setContentMut.isPending || !(contentDrafts[String(userId)] ?? "").trim()
                           }
                           onClick={() => {
                             setContentMut.mutate({
@@ -581,7 +576,10 @@ export default function AiPeoplePage() {
                         {truncateText(saying, 80)}
                       </div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <Badge variant={status === "active" ? "default" : "outline"} className="h-5 px-1.5 text-[10px]">
+                        <Badge
+                          variant={status === "active" ? "default" : "outline"}
+                          className="h-5 px-1.5 text-[10px]"
+                        >
                           {catchphraseStatusLabel(status)}
                         </Badge>
                         <span>支持 {String(item.support)}</span>

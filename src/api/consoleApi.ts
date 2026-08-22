@@ -1275,6 +1275,7 @@ export async function postLlmBehaviorPatternDelete(patternId: string): Promise<{
 
 export async function fetchLlmRepeaterFeedback(params: {
   groupId: number;
+  botId: number;
   limit?: number;
 }): Promise<LlmRepeaterFeedbackData> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/llm/repeater-feedback"]["get"]>(
@@ -1282,6 +1283,7 @@ export async function fetchLlmRepeaterFeedback(params: {
     {
       params: {
         group_id: params.groupId,
+        bot_id: params.botId,
         ...(params.limit ? { limit: params.limit } : {}),
       },
     },
@@ -1308,8 +1310,8 @@ export async function postLlmRepeaterFeedbackManage(body: {
   requestId?: string;
   action: "invalidate" | "restore" | "delete" | "correct" | "clear_correction";
   correctedReplyText?: string;
-  botId?: number;
-  groupId?: number;
+  botId: number;
+  groupId: number;
   userId?: number;
   userText?: string;
   replyText?: string;
@@ -1332,6 +1334,7 @@ export async function postLlmRepeaterFeedbackManage(body: {
 }
 
 export async function fetchLlmPromotionCandidates(params: {
+  botId: number;
   groupId: number;
   limit?: number;
   includeResolved?: boolean;
@@ -1341,6 +1344,7 @@ export async function fetchLlmPromotionCandidates(params: {
   >("/llm/repeater-feedback/promotion-candidates", {
     params: {
       group_id: params.groupId,
+      bot_id: params.botId,
       limit: params.limit ?? 20,
       include_resolved: Boolean(params.includeResolved),
     },
@@ -1350,6 +1354,8 @@ export async function fetchLlmPromotionCandidates(params: {
 export async function postLlmPromotionCandidateResolve(body: {
   candidateId: string;
   action: "promote" | "reject";
+  botId: number;
+  groupId: number;
   reason?: string;
 }): Promise<LlmPromotionCandidate> {
   return consoleOpenapiPost<
@@ -1357,6 +1363,8 @@ export async function postLlmPromotionCandidateResolve(body: {
   >("/llm/repeater-feedback/promotion-candidates/resolve", {
     candidate_id: body.candidateId,
     action: body.action,
+    bot_id: body.botId,
+    group_id: body.groupId,
     reason: body.reason ?? "",
   });
 }

@@ -1,11 +1,17 @@
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import { AI_OBSERVATION_DEFAULT_PATH } from "@/config/aiObservationSections";
 
-/** 配置 / 检测 / 运行态三类入口的统一说明与跳转目标 */
+/** 配置 / 治理 / 观测入口的统一说明与跳转目标 */
 export const AI_ENTRY_RUNTIME = {
   label: "AI 观测",
-  shortLead: "用量、会话与扩展日志；媒体启停见 AI 配置 · 媒体。",
+  shortLead: "查看用量、回放会话与诊断运行问题；媒体启停见 AI 配置 · 媒体。",
   path: AI_OBSERVATION_DEFAULT_PATH,
+} as const;
+
+export const AI_ENTRY_GOVERNANCE = {
+  label: "AI 治理",
+  shortLead: "修改、审核与清理指定 Bot 和群聊的回复资料。",
+  path: "/ai/governance",
 } as const;
 
 export const AI_ENTRY_SITE_GATEWAY_CHECK = {

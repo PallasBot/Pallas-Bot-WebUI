@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Brain,
@@ -23,23 +23,6 @@ import {
   Upload,
 } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
-
-function relativeTimeAgo(raw: string | number | null | undefined): string {
-  if (!raw) return "";
-  const ts = Number(raw);
-  if (!Number.isFinite(ts) || ts <= 0) return "";
-  const sec = Math.max(0, Math.floor(Date.now() / 1000 - ts));
-  if (sec < 60) return "刚刚";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min} 分钟前`;
-  const hour = Math.floor(min / 60);
-  if (hour < 24) return `${hour} 小时前`;
-  const day = Math.floor(hour / 24);
-  if (day < 30) return `${day} 天前`;
-  const month = Math.floor(day / 30);
-  if (month < 12) return `${month} 个月前`;
-  return `${Math.floor(month / 12)} 年前`;
-}
 import {
   fetchConversationKernelMemoryPreferences,
   fetchConversationKernelMidTerm,
@@ -76,13 +59,7 @@ import {
   postMemoryGraphTrashRestore,
   type MemoryCategory,
 } from "@/api/memoryGraphApi";
-import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChromeContext";
-import AiScopeHint from "@/components/ai/AiScopeHint";
-import {
-  parseScopeBotId,
-  parseScopeGroupId,
-  useAiObservationScope,
-} from "@/components/ai/AiObservationScopeContext";
+import { useAiGovernanceScope } from "@/components/ai/AiGovernanceScope";
 import MemoryForceGraph from "@/components/ai/MemoryForceGraph";
 import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import IconStatCard from "@/components/IconStatCard";
@@ -117,6 +94,23 @@ type TabId =
   | "scopes"
   | "preferences";
 
+function relativeTimeAgo(raw: string | number | null | undefined): string {
+  if (!raw) return "";
+  const ts = Number(raw);
+  if (!Number.isFinite(ts) || ts <= 0) return "";
+  const sec = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  if (sec < 60) return "刚刚";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} 分钟前`;
+  const hour = Math.floor(min / 60);
+  if (hour < 24) return `${hour} 小时前`;
+  const day = Math.floor(hour / 24);
+  if (day < 30) return `${day} 天前`;
+  const month = Math.floor(day / 30);
+  if (month < 12) return `${month} 个月前`;
+  return `${Math.floor(month / 12)} 年前`;
+}
+
 function formatTs(ts?: number | null): string {
   if (!ts) return "—";
   try {
@@ -139,7 +133,6 @@ function groupCategoriesByLayer(items: MemoryCategory[]): { layer: number; items
     .map(([layer, list]) => ({ layer, items: list }));
 }
 
-
 function notifyOk(message: string) {
   pushConsoleToast(message, "ok");
 }
@@ -148,10 +141,11 @@ function notifyErr(message: string) {
   pushConsoleToast(message || "操作失败", "err");
 }
 
-export default function AiMemoryPage() {
+/** 记忆治理：未指定群号时使用全局作用域。 */
+export default function GovernanceMemoryTab() {
   const qc = useQueryClient();
   const { confirm, confirmDialog } = useConsoleConfirm();
-  const { botId, groupId } = useAiObservationScope();
+  const { scope } = useAiGovernanceScope();
   const [tab, setTab] = useState<TabId>("overview");
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState("");
@@ -171,8 +165,8 @@ export default function AiMemoryPage() {
     edges: { id: string; fact: string }[];
   } | null>(null);
 
-  const bot = parseScopeBotId(botId) ?? 0;
-  const group = parseScopeGroupId(groupId);
+  const bot = scope?.botId ?? 0;
+  const group = scope?.groupId ?? null;
   const botReady = bot > 0;
 
   const statsQ = useQuery({
@@ -365,10 +359,10 @@ export default function AiMemoryPage() {
     mutationFn: postMemoryGraphExtract,
     onSuccess: async (data) => {
       notifyOk(
-`抽取完成：实体 ${num(data.entities_upserted)} · 关系 ${num(data.edges_upserted)}${
+        `抽取完成：实体 ${num(data.entities_upserted)} · 关系 ${num(data.edges_upserted)}${
           data.episodes != null ? ` · Episode ${num(data.episodes)}` : ""
         }`,
-    );
+      );
       await invalidateGraph();
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
@@ -418,8 +412,8 @@ export default function AiMemoryPage() {
     mutationFn: postMemoryGraphImport,
     onSuccess: async (data) => {
       notifyOk(
-`导入完成：实体 ${num(data.entities_upserted)} · 关系 ${num(data.edges_upserted)} · 分类 ${num(data.categories_upserted)}`,
-    );
+        `导入完成：实体 ${num(data.entities_upserted)} · 关系 ${num(data.edges_upserted)} · 分类 ${num(data.categories_upserted)}`,
+      );
       await invalidateGraph();
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
@@ -428,8 +422,8 @@ export default function AiMemoryPage() {
     mutationFn: postMemoryGraphClear,
     onSuccess: async (data) => {
       notifyOk(
-`已清空图数据：实体 ${num(data.entities)} · 关系 ${num(data.edges)} · 分类 ${num(data.categories)}`,
-    );
+        `已清空图数据：实体 ${num(data.entities)} · 关系 ${num(data.edges)} · 分类 ${num(data.categories)}`,
+      );
       await invalidateGraph();
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
@@ -444,42 +438,6 @@ export default function AiMemoryPage() {
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
-  const filters = useMemo(
-    () => (
-      <div className="relative min-w-[8rem] flex-1 basis-[8rem]">
-        <Search
-          className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
-          strokeWidth={1.75}
-          aria-hidden
-        />
-        <Input
-          type="search"
-          className={CHROME_SEARCH_INPUT}
-          placeholder="搜索记忆…"
-          aria-label="搜索记忆"
-          autoComplete="off"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
-    ),
-    [query],
-  );
-
-  useRegisterAiObservationChrome({
-    middle: filters,
-    onRefresh: invalidateGraph,
-  });
-
-  const prefs = prefsQ.data?.items ?? [];
-  const midItems = midQ.data?.items ?? [];
-  const entities = entitiesQ.data?.items ?? [];
-  const edges = edgesQ.data?.items ?? [];
-  const episodes = episodesQ.data?.items ?? [];
-  const categories = categoriesQ.data?.items ?? [];
-  const categoriesByLayer = groupCategoriesByLayer(categories);
-  const trash = trashQ.data;
-
   async function purgeTrash(kind: "entity" | "category", id: string | number, name: string) {
     if (
       !(await confirm({
@@ -493,11 +451,41 @@ export default function AiMemoryPage() {
     trashPurgeM.mutate({ kind, id, botId: bot });
   }
 
+  const prefs = prefsQ.data?.items ?? [];
+  const midItems = midQ.data?.items ?? [];
+  const entities = entitiesQ.data?.items ?? [];
+  const edges = edgesQ.data?.items ?? [];
+  const episodes = episodesQ.data?.items ?? [];
+  const categories = categoriesQ.data?.items ?? [];
+  const categoriesByLayer = groupCategoriesByLayer(categories);
+  const trash = trashQ.data;
+
   return (
     <div className="space-y-3">
-      {!botReady ? <AiScopeHint>请在顶栏指定 Bot QQ。</AiScopeHint> : null}
+      {!botReady ? (
+        <p className="text-sm text-muted-foreground">请先选择 Bot QQ。</p>
+      ) : null}
       {botReady && group == null ? (
-        <AiScopeHint>未指定群号时默认使用全局作用域。</AiScopeHint>
+        <p className="text-sm text-muted-foreground">未指定群号时默认使用全局作用域。</p>
+      ) : null}
+
+      {botReady && (tab === "episodes" || tab === "entities" || tab === "search") ? (
+        <div className="relative min-w-[8rem] flex-1 basis-[8rem]">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          <Input
+            type="search"
+            className={CHROME_SEARCH_INPUT}
+            placeholder="搜索记忆…"
+            aria-label="搜索记忆"
+            autoComplete="off"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
       ) : null}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="space-y-3">

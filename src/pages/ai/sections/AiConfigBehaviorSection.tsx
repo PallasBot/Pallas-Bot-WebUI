@@ -51,6 +51,7 @@ export default function AiConfigBehaviorSection() {
   const [debugOut, setDebugOut] = useState<Record<string, unknown> | null>(null);
 
   const group = Number(groupId) || 0;
+  const bot = Number(botId) || 0;
 
   const runsQ = useQuery({
     queryKey: ["llm-behavior-runs", group],
@@ -61,9 +62,9 @@ export default function AiConfigBehaviorSection() {
     queryFn: () => fetchLlmBehaviorPatterns({ groupId: group || null }),
   });
   const promoQ = useQuery({
-    queryKey: ["llm-promotion-candidates", group],
-    queryFn: () => fetchLlmPromotionCandidates({ groupId: group, includeResolved: true }),
-    enabled: group > 0,
+    queryKey: ["llm-promotion-candidates", bot, group],
+    queryFn: () => fetchLlmPromotionCandidates({ botId: bot, groupId: group, includeResolved: true }),
+    enabled: bot > 0 && group > 0,
   });
   const personaQ = useQuery({
     queryKey: ["llm-persona-observe", group],
@@ -80,8 +81,10 @@ export default function AiConfigBehaviorSection() {
   });
 
   const promoMut = useMutation({
-    mutationFn: (body: { candidateId: string; action: "promote" | "reject" }) =>
-      postLlmPromotionCandidateResolve(body),
+    mutationFn: (body: { candidateId: string; action: "promote" | "reject" }) => {
+      if (bot <= 0 || group <= 0) throw new Error("需要 Bot 与群号");
+      return postLlmPromotionCandidateResolve({ ...body, botId: bot, groupId: group });
+    },
     onSuccess: async () => {
       notifyOk("候选已处理");
       await qc.invalidateQueries({ queryKey: ["llm-promotion-candidates"] });
@@ -173,10 +176,10 @@ export default function AiConfigBehaviorSection() {
           <section aria-label="语义风格" className="space-y-2 rounded-md border p-3">
             <h3 className="text-sm font-medium">群表达已迁移</h3>
             <p className="text-sm text-muted-foreground">
-              群画像、语义样例、质量评价和重建操作统一在 AI 观测的「群表达」中维护。
+              群画像、语义样例、质量评价和重建操作统一在 AI 治理中维护。
             </p>
             <Button asChild size="sm" variant="outline">
-              <Link to="/ai/persona">前往群表达</Link>
+              <Link to="/ai/governance">前往 AI 治理</Link>
             </Button>
           </section>
         ) : null}

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams, useSearchParams } from "react-router-dom";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import ConsoleSetupGuard from "@/components/ConsoleSetupGuard";
 import AppShell from "@/layout/AppShell";
@@ -30,15 +30,13 @@ const ProtocolImportTab = lazy(() => import("@/pages/protocol/ProtocolImportTab"
 const ProtocolRuntimeTab = lazy(() => import("@/pages/protocol/ProtocolRuntimeTab"));
 const UpdatePage = lazy(() => import("@/pages/UpdatePage"));
 const AiConfigPage = lazy(() => import("@/pages/ai/AiConfigPage"));
+const AiGovernancePage = lazy(() => import("@/pages/ai/governance/AiGovernancePage"));
 const AiHistoryPage = lazy(() => import("@/pages/ai/AiHistoryPage"));
 const AiLayout = lazy(() => import("@/pages/ai/AiLayout"));
 const AiLogsPage = lazy(() => import("@/pages/ai/AiLogsPage"));
-const AiMemoryPage = lazy(() => import("@/pages/ai/AiMemoryPage"));
-const AiPeoplePage = lazy(() => import("@/pages/ai/AiPeoplePage"));
 const AiToolsPage = lazy(() => import("@/pages/ai/AiToolsPage"));
 const AiTasksPage = lazy(() => import("@/pages/ai/AiTasksPage"));
 const AiObservationLayout = lazy(() => import("@/pages/ai/AiObservationLayout"));
-const AiPersonaPage = lazy(() => import("@/pages/ai/AiPersonaPage"));
 const AiStatisticsPage = lazy(() => import("@/pages/ai/AiStatisticsPage"));
 
 function CommonConfigLegacyRedirect({ fromPathParam = false }: { fromPathParam?: boolean }) {
@@ -47,6 +45,20 @@ function CommonConfigLegacyRedirect({ fromPathParam = false }: { fromPathParam?:
   const id = fromPathParam ? String(sectionId || "") : String(search.get("section") || "");
   if (!id.trim()) return <Navigate to="/plugins" replace />;
   return <Navigate to={commonConfigLegacyRedirectPath(id)} replace />;
+}
+
+function AiHistoryRedirect() {
+  const location = useLocation();
+  return <Navigate to={{ pathname: "/ai/session", search: location.search }} replace />;
+}
+
+/** 已被 AI 治理承接的观测分段：旧 URL 重定向到治理页对应 tab，保留范围 query。 */
+function AiRetiredSectionRedirect({ tab }: { tab: "style" | "people" | "memory" }) {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  params.set("scene", "group_chat");
+  params.set("tab", tab);
+  return <Navigate to={{ pathname: "/ai/governance", search: params.toString() }} replace />;
 }
 
 export default function App() {
@@ -101,17 +113,18 @@ export default function App() {
         <Route path="security" element={<Navigate to="/preferences#console-password" replace />} />
         <Route path="update" element={<UpdatePage />} />
         <Route path="ai" element={<AiLayout />}>
+          <Route path="governance" element={<AiGovernancePage />} />
+          <Route path="memory" element={<AiRetiredSectionRedirect tab="memory" />} />
+          <Route path="people" element={<AiRetiredSectionRedirect tab="people" />} />
+          <Route path="persona" element={<AiRetiredSectionRedirect tab="style" />} />
           <Route element={<AiObservationLayout />}>
             <Route index element={<Navigate to="statistics" replace />} />
             <Route path="home" element={<Navigate to={AI_OBSERVATION_DEFAULT_PATH} replace />} />
             <Route path="statistics" element={<AiStatisticsPage />} />
             <Route path="session" element={<AiHistoryPage />} />
-            <Route path="history" element={<Navigate to="/ai/session" replace />} />
-            <Route path="memory" element={<AiMemoryPage />} />
-            <Route path="people" element={<AiPeoplePage />} />
+            <Route path="history" element={<AiHistoryRedirect />} />
             <Route path="tools" element={<AiToolsPage />} />
             <Route path="tasks" element={<AiTasksPage />} />
-            <Route path="persona" element={<AiPersonaPage />} />
             <Route path="logs" element={<AiLogsPage />} />
           </Route>
           <Route path="config" element={<Navigate to="provider" replace />} />
