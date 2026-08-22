@@ -60,6 +60,8 @@ describe("persona generated contracts", () => {
     } satisfies SemanticManage;
     const status = {
       enabled: true,
+      collection_enabled: true,
+      injection_enabled: true,
       overrides: { aggressive: false, nonsense: false, direct: true, image: false },
       example_count: 2,
       profile_count: 1,

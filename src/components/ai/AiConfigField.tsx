@@ -120,7 +120,7 @@ export function AiModelSelect({
       return;
     }
     setDraft("");
-    setTab(canDiscover || discovered.length || isFetching ? "discovered" : "preset");
+    setTab("preset");
     requestAnimationFrame(() => inputRef.current?.focus());
   }, [open, discovered.length, isFetching, canDiscover]);
 

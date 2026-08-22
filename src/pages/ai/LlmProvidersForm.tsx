@@ -49,7 +49,7 @@ import {
 } from "@/utils/llmProviderModels";
 import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
-import { AlertTriangle, ChevronDown, ChevronUp, Cloud, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Save, Server, SlidersHorizontal, Trash2, Unplug, X, type LucideIcon } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, Cloud, Copy, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Save, Server, SlidersHorizontal, Trash2, Unplug, X, type LucideIcon } from "lucide-react";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { normalizeDrawCostCurrency } from "@/utils/drawGateways";
 import { decimalInputDraft, formatDecimalInput } from "@/utils/decimalInput";
@@ -100,7 +100,7 @@ const PROVIDER_TABS: Array<{ id: Tab; label: string; icon: LucideIcon; lead: str
     id: "tasks",
     label: "任务编排",
     icon: ListTree,
-    lead: "按场景指定主用/备用：@ 对话、接话选句、本轮动作决策等。",
+    lead: "按场景指定主用/备用：@ LLM 对话、醉聊、本轮动作决策等。",
   },
   {
     id: "runtime",
@@ -191,6 +191,40 @@ function ModelPriceField({
       />
     </div>
   );
+}
+
+function fmtPrice(v: number | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "0";
+  return String(parseFloat(v.toFixed(6)));
+}
+
+function formatPricingRuleSummary(rule: LlmProviderPricingRule): string {
+  const parts: string[] = [];
+  if (rule.kind === "per_request") {
+    parts.push(
+      rule.price_per_request != null && rule.price_per_request > 0
+        ? `按次 ¥${fmtPrice(rule.price_per_request)}`
+        : "按次",
+    );
+  } else {
+    const hasTokenPrice = (rule.price_in ?? 0) > 0 || (rule.price_out ?? 0) > 0;
+    if (hasTokenPrice) {
+      parts.push(`¥${fmtPrice(rule.price_in)}/¥${fmtPrice(rule.price_out)}`);
+    }
+    if ((rule.cache_price_in ?? 0) > 0 || (rule.cache_price_out ?? 0) > 0) {
+      parts.push(`缓存 ¥${fmtPrice(rule.cache_price_in)}/¥${fmtPrice(rule.cache_price_out)}`);
+    }
+    if (!hasTokenPrice && !(rule.cache_price_in ?? 0) && !(rule.cache_price_out ?? 0)) {
+      parts.push("按 Token");
+    }
+  }
+  if (rule.input_tokens_min != null || rule.input_tokens_max != null) {
+    parts.push(`[${rule.input_tokens_min ?? ""}-${rule.input_tokens_max ?? ""}]`);
+  }
+  if (rule.daily_start || rule.daily_end) {
+    parts.push(`${rule.daily_start || "00:00"}~${rule.daily_end || "24:00"}`);
+  }
+  return parts.join(" · ");
 }
 
 function DailyTimeSelect({ value, onValueChange, label }: { value?: string; onValueChange: (value: string) => void; label: string }) {
@@ -393,6 +427,28 @@ export default function LlmProvidersForm() {
     setEditing(true);
   }
 
+  function duplicateProvider(index: number) {
+    const row = doc.providers[index];
+    if (!row) return;
+    setEditIndex(null);
+    const next = JSON.parse(JSON.stringify(row)) as LlmProviderRow;
+    if (!Array.isArray(next.capabilities)) next.capabilities = ["text"];
+    if (typeof next.model_effort !== "string") next.model_effort = "";
+    if (!next.request_method) next.request_method = "chat_completions";
+    if (!next.model_pricing || typeof next.model_pricing !== "object") next.model_pricing = {};
+    next.id = `${row.id}-副本`;
+    if (!next.enabled) next.enabled = true;
+    setDraft(next);
+    const keys = Array.isArray(row.api_keys) ? row.api_keys.map((k) => String(k || "").trim()).filter(Boolean) : [];
+    if (!keys.length && row.api_key?.trim()) keys.push(row.api_key.trim());
+    setDraftApiKeys(keys);
+    setKeepStoredApiKey(Boolean(row.api_key_set) && keys.length === 0);
+    setUseEnvVar(Boolean(row.api_key_env?.trim()) && !row.api_key_set && keys.length === 0);
+    setEditErr("");
+    setModels([]);
+    setEditing(true);
+  }
+
   function openEdit(index: number) {
     const row = doc.providers[index];
     if (!row) return;
@@ -415,7 +471,10 @@ export default function LlmProvidersForm() {
 
   function registerProviderModel(nameRaw: string) {
     const name = nameRaw.trim();
-    if (!name) return;
+    if (!name) {
+      setRegisteredModelDraft("");
+      return;
+    }
     setDraft((d) => ({
       ...d,
       models: [
@@ -1159,13 +1218,30 @@ export default function LlmProvidersForm() {
                       )}
                       <span className="min-w-0 truncate font-medium">{p.id}</span>
                     </div>
-                    <Switch
-                      checked={p.enabled}
-                      aria-label={`${p.id} 启用`}
-                      onCheckedChange={(checked) => toggleProviderEnabled(index, checked)}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    />
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title={`复制 ${p.id} 为新提供方`}
+                        aria-label={`复制 ${p.id} 为新提供方`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          duplicateProvider(index);
+                        }}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <Copy className="size-4" />
+                      </Button>
+                      <Switch
+                        checked={p.enabled}
+                        aria-label={`${p.id} 启用`}
+                        onCheckedChange={(checked) => toggleProviderEnabled(index, checked)}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      />
+                    </div>
                   </div>
                   <div className="truncate text-xs text-muted-foreground">
                     {p.base_url || "本地推理端点"}
@@ -1473,7 +1549,19 @@ export default function LlmProvidersForm() {
                               </Button>
                             </div>
                           </div>
-                          {collapsed ? <p className="text-xs text-muted-foreground">价格条件：{(model.pricing_rules || []).length} 条</p> : <>
+                          {collapsed ? (
+                            <div className="space-y-1 text-xs text-muted-foreground">
+                              {(model.pricing_rules || []).length ? (
+                                (model.pricing_rules || []).map((rule) => (
+                                  <p key={rule.id} className="truncate font-mono">
+                                    {formatPricingRuleSummary(rule)}
+                                  </p>
+                                ))
+                              ) : (
+                                <p>未配置价格条件</p>
+                              )}
+                            </div>
+                          ) : <>
                           {(model.pricing_rules || []).map((rule) => (
                             <div key={rule.id} className="space-y-2 rounded bg-muted/20 p-2 text-xs text-muted-foreground">
                               <div className="flex items-center justify-between gap-2">
@@ -1508,19 +1596,16 @@ export default function LlmProvidersForm() {
                         </div>
                       })}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div>
                       <AiModelSelect
                         value={registeredModelDraft}
                         options={modelDiscoveryOptionsForProvider(draft.id, [draft], { [draft.id]: models })}
                         presetOptions={providerCommonModels(draft.id, [draft])}
                         isFetching={modelsBusy}
                         onDiscover={() => void refreshModels()}
-                        placeholder="选择或输入模型名称"
-                        onValueChange={setRegisteredModelDraft}
+                        placeholder="选择或输入模型名，选中后即加入已注册模型"
+                        onValueChange={registerProviderModel}
                       />
-                      <Button type="button" size="sm" variant="outline" className="h-8" icon={Plus} onClick={() => registerProviderModel(registeredModelDraft)}>
-                        注册模型
-                      </Button>
                     </div>
                   </div>
 
@@ -1722,7 +1807,7 @@ export default function LlmProvidersForm() {
                       <TierCard
                         kind="high"
                         title="高级任务"
-                        description="对话、醉聊、完整润色"
+                        description="对话、醉聊"
                         primaryInvalid={!taskTiers.high.primary.providerId}
                         primary={renderProviderModelSlot({
                           providerId: taskTiers.high.primary.providerId,
@@ -1746,7 +1831,7 @@ export default function LlmProvidersForm() {
                       <TierCard
                         kind="low"
                         title="低级任务"
-                        description="选句、轻润色、兜底、群情感与本轮动作决策"
+                        description="群情感与续聊决策"
                         primaryInvalid={!taskTiers.low.primary.providerId}
                         primary={renderProviderModelSlot({
                           providerId: taskTiers.low.primary.providerId,

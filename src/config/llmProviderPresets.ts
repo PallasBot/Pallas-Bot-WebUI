@@ -82,20 +82,12 @@ export const LLM_PROVIDER_PRESETS: readonly LlmProviderPreset[] = [
 export const LLM_TASK_ROUTE_LABELS: Record<string, string> = {
   llm_chat: "@对话",
   drunk: "醉聊",
-  repeater_select: "接话·语料选句",
-  repeater_polish_lite: "接话·轻改口气",
-  repeater_fallback: "接话·现编（非@）",
-  repeater_polish: "接话·完整润色",
   other: "其他",
 };
 
 export const DEFAULT_LLM_TASKS = [
   "llm_chat",
   "drunk",
-  "repeater_select",
-  "repeater_polish_lite",
-  "repeater_polish",
-  "repeater_fallback",
 ] as const;
 
 export function llmTaskRouteLabel(task: string): string {

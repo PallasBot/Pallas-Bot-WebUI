@@ -7,13 +7,15 @@ import {
 } from "react";
 import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, MessageSquare, Ellipsis, Radio, Hash, Download, Layers, Filter } from "lucide-react";
 import { fetchLogs, openLogsEventSource } from "@/api/fullConsole";
+import { fetchCommonConfig, putCommonConfig } from "@/api/consoleApi";
+import { axiosErrorDetail } from "@/api/http";
 import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@/api/pallasTypes";
-import PageMasthead from "@/components/PageMasthead";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, {
   CHROME_SEARCH_INPUT,
   CHROME_SELECT_TRIGGER,
 } from "@/components/ChromeTools";
+import PageMasthead from "@/components/PageMasthead";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import { cn } from "@/lib/utils";
 import LogVirtualFeed, { type LogVirtualFeedHandle } from "@/components/LogVirtualFeed";
@@ -115,6 +117,17 @@ export default function LogsPage() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [streamLive, setStreamLive] = useState(false);
   const [liveTick, setLiveTick] = useState(0);
+  const [runLevel, setRunLevel] = useState("INFO");
+  const [runLevelOptions, setRunLevelOptions] = useState<string[]>([
+    "TRACE",
+    "DEBUG",
+    "INFO",
+    "SUCCESS",
+    "WARNING",
+    "ERROR",
+    "CRITICAL",
+  ]);
+  const [runLevelSaving, setRunLevelSaving] = useState(false);
 
   const logPollTimerRef = useRef<number | null>(null);
   const logEsRef = useRef<EventSource | null>(null);
@@ -421,6 +434,48 @@ export default function LogsPage() {
     startLogStream();
   }, [scope, logSource, streamReconnectCount, startLogStream]);
 
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const cfg = await fetchCommonConfig("log_level");
+        const field = cfg.fields?.find((f) => f.name === "log_level");
+        if (!alive) return;
+        if (field) {
+          if (Array.isArray(field.choices) && field.choices.length) {
+            setRunLevelOptions(field.choices as string[]);
+          }
+          if (typeof field.current === "string") {
+            setRunLevel(field.current);
+          }
+        }
+      } catch {
+        // 忽略加载失败，保留默认 INFO 与内置选项
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const changeRunLevel = useCallback(
+    async (next: string) => {
+      const prev = runLevel;
+      setRunLevel(next);
+      setRunLevelSaving(true);
+      try {
+        await putCommonConfig("log_level", { log_level: next });
+        pushConsoleToast(`运行级别已切换为 ${next}`, "ok");
+      } catch (err) {
+        setRunLevel(prev);
+        pushConsoleToast(`切换运行级别失败：${axiosErrorDetail(err)}`, "warn");
+      } finally {
+        setRunLevelSaving(false);
+      }
+    },
+    [runLevel],
+  );
+
   const baseEntries = payload?.entries ?? [];
   const entries = useMemo(() => {
     void liveTick;
@@ -694,6 +749,28 @@ export default function LogsPage() {
                 <SelectItem value="raw">
                   <ChromeOptionLabel icon={FileText}>原始行</ChromeOptionLabel>
                 </SelectItem>
+              </SelectContent>
+            </Select>
+          </ChromeField>
+          <ChromeField label="运行级别" icon={Layers}>
+            <Select
+              value={runLevel}
+              disabled={runLevelSaving}
+              onValueChange={(v) => void changeRunLevel(v)}
+            >
+              <SelectTrigger
+                className={cn(CHROME_SELECT_TRIGGER, "min-w-[6.5rem] max-w-[9rem]")}
+                aria-label="运行级别"
+                title="修改日志输出级别，保存后即时生效"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end" className="min-w-[10rem]">
+                {runLevelOptions.map((lv) => (
+                  <SelectItem key={`rlevel-${lv}`} value={lv}>
+                    <ChromeOptionLabel icon={Layers}>{lv}</ChromeOptionLabel>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </ChromeField>

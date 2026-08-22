@@ -79,56 +79,15 @@ export function labelRole(raw?: string | null): string {
   return key ? String(raw) : "—";
 }
 
-export function labelFeatureLevel(raw?: string | null): string {
-  const key = String(raw || "").trim().toLowerCase();
-  if (!key) return "—";
-  if (key === "full" || key === "complete") return "完整";
-  if (key === "basic" || key === "minimal") return "基础";
-  if (key === "standard" || key === "default") return "标准";
-  if (key === "advanced") return "进阶";
-  return String(raw);
-}
-
-export function labelRepeaterMode(raw?: string | null): string {
-  const key = String(raw || "").trim().toLowerCase();
-  if (!key) return "—";
-  if (key === "off" || key === "disabled") return "关闭";
-  if (key === "on" || key === "enabled") return "开启";
-  if (key === "select") return "AI 选句";
-  if (key === "select_polish_lite") return "选句 + 轻润色";
-  if (key === "select_fallback") return "选句 + 现编";
-  if (key === "fallback") return "仅现编";
-  if (key === "polish") return "完整润色（遗留）";
-  if (key === "both") return "现编 + 完整润色（遗留）";
-  if (key === "hybrid") return "混合";
-  if (key === "llm_first") return "优先大模型";
-  if (key === "corpus_first") return "优先语料";
-  return String(raw);
-}
-
 /** 纠错 / 统计里的 llm_route、任务类型展示名（按实际效果，不直译内部代号）。
- * 接话 = 群里自动跟一句（语料底盘）；@对话 = 明确 @ 牛才走的完整 LLM 会话。
- * 「现编」≠ @对话：是接话路径语料不够时模型现写一句。 */
+ * 接话 = 群里自动跟一句（语料底盘选句）；@对话 = 明确 @ 牛才走的完整 LLM 会话。 */
 const LLM_ROUTE_LABELS: Record<string, string> = {
   plain_llm_chat: "@对话·直出",
   alias: "别名感知",
   ambient: "主动发言",
   followup: "续聊",
   corpus_select: "语料选句",
-  corpus_polish_lite: "语料轻改口气",
-  corpus_polish: "语料完整润色",
-  corpus_fallback: "无语料时现编",
-  // repeater 管线：选句 → 轻改 → 拼接 → 语料不足才现编
-  pipeline_select: "接话·语料选句",
-  pipeline_rewrite: "接话·轻改口气",
-  pipeline_stitch: "接话·拼接候选",
-  pipeline_generate: "接话·现编（非@）",
-  llm_chat: "@对话",
   drunk: "醉聊",
-  repeater_select: "接话·语料选句",
-  repeater_polish_lite: "接话·轻改口气",
-  repeater_fallback: "接话·现编（非@）",
-  repeater_polish: "接话·完整润色",
 };
 
 export function labelLlmRoute(raw?: string | null): string {

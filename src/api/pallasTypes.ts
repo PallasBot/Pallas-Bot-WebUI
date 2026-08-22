@@ -1454,7 +1454,6 @@ export interface ConversationKernelStatus {
   feature_level: string;
   llm_chat_enabled: boolean;
   conversation_feature_level_raw?: string;
-  llm_repeater_mode?: string;
   llm_repeater_feedback_enabled?: boolean;
   llm_repeater_bias_enabled?: boolean;
   llm_repeater_writeback_enabled?: boolean;
@@ -2073,6 +2072,13 @@ export interface SemanticExamplesSummary {
 export type SemanticStyleOverridesData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleOverridesData"];
 export type SemanticStyleStatusData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleStatusData"];
 export type SemanticStyleQualityData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleQualityData"];
+export type GroupStyleGovernanceData = ConsoleOpenapiComponents["schemas"]["_GroupStyleGovernanceData"];
+export type BasePromptPreviewData = ConsoleOpenapiComponents["schemas"]["_BasePromptPreviewData"];
+export type BasePromptOverrideData = Omit<BasePromptPreviewData, "mode" | "versions"> & {
+  mode: "append" | "replace";
+  text: string;
+  versions: Array<{ id: string; mode: "append" | "replace"; text: string; builtin_sha256: string; updated_at: string }>;
+};
 export type LlmStickerLabelOverviewData = ConsoleOpenapiComponents["schemas"]["_StickerLabelOverviewData"];
 export type LlmStickerLabelMaintenanceResult = OpenapiOkData<
   ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona/sticker-labels/manage"]["post"]

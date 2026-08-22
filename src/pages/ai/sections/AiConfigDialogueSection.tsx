@@ -35,6 +35,7 @@ import {
 } from "@/config/configFieldLabels";
 import AiLlmFieldPanel from "@/pages/ai/sections/AiLlmFieldPanel";
 import AiEmbeddingStatusCard from "@/pages/ai/sections/AiEmbeddingStatusCard";
+import BasePromptGovernanceSection from "@/pages/ai/sections/BasePromptGovernanceSection";
 
 type ContentPanel = "form" | "session" | "memory" | "budget" | "arknights" | "sources" | "tools";
 type EditMode = "form" | "raw";
@@ -46,7 +47,7 @@ const SELECT_OPTIONS: Array<{ value: ContentPanel; label: string; icon: LucideIc
     value: "form",
     label: "策略",
     icon: ClipboardList,
-    lead: "总开关、接话怎么用模型、工具与「搜一下」、过滤与限流。",
+    lead: "总开关、工具与「搜一下」、过滤与限流。",
   },
   {
     value: "session",
@@ -218,12 +219,15 @@ export default function AiConfigDialogueSection() {
         <AiSectionHeader icon={panelMeta.icon} title={panelMeta.label} lead={panelMeta.lead} />
       ) : null}
       {contentPanel === "form" && editMode === "form" ? (
-        <CommonConfigForm
-          sectionId="llm"
-          savedMessage="对话配置已保存"
-          inlineSave={false}
-          onSaveState={onSaveState}
-        />
+        <div className="space-y-4">
+          <CommonConfigForm
+            sectionId="llm"
+            savedMessage="对话配置已保存"
+            inlineSave={false}
+            onSaveState={onSaveState}
+          />
+          <BasePromptGovernanceSection />
+        </div>
       ) : null}
       {contentPanel === "form" && editMode === "raw" ? (
         <CommonConfigForm

@@ -349,9 +349,11 @@ export default function AiHistoryPage() {
   });
 
   const scopeGroupId = parseScopeGroupId(groupId);
+  const scopeBotId = parseScopeBotId(botId);
   const sessionGroupId =
     selected?.group_id != null && selected.group_id > 0 ? selected.group_id : null;
   const learningGroupId = sessionGroupId ?? (scopeGroupId != null && scopeGroupId > 0 ? scopeGroupId : null);
+  const learningBotId = selected?.bot_id != null && selected.bot_id > 0 ? selected.bot_id : scopeBotId;
 
   const kernelQ = useQuery({
     queryKey: ["conversation-kernel-status"],
@@ -359,20 +361,21 @@ export default function AiHistoryPage() {
   });
 
   const feedbackQ = useQuery({
-    queryKey: ["llm-repeater-feedback", learningGroupId],
-    queryFn: () => fetchLlmRepeaterFeedback({ groupId: learningGroupId!, limit: 30 }),
-    enabled: learningGroupId != null && detailTab === "feedback",
+    queryKey: ["llm-repeater-feedback", learningBotId, learningGroupId],
+    queryFn: () => fetchLlmRepeaterFeedback({ botId: learningBotId!, groupId: learningGroupId!, limit: 30 }),
+    enabled: learningBotId != null && learningGroupId != null && detailTab === "feedback",
   });
 
   const promoQ = useQuery({
-    queryKey: ["llm-promotion-candidates", learningGroupId, promoIncludeResolved],
+    queryKey: ["llm-promotion-candidates", learningBotId, learningGroupId, 40, promoIncludeResolved],
     queryFn: () =>
       fetchLlmPromotionCandidates({
+        botId: learningBotId!,
         groupId: learningGroupId!,
         includeResolved: promoIncludeResolved,
         limit: 40,
       }),
-    enabled: learningGroupId != null && detailTab === "promotion",
+    enabled: learningBotId != null && learningGroupId != null && detailTab === "promotion",
   });
 
   const patternsQ = useQuery({
@@ -474,8 +477,8 @@ export default function AiHistoryPage() {
       requestId?: string;
       action: "invalidate" | "restore" | "delete" | "correct" | "clear_correction";
       correctedReplyText?: string;
-      botId?: number;
-      groupId?: number;
+       botId: number;
+       groupId: number;
       userId?: number;
       userText?: string;
       replyText?: string;
@@ -520,8 +523,14 @@ export default function AiHistoryPage() {
   });
 
   const promoMut = useMutation({
-    mutationFn: (body: { candidateId: string; action: "promote" | "reject" }) =>
-      postLlmPromotionCandidateResolve(body),
+    mutationFn: (body: { candidateId: string; action: "promote" | "reject" }) => {
+      if (learningBotId == null || learningGroupId == null) throw new Error("请先选择 Bot 与群");
+      return postLlmPromotionCandidateResolve({
+        ...body,
+        botId: learningBotId,
+        groupId: learningGroupId,
+      });
+    },
     onMutate: (vars) => {
       setFeedbackBusy((prev) => ({ ...prev, [`promo:${vars.candidateId}`]: true }));
     },

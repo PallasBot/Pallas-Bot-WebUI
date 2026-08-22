@@ -40,17 +40,17 @@ describe("表情标签全局观测 API", () => {
 });
 
 describe("表情标签全局维护入口", () => {
-  it("在群表达页使用独立全局查询和有限维护动作", () => {
-    const source = readFileSync(resolve(process.cwd(), "src/pages/ai/AiPersonaPage.tsx"), "utf8");
+  it("在群风格与语义治理页使用独立全局查询和有限维护动作", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/pages/ai/governance/GovernanceStyleTab.tsx"), "utf8");
 
     expect(source).toContain("fetchLlmStickerLabelOverview");
     expect(source).toContain('queryKey: ["llm-sticker-label-overview"]');
     expect(source).toContain('action: "requeue"');
     expect(source).toContain('action: "pause"');
     expect(source).toContain('label="VLM 精修避免"');
-    expect(source).toContain("data.vlm_refine_avoided");
+    expect(source).toContain("vlm_refine_avoided");
     expect(source).toContain('label="VLM 精修实际"');
-    expect(source).toContain("data.vlm_refine_actual");
+    expect(source).toContain("vlm_refine_actual");
     expect(source).not.toContain("fetchLlmStickerLabelOverview({");
     expect(source).not.toContain("全量扫描");
   });

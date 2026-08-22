@@ -6,6 +6,7 @@ import {
   Database,
   Download,
   FolderOpen,
+  ShieldCheck,
   LayoutDashboard,
   LineChart,
   Palette,
@@ -48,6 +49,7 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/plugins", label: "插件列表", section: "插件", icon: Blocks },
   { to: "/plugin-store", label: "插件商店", section: "插件", icon: Store },
   { to: AI_OBSERVATION_DEFAULT_PATH, label: "AI 观测", section: "AI", icon: LayoutDashboard },
+  { to: "/ai/governance", label: "AI 治理", section: "AI", icon: ShieldCheck },
   { to: "/ai/config/provider", label: "AI 配置", section: "AI", icon: Sparkles },
   { to: "/database", label: "数据库", section: "数据", icon: Database, notice: DATABASE_LIFECYCLE_NOTICE },
   { to: "/database/backups", label: "备份管理", section: "数据", icon: Archive },
@@ -95,6 +97,7 @@ export function sectionIcon(section: string): LucideIcon {
 
 function isAiObservationPath(pathname: string): boolean {
   const p = pathname.replace(/\/$/, "") || "/";
+  if (p === "/ai/governance" || p.startsWith("/ai/governance/")) return false;
   if (p === "/ai" || p === "/ai/home" || p.startsWith("/ai/home/")) return true;
   if (p === "/ai/wizard" || p.startsWith("/ai/wizard/")) return true;
   return (
@@ -102,10 +105,6 @@ function isAiObservationPath(pathname: string): boolean {
     p.startsWith("/ai/statistics/") ||
     p === "/ai/session" ||
     p.startsWith("/ai/session/") ||
-    p === "/ai/memory" ||
-    p.startsWith("/ai/memory/") ||
-    p === "/ai/persona" ||
-    p.startsWith("/ai/persona/") ||
     p === "/ai/history" ||
     p.startsWith("/ai/history/") ||
     p === "/ai/logs" ||

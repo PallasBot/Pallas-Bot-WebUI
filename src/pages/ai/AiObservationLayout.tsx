@@ -20,28 +20,12 @@ const SECTION_REFRESH_KEYS: Record<AiObservationSectionId, string[][]> = {
     ["llm-history-stats"],
     ["llm-behavior-patterns"],
   ],
-  memory: [
-    ["memory-graph-stats"],
-    ["memory-graph"],
-    ["memory-graph-episodes"],
-    ["memory-graph-entities"],
-    ["memory-graph-edges"],
-    ["memory-graph-scopes"],
-    ["memory-graph-categories"],
-    ["memory-graph-hier"],
-    ["memory-graph-trash"],
-    ["conversation-kernel-memory"],
-    ["conversation-kernel-memory-preferences"],
-    ["conversation-kernel-mid-term"],
-  ],
-  people: [["agent-person-facts"], ["agent-observations"], ["agent-catchphrases"]],
   tasks: [["agent-tasks"], ["agent-platform-overview"]],
-  persona: [["llm-persona-observe"], ["llm-persona-export"], ["llm-persona-group-style"]],
   logs: [["ai-extension-logs"]],
 };
 
 /**
- * AI 观测壳：PageMasthead + ChromeTools 分段（统计/会话/记忆/牛格/历史/日志）。
+ * AI 观测壳：PageMasthead + ChromeTools 分段（统计/会话/任务/日志）。
  * 有分区/筛选 → 刷新在工具条右钉。
  */
 export default function AiObservationLayout() {
@@ -55,9 +39,9 @@ export default function AiObservationLayout() {
 
   const onSectionChange = useCallback(
     (id: AiObservationSectionId) => {
-      navigate(aiObservationSectionPath(id));
+      navigate({ pathname: aiObservationSectionPath(id), search: location.search });
     },
-    [navigate],
+    [location.search, navigate],
   );
 
   const onRefresh = useCallback(async () => {

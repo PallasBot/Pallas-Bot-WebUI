@@ -28,7 +28,7 @@ describe("fetchLlmRepeaterFeedback", async () => {
       },
     } as never);
 
-    await expect(fetchLlmRepeaterFeedback({ groupId: 123, limit: 20 })).resolves.toEqual({
+    await expect(fetchLlmRepeaterFeedback({ botId: 10001, groupId: 123, limit: 20 })).resolves.toEqual({
       items: [
         {
           request_id: "req-1",
@@ -40,7 +40,7 @@ describe("fetchLlmRepeaterFeedback", async () => {
       limit: 20,
     });
     expect(http.get).toHaveBeenCalledWith("/llm/repeater-feedback", {
-      params: { group_id: 123, limit: 20 },
+      params: { group_id: 123, bot_id: 10001, limit: 20 },
     });
   });
 });
@@ -67,6 +67,31 @@ describe("fetchLlmRepeaterFeedbackSummary", async () => {
     });
     expect(http.get).toHaveBeenCalledWith("/llm/repeater-feedback/summary", {
       params: { group_id: 123, limit: 40 },
+    });
+  });
+});
+
+describe("postLlmRepeaterFeedbackManage", async () => {
+  it("serializes the feedback identity and scope", async () => {
+    const { http } = await import("../src/api/http");
+    const { postLlmRepeaterFeedbackManage } = await import("../src/api/console");
+    vi.mocked(http.post).mockResolvedValue({ data: { ok: true, data: {} } } as never);
+
+    await postLlmRepeaterFeedbackManage({
+      entryId: "entry-1",
+      requestId: "request-1",
+      action: "invalidate",
+      botId: 10001,
+      groupId: 123,
+    });
+
+    expect(http.post).toHaveBeenCalledWith("/llm/repeater-feedback/manage", {
+      entry_id: "entry-1",
+      request_id: "request-1",
+      action: "invalidate",
+      corrected_reply_text: "",
+      bot_id: 10001,
+      group_id: 123,
     });
   });
 });
