@@ -4,6 +4,30 @@
 
 <!-- entries -->
 
+## [0.9.13] - 2026-08-23
+
+### 更新公告
+
+- 需要 Bot ≥ 4.3.9；请勿只升控制台。
+- **AI 治理**：
+  - 回复流水线工作台重构：身份 / 时机 / 形态 / 措辞 / 发送各阶段卡片更清晰，展开 / 查看更顺手
+  - 治理范围与账号选择器交互优化，选择切换更顺滑
+  - 移除未接通的面板，治理页更聚焦
+
+### 提交明细
+
+### Added
+
+* feat(ai-governance): 重构回复流水线工作台 ([cd35ae8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/cd35ae8d9acb9fed4b48bcbcf4a2d4c7e510aac6))
+* feat(ai-governance): 优化治理工作台与选择器交互 ([2fcc865](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2fcc865434aef8c2615a50574defb82e06e5392f))
+
+### Fixed
+
+* fix(ai-governance): 移除未接通的观察队列面板 ([fd827c6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fd827c69772ba379c6d90fb651f188f183ca61b7))
+
+**完整变更**: [`v0.9.12...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.12...HEAD)
+
+
 ## [0.9.12] - 2026-08-22
 
 ### 更新公告
