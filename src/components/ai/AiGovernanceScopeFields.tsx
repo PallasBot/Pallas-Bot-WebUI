@@ -77,6 +77,7 @@ export default function AiGovernanceScopeFields() {
             bots={bots}
             favorites={favorites}
             placeholder="选择 Bot"
+            memoryKey="ai-governance-bot"
             title={selectedBot ? botSelectDropdownLabel(selectedBot.nickname, selectedBot.id) : botId}
           />
         ) : (
@@ -102,6 +103,7 @@ export default function AiGovernanceScopeFields() {
             emptyText="无匹配群"
             searchCount={(groupsQ.data?.groups ?? []).length}
             allowCustom
+            memoryKey={`ai-governance-group:${botId.trim()}`}
             loading={groupsQ.isLoading}
             ariaLabel="治理范围群号"
             triggerClassName="h-9 w-auto min-w-[8rem] max-w-[12rem] shrink-0"

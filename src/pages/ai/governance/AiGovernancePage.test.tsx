@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { lazy, Suspense } from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Outlet } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
@@ -83,6 +83,7 @@ describe("AiGovernancePage route", () => {
     expect(screen.getAllByText("人格").length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: "从预览移除人设" }));
+    await user.click(screen.getByRole("button", { name: "打开当前组装结果" }));
     const result = document.querySelector(".ai-governance-prompt-result");
     expect(result?.textContent).not.toContain("人格");
     expect(result?.textContent).toContain("本轮策略");
@@ -145,5 +146,30 @@ describe("AiGovernancePage route", () => {
 
     await user.click(screen.getByRole("button", { name: /切换到人设/ }));
     expect((screen.getByRole("textbox", { name: "人设覆盖内容" }) as HTMLTextAreaElement).value).toBe("暂存的人设草稿");
+  });
+
+  it("keeps the active stage title in one place", async () => {
+    const user = userEvent.setup();
+    renderRoute("/ai/governance?bot=10001&group=20002&scene=group_chat");
+
+    await user.type(await screen.findByRole("textbox", { name: "用户 QQ" }), "90003");
+    await user.type(screen.getByRole("textbox", { name: "模拟消息" }), "明天一起打游戏吗？");
+    await user.click(screen.getByRole("button", { name: "刷新本轮上下文" }));
+
+    const editor = screen.getByRole("main");
+    expect(within(editor).getAllByRole("heading", { name: "人设" })).toHaveLength(1);
+  });
+
+  it("switches the main panel from pipeline editing to assembled prompt", async () => {
+    const user = userEvent.setup();
+    renderRoute("/ai/governance?bot=10001&group=20002&scene=group_chat");
+
+    await user.type(await screen.findByRole("textbox", { name: "用户 QQ" }), "90003");
+    await user.type(screen.getByRole("textbox", { name: "模拟消息" }), "明天一起打游戏吗？");
+    await user.click(screen.getByRole("button", { name: "刷新本轮上下文" }));
+    await user.click(await screen.findByRole("button", { name: "打开当前组装结果" }));
+
+    expect(screen.queryByRole("textbox", { name: "人设覆盖内容" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "当前组装结果" })).not.toBeNull();
   });
 });

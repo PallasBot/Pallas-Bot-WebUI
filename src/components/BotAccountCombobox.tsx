@@ -33,6 +33,7 @@ export type BotAccountComboboxProps = {
   title?: string;
   disabled?: boolean;
   id?: string;
+  memoryKey?: string;
 };
 
 /**
@@ -56,6 +57,7 @@ export default function BotAccountCombobox({
   title,
   disabled,
   id,
+  memoryKey,
 }: BotAccountComboboxProps) {
   const resolvedTriggerClassName = cn(CHROME_BOT_ACCOUNT_SELECT, triggerClassName);
   const sortedBots = useMemo(() => {
@@ -121,6 +123,7 @@ export default function BotAccountCombobox({
       ariaLabel={ariaLabel}
       title={resolvedTitle}
       disabled={disabled}
+      memoryKey={memoryKey}
     />
   );
 }

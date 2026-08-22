@@ -7,6 +7,7 @@ import ChromeTools from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GovernancePipelineTab from "./GovernancePipelineTab";
+import "./AiGovernancePage.css";
 
 const GovernanceStyleTab = lazy(() => import("./GovernanceStyleTab"));
 const GovernancePeopleTab = lazy(() => import("./GovernancePeopleTab"));
