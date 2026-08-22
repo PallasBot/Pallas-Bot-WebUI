@@ -4,6 +4,11 @@
 
 <!-- entries -->
 
+## [0.9.13] - 2026-08-22
+
+**完整变更**: [`v0.9.12...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.12...HEAD)
+
+
 ## [0.9.13] - 2026-08-23
 
 ### 更新公告
