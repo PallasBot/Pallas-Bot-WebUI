@@ -1424,6 +1424,7 @@ export type PromptPreviewSection = {
   source: string;
   active: boolean;
   content: string;
+  override?: PromptSectionOverride;
 };
 
 export type PromptSectionOverride = {
@@ -1445,6 +1446,13 @@ export type PromptPreviewData = {
   traces?: Record<string, unknown>;
 };
 
+export type PromptTryData = {
+  text: string;
+  model: string;
+  elapsed_ms: number;
+  test_call: true;
+};
+
 export async function fetchLlmPromptPreview(params: {
   botId: number;
   groupId: number;
@@ -1458,6 +1466,23 @@ export async function fetchLlmPromptPreview(params: {
     query_text: params.queryText,
   });
   return envelopeData<PromptPreviewData>(body);
+}
+
+export async function tryLlmPrompt(params: {
+  botId: number;
+  groupId: number;
+  userId: number;
+  systemPrompt: string;
+  queryText: string;
+}): Promise<PromptTryData> {
+  const { data: body } = await http.post("/common-config/llm/persona/prompt-preview/try", {
+    bot_id: params.botId,
+    group_id: params.groupId,
+    user_id: params.userId,
+    system_prompt: params.systemPrompt,
+    query_text: params.queryText,
+  });
+  return envelopeData<PromptTryData>(body);
 }
 
 export async function fetchLlmPromptOverrides(params: {

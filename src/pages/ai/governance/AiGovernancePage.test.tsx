@@ -18,12 +18,19 @@ const fetchLlmPromptPreview = vi.fn().mockResolvedValue({
 });
 const fetchLlmPromptOverrides = vi.fn().mockResolvedValue({});
 const saveLlmPromptOverrides = vi.fn().mockResolvedValue({});
+const tryLlmPrompt = vi.fn().mockResolvedValue({
+  text: "可以，周末一起玩。",
+  model: "test-model",
+  elapsed_ms: 321,
+  test_call: true,
+});
 
 vi.mock("@/api/console", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/console")>()),
   fetchLlmPromptPreview,
   fetchLlmPromptOverrides,
   saveLlmPromptOverrides,
+  tryLlmPrompt,
 }));
 vi.mock("@/components/ConsoleSetupGuard", () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock("@/layout/AppShell", () => ({ default: () => <Outlet /> }));
@@ -64,7 +71,7 @@ describe("AiGovernancePage route", () => {
 
     await user.type(await screen.findByRole("textbox", { name: "用户 QQ" }), "90003");
     await user.type(screen.getByRole("textbox", { name: "模拟消息" }), "明天一起打游戏吗？");
-    await user.click(screen.getByRole("button", { name: "生成本轮预览" }));
+    await user.click(screen.getByRole("button", { name: "刷新本轮上下文" }));
 
     await waitFor(() => expect(fetchLlmPromptPreview).toHaveBeenCalledWith({
       botId: 10001,
@@ -87,7 +94,7 @@ describe("AiGovernancePage route", () => {
 
     await user.type(await screen.findByRole("textbox", { name: "用户 QQ" }), "90003");
     await user.type(screen.getByRole("textbox", { name: "模拟消息" }), "明天一起打游戏吗？");
-    await user.click(screen.getByRole("button", { name: "生成本轮预览" }));
+    await user.click(screen.getByRole("button", { name: "刷新本轮上下文" }));
 
     const personaEditor = await screen.findByRole("textbox", { name: "人设覆盖内容" });
     await user.clear(personaEditor);
@@ -99,5 +106,24 @@ describe("AiGovernancePage route", () => {
       groupId: 20002,
       sections: { persona: { mode: "replace", content: "新的群内人设" } },
     }));
+  });
+
+  it("calls the model only after an explicit try-answer action", async () => {
+    const user = userEvent.setup();
+    renderRoute("/ai/governance?bot=10001&group=20002&scene=group_chat");
+
+    await user.type(await screen.findByRole("textbox", { name: "用户 QQ" }), "90003");
+    await user.type(screen.getByRole("textbox", { name: "模拟消息" }), "明天一起打游戏吗？");
+    await user.click(screen.getByRole("button", { name: "刷新本轮上下文" }));
+    await user.click(await screen.findByRole("button", { name: "调用模型试答" }));
+
+    await waitFor(() => expect(tryLlmPrompt).toHaveBeenCalledWith(expect.objectContaining({
+      botId: 10001,
+      groupId: 20002,
+      userId: 90003,
+      queryText: "明天一起打游戏吗？",
+    })));
+    expect(await screen.findByText("可以，周末一起玩。")).not.toBeNull();
+    expect(screen.getByText(/测试调用/)).not.toBeNull();
   });
 });

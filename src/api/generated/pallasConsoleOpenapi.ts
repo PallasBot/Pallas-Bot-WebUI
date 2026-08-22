@@ -478,6 +478,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/persona/prompt-preview/try": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Persona Prompt Preview Try Post */
+        post: operations["_llm_persona_prompt_preview_try_post_pallas_api_common_config_llm_persona_prompt_preview_try_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/persona/prompt-overrides": {
         parameters: {
             query?: never;
@@ -7854,8 +7871,27 @@ export interface components {
             bot_id: number;
             /** Group Id */
             group_id?: number | null;
+            /**
+             * User Id
+             * @default 0
+             */
+            user_id: number;
+            /**
+             * Query Text
+             * @default
+             */
+            query_text: string;
+        };
+        /** _PromptTrialBody */
+        _PromptTrialBody: {
+            /** Bot Id */
+            bot_id: number;
+            /** Group Id */
+            group_id: number;
             /** User Id */
             user_id: number;
+            /** System Prompt */
+            system_prompt: string;
             /** Query Text */
             query_text: string;
         };
@@ -9618,6 +9654,44 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["_PromptPreviewBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_prompt_preview_try_post_pallas_api_common_config_llm_persona_prompt_preview_try_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_PromptTrialBody"];
             };
         };
         responses: {

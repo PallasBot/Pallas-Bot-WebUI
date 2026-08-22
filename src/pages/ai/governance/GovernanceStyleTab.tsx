@@ -136,8 +136,8 @@ function GroupStyleControls({
       </div>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" icon={RefreshCw} iconMotion="spin" disabled={busy} onClick={() => onAction("rebuild")}>立即重建</Button>
-        <Button size="sm" variant="ghost" className="text-destructive" icon={Trash2} disabled={busy} onClick={() => onClear(true)}>清空并继续学习</Button>
-        <Button size="sm" variant="ghost" className="text-destructive" icon={Trash2} disabled={busy} onClick={() => onClear(false)}>清空并暂停学习</Button>
+        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onClear(true)}>清空并继续学习</Button>
+        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onClear(false)}>清空并暂停学习</Button>
       </div>
     </div>
   );
@@ -206,8 +206,8 @@ function SemanticStyleControls({
         <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction({ action: "quality" })}>质量评价</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction({ action: "enable" })}>全部启用</Button>
         <Button size="sm" variant="ghost" className="text-destructive" icon={Ban} disabled={busy} onClick={() => onAction({ action: "disable" })}>全部停用</Button>
-        <Button size="sm" variant="ghost" className="text-destructive" icon={Trash2} disabled={busy} onClick={() => onClear(true)}>清空并继续学习</Button>
-        <Button size="sm" variant="ghost" className="text-destructive" icon={Trash2} disabled={busy} onClick={() => onClear(false)}>清空并暂停学习</Button>
+        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onClear(true)}>清空并继续学习</Button>
+        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onClear(false)}>清空并暂停学习</Button>
       </div>
       {qualityData ? (
         <div className="grid gap-1 rounded-md border p-3 sm:grid-cols-2">

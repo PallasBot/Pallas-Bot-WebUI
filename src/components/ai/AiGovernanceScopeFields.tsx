@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, MessagesSquare, Users } from "lucide-react";
+import { Bot, Users } from "lucide-react";
 import { fetchGroupList, fetchInstances } from "@/api/fullConsole";
 import { useAiGovernanceScope } from "@/components/ai/AiGovernanceScope";
 import BotAccountCombobox from "@/components/BotAccountCombobox";
 import ChromeField from "@/components/ChromeField";
 import { CHROME_TOOLS_CLUSTER } from "@/components/ChromeTools";
-import { COMBOBOX_TRIGGER_CLASS, Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { botSelectDropdownLabel } from "@/utils/botDisplay";
@@ -15,7 +15,7 @@ function isPositiveInteger(value: string): boolean {
   return /^\d+$/.test(value.trim()) && Number.isSafeInteger(Number(value)) && Number(value) > 0;
 }
 
-/** AI 治理页范围：必须选择正整数 Bot、群与唯一的群聊场景。 */
+/** AI 治理页范围固定为群聊，只选择 Bot 与群。 */
 export default function AiGovernanceScopeFields() {
   const { botId, groupId, setBotId, setGroupId } = useAiGovernanceScope();
   const { favorites } = useBotFavorites();
@@ -118,11 +118,6 @@ export default function AiGovernanceScopeFields() {
         )}
       </ChromeField>
 
-      <ChromeField label="场景" icon={MessagesSquare} className="shrink-0">
-        <span aria-label="治理场景" className={`${COMBOBOX_TRIGGER_CLASS} h-9 w-[6rem] shrink-0`}>
-          群聊
-        </span>
-      </ChromeField>
     </div>
   );
 }

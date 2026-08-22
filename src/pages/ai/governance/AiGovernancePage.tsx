@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Brain, GitBranch, MessageSquare, ShieldCheck } from "lucide-react";
 import { AiGovernanceScope } from "@/components/ai/AiGovernanceScope";
 import AiGovernanceScopeFields from "@/components/ai/AiGovernanceScopeFields";
+import ChromeTools from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GovernancePipelineTab from "./GovernancePipelineTab";
@@ -32,11 +33,9 @@ export function governanceTabMeta(id: string): GovernanceTabMeta {
 
 function GovernanceChrome() {
   return (
-    <div className="chrome-tools ai-governance-page__scope">
-      <div className="console-hub-page__chrome-row">
-        <AiGovernanceScopeFields />
-      </div>
-    </div>
+    <ChromeTools className="ai-governance-page__scope">
+      <AiGovernanceScopeFields />
+    </ChromeTools>
   );
 }
 
