@@ -49,6 +49,8 @@ export type ComboboxProps = {
   title?: string;
   disabled?: boolean;
   id?: string;
+  /** 持久化最近一次选择；仅对需要记忆的场景显式启用。 */
+  memoryKey?: string;
 };
 
 function optionSearchText(opt: ComboboxOption): string {
@@ -77,6 +79,7 @@ export function Combobox({
   title,
   disabled,
   id,
+  memoryKey,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -97,6 +100,27 @@ export function Combobox({
     if (!q) return options;
     return options.filter((opt) => optionSearchText(opt).includes(q));
   }, [options, query]);
+
+  React.useEffect(() => {
+    const key = memoryKey?.trim();
+    if (!key || loading || typeof window === "undefined") return;
+
+    try {
+      const currentValue = value.trim();
+      if (currentValue) {
+        window.localStorage.setItem(key, currentValue);
+        return;
+      }
+
+      const rememberedValue = window.localStorage.getItem(key)?.trim();
+      if (!rememberedValue) return;
+      if (allowCustom || options.some((option) => option.value === rememberedValue)) {
+        onValueChange(rememberedValue);
+      }
+    } catch {
+      // Storage can be unavailable in private browsing or restricted embeds.
+    }
+  }, [allowCustom, loading, memoryKey, onValueChange, options, value]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -144,6 +168,7 @@ export function Combobox({
               onValueChange={setQuery}
               onKeyDown={(e) => {
                 if (e.key !== "Enter" || !allowCustom) return;
+                if (filtered.some((option) => !option.disabled)) return;
                 const next = query.trim();
                 if (!next) return;
                 e.preventDefault();
