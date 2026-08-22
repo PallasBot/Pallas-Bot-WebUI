@@ -24,7 +24,7 @@ type GovernanceTabMeta = {
 export const GOVERNANCE_TABS: readonly GovernanceTabMeta[] = [
   { id: "pipeline", label: "回复流水线", lead: "回复发送前依次经过的五个阶段，各阶段参数在此内联调整。" },
   { id: "style", label: "群风格与语义", lead: "群风格、语义、表情标签、人设导出与场景正反例。" },
-  { id: "people", label: "人物", lead: "人物事实、观察、关系笔记与口癖。" },
+  { id: "people", label: "人物", lead: "人物事实、关系笔记与口癖。" },
   { id: "memory", label: "记忆", lead: "知识图谱、条目、偏好、回收站与导入导出。" },
 ];
 

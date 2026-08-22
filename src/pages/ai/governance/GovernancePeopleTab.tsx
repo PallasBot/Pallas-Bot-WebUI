@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleOff, Heart, PenLine, Search, Trash2, X } from "lucide-react";
 import {
   fetchAgentCatchphrases,
-  fetchAgentObservations,
   fetchAgentPersonFacts,
   resolveAgentCatchphrase,
   saveAgentPersonFact,
@@ -63,13 +62,6 @@ function catchphraseStatusLabel(status: string): string {
   return status || "—";
 }
 
-function observationStatusLabel(status: string): string {
-  if (status === "pending") return "待整理";
-  if (status === "processed") return "已处理";
-  if (status === "dropped") return "已丢弃";
-  return status || "—";
-}
-
 function factScopeLabel(scope: string): string {
   if (scope === "group") return "本群";
   if (scope === "global") return "全局";
@@ -96,16 +88,6 @@ export default function GovernancePeopleTab() {
       fetchAgentPersonFacts({
         botId: bot,
         groupId: group,
-      }),
-  });
-  const observationsQuery = useQuery({
-    queryKey: ["agent-observations", bot, group],
-    enabled: groupReady,
-    queryFn: () =>
-      fetchAgentObservations({
-        botId: bot,
-        groupId: group,
-        status: "all",
       }),
   });
   const catchphrasesQuery = useQuery({
@@ -213,7 +195,6 @@ export default function GovernancePeopleTab() {
   });
 
   const facts = useMemo(() => factsQuery.data?.items || [], [factsQuery.data]);
-  const observations = useMemo(() => observationsQuery.data?.items || [], [observationsQuery.data]);
   const catchphrases = useMemo(() => catchphrasesQuery.data?.items || [], [catchphrasesQuery.data]);
   const friends = useMemo(() => friendsQuery.data?.friends || [], [friendsQuery.data]);
 
@@ -311,36 +292,6 @@ export default function GovernancePeopleTab() {
                 </li>
               ))}
               {!facts.length ? <li className="text-sm text-muted-foreground">还没有人物事实。</li> : null}
-            </ul>
-          </StateBlock>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">待整理观察</CardTitle>
-          <CardDescription>
-            尚未写入长期记忆的候选片段，当前 {observationsQuery.data?.queue_size ?? 0} 条。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <StateBlock loading={observationsQuery.isLoading} error={observationsQuery.error}>
-            <ul className="max-h-[12rem] space-y-1.5 overflow-y-auto overscroll-contain pr-1">
-              {observations.slice(0, 30).map((item) => (
-                <li
-                  key={String(item.observation_id)}
-                  className="rounded-md border px-2.5 py-1.5 text-sm leading-snug"
-                >
-                  <div>{truncateText(String(item.text || ""), 100)}</div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">
-                    {observationStatusLabel(String(item.status || ""))} · QQ {String(item.user_id)}
-                    {item.source ? ` · ${String(item.source)}` : ""}
-                  </div>
-                </li>
-              ))}
-              {!observations.length ? (
-                <li className="text-sm text-muted-foreground">队列是空的。</li>
-              ) : null}
             </ul>
           </StateBlock>
         </CardContent>

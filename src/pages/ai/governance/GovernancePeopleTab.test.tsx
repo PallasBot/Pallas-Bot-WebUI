@@ -18,7 +18,6 @@ beforeAll(() => {
 const apiMocks = vi.hoisted(() => ({
   fetchAgentPersonFacts: vi.fn(),
   saveAgentPersonFact: vi.fn(),
-  fetchAgentObservations: vi.fn(),
   fetchAgentCatchphrases: vi.fn(),
   resolveAgentCatchphrase: vi.fn(),
   fetchFriendList: vi.fn(),
@@ -72,7 +71,6 @@ describe("GovernancePeopleTab", () => {
 
     await screen.findByText("请在顶部选择群号，以查看群内人物资料。", {}, { timeout: 5000 });
     expect(apiMocks.fetchAgentPersonFacts).not.toHaveBeenCalled();
-    expect(apiMocks.fetchAgentObservations).not.toHaveBeenCalled();
     expect(apiMocks.fetchConversationKernelRelationshipNotes).not.toHaveBeenCalled();
   });
 
@@ -121,16 +119,11 @@ describe("GovernancePeopleTab", () => {
     });
   });
 
-  it("shows the observations queue with pending status", async () => {
-    apiMocks.fetchAgentObservations.mockResolvedValue({
-      items: [{ observation_id: "o1", text: "对美食很有研究", user_id: 90001, status: "pending", source: "auto" }],
-      count: 1,
-      queue_size: 1,
-    });
+  it("does not show the disconnected observations queue", async () => {
     renderRoute(fullScope);
 
-    expect(await screen.findByText("对美食很有研究")).not.toBeNull();
-    expect(screen.getAllByText(/待整理/).length).toBeGreaterThan(0);
+    expect(await screen.findByText("人物事实")).not.toBeNull();
+    expect(screen.queryByText("待整理观察")).toBeNull();
   });
 
   it("renders relationship notes with editing, affinity save and delete", async () => {
