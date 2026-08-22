@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.12] - 2026-08-22
 
 ### 更新公告
 
@@ -23,6 +23,33 @@
 - **修复**：
   - AI 观测的回复路径统计剔除 Repeater 语料选句，计数更准确
 
+### 提交明细
+
+### Added
+
+* feat(ai): 重构 AI 治理为 Prompt 流水线 ([1ddbfeb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1ddbfeb992f2b4068de5c1857bb368ca498964fb))
+* feat(ai): 增加风格与基础提示词治理页 ([32ddc17](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/32ddc177c45a0f19b81b68b7731f9ea0e19e1051))
+* feat(logs): 日志页新增运行级别切换 ([71fb6b5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/71fb6b5397fd7fe32494e5d350b09b12ca6107e3))
+* feat(ai): 模型选择不再过滤已注册模型，选中即注册 ([796bdae](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/796bdaeaf8bbead369dd4b7a61031b7fb0c96b3b))
+* feat(ai): 价格配置收起后显示价格摘要 ([4c1fd89](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4c1fd89f69ccf1666d9ac31ad19d59ff6c249328))
+* feat(ai): 提供方支持一键复制为新提供方 ([e65b421](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e65b421c69ae634be43f608a6d6d32f139951f05))
+
+### Fixed
+
+* fix(ai): 完善 Prompt 治理面板与工具条 ([d340e2d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d340e2d0da3003bc8c970187fcb3a8b14d2d42b1))
+* fix(ai): 模型选择浮层默认进入常用页签 ([55f5f3a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/55f5f3a459ee4532a3add0170afc3d41ebca698e))
+* fix(ai): 修复注册模型 draft 状态缺失导致无法选中即注册 ([ade9af7](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ade9af701b55d82bf4603f309eb84c888dacf910))
+* fix(ai): AI 观测回复路径剔除 repeater 语料选句 ([54205c0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/54205c08d5901604ed1778e5025b21e63a70527a))
+
+### Changed
+
+* chore(ai): 清理 LLM 与 Repeater 断链后的遗留入口与文案 ([7d79742](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7d79742d6bde93398ae58ebeafec95b5696b7829))
+* chore(ai): 分层任务编辑卡片文案同步退役 task 清理 ([ff391f1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ff391f1318ae74cdc5fd59df1008a4d9bda1b715))
+* chore(ai): 提供方任务列表清理退役 repeater 选句/润色 task ([55e627f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/55e627fd94b5a1de2d2471cc9c6d134d050be79b))
+
+**完整变更**: [`v0.9.11...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.11...HEAD)
+
+
 ## [0.9.11] - 2026-08-20
 
 ### 更新公告
@@ -38,7 +65,6 @@
 * fix(llm): 本地路由任务收敛为存活任务 ([03486e1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/03486e125df3a365f5e71a05ccbcd2b582f59332))
 
 **完整变更**: [`v0.9.10...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.10...HEAD)
-
 
 ## [0.9.10] - 2026-08-20
 
