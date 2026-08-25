@@ -1902,40 +1902,6 @@ export async function postLlmStickerLabelManage(
   return envelopeData(response) || response;
 }
 
-export async function fetchLlmPromotionCandidates(params: {
-  botId: number;
-  groupId: number;
-  limit?: number;
-  includeResolved?: boolean;
-}): Promise<{ items?: Array<Record<string, unknown>> }> {
-  const { data: body } = await http.get("/llm/repeater-feedback/promotion-candidates", {
-    params: {
-      group_id: params.groupId,
-      bot_id: params.botId,
-      limit: params.limit ?? 20,
-      include_resolved: Boolean(params.includeResolved),
-    },
-  });
-  return envelopeData(body) || {};
-}
-
-export async function postLlmPromotionCandidateResolve(body: {
-  candidateId: string;
-  action: "promote" | "reject";
-  botId: number;
-  groupId: number;
-  reason?: string;
-}): Promise<Record<string, unknown>> {
-  const { data: res } = await http.post("/llm/repeater-feedback/promotion-candidates/resolve", {
-    candidate_id: body.candidateId,
-    action: body.action,
-    bot_id: body.botId,
-    group_id: body.groupId,
-    reason: body.reason ?? "",
-  });
-  return envelopeData(res) || res;
-}
-
 export async function fetchLlmPersonaObserve(params?: {
   groupId?: number | null;
   accounts?: number[];

@@ -6,14 +6,12 @@ import {
   fetchLlmBehaviorPatterns,
   fetchLlmBehaviorRuns,
   fetchLlmPersonaObserve,
-  fetchLlmPromotionCandidates,
   fetchLlmRuntimeDebug,
   fetchLlmRuntimeReplay,
   postLlmBehaviorPatternDelete,
-  postLlmPromotionCandidateResolve,
   postLlmRuntimeReplayRun,
 } from "@/api/console";
-import { Archive, Download, Eye, Play, Trash2, X } from "lucide-react";
+import { Download, Eye, Play, Trash2 } from "lucide-react";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import SegTabs from "@/components/SegTabs";
@@ -31,13 +29,12 @@ function notifyErr(message: string) {
   pushConsoleToast(message || "操作失败", "err");
 }
 
-type Panel = "samples" | "patterns" | "repeater" | "promotion" | "persona" | "debug";
+type Panel = "samples" | "patterns" | "repeater" | "persona" | "debug";
 
 const PANEL_OPTIONS = [
   { value: "samples", label: "样本" },
   { value: "patterns", label: "模式" },
   { value: "repeater", label: "复读" },
-  { value: "promotion", label: "入库" },
   { value: "persona", label: "牛格" },
   { value: "debug", label: "调试" },
 ];
@@ -46,12 +43,10 @@ export default function AiConfigBehaviorSection() {
   const qc = useQueryClient();
   const [panel, setPanel] = useState<Panel>("samples");
   const [groupId, setGroupId] = useState("0");
-  const [botId, setBotId] = useState("");
   const [requestId, setRequestId] = useState("");
   const [debugOut, setDebugOut] = useState<Record<string, unknown> | null>(null);
 
   const group = Number(groupId) || 0;
-  const bot = Number(botId) || 0;
 
   const runsQ = useQuery({
     queryKey: ["llm-behavior-runs", group],
@@ -60,11 +55,6 @@ export default function AiConfigBehaviorSection() {
   const patternsQ = useQuery({
     queryKey: ["llm-behavior-patterns", group],
     queryFn: () => fetchLlmBehaviorPatterns({ groupId: group || null }),
-  });
-  const promoQ = useQuery({
-    queryKey: ["llm-promotion-candidates", bot, group],
-    queryFn: () => fetchLlmPromotionCandidates({ botId: bot, groupId: group, includeResolved: true }),
-    enabled: bot > 0 && group > 0,
   });
   const personaQ = useQuery({
     queryKey: ["llm-persona-observe", group],
@@ -76,18 +66,6 @@ export default function AiConfigBehaviorSection() {
     onSuccess: async () => {
       notifyOk("行为模式已删除");
       await qc.invalidateQueries({ queryKey: ["llm-behavior-patterns"] });
-    },
-    onError: (e) => notifyErr(axiosErrorDetail(e)),
-  });
-
-  const promoMut = useMutation({
-    mutationFn: (body: { candidateId: string; action: "promote" | "reject" }) => {
-      if (bot <= 0 || group <= 0) throw new Error("需要 Bot 与群号");
-      return postLlmPromotionCandidateResolve({ ...body, botId: bot, groupId: group });
-    },
-    onSuccess: async () => {
-      notifyOk("候选已处理");
-      await qc.invalidateQueries({ queryKey: ["llm-promotion-candidates"] });
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
@@ -128,11 +106,7 @@ export default function AiConfigBehaviorSection() {
 
   return (
     <AiConfigSectionCard title={panelMeta.label} contentClassName="space-y-3">
-        <div className="grid max-w-xl gap-3 sm:grid-cols-2">
-          <label className="block min-w-0 space-y-1 text-sm">
-            <span className="text-muted-foreground">机器人 QQ</span>
-            <Input value={botId} onChange={(e) => setBotId(e.target.value)} inputMode="numeric" />
-          </label>
+        <div className="grid max-w-xl gap-3 sm:grid-cols-1">
           <label className="block min-w-0 space-y-1 text-sm">
             <span className="text-muted-foreground">群号</span>
             <Input value={groupId} onChange={(e) => setGroupId(e.target.value)} inputMode="numeric" />
@@ -182,39 +156,6 @@ export default function AiConfigBehaviorSection() {
               <Link to="/ai/governance">前往 AI 治理</Link>
             </Button>
           </section>
-        ) : null}
-
-        {panel === "promotion" ? (
-          <StateBlock loading={promoQ.isLoading} error={promoQ.error} empty={!promoQ.data?.items?.length}>
-            {(promoQ.data?.items || []).map((row) => {
-              const cid = String(row.candidate_id || row.id || "");
-              return (
-                <div key={cid} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-xs">
-                  <pre className="min-w-0 flex-1">{JSON.stringify(row, null, 2)}</pre>
-                  {cid ? (
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        icon={Archive}
-                        onClick={() => void promoMut.mutateAsync({ candidateId: cid, action: "promote" })}
-                      >
-                        入库
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        icon={X}
-                        iconMotion="close"
-                        onClick={() => void promoMut.mutateAsync({ candidateId: cid, action: "reject" })}
-                      >
-                        拒绝
-                      </Button>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </StateBlock>
         ) : null}
 
         {panel === "persona" ? (

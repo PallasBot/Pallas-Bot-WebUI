@@ -102,8 +102,6 @@ import type {
   LlmRepeaterFeedbackData,
   LlmRepeaterFeedbackEntry,
   LlmRepeaterFeedbackSummary,
-  LlmPromotionCandidate,
-  LlmPromotionCandidatesData,
   ConversationKernelStatus,
   ConversationKernelKnowledgeSourcesData,
   KnowledgeSourceDetail,
@@ -1331,42 +1329,6 @@ export async function postLlmRepeaterFeedbackManage(body: {
     llm_route: body.llmRoute ?? "",
     behavior_scene: body.behaviorScene ?? "",
   }) as Promise<LlmRepeaterFeedbackEntry | { deleted: true; entry_id: string }>;
-}
-
-export async function fetchLlmPromotionCandidates(params: {
-  botId: number;
-  groupId: number;
-  limit?: number;
-  includeResolved?: boolean;
-}): Promise<LlmPromotionCandidatesData> {
-  return (await consoleOpenapiGet<
-    ConsoleOpenapiPaths["/pallas/api/llm/repeater-feedback/promotion-candidates"]["get"]
-  >("/llm/repeater-feedback/promotion-candidates", {
-    params: {
-      group_id: params.groupId,
-      bot_id: params.botId,
-      limit: params.limit ?? 20,
-      include_resolved: Boolean(params.includeResolved),
-    },
-  })) as LlmPromotionCandidatesData;
-}
-
-export async function postLlmPromotionCandidateResolve(body: {
-  candidateId: string;
-  action: "promote" | "reject";
-  botId: number;
-  groupId: number;
-  reason?: string;
-}): Promise<LlmPromotionCandidate> {
-  return consoleOpenapiPost<
-    ConsoleOpenapiPaths["/pallas/api/llm/repeater-feedback/promotion-candidates/resolve"]["post"]
-  >("/llm/repeater-feedback/promotion-candidates/resolve", {
-    candidate_id: body.candidateId,
-    action: body.action,
-    bot_id: body.botId,
-    group_id: body.groupId,
-    reason: body.reason ?? "",
-  });
 }
 
 export async function fetchConversationKernelStatus(): Promise<ConversationKernelStatus> {

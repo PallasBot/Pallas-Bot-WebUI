@@ -1388,7 +1388,6 @@ export interface LlmRepeaterFeedbackEntry {
   llm_route?: string;
   source_tags?: string[];
   eligible_for_bias?: boolean;
-  eligible_for_writeback?: boolean;
   corrected_reply_text?: string;
   corrected_at?: number;
 }
@@ -1405,35 +1404,12 @@ export interface LlmRepeaterFeedbackSummary {
   semantic_matched_replies?: string[];
   penalized_replies?: string[];
   scenes: string[];
-  promotion_candidate_count?: number;
   learning_stats?: {
     window_sec?: number;
     repeater_reply_count?: number;
     feedback_bias_hit_count?: number;
     feedback_bias_hit_rate?: number;
-    auto_promote_count?: number;
   };
-}
-
-export interface LlmPromotionCandidate {
-  candidate_id: string;
-  group_id: number;
-  trigger_text: string;
-  reply_text: string;
-  support_count: number;
-  last_seen_at: number;
-  promoted: boolean;
-  rejected_reason: string;
-  writeback_status?: string;
-  writeback_message?: string;
-  writeback_at?: number;
-  behavior_scene: string;
-  source_request_id: string;
-}
-
-export interface LlmPromotionCandidatesData {
-  items: LlmPromotionCandidate[];
-  limit: number;
 }
 
 export interface ConversationKernelMemoryPolicy {
@@ -1441,7 +1417,6 @@ export interface ConversationKernelMemoryPolicy {
   allow_persistent_memory?: boolean;
   allow_corpus_foundation?: boolean;
   allow_behavioral_learning?: boolean;
-  allow_writeback?: boolean;
   runtime_state_summary_enabled?: boolean;
   read_persistent_memory?: boolean;
   read_session?: boolean;
@@ -1456,10 +1431,8 @@ export interface ConversationKernelStatus {
   conversation_feature_level_raw?: string;
   llm_repeater_feedback_enabled?: boolean;
   llm_repeater_bias_enabled?: boolean;
-  llm_repeater_writeback_enabled?: boolean;
   feedback_collect_active: boolean;
   feedback_bias_active: boolean;
-  writeback_active: boolean;
   runtime_state_summary_active?: boolean;
   memory_policy: ConversationKernelMemoryPolicy;
 }

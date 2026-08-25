@@ -42,7 +42,6 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   conversation_feature_level: "对话能力档位",
   llm_repeater_feedback_enabled: "收集 LLM 对话纠错",
   llm_repeater_bias_enabled: "纠错参与接话打分",
-  llm_repeater_writeback_enabled: "纠错写回接话语料",
   llm_memory_rag_enabled: "群记忆检索",
   llm_vector_retrieve: "记忆/知识检索模式",
   llm_embedding_model: "Embedding 模型",
@@ -128,9 +127,8 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
     keys: [
       "llm_repeater_feedback_enabled",
       "llm_repeater_bias_enabled",
-      "llm_repeater_writeback_enabled",
     ],
-    hint: "把成功发出的智能对话短句，用于之后的接话选句纠错。坏样本先在会话页排除；「写回语料」偏进阶，确认样本干净再开。",
+    hint: "把成功发出的智能对话短句，用于之后的接话选句纠错。坏样本先在会话页排除。",
   },
   {
     title: "记忆与知识",

@@ -95,29 +95,3 @@ export function labelLlmRoute(raw?: string | null): string {
   if (!key) return "未知路由";
   return LLM_ROUTE_LABELS[key.toLowerCase()] || key;
 }
-
-const WRITEBACK_STATUS_LABELS: Record<string, string> = {
-  written: "已写回",
-  failed: "写回失败",
-  pending: "待写回",
-  skipped: "已跳过",
-};
-
-const WRITEBACK_MESSAGE_LABELS: Record<string, string> = {
-  context_repository: "已写入接话语料库",
-  auto_promoted: "已自动入库写回",
-  "empty trigger or reply": "触发句或回复为空",
-  "corpus contamination guard": "被语料污染防护拦截",
-};
-
-export function labelWritebackStatus(raw?: string | null): string {
-  const key = String(raw || "").trim().toLowerCase();
-  if (!key) return "";
-  return WRITEBACK_STATUS_LABELS[key] || key;
-}
-
-export function labelWritebackMessage(raw?: string | null): string {
-  const key = String(raw || "").trim();
-  if (!key) return "";
-  return WRITEBACK_MESSAGE_LABELS[key] || WRITEBACK_MESSAGE_LABELS[key.toLowerCase()] || key;
-}
