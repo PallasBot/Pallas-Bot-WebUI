@@ -6,7 +6,6 @@ import PanelTitleIcon from "@/components/PanelTitleIcon";
 import {
   fetchConsoleDailyStats,
   fetchInstances,
-  fetchPluginRunStats,
 } from "@/api/fullConsole";
 import { fetchIngressDispatch, fetchIngressDispatchHistory } from "@/api/consoleApi";
 import type { BotConfigPublic, ConsoleDailyStatRow } from "@/api/pallasTypes";
@@ -115,7 +114,6 @@ export default function ChartsPage() {
 
   const { favorites } = useBotFavorites();
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
-  const pluginRunGlobalQ = useQuery({ queryKey: ["plugin-run-stats-global"], queryFn: () => fetchPluginRunStats() });
   const ingressQ = useQuery({
     queryKey: ["ingress-dispatch"],
     queryFn: fetchIngressDispatch,
@@ -457,12 +455,11 @@ export default function ChartsPage() {
 
   const rangeBusy = dailyRangeQ.isFetching;
   const rangeTotalsPending = Boolean(selectedAccount) && rangeBusy && !dailyRangeQ.data;
-  const refreshing = instQ.isFetching || pluginRunGlobalQ.isFetching || ingressQ.isFetching || ingressHistoryQ.isFetching || chartsBusy || rangeBusy;
+  const refreshing = instQ.isFetching || ingressQ.isFetching || ingressHistoryQ.isFetching || chartsBusy || rangeBusy;
 
   async function refreshAll() {
     await Promise.all([
       instQ.refetch(),
-      pluginRunGlobalQ.refetch(),
       ingressQ.refetch(),
       ingressHistoryQ.refetch(),
       dailyRangeQ.refetch(),
