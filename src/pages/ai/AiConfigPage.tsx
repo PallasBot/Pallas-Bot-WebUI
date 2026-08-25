@@ -44,7 +44,6 @@ const SECTION_REFRESH_KEYS: Record<string, string[][]> = {
     ["llm-behavior-patterns"],
     ["llm-repeater-feedback"],
     ["llm-repeater-summary"],
-    ["llm-promotion-candidates"],
     ["llm-persona-observe"],
   ],
 };

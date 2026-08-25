@@ -6,7 +6,6 @@ import {
   Eraser,
   MessageSquare,
   MessageSquareWarning,
-  RefreshCw,
   Save,
   Search,
   SlidersHorizontal,
@@ -23,13 +22,11 @@ import {
   fetchLlmBehaviorPatterns,
   fetchLlmHistorySession,
   fetchLlmHistorySessions,
-  fetchLlmPromotionCandidates,
   fetchLlmRepeaterFeedback,
   postLlmBehaviorPatternUpsert,
   postLlmHistoryBehaviorAnnotate,
   postLlmHistorySessionClear,
   postLlmHistorySessionInject,
-  postLlmPromotionCandidateResolve,
   postLlmRepeaterFeedbackManage,
 } from "@/api/fullConsole";
 import type {
@@ -61,7 +58,6 @@ import {
 import AiOptionSelect from "@/components/ai/AiOptionSelect";
 import { SessionFeedbackCard, SessionTurnFeedbackControls } from "@/components/ai/SessionFeedbackControls";
 import SessionLearningStrip from "@/components/ai/SessionLearningStrip";
-import SessionPromotionCard from "@/components/ai/SessionPromotionCard";
 import LlmToolTracePanel from "@/components/ai/LlmToolTracePanel";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +82,7 @@ import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
-type SessionDetailTab = "turns" | "annotate" | "feedback" | "promotion";
+type SessionDetailTab = "turns" | "annotate" | "feedback";
 
 type SessionTurnRow = {
   turn: LlmHistoryTurn;
@@ -323,7 +319,6 @@ export default function AiHistoryPage() {
   const [expandedToolTrace, setExpandedToolTrace] = useState<Record<string, boolean>>({});
   const [correctionDrafts, setCorrectionDrafts] = useState<Record<string, string>>({});
   const [feedbackBusy, setFeedbackBusy] = useState<Record<string, boolean>>({});
-  const [promoIncludeResolved, setPromoIncludeResolved] = useState(false);
 
   const q = useQuery({
     queryKey: ["llm-history-sessions", botId, groupId],
@@ -364,18 +359,6 @@ export default function AiHistoryPage() {
     queryKey: ["llm-repeater-feedback", learningBotId, learningGroupId],
     queryFn: () => fetchLlmRepeaterFeedback({ botId: learningBotId!, groupId: learningGroupId!, limit: 30 }),
     enabled: learningBotId != null && learningGroupId != null && detailTab === "feedback",
-  });
-
-  const promoQ = useQuery({
-    queryKey: ["llm-promotion-candidates", learningBotId, learningGroupId, 40, promoIncludeResolved],
-    queryFn: () =>
-      fetchLlmPromotionCandidates({
-        botId: learningBotId!,
-        groupId: learningGroupId!,
-        includeResolved: promoIncludeResolved,
-        limit: 40,
-      }),
-    enabled: learningBotId != null && learningGroupId != null && detailTab === "promotion",
   });
 
   const patternsQ = useQuery({
@@ -513,42 +496,11 @@ export default function AiHistoryPage() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["llm-history-session"] }),
         qc.invalidateQueries({ queryKey: ["llm-repeater-feedback"] }),
-        qc.invalidateQueries({ queryKey: ["llm-promotion-candidates"] }),
       ]);
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
     onSettled: (_d, _e, vars) => {
       setFeedbackBusy((prev) => ({ ...prev, [vars.busyKey]: false }));
-    },
-  });
-
-  const promoMut = useMutation({
-    mutationFn: (body: { candidateId: string; action: "promote" | "reject" }) => {
-      if (learningBotId == null || learningGroupId == null) throw new Error("请先选择 Bot 与群");
-      return postLlmPromotionCandidateResolve({
-        ...body,
-        botId: learningBotId,
-        groupId: learningGroupId,
-      });
-    },
-    onMutate: (vars) => {
-      setFeedbackBusy((prev) => ({ ...prev, [`promo:${vars.candidateId}`]: true }));
-    },
-    onSuccess: async (data, vars) => {
-      if (vars.action === "promote") {
-        const wb = String(data.writeback_status || "").trim();
-        if (wb === "written") notifyOk("已入库并写入语料。");
-        else if (wb === "failed") {
-          pushConsoleToast(`已入库，写入失败：${data.writeback_message || "未知原因"}`, "warn");
-        } else notifyOk("已入库（未写入语料）。");
-      } else {
-        notifyOk("已拒绝候选。");
-      }
-      await qc.invalidateQueries({ queryKey: ["llm-promotion-candidates"] });
-    },
-    onError: (e) => notifyErr(axiosErrorDetail(e)),
-    onSettled: (_d, _e, vars) => {
-      setFeedbackBusy((prev) => ({ ...prev, [`promo:${vars.candidateId}`]: false }));
     },
   });
 
@@ -568,7 +520,6 @@ export default function AiHistoryPage() {
     void qc.invalidateQueries({ queryKey: ["llm-history-session"] });
     void qc.invalidateQueries({ queryKey: ["llm-behavior-patterns"] });
     void qc.invalidateQueries({ queryKey: ["llm-repeater-feedback"] });
-    void qc.invalidateQueries({ queryKey: ["llm-promotion-candidates"] });
     void qc.invalidateQueries({ queryKey: ["conversation-kernel-status"] });
   }, [qc]);
 
@@ -636,10 +587,6 @@ export default function AiHistoryPage() {
       return hay.includes(needle);
     });
   }, [sessionItems, listQuery]);
-
-  const promoPendingCount = (promoQ.data?.items || []).filter(
-    (item) => !item.promoted && !String(item.rejected_reason || "").trim(),
-  ).length;
 
   function correctionDraftFor(key: string, fallback = ""): string {
     if (Object.prototype.hasOwnProperty.call(correctionDrafts, key)) return correctionDrafts[key];
@@ -928,53 +875,7 @@ export default function AiHistoryPage() {
           </div>
         </StateBlock>
       )
-    ) : learningGroupId == null ? (
-      privateLearningHint
-    ) : (
-      <StateBlock
-        loading={promoQ.isLoading}
-        error={promoQ.error}
-        empty={!promoQ.data?.items?.length}
-        emptyText="暂无入库候选。"
-      >
-        {learningStrip}
-        <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
-          <label className="flex items-center gap-1.5 text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={promoIncludeResolved}
-              onChange={(e) => setPromoIncludeResolved(e.target.checked)}
-            />
-            显示已处理
-          </label>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7"
-            icon={RefreshCw}
-            iconMotion="spin"
-            iconBusy={promoQ.isFetching}
-            disabled={promoQ.isFetching}
-            onClick={() => void promoQ.refetch()}
-          >
-            {promoQ.isFetching ? "刷新中…" : "刷新候选"}
-          </Button>
-          <span className="text-muted-foreground">待审批 {promoPendingCount}</span>
-        </div>
-        <div className="space-y-2">
-          {(promoQ.data?.items || []).map((item) => (
-            <SessionPromotionCard
-              key={item.candidate_id}
-              item={item}
-              busy={Boolean(feedbackBusy[`promo:${item.candidate_id}`])}
-              onResolve={(action) =>
-                void promoMut.mutateAsync({ candidateId: item.candidate_id, action })
-              }
-            />
-          ))}
-        </div>
-      </StateBlock>
-    );
+    ) : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -1121,11 +1022,6 @@ export default function AiHistoryPage() {
                           detailTab === "feedback" && feedbackQ.data?.items?.length
                             ? feedbackQ.data.items.length
                             : null,
-                      },
-                      {
-                        value: "promotion" as const,
-                        label: "入库",
-                        count: detailTab === "promotion" && promoPendingCount > 0 ? promoPendingCount : null,
                       },
                     ] as const
                   ).map((tab) => {

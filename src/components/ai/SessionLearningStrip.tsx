@@ -20,15 +20,9 @@ export function learningLoopHint(status: ConversationKernelStatus | undefined): 
       text: "已在收集纠错，但打分加权未开；排除/期望回复暂不影响接话。",
     };
   }
-  if (!status.writeback_active) {
-    return {
-      kind: "ok",
-      text: "纠错加权已开。可在会话里排除坏样本；写回语料需另开开关。",
-    };
-  }
   return {
     kind: "ok",
-    text: "学习闭环已接通：可排除坏样本，并把入库候选写入接话语料。",
+    text: "纠错加权已开。可在会话里排除坏样本、保存期望回复。",
   };
 }
 
@@ -40,7 +34,6 @@ export default function SessionLearningStrip({
   className?: string;
 }) {
   const hint = learningLoopHint(status);
-  if (hint.kind === "ok" && status?.writeback_active) return null;
 
   return (
     <div

@@ -3302,40 +3302,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/pallas/api/llm/repeater-feedback/promotion-candidates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Llm Repeater Feedback Promotion Candidates Get */
-        get: operations["_llm_repeater_feedback_promotion_candidates_get_pallas_api_llm_repeater_feedback_promotion_candidates_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/llm/repeater-feedback/promotion-candidates/resolve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Llm Repeater Feedback Promotion Candidates Resolve */
-        post: operations["_llm_repeater_feedback_promotion_candidates_resolve_pallas_api_llm_repeater_feedback_promotion_candidates_resolve_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/pallas/api/llm/expression-bank": {
         parameters: {
             query?: never;
@@ -16657,87 +16623,6 @@ export interface operations {
         };
     };
     _llm_repeater_feedback_manage_pallas_api_llm_repeater_feedback_manage_post: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_repeater_feedback_promotion_candidates_get_pallas_api_llm_repeater_feedback_promotion_candidates_get: {
-        parameters: {
-            query: {
-                /** @description Bot QQ */
-                bot_id: number;
-                /** @description 群号 */
-                group_id: number;
-                limit?: number;
-                /** @description 是否包含已晋升/已拒绝 */
-                include_resolved?: boolean;
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_repeater_feedback_promotion_candidates_resolve_pallas_api_llm_repeater_feedback_promotion_candidates_resolve_post: {
         parameters: {
             query?: {
                 token?: string | null;
