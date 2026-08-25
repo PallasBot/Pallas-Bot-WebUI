@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.14] - 2026-08-25
 
 ### 更新公告
 
@@ -15,6 +15,11 @@
   - 好友 / 群聊卡片 30 秒内复用缓存不重复刷新，切账号更顺滑
 - **图表**：
   - 移除未消费的全量插件运行统计请求，图表打开更快
+
+### 提交明细
+
+**完整变更**: [`v0.9.13...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.13...HEAD)
+
 
 ## [0.9.13] - 2026-08-23
 
@@ -38,7 +43,6 @@
 * fix(ai-governance): 移除未接通的观察队列面板 ([fd827c6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fd827c69772ba379c6d90fb651f188f183ca61b7))
 
 **完整变更**: [`v0.9.12...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.12...HEAD)
-
 
 ## [0.9.12] - 2026-08-22
 
@@ -84,7 +88,6 @@
 * chore(ai): 提供方任务列表清理退役 repeater 选句/润色 task ([55e627f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/55e627fd94b5a1de2d2471cc9c6d134d050be79b))
 
 **完整变更**: [`v0.9.11...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.11...HEAD)
-
 
 ## [0.9.11] - 2026-08-20
 
