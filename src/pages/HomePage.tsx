@@ -327,6 +327,7 @@ export default function HomePage() {
       ]);
       return { fl, gl, ov };
     },
+    staleTime: 30_000,
     enabled: overviewSettled && selectedAccount != null,
   });
 
