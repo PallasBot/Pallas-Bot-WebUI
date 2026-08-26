@@ -967,7 +967,7 @@ export default function LlmProvidersForm() {
       ? doc.providers.filter((provider) => provider.capabilities?.includes(requiredCapability))
       : doc.providers;
     return (
-      <div className="grid gap-2">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
         <AiOptionSelect
           value={opts.providerId}
           onValueChange={(providerId) => {
@@ -1930,7 +1930,7 @@ export default function LlmProvidersForm() {
                   <div className="mt-4">{renderRoutableTaskCard("sticker_vision")}</div>
                 </>
               ) : (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-4">
                   {ALL_ROUTABLE_TASKS.map((task) =>
                     renderRoutableTaskCard(task, task === "sticker_vision" ? "col-span-full" : undefined),
                   )}

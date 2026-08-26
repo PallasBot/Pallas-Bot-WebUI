@@ -172,9 +172,9 @@ export function AiModelSelect({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className={cn("h-9 w-full justify-between px-3 font-normal", className)}
+          className={cn("h-9 min-w-0 w-full justify-between px-3 font-normal", className)}
         >
-          <span className={cn("min-w-0 flex-1 truncate", !safeValue && "text-muted-foreground")}>
+          <span className={cn("min-w-0 flex-1 truncate text-left", !safeValue && "text-muted-foreground")}>
             {safeValue || placeholder}
           </span>
           <ChevronDown className="size-4 shrink-0 opacity-50" />

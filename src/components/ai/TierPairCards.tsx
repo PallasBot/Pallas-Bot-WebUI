@@ -69,7 +69,7 @@ export function TierCard({
   return (
     <div
       className={cn(
-        "space-y-4 rounded-[var(--radius-control,8px)] border border-[color-mix(in_srgb,var(--border)_70%,transparent)] p-4",
+        "min-w-0 space-y-4 rounded-[var(--radius-control,8px)] border border-[color-mix(in_srgb,var(--border)_70%,transparent)] p-4",
         className,
       )}
     >
@@ -104,7 +104,7 @@ type TierPairCardsProps = {
 /** 高低双卡并排；窄屏单列 */
 export default function TierPairCards({ high, low, className }: TierPairCardsProps) {
   return (
-    <div className={cn("grid grid-cols-2 gap-4", className)}>
+    <div className={cn("grid min-w-0 grid-cols-2 gap-4", className)}>
       {high}
       {low}
     </div>
