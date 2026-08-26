@@ -58,7 +58,7 @@ export const TASK_ROUTE_META: Record<
   },
   sticker_vision: {
     title: "视觉选图",
-    description: "选择表情的可选增强能力；仅在 LLM 决定贴图时调用",
+    description: "选择表情图；也复用于「聊天看图」——主对话模型不支持图片时，用它把图转成文字描述",
     kind: "vision",
     capability: "image",
   },
