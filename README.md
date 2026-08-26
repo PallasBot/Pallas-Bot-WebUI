@@ -74,7 +74,7 @@ npm run build
 
 类型检查（`tsc -b`）+ Vite 打包，并写入 `dist/console-version.json`。
 
-将 **`dist/`** 同步到主仓 **`data/pb_webui/public-react/`**，或通过 Release 的 `dist.zip`（zip 根为 `public-react/`）解压到 `data/pb_webui/`。更新静态资源后需**重启** Pallas-Bot。
+将 **`dist/`** 同步到主仓 **`data/pb_webui/public-react/`**，或将本仓 Release 的 `dist.zip`（zip 根为构建产物内容）解压到 `data/pb_webui/public-react/`。Bot Release 附带的 zip 以 `public-react/` 为根，可解压到 `data/pb_webui/`。更新静态资源后需**重启** Pallas-Bot。
 
 ## 与后端的约定
 

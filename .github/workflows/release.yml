@@ -204,12 +204,12 @@ jobs:
 
             | 方式 | 说明 |
             | --- | --- |
-            | 默认自动 | Pallas-Bot 的 `pb_webui` 默认从 **[Pallas-Bot](https://github.com/PallasBot/Pallas-Bot) Release** 拉取同名 `dist.zip`（主仓发版亦附带） |
-            | 本附件 | 可将 `pallas_webui_dist_zip_repo` 指到本仓库，或配置 zip 直链；控制台「更新」页亦可检查并应用 |
-            | 手动 | 解压到仓库根下的 `data/pb_webui/public/`（本 zip 根含 `index.html`） |
+            | 默认自动 | Pallas-Bot 的 `pb_webui` 默认从本仓库 Release 拉取 `dist.zip`，并按 `release-manifest.json` 校验当前 Bot 兼容性 |
+            | 本附件 | 可配置 `pallas_webui_dist_zip_tag` 固定兼容的 WebUI release，或配置 zip 直链；控制台「更新」页亦可检查并应用 |
+            | 手动 | 解压到仓库根下的 `data/pb_webui/public-react/`（本 zip 根含 `index.html`） |
 
             ```bash
-            unzip -d data/pb_webui/public dist.zip
+            unzip -d data/pb_webui/public-react dist.zip
             ```
 
             访问：`http://<host>:<port>/pallas/` · 说明见 [WebUI 部署](https://PallasBot.github.io/Pallas-Bot-Docs/maintainer/install/webui) / [开发者文档](https://PallasBot.github.io/Pallas-Bot-Docs/developer/webui)。
