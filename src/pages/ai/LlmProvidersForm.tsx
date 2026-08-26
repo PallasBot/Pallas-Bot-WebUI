@@ -1452,7 +1452,11 @@ export default function LlmProvidersForm() {
                     </datalist>
                     {draft.kind === "local" ? (
                       <p className="text-xs text-muted-foreground">直连本地 Ollama 服务。</p>
-                    ) : null}
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        默认会自动补 /v1；如需 /v4、/openai 等版本段，直接填入即可，会按所填拼接。
+                      </p>
+                    )}
                     {draft.kind !== "local" && baseUrlHasTrailingSlash(draft.base_url) ? (
                       <p className="flex items-center gap-1 text-xs text-destructive">
                         <AlertTriangle className="size-3.5 shrink-0" />
