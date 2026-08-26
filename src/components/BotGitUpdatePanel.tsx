@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpToLine, ChevronDown, ChevronUp, CircleDot, GitBranch, ListOrdered, RotateCcw, Tag, Undo2, Zap } from "lucide-react";
+import { ArrowUpToLine, ChevronRight, CircleDot, GitBranch, ListOrdered, RotateCcw, Tag, Undo2, Zap } from "lucide-react";
 import {
   fetchBotGitHistory,
   fetchBotGitStatus,
@@ -500,16 +500,16 @@ export default function BotGitUpdatePanel({
           className="bot-git-panel__toggle collapsed-toggle"
           onClick={() => setExpanded(true)}
         >
-          <ChevronDown className="size-3.5 shrink-0" aria-hidden />
+          <ChevronRight className="bot-git-panel__toggle-chevron" aria-hidden strokeWidth={2} />
           展开近 {items.length} 条
         </button>
       ) : mode === "commit" && items.length > 1 && expanded ? (
         <button
           type="button"
-          className="bot-git-panel__toggle collapsed-toggle"
+          className="bot-git-panel__toggle collapsed-toggle is-expanded"
           onClick={() => setExpanded(false)}
         >
-          <ChevronUp className="size-3.5 shrink-0" aria-hidden />
+          <ChevronRight className="bot-git-panel__toggle-chevron" aria-hidden strokeWidth={2} />
           收起
         </button>
       ) : null}
