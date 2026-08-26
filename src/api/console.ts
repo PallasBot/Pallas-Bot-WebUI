@@ -487,6 +487,7 @@ export type LlmProviderRegisteredModel = {
   model_id: string;
   name: string;
   capabilities?: LlmProviderCapability[];
+  model_effort?: LlmProviderModelEffort | string;
   pricing_rules?: LlmProviderPricingRule[];
 };
 
