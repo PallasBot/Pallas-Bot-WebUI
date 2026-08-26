@@ -38,6 +38,7 @@ import { consoleResourceVersionLabel } from "@/utils/versionDisplay";
 
 const brandMarkUrl = String(brandMarkAsset);
 const SIDEBAR_GROUPS_KEY = "pallas.react.sidebar.groups.collapsed";
+const SHELL_NOTICE_DEFER_MS = 1200;
 
 function logout() {
   const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
@@ -238,6 +239,7 @@ export default function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pluginStoreSeenRev, setPluginStoreSeenRev] = useState(0);
   const [navigationNoticeSeenRev, setNavigationNoticeSeenRev] = useState(0);
+  const [deferred, setDeferred] = useState(false);
   useEffect(() => {
     const onSeen = () => setPluginStoreSeenRev((n) => n + 1);
     window.addEventListener(PLUGIN_STORE_SEEN_EVENT, onSeen);
@@ -258,6 +260,7 @@ export default function AppShell() {
     queryKey: ["update-check-all"],
     queryFn: fetchUpdateCheckAll,
     staleTime: 60_000,
+    enabled: deferred,
   });
   const aiInstallQ = useQuery({
     queryKey: ["ai-install"],
@@ -270,6 +273,7 @@ export default function AppShell() {
     refetchInterval: 180_000,
     staleTime: 120_000,
     retry: 1,
+    enabled: deferred,
   });
   const officialStoreQ = useQuery({
     queryKey: ["plugins-official-extensions", "nav-notice"],
@@ -277,6 +281,7 @@ export default function AppShell() {
     refetchInterval: 180_000,
     staleTime: 120_000,
     retry: 1,
+    enabled: deferred,
   });
   const updateNotice = useMemo(() => {
     const n =
@@ -360,6 +365,11 @@ export default function AppShell() {
   useEffect(() => {
     prefetchConsoleShell(qc);
   }, [qc]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDeferred(true), SHELL_NOTICE_DEFER_MS);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const healthSettled = querySettled(healthQ);
   const connOk = Boolean(healthQ.data?.ok);
