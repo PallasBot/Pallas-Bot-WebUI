@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "requires": {
+    "bot": {
+      "min_commit": "1e19818802867722fd9ffff2a4334e8b93b143b5"
+    }
+  }
+}

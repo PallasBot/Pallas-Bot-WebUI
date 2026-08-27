@@ -479,7 +479,7 @@ export default function LlmProvidersForm() {
       ...d,
       models: [
         ...(d.models || []).filter((model) => model.name !== name),
-        { model_id: `model-${Date.now()}`, name, capabilities: [], pricing_rules: [] },
+        { model_id: `model-${Date.now()}`, name, capabilities: [], model_effort: "", pricing_rules: [] },
       ],
     }));
     setRegisteredModelDraft("");
@@ -549,6 +549,28 @@ export default function LlmProvidersForm() {
       else current.add(cap);
       return { ...prev, capabilities: [...current] as LlmProviderCapability[] };
     });
+  }
+
+  function setRegisteredModelCapability(modelName: string, cap: LlmProviderCapability) {
+    setDraft((prev) => ({
+      ...prev,
+      models: (prev.models || []).map((model) => {
+        if (model.name !== modelName) return model;
+        const capabilities = new Set(model.capabilities || []);
+        if (capabilities.has(cap)) capabilities.delete(cap);
+        else capabilities.add(cap);
+        return { ...model, capabilities: [...capabilities] as LlmProviderCapability[] };
+      }),
+    }));
+  }
+
+  function setRegisteredModelEffort(modelName: string, value: string) {
+    setDraft((prev) => ({
+      ...prev,
+      models: (prev.models || []).map((model) =>
+        model.name === modelName ? { ...model, model_effort: value === "default" ? "" : value } : model,
+      ),
+    }));
   }
 
   function applyPreset(id: LlmProviderPresetId) {
@@ -945,7 +967,7 @@ export default function LlmProvidersForm() {
       ? doc.providers.filter((provider) => provider.capabilities?.includes(requiredCapability))
       : doc.providers;
     return (
-      <div className="grid gap-2">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
         <AiOptionSelect
           value={opts.providerId}
           onValueChange={(providerId) => {
@@ -1430,7 +1452,11 @@ export default function LlmProvidersForm() {
                     </datalist>
                     {draft.kind === "local" ? (
                       <p className="text-xs text-muted-foreground">直连本地 Ollama 服务。</p>
-                    ) : null}
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        默认会自动补 /v1；如需 /v4、/openai 等版本段，直接填入即可，会按所填拼接。
+                      </p>
+                    )}
                     {draft.kind !== "local" && baseUrlHasTrailingSlash(draft.base_url) ? (
                       <p className="flex items-center gap-1 text-xs text-destructive">
                         <AlertTriangle className="size-3.5 shrink-0" />
@@ -1551,6 +1577,14 @@ export default function LlmProvidersForm() {
                           </div>
                           {collapsed ? (
                             <div className="space-y-1 text-xs text-muted-foreground">
+                              <p>
+                                能力：{(model.capabilities || []).length
+                                  ? (model.capabilities || [])
+                                      .map((cap) => LLM_PROVIDER_CAPABILITIES.find((item) => item.id === cap)?.label ?? cap)
+                                      .join("、")
+                                  : "未设置"}
+                                {model.model_effort ? `；思考：${LLM_PROVIDER_MODEL_EFFORTS.find((item) => item.id === model.model_effort)?.label ?? model.model_effort}` : ""}
+                              </p>
                               {(model.pricing_rules || []).length ? (
                                 (model.pricing_rules || []).map((rule) => (
                                   <p key={rule.id} className="truncate font-mono">
@@ -1562,6 +1596,47 @@ export default function LlmProvidersForm() {
                               )}
                             </div>
                           ) : <>
+                          <div className="grid gap-3 rounded bg-muted/20 p-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(180px,0.8fr)]">
+                            <div className="space-y-2">
+                              <Label className="text-xs font-semibold">模型支持能力</Label>
+                              <div className="flex flex-wrap gap-1.5">
+                                {LLM_PROVIDER_CAPABILITIES_EDITABLE.map((cap) => {
+                                  const active = (model.capabilities || []).includes(cap.id);
+                                  return (
+                                    <Button
+                                      key={cap.id}
+                                      type="button"
+                                      size="sm"
+                                      className="h-8 px-2.5 text-xs"
+                                      variant={active ? "default" : "outline"}
+                                      onClick={() => setRegisteredModelCapability(model.name, cap.id)}
+                                    >
+                                      {cap.label}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                              <p className="text-xs text-muted-foreground">未勾选图像时，含图消息会改用文字描述。</p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs font-semibold">模型思考强度</Label>
+                              <Select
+                                value={model.model_effort || "default"}
+                                onValueChange={(value) => setRegisteredModelEffort(model.name, value)}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="默认" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {LLM_PROVIDER_MODEL_EFFORTS.map((item) => (
+                                    <SelectItem key={item.id || "default"} value={item.id || "default"}>
+                                      {item.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
                           {(model.pricing_rules || []).map((rule) => (
                             <div key={rule.id} className="space-y-2 rounded bg-muted/20 p-2 text-xs text-muted-foreground">
                               <div className="flex items-center justify-between gap-2">
@@ -1612,7 +1687,7 @@ export default function LlmProvidersForm() {
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 font-semibold">
                       <span className="inline-flex size-4 items-center justify-center text-xs font-semibold">✦</span>
-                      模型支持能力
+                       Provider 默认设置：支持能力
                     </Label>
                     <div className="flex flex-wrap gap-2">
                       {LLM_PROVIDER_CAPABILITIES_EDITABLE.map((cap) => {
@@ -1638,7 +1713,7 @@ export default function LlmProvidersForm() {
 
                   <div className="space-y-2">
                     <Label className="font-semibold" htmlFor="llm-provider-effort">
-                      模型思考强度
+                       Provider 默认设置：思考强度
                     </Label>
                     <Select
                       value={draft.model_effort || "default"}
@@ -1855,7 +1930,7 @@ export default function LlmProvidersForm() {
                   <div className="mt-4">{renderRoutableTaskCard("sticker_vision")}</div>
                 </>
               ) : (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-4">
                   {ALL_ROUTABLE_TASKS.map((task) =>
                     renderRoutableTaskCard(task, task === "sticker_vision" ? "col-span-full" : undefined),
                   )}

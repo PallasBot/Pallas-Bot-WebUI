@@ -39,4 +39,14 @@ describe("AI provider expert layout", () => {
     expect(form).toContain("applyPresetToDraft");
     expect(form).toContain("findPresetByBaseUrl");
   });
+
+  it("keeps model capabilities and effort attached to registered models", () => {
+    const form = readSource("src/pages/ai/LlmProvidersForm.tsx");
+    const api = readSource("src/api/console.ts");
+
+    expect(api).toContain("model_effort?: LlmProviderModelEffort | string;");
+    expect(form).toContain("setRegisteredModelCapability");
+    expect(form).toContain("setRegisteredModelEffort");
+    expect(form).toContain("Provider 默认设置");
+  });
 });

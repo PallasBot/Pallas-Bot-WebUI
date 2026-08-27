@@ -1011,14 +1011,15 @@ export function aggregateHistoryRoutes(
     const date = String(row.date || "").slice(0, 10);
     if (!date || date < start || date > end) continue;
     const byTask = row.bot?.by_task ?? {};
-    for (const [task, taskRow] of Object.entries(byTask)) {
-      // AI 观测只统计 LLM 任务的路由；repeater 语料接话（corpus_select）不属 LLM，剔除
-      if (task === "repeater") continue;
+    for (const taskRow of Object.values(byTask)) {
       const rc = taskRow?.route_counts;
       if (!rc) continue;
       for (const [route, count] of Object.entries(rc)) {
         const key = String(route || "").trim();
         if (!key) continue;
+        // AI 观测只统计 LLM 任务的路由；语料选句（corpus_select）是 Repeater 直投真实语料，
+        // 不属 LLM，会被归类到其余任务桶下，需按路由键直接剔除
+        if (key === "corpus_select") continue;
         routes[key] = (routes[key] || 0) + (Number(count) || 0);
       }
     }

@@ -214,7 +214,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_sticker_vision_timeout_sec",
       "llm_sticker_vision_max_per_hour",
     ],
-    hint: "Bot 文本按需附带 Repeater 表情图；视觉模型可进一步从语义候选中挑更贴的图，候选越多越准但更耗视觉模型额度。",
+    hint: "Bot 文本按需附带 Repeater 表情图；视觉模型可进一步从语义候选中挑更贴的图，候选越多越准但更耗视觉模型额度。该视觉模型也复用于「聊天看图」——主对话模型不支持图片时用它把图转成文字描述。",
   },
   {
     title: "表达学习",

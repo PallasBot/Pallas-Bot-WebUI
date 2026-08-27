@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpToLine, CircleDot, GitBranch, RotateCcw, Tag, Undo2, Zap } from "lucide-react";
+import { ArrowUpToLine, ChevronRight, CircleDot, GitBranch, ListOrdered, RotateCcw, Tag, Undo2, Zap } from "lucide-react";
 import {
   fetchBotGitHistory,
   fetchBotGitStatus,
@@ -20,13 +20,14 @@ import {
 } from "@/components/ui/select";
 import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
 import { cn } from "@/lib/utils";
+import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 const PB_WEBUI_PLUGIN = "pb_webui";
 const BOT_UPDATE_TRACK = "pallas_bot_update_track";
 const BOT_UPDATE_BRANCH = "pallas_bot_update_branch";
-/** 历史列表默认条数（近 N 个版本 / 提交） */
-const HISTORY_LIMIT = 10;
+/** 返回历史条数选项与文案所需的一组逻辑 */
+const HISTORY_LIMITS = [5, 10, 20, 50] as const;
 /** 分支轨道仅允许官方主干，与后端 BOT_GIT_TRACK_BRANCHES 一致 */
 const ALLOWED_TRACK_BRANCHES = ["dev", "main"] as const;
 const BTN_ICO = "size-3.5 shrink-0 transition-transform duration-200 ease-out";
@@ -88,6 +89,7 @@ export default function BotGitUpdatePanel({
   confirm,
 }: Props) {
   const qc = useQueryClient();
+  const { botGitHistoryLimit: historyLimit, setBotGitHistoryLimit } = useConsolePrefs();
   const [mode, setMode] = useState<BotGitUiMode>("release");
   const [branch, setBranch] = useState("");
   const [configBusy, setConfigBusy] = useState(false);
@@ -117,12 +119,12 @@ export default function BotGitUpdatePanel({
   }, [statusQ.data]);
 
   const historyQ = useQuery({
-    queryKey: ["bot-git-history", mode, branch, HISTORY_LIMIT],
+    queryKey: ["bot-git-history", mode, branch, historyLimit],
     queryFn: () =>
       fetchBotGitHistory({
         mode,
         branch: mode === "commit" ? branch : "",
-        limit: HISTORY_LIMIT,
+        limit: historyLimit,
       }),
     enabled: historyEnabled,
     staleTime: 20_000,
@@ -140,7 +142,7 @@ export default function BotGitUpdatePanel({
   const metaParts: string[] = [];
   // 「本地当前」标在对应历史行上；仅当 HEAD 不在近 N 条里时再提示
   if (headIndex < 0 && (head?.short_sha || head?.tag)) {
-    metaParts.push(`本地当前 ${head.tag || head.short_sha}（不在近 ${HISTORY_LIMIT} 条内）`);
+    metaParts.push(`本地当前 ${head.tag || head.short_sha}（不在近 ${historyLimit} 条内）`);
   }
   if (mode === "commit" && statusQ.data?.upstream_ref) {
     metaParts.push(`跟踪 ${statusQ.data.upstream_ref}`);
@@ -301,6 +303,25 @@ export default function BotGitUpdatePanel({
               </Select>
             </ChromeField>
           ) : null}
+
+          <ChromeField label="显示条数" icon={ListOrdered}>
+            <Select
+              value={String(historyLimit)}
+              onValueChange={(v) => setBotGitHistoryLimit(Number(v))}
+              disabled={locked}
+            >
+              <SelectTrigger className={cn(CHROME_SELECT_TRIGGER, "w-[5rem]")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {HISTORY_LIMITS.map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    近 {n} 条
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </ChromeField>
 
           <div className="bot-git-panel__actions">
             <Button
@@ -479,20 +500,23 @@ export default function BotGitUpdatePanel({
           className="bot-git-panel__toggle collapsed-toggle"
           onClick={() => setExpanded(true)}
         >
+          <ChevronRight className="bot-git-panel__toggle-chevron" aria-hidden strokeWidth={2} />
           展开近 {items.length} 条
         </button>
       ) : mode === "commit" && items.length > 1 && expanded ? (
         <button
           type="button"
-          className="bot-git-panel__toggle collapsed-toggle"
+          className="bot-git-panel__toggle collapsed-toggle is-expanded"
           onClick={() => setExpanded(false)}
         >
+          <ChevronRight className="bot-git-panel__toggle-chevron" aria-hidden strokeWidth={2} />
           收起
         </button>
       ) : null}
       <p className="bot-git-panel__note muted">
-        默认展示近 {HISTORY_LIMIT} 条。相对当前：更新用「更新到此 / 强制更新」，更旧版本用「回退到此 /
-        强制回退」。安全操作优先快进/checkout（必要时 stash）；强制为 reset --hard。
+        默认展示近 {historyLimit} 条（可在上方「显示条数」调整）。相对当前：更新用「更新到此 /
+        强制更新」，更旧版本用「回退到此 / 强制回退」。安全操作优先快进/checkout（必要时 stash）；强制为
+        reset --hard。
       </p>
     </div>
   );
