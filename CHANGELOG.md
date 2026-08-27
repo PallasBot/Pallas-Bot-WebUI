@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.15] - 2026-08-27
 
 ### 更新公告
 
@@ -21,6 +21,28 @@
 - **模型兼容**：
   - 新增 Bot commit 兼容清单说明
 
+### 提交明细
+
+### Added
+
+* feat(webui): Bot 更新面板条数可配置并补展开三角 ([d3208e2](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d3208e2d66075c5e122f438326785affee1297b4))
+* feat(webui): AppShell 首屏分两批，置后外部请求 ([9576d29](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9576d2944b4a8f701d5a638ad79796f14820b29f))
+* feat(webui): base_url 提示默认补 /v1，支持 /v4 等版本段 ([ce8d09e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ce8d09e207741bba3788dcfec755f5e5250e3382))
+* feat(release): 增加 Bot commit 兼容清单 ([6d13dc3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6d13dc3c6999f481dd217fd1cc3e1eff5eff6aba))
+
+### Fixed
+
+* fix(webui): Bot 更新面板展开三角与全页风格统一 ([fce4e2a7](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fce4e2a717e21462150f48a3ff90c077f5249369))
+* fix(ai): 任务编排模型下拉列宽自适应防溢出 ([4ad605c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4ad605c976c41e0473d02b5432776cc3ea09b670))
+* fix(ai): 任务编排模型下拉长模型名溢出 ([3f119c8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3f119c82b817d8c0affacd7dcaccfb208264396c))
+* fix(ai): 任务编排「视觉选图」与表情图分节说明「聊天看图」复用 ([53a7e7f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/53a7e7f9c4440cb4390abcec2add7826b7bb0ba4))
+* fix(ai): AI 观测回复路径剔除 corpus_select 语料选句 ([1659328](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/16593285f91a5d0d695f937e66ae64c5f6a13236))
+* fix(release): 修正文档中的 Bot 更新来源 ([78cf5de](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/78cf5de55066cc6b8e1831eed62582e8a2e0a9c6))
+* fix(ai): 优化 Provider 默认设置文案 ([e41a3dc](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e41a3dcb3a3f5d4df6d13baf5b98aad2e16a443b))
+
+**完整变更**: [`v0.9.14...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.14...HEAD)
+
+
 ## [0.9.14] - 2026-08-25
 
 ### 更新公告
@@ -36,7 +58,6 @@
 ### 提交明细
 
 **完整变更**: [`v0.9.13...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.13...HEAD)
-
 
 ## [0.9.13] - 2026-08-23
 
