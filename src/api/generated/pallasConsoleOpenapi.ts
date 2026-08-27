@@ -7928,7 +7928,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance";
+            action: "status" | "direct_enabled" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance";
             /** Bot Id */
             bot_id?: number | null;
             /** Group Id */
@@ -7938,35 +7938,14 @@ export interface components {
              * @default group_chat
              */
             scene: string;
-            overrides?: components["schemas"]["_SemanticStyleOverridesPatch"] | null;
+            /** Direct Enabled */
+            direct_enabled?: boolean | null;
             /** Collection Enabled */
             collection_enabled?: boolean | null;
             /** Injection Enabled */
             injection_enabled?: boolean | null;
             /** Continue Learning */
             continue_learning?: boolean | null;
-        };
-        /** _SemanticStyleOverridesData */
-        _SemanticStyleOverridesData: {
-            /** Aggressive */
-            aggressive: boolean;
-            /** Nonsense */
-            nonsense: boolean;
-            /** Direct */
-            direct: boolean;
-            /** Image */
-            image: boolean;
-        };
-        /** _SemanticStyleOverridesPatch */
-        _SemanticStyleOverridesPatch: {
-            /** Aggressive */
-            aggressive?: boolean | null;
-            /** Nonsense */
-            nonsense?: boolean | null;
-            /** Direct */
-            direct?: boolean | null;
-            /** Image */
-            image?: boolean | null;
         };
         /** _SemanticStyleProfileSummaryData */
         _SemanticStyleProfileSummaryData: {
@@ -8060,7 +8039,8 @@ export interface components {
              * @default true
              */
             injection_enabled: boolean;
-            overrides?: components["schemas"]["_SemanticStyleOverridesData"] | null;
+            /** Direct Enabled */
+            direct_enabled?: boolean | null;
             /**
              * Example Count
              * @default 0

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, RefreshCw, Trash2 } from "lucide-react";
 import {
@@ -67,8 +67,7 @@ function Kv({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-type SemanticStyleOverrides = { aggressive: boolean; nonsense: boolean; direct: boolean; image: boolean };
-type SemanticStyleAction = "overrides" | "rebuild" | "quality" | "disable" | "enable" | "set_governance" | "clear";
+type SemanticStyleAction = "direct_enabled" | "rebuild" | "quality" | "disable" | "enable" | "set_governance" | "clear";
 type GroupStyleAction = "collection" | "injection" | "clear" | "rebuild";
 
 function isSemanticStyleQuality(
@@ -146,23 +145,16 @@ function GroupStyleControls({
 function SemanticStyleControls({
   data,
   qualityData,
-  overrides,
-  setOverrides,
   busy,
   onAction,
   onClear,
 }: {
   data: SemanticStyleStatusData | undefined;
   qualityData: SemanticStyleQualityData | null;
-  overrides: SemanticStyleOverrides;
-  setOverrides: (value: SemanticStyleOverrides) => void;
   busy: boolean;
-  onAction: (request: { action: SemanticStyleAction; collectionEnabled?: boolean; injectionEnabled?: boolean }) => void;
+  onAction: (request: { action: SemanticStyleAction; directEnabled?: boolean; collectionEnabled?: boolean; injectionEnabled?: boolean }) => void;
   onClear: (continueLearning: boolean) => void;
 }) {
-  const options: Array<[keyof SemanticStyleOverrides, string]> = [
-    ["aggressive", "攻击性"], ["nonsense", "无厘头"], ["direct", "直给"], ["image", "图片倾向"],
-  ];
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -187,21 +179,15 @@ function SemanticStyleControls({
           disabled={busy}
           onChange={(injectionEnabled) => onAction({ action: "set_governance", injectionEnabled })}
         />
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {options.map(([key, label]) => (
-          <ToggleRow
-            key={key}
-            id={`gov-sem-override-${key}`}
-            label={label}
-            checked={overrides[key]}
-            disabled={busy}
-            onChange={(checked) => setOverrides({ ...overrides, [key]: checked })}
-          />
-        ))}
+        <ToggleRow
+          id="gov-sem-tab-direct"
+          label="直给倾向"
+          checked={data?.direct_enabled !== false}
+          disabled={busy}
+          onChange={(directEnabled) => onAction({ action: "direct_enabled", directEnabled })}
+        />
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" disabled={busy} onClick={() => onAction({ action: "overrides" })}>应用开关</Button>
         <Button size="sm" variant="outline" icon={RefreshCw} iconMotion="spin" disabled={busy} onClick={() => onAction({ action: "rebuild" })}>重建</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction({ action: "quality" })}>质量评价</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction({ action: "enable" })}>全部启用</Button>
@@ -408,12 +394,6 @@ export default function GovernanceStyleTab() {
   const { confirm, confirmDialog } = useConsoleConfirm();
   const { scope } = useAiGovernanceScope();
   const [plainText, setPlainText] = useState("");
-  const [semanticOverrides, setSemanticOverrides] = useState<SemanticStyleOverrides>({
-    aggressive: false,
-    nonsense: false,
-    direct: false,
-    image: false,
-  });
   const [semanticQuality, setSemanticQuality] = useState<ScopedSemanticStyleQuality | null>(null);
 
   const bot = scope?.botId ?? 0;
@@ -451,23 +431,12 @@ export default function GovernanceStyleTab() {
       }),
   });
 
-  useEffect(() => {
-    const raw = semanticQ.data?.overrides;
-    if (!raw) return;
-    setSemanticOverrides({
-      aggressive: raw.aggressive === true,
-      nonsense: raw.nonsense === true,
-      direct: raw.direct === true,
-      image: raw.image === true,
-    });
-  }, [semanticQ.data]);
-
   const semanticMut = useMutation<
     SemanticStyleStatusData | SemanticStyleQualityData,
     Error,
-    { action: SemanticStyleAction; continueLearning?: boolean; collectionEnabled?: boolean; injectionEnabled?: boolean }
+    { action: SemanticStyleAction; continueLearning?: boolean; directEnabled?: boolean; collectionEnabled?: boolean; injectionEnabled?: boolean }
   >({
-    mutationFn: ({ action, continueLearning, collectionEnabled, injectionEnabled }) => {
+    mutationFn: ({ action, continueLearning, directEnabled, collectionEnabled, injectionEnabled }) => {
       if (!groupReady) throw new Error("需要 Bot 与群号");
       const base = {
         botId: bot,
@@ -480,7 +449,7 @@ export default function GovernanceStyleTab() {
       const body = {
         action,
         ...base,
-        ...(action === "overrides" ? { overrides: semanticOverrides } : {}),
+        ...(action === "direct_enabled" ? { directEnabled } : {}),
         ...(action === "set_governance" ? {
           collectionEnabled: collectionEnabled ?? semanticQ.data?.collection_enabled ?? true,
           injectionEnabled: injectionEnabled ?? semanticQ.data?.injection_enabled ?? true,
@@ -563,52 +532,41 @@ export default function GovernanceStyleTab() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">群风格</CardTitle>
-              <CardDescription>群范围风格画像的采集与注入开关；重建基于当前群样本重算。</CardDescription>
+              <CardTitle className="text-base">群风格与语义</CardTitle>
+              <CardDescription>群范围表达的采集与注入开关，下方为整理出的回复习惯画像。</CardDescription>
             </CardHeader>
-            <CardContent>
-              <StateBlock loading={groupGovernanceQ.isLoading} error={groupGovernanceQ.error}>
-                <GroupStyleControls
-                  data={groupGovernanceQ.data}
-                  busy={groupGovernanceMut.isPending}
-                  onAction={(action, value) => {
-                    if (action !== "clear") groupGovernanceMut.mutate({ action, value });
-                  }}
-                  onClear={handleGroupClear}
-                />
-              </StateBlock>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">语义风格</CardTitle>
-              <CardDescription>语义样例的学习与注入；四轴开关可临时改变表达倾向。</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <StateBlock loading={semanticQ.isLoading} error={semanticQ.error}>
-                <SemanticStyleControls
-                  data={semanticQ.data}
-                  qualityData={scopedSemanticStyleQuality(semanticQuality, bot, group)}
-                  overrides={semanticOverrides}
-                  setOverrides={setSemanticOverrides}
-                  busy={semanticMut.isPending}
-                  onAction={handleSemanticAction}
-                  onClear={(continueLearning) => handleSemanticAction({ action: "clear", continueLearning })}
-                />
-              </StateBlock>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">群表达画像</CardTitle>
-              <CardDescription>把近期样本整理成可读的回复习惯，统计依据收在下方。</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <StateBlock loading={styleQ.isLoading} error={styleQ.error} empty={!styleQ.data} emptyText="暂无画像数据。">
-                {styleQ.data ? <GroupExpressionViewCard data={groupExpressionView(styleQ.data)} /> : null}
-              </StateBlock>
+            <CardContent className="space-y-5">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">群风格画像</h3>
+                <StateBlock loading={groupGovernanceQ.isLoading} error={groupGovernanceQ.error}>
+                  <GroupStyleControls
+                    data={groupGovernanceQ.data}
+                    busy={groupGovernanceMut.isPending}
+                    onAction={(action, value) => {
+                      if (action !== "clear") groupGovernanceMut.mutate({ action, value });
+                    }}
+                    onClear={handleGroupClear}
+                  />
+                </StateBlock>
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">语义风格</h3>
+                <StateBlock loading={semanticQ.isLoading} error={semanticQ.error}>
+                  <SemanticStyleControls
+                    data={semanticQ.data}
+                    qualityData={scopedSemanticStyleQuality(semanticQuality, bot, group)}
+                    busy={semanticMut.isPending}
+                    onAction={handleSemanticAction}
+                    onClear={(continueLearning) => handleSemanticAction({ action: "clear", continueLearning })}
+                  />
+                </StateBlock>
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">回复习惯画像</h3>
+                <StateBlock loading={styleQ.isLoading} error={styleQ.error} empty={!styleQ.data} emptyText="暂无画像数据。">
+                  {styleQ.data ? <GroupExpressionViewCard data={groupExpressionView(styleQ.data)} /> : null}
+                </StateBlock>
+              </div>
             </CardContent>
           </Card>
         </>

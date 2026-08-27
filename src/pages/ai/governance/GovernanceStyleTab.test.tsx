@@ -13,6 +13,7 @@ const fetchLlmRepeaterSemanticStyle = vi.fn().mockResolvedValue({
   enabled: true,
   collection_enabled: true,
   injection_enabled: true,
+  direct_enabled: true,
   example_count: 3,
   profile_count: 2,
 });
@@ -156,16 +157,15 @@ describe("GovernanceStyleTab", () => {
     expect(fetchLlmPersonaExport).toHaveBeenCalledWith({ botId: 10001, groupId: null, plainText: undefined });
   });
 
-  it("submits overrides through the semantic manage action", async () => {
+  it("toggles direct_enabled through the semantic manage action", async () => {
     const user = userEvent.setup();
     renderRoute(fullScope);
 
-    await user.click(await screen.findByRole("checkbox", { name: "攻击性" }));
-    await user.click(await screen.findByRole("button", { name: "应用开关" }));
+    await user.click(await screen.findByRole("checkbox", { name: "直给倾向" }));
 
     await waitFor(() => expect(postLlmRepeaterSemanticStyleManage).toHaveBeenCalledWith({
-      action: "overrides",
-      overrides: { aggressive: true, nonsense: false, direct: false, image: false },
+      action: "direct_enabled",
+      directEnabled: false,
       botId: 10001,
       groupId: 20002,
       scene: "group_chat",

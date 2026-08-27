@@ -2042,7 +2042,6 @@ export interface SemanticExamplesSummary {
   updated_at?: string | null;
 }
 
-export type SemanticStyleOverridesData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleOverridesData"];
 export type SemanticStyleStatusData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleStatusData"];
 export type SemanticStyleQualityData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleQualityData"];
 export type GroupStyleGovernanceData = ConsoleOpenapiComponents["schemas"]["_GroupStyleGovernanceData"];

@@ -1768,13 +1768,6 @@ export async function postLlmRepeaterFeedbackManage(body: {
   return envelopeData(res) || res;
 }
 
-export type LlmRepeaterSemanticStyleOverrides = {
-  aggressive?: boolean;
-  nonsense?: boolean;
-  direct?: boolean;
-  image?: boolean;
-};
-
 export async function fetchGroupStyleGovernance(params: {
   botId: number;
   groupId: number;
@@ -1853,11 +1846,11 @@ export async function fetchLlmRepeaterSemanticStyle(params?: {
   return envelopeData(body) || {};
 }
 
-type SemanticStyleManageBase = {
-  overrides?: LlmRepeaterSemanticStyleOverrides;
+export type SemanticStyleManageBase = {
   botId?: number;
   groupId?: number;
   scene?: string;
+  directEnabled?: boolean;
   collectionEnabled?: boolean;
   injectionEnabled?: boolean;
   continueLearning?: boolean;
@@ -1867,14 +1860,14 @@ export function postLlmRepeaterSemanticStyleManage(
   body: SemanticStyleManageBase & { action: "quality" },
 ): Promise<SemanticStyleQualityData>;
 export function postLlmRepeaterSemanticStyleManage(
-  body: SemanticStyleManageBase & { action: "status" | "overrides" | "clear" | "rebuild" | "recover" | "disable" | "enable" | "set_governance" },
+  body: SemanticStyleManageBase & { action: "status" | "direct_enabled" | "clear" | "rebuild" | "recover" | "disable" | "enable" | "set_governance" },
 ): Promise<SemanticStyleStatusData>;
 export async function postLlmRepeaterSemanticStyleManage(body: SemanticStyleManageBase & {
-  action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance";
+  action: "status" | "direct_enabled" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance";
 }): Promise<SemanticStyleStatusData | SemanticStyleQualityData> {
   const { data: res } = await http.post("/llm/repeater-semantic-style/manage", {
     action: body.action,
-    ...(body.overrides ? { overrides: body.overrides } : {}),
+    ...(body.directEnabled !== undefined ? { direct_enabled: body.directEnabled } : {}),
     ...(body.botId && body.groupId
       ? { bot_id: body.botId, group_id: body.groupId, scene: body.scene || "group_chat" }
       : {}),
