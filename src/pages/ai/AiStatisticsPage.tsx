@@ -7,6 +7,7 @@ import {
   Cloud,
   Coins,
   Database,
+  Download,
   Filter,
   ImageIcon,
   Library,
@@ -80,9 +81,18 @@ import {
   type TokenRow,
 } from "@/utils/aiTaskStats";
 import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
+import { Button } from "@/components/ui/button";
 import { fixedChartPalette } from "@/utils/chartTheme";
 import { countShareRows } from "@/utils/shareDistribution";
 import { labelLlmRoute, labelLlmTask } from "@/utils/aiHistoryLabels";
+import { pushConsoleToast } from "@/utils/consoleToast";
+import {
+  aiBillingExportFilename,
+  aiBillingHasData,
+  buildAiBillingCsv,
+  downloadCsvFile,
+  type AiBillingExportData,
+} from "@/utils/aiStatsExport";
 import type { LlmStickerVisionStats } from "@/api/pallasTypes";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 
@@ -989,7 +999,48 @@ export default function AiStatisticsPage() {
     });
   }, [qc]);
 
-  useRegisterAiObservationChrome({ middle: dateFilter, onRefresh });
+  const onExportBilling = useCallback(() => {
+    const data: AiBillingExportData = {
+      start,
+      end,
+      historyRows,
+      rangeTokens: selectedRange,
+      rangeImages: selectedImages,
+      rangeCost,
+    };
+    if (!aiBillingHasData(data)) {
+      pushConsoleToast("当前区间无可导出的计费数据", "warn");
+      return;
+    }
+    const { csv, rowCount } = buildAiBillingCsv(data);
+    downloadCsvFile(aiBillingExportFilename(start, end), csv);
+    pushConsoleToast(`已导出计费统计 ${rowCount} 行`, "ok");
+  }, [end, historyRows, rangeCost, selectedImages, selectedRange, start]);
+
+  const exportButton = useMemo(
+    () => (
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="shrink-0"
+        icon={Download}
+        iconMotion="down"
+        disabled={taskStatsQ.isLoading}
+        onClick={onExportBilling}
+      >
+        导出
+      </Button>
+    ),
+    [onExportBilling, taskStatsQ.isLoading],
+  );
+
+  // trailing 引用需稳定（useMemo），否则 setSlots 每次渲染都触发会造成死循环
+  useRegisterAiObservationChrome({
+    middle: dateFilter,
+    trailing: exportButton,
+    onRefresh,
+  });
 
   const onTabChange = useCallback((value: string) => {
     const next = TAB_OPTIONS.some((opt) => opt.value === value)
