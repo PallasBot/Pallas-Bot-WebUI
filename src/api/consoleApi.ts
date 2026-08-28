@@ -1131,6 +1131,39 @@ export async function fetchLlmTaskStats(params?: {
   )) as LlmTaskStatsData;
 }
 
+/** 请求级 usage 账本明细 CSV（bot 侧流式生成）；rows 来自 X-Usage-Rows，未知为 -1。 */
+export async function fetchLlmUsageLedgerCsv(params: {
+  start: string;
+  end: string;
+}): Promise<{ blob: Blob; rows: number }> {
+  try {
+    const response = await http.get<Blob>("/common-config/llm/usage-ledger/export", {
+      params: { start: params.start, end: params.end },
+      responseType: "blob",
+      timeout: 300_000,
+    });
+    const rows = Number(response.headers?.["x-usage-rows"]);
+    return {
+      blob: response.data,
+      rows: Number.isFinite(rows) && rows >= 0 ? rows : -1,
+    };
+  } catch (e) {
+    if (isAxiosError(e) && e.response?.data instanceof Blob) {
+      const text = await e.response.data.text();
+      try {
+        const parsed = JSON.parse(text) as { detail?: string };
+        if (typeof parsed.detail === "string" && parsed.detail.trim()) {
+          throw new Error(parsed.detail.trim());
+        }
+      } catch (inner) {
+        if (inner instanceof Error && inner.message !== text) throw inner;
+      }
+      if (text.trim()) throw new Error(text.trim());
+    }
+    throw e;
+  }
+}
+
 export async function fetchLlmRuntimeOverview(): Promise<LlmRuntimeOverviewData> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/runtime-overview"]["get"]>(
     "/common-config/llm/runtime-overview",

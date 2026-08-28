@@ -165,12 +165,21 @@ describe("AI 计费导出", () => {
     );
   });
 
-  it("统计页把导出按钮注册到观测工具条 trailing", () => {
+  it("统计页把导出按钮注册到观测工具条 trailing，并提供汇总/明细两种导出", () => {
     const page = readFileSync(
       resolve(process.cwd(), "src/pages/ai/AiStatisticsPage.tsx"),
       "utf8",
     );
     expect(page).toContain("trailing: exportButton");
     expect(page).toContain("buildAiBillingCsv(data)");
+    expect(page).toContain("调用明细（CSV）");
+    expect(page).toContain("fetchLlmUsageLedgerCsv");
+
+    const api = readFileSync(
+      resolve(process.cwd(), "src/api/consoleApi.ts"),
+      "utf8",
+    );
+    expect(api).toContain("/common-config/llm/usage-ledger/export");
+    expect(api).toContain("X-Usage-Rows");
   });
 });

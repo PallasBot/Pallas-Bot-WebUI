@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Boxes,
   CheckCircle2,
+  ChevronDown,
   CircleOff,
   Cloud,
   Coins,
@@ -82,6 +83,13 @@ import {
 } from "@/utils/aiTaskStats";
 import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { fetchLlmUsageLedgerCsv } from "@/api/consoleApi";
 import { fixedChartPalette } from "@/utils/chartTheme";
 import { countShareRows } from "@/utils/shareDistribution";
 import { labelLlmRoute, labelLlmTask } from "@/utils/aiHistoryLabels";
@@ -90,6 +98,7 @@ import {
   aiBillingExportFilename,
   aiBillingHasData,
   buildAiBillingCsv,
+  downloadBlobFile,
   downloadCsvFile,
   type AiBillingExportData,
 } from "@/utils/aiStatsExport";
@@ -1017,22 +1026,57 @@ export default function AiStatisticsPage() {
     pushConsoleToast(`已导出计费统计 ${rowCount} 行`, "ok");
   }, [end, historyRows, rangeCost, selectedImages, selectedRange, start]);
 
+  const [detailExporting, setDetailExporting] = useState(false);
+  const onExportUsageDetail = useCallback(async () => {
+    if (detailExporting) return;
+    setDetailExporting(true);
+    try {
+      const { blob, rows } = await fetchLlmUsageLedgerCsv({ start, end });
+      if (rows === 0) {
+        pushConsoleToast("区间内暂无调用明细记录", "warn");
+        return;
+      }
+      downloadBlobFile(`pallas-ai-usage-detail_${start}_${end}.csv`, blob);
+      pushConsoleToast(
+        rows > 0 ? `已导出调用明细 ${rows} 条` : "已开始下载调用明细",
+        "ok",
+      );
+    } catch (e) {
+      pushConsoleToast(e instanceof Error && e.message ? e.message : "导出调用明细失败", "err");
+    } finally {
+      setDetailExporting(false);
+    }
+  }, [detailExporting, end, start]);
+
   const exportButton = useMemo(
     () => (
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        className="shrink-0"
-        icon={Download}
-        iconMotion="down"
-        disabled={taskStatsQ.isLoading}
-        onClick={onExportBilling}
-      >
-        导出
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
+            icon={Download}
+            iconMotion="down"
+            iconBusy={detailExporting}
+            disabled={taskStatsQ.isLoading}
+          >
+            导出
+            <ChevronDown className="size-3.5 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-0 w-max">
+          <DropdownMenuItem onSelect={() => onExportBilling()}>
+            区间汇总（CSV）
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void onExportUsageDetail()}>
+            调用明细（CSV）
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     ),
-    [onExportBilling, taskStatsQ.isLoading],
+    [detailExporting, onExportBilling, onExportUsageDetail, taskStatsQ.isLoading],
   );
 
   // trailing 引用需稳定（useMemo），否则 setSlots 每次渲染都触发会造成死循环

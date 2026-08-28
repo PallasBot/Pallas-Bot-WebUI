@@ -228,7 +228,10 @@ export function aiBillingExportFilename(start: string, end: string): string {
 }
 
 export function downloadCsvFile(filename: string, csv: string): void {
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  downloadBlobFile(filename, new Blob([csv], { type: "text/csv;charset=utf-8" }));
+}
+
+export function downloadBlobFile(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
