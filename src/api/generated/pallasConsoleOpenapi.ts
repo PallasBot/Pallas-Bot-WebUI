@@ -1233,40 +1233,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/pallas/api/llm/agent-platform/catchphrases": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Catchphrases List */
-        get: operations["catchphrases_list_pallas_api_llm_agent_platform_catchphrases_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/llm/agent-platform/catchphrases/resolve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Catchphrases Resolve */
-        post: operations["catchphrases_resolve_pallas_api_llm_agent_platform_catchphrases_resolve_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/pallas/api/llm/agent-platform/tools": {
         parameters: {
             query?: never;
@@ -3279,40 +3245,6 @@ export interface paths {
         put?: never;
         /** Llm Repeater Feedback Manage */
         post: operations["_llm_repeater_feedback_manage_pallas_api_llm_repeater_feedback_manage_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/llm/expression-bank": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Llm Expression Bank Get */
-        get: operations["_llm_expression_bank_get_pallas_api_llm_expression_bank_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/llm/expression-bank/resolve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Llm Expression Bank Resolve */
-        post: operations["_llm_expression_bank_resolve_pallas_api_llm_expression_bank_resolve_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5510,7 +5442,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "undo_outcome" | "restore_expression" | "restore_semantic";
+            action: "undo_outcome" | "restore_semantic";
             /** Bot Id */
             bot_id: string;
             /** Group Id */
@@ -6844,21 +6776,6 @@ export interface components {
             data?: {
                 [key: string]: unknown;
             };
-        };
-        /** _ExpressionBankResolveRequest */
-        _ExpressionBankResolveRequest: {
-            /** Entry Id */
-            entry_id: string;
-            /**
-             * Action
-             * @enum {string}
-             */
-            action: "approve" | "reject" | "restore";
-            /**
-             * Reason
-             * @default
-             */
-            reason: string;
         };
         /** _FilesCreateBody */
         _FilesCreateBody: {
@@ -11522,84 +11439,6 @@ export interface operations {
         };
     };
     tasks_cancel_pallas_api_llm_agent_platform_tasks_cancel_post: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    catchphrases_list_pallas_api_llm_agent_platform_catchphrases_get: {
-        parameters: {
-            query?: {
-                bot_id?: number | null;
-                status?: string | null;
-                offset?: number;
-                limit?: number;
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    catchphrases_resolve_pallas_api_llm_agent_platform_catchphrases_resolve_post: {
         parameters: {
             query?: {
                 token?: string | null;
@@ -16564,83 +16403,6 @@ export interface operations {
                 "application/json": {
                     [key: string]: unknown;
                 };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_expression_bank_get_pallas_api_llm_expression_bank_get: {
-        parameters: {
-            query: {
-                /** @description 群号 */
-                group_id: number;
-                /** @description 状态筛选 */
-                status?: ("shadow" | "active" | "rejected") | null;
-                limit?: number;
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_expression_bank_resolve_pallas_api_llm_expression_bank_resolve_post: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["_ExpressionBankResolveRequest"];
             };
         };
         responses: {
