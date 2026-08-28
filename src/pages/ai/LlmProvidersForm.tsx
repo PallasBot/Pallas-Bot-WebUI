@@ -9,6 +9,7 @@ import {
   putLlmLocalRoutingConfig,
   putLlmProvider,
   putLlmProvidersConfig,
+  renameLlmProvider,
   type LlmLocalRoutingConfig,
   type LlmProviderCapability,
   type LlmProviderPricingRule,
@@ -257,6 +258,8 @@ export default function LlmProvidersForm() {
 
   const [editing, setEditing] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
+  // 编辑时进入表单的原始 ID；与 draft.id 不同即视为改名，保存时走 rename 同步引用
+  const [editOriginalId, setEditOriginalId] = useState("");
   const [draft, setDraft] = useState<LlmProviderRow>(blankProvider());
   const [collapsedModels, setCollapsedModels] = useState<Record<string, boolean>>({});
   const [draftApiKeys, setDraftApiKeys] = useState<string[]>([]);
@@ -418,6 +421,7 @@ export default function LlmProvidersForm() {
 
   function openAdd() {
     setEditIndex(null);
+    setEditOriginalId("");
     setDraft(blankProvider());
     setDraftApiKeys([]);
     setKeepStoredApiKey(false);
@@ -431,6 +435,7 @@ export default function LlmProvidersForm() {
     const row = doc.providers[index];
     if (!row) return;
     setEditIndex(null);
+    setEditOriginalId("");
     const next = JSON.parse(JSON.stringify(row)) as LlmProviderRow;
     if (!Array.isArray(next.capabilities)) next.capabilities = ["text"];
     if (typeof next.model_effort !== "string") next.model_effort = "";
@@ -453,6 +458,7 @@ export default function LlmProvidersForm() {
     const row = doc.providers[index];
     if (!row) return;
     setEditIndex(index);
+    setEditOriginalId(String(row.id || "").trim());
     const next = JSON.parse(JSON.stringify(row)) as LlmProviderRow;
     if (!Array.isArray(next.capabilities)) next.capabilities = ["text"];
     if (typeof next.model_effort !== "string") next.model_effort = "";
@@ -576,7 +582,7 @@ export default function LlmProvidersForm() {
   function applyPreset(id: LlmProviderPresetId) {
     setDraft((prev) => {
       const next = applyPresetToDraft(id, prev);
-      // 新建时：切换预设同步配置名称；编辑已有提供方时 ID 不可改
+      // 只有新建时预设才覆盖配置名称；编辑中不覆盖，避免干扰改名
       if (editIndex === null) {
         next.id = id === "custom" ? "" : id;
       }
@@ -586,12 +592,14 @@ export default function LlmProvidersForm() {
 
   async function submitEdit() {
     const wasNew = editIndex === null;
+    const originalId = editOriginalId.trim();
     const id = draft.id.trim();
+    const renamed = !wasNew && Boolean(originalId) && id !== originalId;
     if (!id) {
       setEditErr("请填写提供方 ID");
       return;
     }
-    if (wasNew && providerIds.includes(id)) {
+    if ((wasNew || renamed) && providerIds.includes(id)) {
       setEditErr(`提供方 ID「${id}」已存在`);
       return;
     }
@@ -641,6 +649,10 @@ export default function LlmProvidersForm() {
     setErr("");
     setEditErr("");
     try {
+      // 改名先行：后端按新 ID 同步该行与 routing / 主配置引用，随后的 upsert 落在新 ID 上
+      if (renamed) {
+        await renameLlmProvider(originalId, id);
+      }
       // 单条 upsert：不整表回写，避免把其他提供方的脱敏空密钥写盘擦掉
       await putLlmProvider(row);
       let providers = await fetchLlmProvidersConfig();
@@ -653,6 +665,7 @@ export default function LlmProvidersForm() {
       }
       setDoc(next);
       setBaseline(JSON.stringify(next));
+      setEditOriginalId(id);
       const savedRow = next.providers.find((p) => p.id === id);
       if (savedRow) {
         const savedKeys = Array.isArray(savedRow.api_keys)
@@ -705,6 +718,7 @@ export default function LlmProvidersForm() {
     });
     setEditing(false);
     setEditIndex(null);
+    setEditOriginalId("");
     setDraft(blankProvider());
     setDraftApiKeys([]);
     setKeepStoredApiKey(false);
@@ -1416,10 +1430,14 @@ export default function LlmProvidersForm() {
                     <Input
                       id="llm-provider-id"
                       value={draft.id}
-                      disabled={editIndex !== null}
                       placeholder={draft.kind === "local" ? "例如 local / ollama" : "例如 deepseek / openai"}
                       onChange={(e) => setDraft((d) => ({ ...d, id: e.target.value }))}
                     />
+                    {editIndex !== null && draft.id.trim() !== editOriginalId.trim() ? (
+                      <p className="text-xs text-muted-foreground">
+                        保存后路由与引用会一并改为新名称。
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="space-y-2">
@@ -1798,6 +1816,7 @@ export default function LlmProvidersForm() {
                       onClick={() => {
                         setEditing(false);
                         setEditIndex(null);
+                        setEditOriginalId("");
                         setEditErr("");
                       }}
                     >

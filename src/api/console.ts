@@ -719,6 +719,19 @@ export async function putLlmProvider(row: LlmProviderRow): Promise<LlmProvidersS
   return envelopeData<LlmProvidersSaveResult>(res) || {};
 }
 
+/** 改提供方 ID：后端同步更新该行与 routing / 主配置里的引用。 */
+export async function renameLlmProvider(oldId: string, newId: string): Promise<LlmProvidersSaveResult> {
+  const from = String(oldId || "").trim();
+  const to = String(newId || "").trim();
+  if (!from || !to) throw new Error("provider id is required");
+  const { data: res } = await http.put(
+    `/common-config/llm/providers/${encodeURIComponent(from)}/rename`,
+    { new_id: to },
+    { timeout: 60_000 },
+  );
+  return envelopeData<LlmProvidersSaveResult>(res) || {};
+}
+
 export async function postLlmProviderTest(
   providerId: string,
   opts?: {
