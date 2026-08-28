@@ -2738,6 +2738,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/usage-ledger/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Llm Usage Ledger Export
+         * @description 导出请求级 usage 账本明细 CSV（llm_usage JSONL 原始记录）。
+         */
+        get: operations["_llm_usage_ledger_export_pallas_api_common_config_llm_usage_ledger_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/media-assets/status": {
         parameters: {
             query?: never;
@@ -15152,6 +15172,44 @@ export interface operations {
                 start?: string | null;
                 /** @description YYYY-MM-DD，含当日 */
                 end?: string | null;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_usage_ledger_export_pallas_api_common_config_llm_usage_ledger_export_get: {
+        parameters: {
+            query: {
+                /** @description YYYY-MM-DD，含当日 */
+                start: string;
+                /** @description YYYY-MM-DD，含当日 */
+                end: string;
                 token?: string | null;
             };
             header?: {
