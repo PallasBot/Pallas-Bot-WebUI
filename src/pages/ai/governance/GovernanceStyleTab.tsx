@@ -12,12 +12,14 @@ import {
 import {
   fetchLlmPersonaExport,
   fetchLlmPersonaGroupStyle,
+  fetchLlmPersonaSemanticStyleExamples,
 } from "@/api/fullConsole";
 import { axiosErrorDetail } from "@/api/http";
 import type {
   GroupStyleGovernanceData,
   LlmStickerLabelManageRequest,
   LlmStickerLabelOverviewData,
+  SemanticStyleExamplesData,
   SemanticStyleQualityData,
   SemanticStyleStatusData,
 } from "@/api/pallasTypes";
@@ -305,7 +307,81 @@ function SemanticStyleControls({
   );
 }
 
-function GroupExpressionViewCard({ data }: { data: GroupExpressionView }) {
+function SemanticStyleExamplesView({
+  data,
+  loading,
+  error,
+}: {
+  data: SemanticStyleExamplesData | undefined;
+  loading: boolean;
+  error: unknown;
+}) {
+  const items = data?.items ?? [];
+  return (
+    <div className="space-y-2 border-t pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <h4 className="text-sm font-medium">实际语义样本</h4>
+        <Badge variant="outline">{data ? `${num(data.total)} 组` : "生产样本"}</Badge>
+      </div>
+      <p className="text-xs text-muted-foreground">仅展示已通过语义标注的群聊接话样本。</p>
+      <StateBlock loading={loading} error={error} empty={!items.length} emptyText="暂无已整理的实际语义样本。">
+        <div className="space-y-2">
+          {items.map((item) => {
+            const strategy = item.behavior_strategy;
+            const actions = item.label.interaction_actions ?? [];
+            const relations = item.label.semantic_relations ?? [];
+            const forms = item.label.forms ?? [];
+            return (
+              <article key={item.example_id} className="min-w-0 rounded-md border bg-muted/10 p-3">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  <Badge variant="secondary">{item.pair_relation === "quoted" ? "引用接话" : "相邻接话"}</Badge>
+                  {item.learning_type === "self_reflection" ? (
+                    <Badge variant="outline">接话复盘</Badge>
+                  ) : (
+                    <Badge variant="outline">真人接话</Badge>
+                  )}
+                  <span className="ml-auto tabular-nums">{fmtTime(item.created_at)}</span>
+                </div>
+                <div className="mt-2 grid gap-2 text-sm">
+                  <div className="min-w-0">
+                    <span className="mr-2 text-xs text-muted-foreground">前句</span>
+                    <span className="break-words">{item.trigger_text}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="mr-2 text-xs text-muted-foreground">接话</span>
+                    <span className="break-words font-medium text-foreground">{item.reply_text}</span>
+                  </div>
+                </div>
+                {(actions.length || relations.length || forms.length) ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+                    {actions.map((value) => <Badge key={`action-${value}`} variant="outline">动作：{value}</Badge>)}
+                    {relations.map((value) => <Badge key={`relation-${value}`} variant="outline">关系：{value}</Badge>)}
+                    {forms.map((value) => <Badge key={`form-${value}`} variant="outline">形式：{value}</Badge>)}
+                    <Badge variant="outline">强度：{item.label.intensity}</Badge>
+                  </div>
+                ) : null}
+                {strategy ? (
+                  <div className="mt-2 break-words border-t pt-2 text-xs leading-5 text-muted-foreground">
+                    <span className="mr-2 font-medium text-foreground/80">策略</span>
+                    {strategy.scene ? <span>{strategy.scene}</span> : null}
+                    {strategy.action ? <span>：{strategy.action}</span> : null}
+                    {strategy.outcome ? <span>，结果：{strategy.outcome}</span> : null}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+      </StateBlock>
+    </div>
+  );
+}
+
+function GroupExpressionViewCard({
+  data,
+}: {
+  data: GroupExpressionView;
+}) {
   const sceneLabel = data.exampleScene
     ? sceneOptions.find((option) => option.value === data.exampleScene)?.label ?? data.exampleScene
     : "";
@@ -595,6 +671,11 @@ export default function GovernanceStyleTab() {
     enabled: groupReady,
     queryFn: () => fetchLlmPersonaGroupStyle({ botId: bot, groupId: group as number }),
   });
+  const semanticExamplesQ = useQuery({
+    queryKey: ["llm-persona-semantic-style-examples", bot, group, "group_chat"],
+    enabled: groupReady,
+    queryFn: () => fetchLlmPersonaSemanticStyleExamples({ botId: bot, groupId: group as number, scene: "group_chat", limit: 20 }),
+  });
   const semanticQ = useQuery({
     queryKey: ["llm-repeater-semantic-style", bot, group],
     enabled: botReady && groupReady,
@@ -742,6 +823,11 @@ export default function GovernanceStyleTab() {
               <StateBlock loading={styleQ.isLoading} error={styleQ.error} empty={!styleQ.data} emptyText="暂无画像数据。">
                 {styleQ.data ? <GroupExpressionViewCard data={groupExpressionView(styleQ.data)} /> : null}
               </StateBlock>
+              <SemanticStyleExamplesView
+                data={semanticExamplesQ.data}
+                loading={semanticExamplesQ.isLoading}
+                error={semanticExamplesQ.error}
+              />
             </div>
           </CardContent>
         </Card>

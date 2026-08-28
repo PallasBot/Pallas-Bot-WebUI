@@ -118,6 +118,7 @@ import type {
   PersonaObserveData,
   SceneDialogueExample,
   SceneDialogueExamplesData,
+  SemanticStyleExamplesData,
   MessageStatsData,
   CommunityStatsData,
   CommunityConnectivityCheckData,
@@ -1652,6 +1653,24 @@ export async function fetchLlmPersonaGroupStyle(params: {
     },
   );
   return data.data;
+}
+
+export async function fetchLlmPersonaSemanticStyleExamples(params: {
+  botId: number;
+  groupId: number;
+  scene?: string;
+  limit?: number;
+}): Promise<SemanticStyleExamplesData> {
+  return consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona/semantic-style-examples"]["get"]
+  >("/common-config/llm/persona/semantic-style-examples", {
+    params: {
+      bot_id: params.botId,
+      group_id: params.groupId,
+      scene: params.scene ?? "group_chat",
+      limit: params.limit ?? 20,
+    },
+  });
 }
 
 export async function fetchSceneDialogueExamples(botId: number): Promise<SceneDialogueExamplesData> {
