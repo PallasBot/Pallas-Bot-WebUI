@@ -1199,23 +1199,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/pallas/api/llm/agent-platform/observations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Observations List */
-        get: operations["observations_list_pallas_api_llm_agent_platform_observations_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/pallas/api/llm/agent-platform/tasks": {
         parameters: {
             query?: never;
@@ -11481,44 +11464,6 @@ export interface operations {
                 };
             };
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    observations_list_pallas_api_llm_agent_platform_observations_get: {
-        parameters: {
-            query?: {
-                bot_id?: number | null;
-                group_id?: number | null;
-                status?: string | null;
-                limit?: number;
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
