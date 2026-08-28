@@ -53,14 +53,22 @@ import {
   scopedSemanticStyleQuality,
   semanticStyleQualityView,
   semanticStyleScopeKey,
+  type DistSlice,
+  type GroupExpressionView,
   type ScopedSemanticStyleQuality,
 } from "@/utils/groupExpressionModel";
 import { personaValueZh } from "@/utils/personaLabels";
-import SceneDialogueExamplesCard from "../SceneDialogueExamplesCard";
+import SceneDialogueExamplesCard, { sceneOptions } from "../SceneDialogueExamplesCard";
 
 function num(value: unknown, fallback = 0): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
+}
+
+/** 千分位整数，用于统计数字。 */
+function fmtInt(value: unknown): string {
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toLocaleString() : "—";
 }
 
 function fmtTime(unix: unknown): string {
@@ -73,16 +81,35 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
-function Kv({ label, children }: { label: string; children: ReactNode }) {
+function Kv({ label, title, children }: { label: string; title?: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 items-baseline gap-2 text-sm">
       <span className="shrink-0 text-muted-foreground">{label}</span>
       <span
         className="min-w-0 truncate tabular-nums text-foreground/90"
-        title={typeof children === "string" ? children : undefined}
+        title={title ?? (typeof children === "string" ? children : undefined)}
       >
         {children}
       </span>
+    </div>
+  );
+}
+
+/** 迷你分布条：标签 + 占比条 + 数值。 */
+function DistList({ slices }: { slices: DistSlice[] }) {
+  return (
+    <div className="space-y-1.5">
+      {slices.map((slice) => (
+        <div key={slice.label} className="flex items-center gap-2 text-sm">
+          <span className="w-14 shrink-0 truncate text-muted-foreground" title={slice.label}>
+            {slice.label}
+          </span>
+          <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-primary/70" style={{ width: `${Math.round(slice.ratio * 100)}%` }} />
+          </div>
+          <span className="shrink-0 tabular-nums">{slice.value}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -278,47 +305,68 @@ function SemanticStyleControls({
   );
 }
 
-function GroupExpressionViewCard({ data }: { data: ReturnType<typeof groupExpressionView> }) {
-  const replyShape = Object.fromEntries(data.replyShape) as Record<string, string>;
-  const exampleSummary = Object.fromEntries(data.exampleSummary) as Record<string, string>;
-  const lengthP50 = Number.parseFloat(replyShape["分段字数 P50 / P90"]?.split("/")[0] ?? "");
-  const lengthSummary = Number.isFinite(lengthP50)
-    ? lengthP50 <= 12 ? "偏短促" : lengthP50 <= 28 ? "适中" : "偏完整"
-    : "尚未形成稳定长度偏好";
-  const rhythmSummary = data.rhythm === "—" ? "节奏尚未形成稳定偏好" : `节奏偏向${data.rhythm}`;
-  const sampleSummary = exampleSummary["语义样本"] && exampleSummary["语义样本"] !== "—"
-    ? `已整理 ${exampleSummary["语义样本"]} 组语义样本`
-    : "暂未整理出足够的语义样本";
-
+function GroupExpressionViewCard({ data }: { data: GroupExpressionView }) {
+  const sceneLabel = data.exampleScene
+    ? sceneOptions.find((option) => option.value === data.exampleScene)?.label ?? data.exampleScene
+    : "";
   return (
     <div className="space-y-3">
       <div className="rounded-md border bg-muted/20 p-3 text-sm leading-6">
         <p>
-          当前群的回复倾向<strong>{lengthSummary}</strong>，{rhythmSummary}；{sampleSummary}。
+          当前群的回复倾向<strong>{data.summary.length}</strong>，{data.summary.rhythm}；{data.summary.sample}。
           这些内容会作为措辞参考，不会覆盖 Bot 人设和本轮回复策略。
         </p>
+        {data.lowSample ? <p className="mt-1 text-xs text-muted-foreground">样本较少，画像仅供参考。</p> : null}
       </div>
       <details className="rounded-md border px-3 py-2 text-sm">
         <summary className="cursor-pointer select-none font-medium">查看整理依据</summary>
+        <p className="mt-2 text-xs text-muted-foreground">
+          统计窗口：近 {data.meta.windowHours} · 更新于 {data.meta.updatedAt}
+        </p>
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <section className="space-y-2 rounded-md bg-muted/20 p-3" aria-label="样本与活跃">
+            <h4 className="text-sm font-medium">样本与活跃</h4>
+            <div className="grid gap-1">
+              {data.sampleGroup.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
+            </div>
+          </section>
           <section className="space-y-2 rounded-md bg-muted/20 p-3" aria-label="回复形态">
             <h4 className="text-sm font-medium">回复形态</h4>
             <div className="grid gap-1">
               {data.replyShape.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
-              <Kv label="节奏">{data.rhythm}</Kv>
+            </div>
+            {data.rhythm.length ? (
+              <div className="space-y-1.5 border-t pt-2" aria-label="节奏分布">
+                <div className="text-xs text-muted-foreground">节奏</div>
+                <DistList slices={data.rhythm} />
+              </div>
+            ) : null}
+          </section>
+          <section className="space-y-2 rounded-md bg-muted/20 p-3" aria-label="质量与过滤">
+            <h4 className="text-sm font-medium">质量与过滤</h4>
+            <div className="grid gap-1">
+              {data.qualityGroup.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
             </div>
           </section>
           <section className="space-y-2 rounded-md bg-muted/20 p-3" aria-label="语义样例摘要">
             <h4 className="text-sm font-medium">语义样例摘要</h4>
+            {sceneLabel ? <Kv label="场景">{sceneLabel}</Kv> : null}
             <div className="grid gap-1">
-              {data.exampleSummary.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
-              <Kv label="强度">{data.intensity}</Kv>
-              <Kv label="形式">{data.forms}</Kv>
+              {data.exampleGroup.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
             </div>
+            {data.intensity.length ? (
+              <div className="space-y-1.5 border-t pt-2" aria-label="语气强度分布">
+                <div className="text-xs text-muted-foreground">语气强度</div>
+                <DistList slices={data.intensity} />
+              </div>
+            ) : null}
+            {data.forms.length ? (
+              <div className="space-y-1.5 border-t pt-2" aria-label="形式分布">
+                <div className="text-xs text-muted-foreground">形式</div>
+                <DistList slices={data.forms} />
+              </div>
+            ) : null}
           </section>
-        </div>
-        <div className="mt-3 grid gap-x-5 gap-y-1 border-t pt-3 sm:grid-cols-2">
-          {data.aggregate.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
         </div>
       </details>
     </div>
@@ -341,6 +389,10 @@ function StickerLabelCard({
   const notSticker = num(labels.not_sticker);
   const denom = sticker + notSticker;
   const stickerPct = denom > 0 ? Math.round((sticker / denom) * 100) : 0;
+  const vlmAvoid = num(data.vlm_refine_avoided);
+  const vlmActual = num(data.vlm_refine_actual);
+  const vlmDenom = vlmAvoid + vlmActual;
+  const vlmAvoidPct = vlmDenom > 0 ? Math.round((vlmAvoid / vlmDenom) * 100) : 0;
   const hasIssue =
     num(labels.low_confidence) > 0 || num(jobs.pending) > 0 || num(jobs.failed) > 0 || data.label_circuit_open;
 
@@ -348,7 +400,7 @@ function StickerLabelCard({
     <div className="space-y-3">
       <div className="space-y-2 rounded-md border p-3">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="text-xl font-semibold leading-none tabular-nums">{total}</span>
+          <span className="text-xl font-semibold leading-none tabular-nums">{fmtInt(total)}</span>
           <span className="text-sm text-muted-foreground">已标注</span>
           <span className="ml-auto text-sm text-muted-foreground tabular-nums">表情占 {stickerPct}%</span>
         </div>
@@ -357,11 +409,11 @@ function StickerLabelCard({
           <div className="bg-muted-foreground/40" style={{ width: `${Math.max(100 - stickerPct, 0)}%` }} />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="outline">表情 {sticker}</Badge>
-          <Badge variant="outline">非表情 {notSticker}</Badge>
-          {num(labels.low_confidence) > 0 ? <Badge variant="warn">低置信 {labels.low_confidence}</Badge> : null}
-          {num(jobs.pending) > 0 ? <Badge variant="pending">待处理 {jobs.pending}</Badge> : null}
-          {num(jobs.failed) > 0 ? <Badge variant="destructive">失败 {jobs.failed}</Badge> : null}
+          <Badge variant="outline">表情 {fmtInt(sticker)}</Badge>
+          <Badge variant="outline">非表情 {fmtInt(notSticker)}</Badge>
+          {num(labels.low_confidence) > 0 ? <Badge variant="warn">低置信 {fmtInt(labels.low_confidence)}</Badge> : null}
+          {num(jobs.pending) > 0 ? <Badge variant="pending">待处理 {fmtInt(jobs.pending)}</Badge> : null}
+          {num(jobs.failed) > 0 ? <Badge variant="destructive">失败 {fmtInt(jobs.failed)}</Badge> : null}
           {data.label_circuit_open ? <Badge variant="warn">标签熔断中</Badge> : null}
           {data.lazy_labels_paused ? <Badge variant="muted">懒标注已暂停</Badge> : null}
           {!hasIssue ? <span className="text-xs text-muted-foreground">无低置信、待处理与失败任务</span> : null}
@@ -369,14 +421,33 @@ function StickerLabelCard({
       </div>
       <details className="rounded-md border px-3 py-2 text-sm">
         <summary className="cursor-pointer select-none text-muted-foreground">详细统计</summary>
-        <div className="mt-2 grid gap-1 sm:grid-cols-2">
-          <Kv label="低置信">{labels.low_confidence}</Kv>
-          <Kv label="待处理">{jobs.pending}</Kv>
-          <Kv label="失败">{jobs.failed}</Kv>
-          <Kv label="标签版本">v{labels.current_version}</Kv>
-          <Kv label="VLM 精修避免">{data.vlm_refine_avoided}</Kv>
-          <Kv label="VLM 精修实际">{data.vlm_refine_actual}</Kv>
-          <Kv label="发送命中">{data.send_hits}</Kv>
+        <div className="mt-2 grid gap-x-5 gap-y-3 sm:grid-cols-3">
+          <div className="space-y-1">
+            <div className="text-xs font-medium text-muted-foreground">标注质量</div>
+            <Kv label="低置信" title="置信度较低、可能需要复核的标签">{fmtInt(labels.low_confidence)}</Kv>
+            <Kv label="标签版本" title="每次全量重排后递增">v{fmtInt(labels.current_version)}</Kv>
+          </div>
+          <div className="space-y-1">
+            <div className="text-xs font-medium text-muted-foreground">任务</div>
+            <Kv label="待处理">{fmtInt(jobs.pending)}</Kv>
+            <Kv label="失败">{fmtInt(jobs.failed)}</Kv>
+          </div>
+          <div className="space-y-1">
+            <div className="text-xs font-medium text-muted-foreground">视觉精修</div>
+            <Kv label="避免 / 实际" title="避免 = 本地直接判定，未调用视觉模型；实际 = 真实调用次数">
+              {`${fmtInt(vlmAvoid)} / ${fmtInt(vlmActual)}`}
+            </Kv>
+            {vlmDenom > 0 ? (
+              <>
+                <div className="flex h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                  <div className="bg-primary" style={{ width: `${vlmAvoidPct}%` }} />
+                  <div className="bg-muted-foreground/40" style={{ width: `${100 - vlmAvoidPct}%` }} />
+                </div>
+                <p className="text-xs text-muted-foreground">避免率 {vlmAvoidPct}%</p>
+              </>
+            ) : null}
+            <Kv label="发送命中" title="带表情标签发送的命中次数">{fmtInt(data.send_hits)}</Kv>
+          </div>
         </div>
       </details>
       <div className="flex flex-wrap gap-2">
@@ -388,7 +459,21 @@ function StickerLabelCard({
         </Button>
       </div>
       {jobs.recent_errors?.length ? (
-        <p className="text-sm text-destructive">最近失败：{jobs.recent_errors.length} 条</p>
+        <details className="rounded-md border border-destructive/30 px-3 py-2 text-sm">
+          <summary className="cursor-pointer select-none text-destructive">最近失败：{jobs.recent_errors.length} 条</summary>
+          <div className="mt-2 space-y-1.5">
+            {jobs.recent_errors.slice(0, 3).map((error) => (
+              <div key={error.job_id} className="rounded-md bg-muted/30 px-2.5 py-1.5">
+                <div className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+                  <span className="min-w-0 truncate">{error.job_id}</span>
+                  <span className="shrink-0 tabular-nums">{fmtTime(error.created_at)}</span>
+                </div>
+                <p className="mt-0.5 break-words text-destructive">{error.error}</p>
+                <p className="text-xs text-muted-foreground">状态：{error.state}</p>
+              </div>
+            ))}
+          </div>
+        </details>
       ) : null}
     </div>
   );

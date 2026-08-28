@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Draft = Pick<SceneDialogueExample, "scene" | "user_cue" | "positive" | "negative" | "enabled" | "order">;
 
-const sceneOptions: ComboboxOption[] = [
+export const sceneOptions: ComboboxOption[] = [
   { value: "banter", label: "接梗玩笑", triggerLabel: "banter · 接梗玩笑", keywords: "接梗 玩笑 梗" },
   { value: "smalltalk", label: "日常闲聊", triggerLabel: "smalltalk · 日常闲聊", keywords: "日常 闲聊 接话" },
   { value: "venting", label: "吐槽安抚", triggerLabel: "venting · 吐槽安抚", keywords: "吐槽 加班 抽卡 安抚" },
