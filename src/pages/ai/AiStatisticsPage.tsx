@@ -82,7 +82,7 @@ import {
 import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
 import { fixedChartPalette } from "@/utils/chartTheme";
 import { countShareRows } from "@/utils/shareDistribution";
-import { labelLlmRoute } from "@/utils/aiHistoryLabels";
+import { labelLlmRoute, labelLlmTask } from "@/utils/aiHistoryLabels";
 import type { LlmStickerVisionStats } from "@/api/pallasTypes";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 
@@ -645,6 +645,10 @@ export default function AiStatisticsPage() {
     () => rangeTokenTaskRows.find((row) => row.key === "sticker_vision"),
     [rangeTokenTaskRows],
   );
+  const rangeTokenTaskDisplayRows = useMemo(
+    () => rangeTokenTaskRows.map((row) => ({ ...row, key: labelLlmTask(row.key) })),
+    [rangeTokenTaskRows],
+  );
 
   const rangeCacheHitRate = useMemo(
     () => cacheHitRateFromBucket(selectedRange),
@@ -926,6 +930,10 @@ export default function AiStatisticsPage() {
   const rangeCost = useMemo(
     () => buildRangeCostSummary(historyRows, start, end),
     [end, historyRows, start],
+  );
+  const rangeTaskCostDisplayRows = useMemo(
+    () => rangeCost.tokenTaskRows.map((row) => ({ ...row, key: labelLlmTask(row.key) })),
+    [rangeCost.tokenTaskRows],
   );
 
   const rangeImageGatewayRows = useMemo(
@@ -1472,7 +1480,7 @@ export default function AiStatisticsPage() {
               </CardHeader>
               <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                 <ShareDistribution
-                  rows={rangeTokenTaskRows}
+                  rows={rangeTokenTaskDisplayRows}
                   limit={12}
                   prefer="bars"
                   emptyText="暂无按任务数据"
@@ -1725,7 +1733,7 @@ export default function AiStatisticsPage() {
                 />
                 <CostDetailTable
                   title="按任务"
-                  rows={rangeCost.tokenTaskRows}
+                  rows={rangeTaskCostDisplayRows}
                   kind="token"
                   currency={costCurrency}
                   showUnitCost

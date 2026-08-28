@@ -36,10 +36,20 @@ function isOpenTask(status: string): boolean {
 }
 
 function taskNameLabel(name: string): string {
-  if (name === "once") return "一次性";
-  if (name === "research") return "调研";
-  if (name === "remind") return "提醒";
-  return name || "任务";
+  const labels: Record<string, string> = {
+    once: "一次性",
+    research: "调研",
+    remind: "提醒",
+    schedule: "定时",
+    digest: "摘要",
+    report: "报告",
+    scan: "巡检",
+    sync: "同步",
+    batch: "批处理",
+  };
+  if (labels[name]) return labels[name];
+  if (!name) return "任务";
+  return `任务（${name}）`;
 }
 
 function taskPayloadSummary(item: Record<string, unknown>): string {
