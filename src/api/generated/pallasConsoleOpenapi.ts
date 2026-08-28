@@ -2686,6 +2686,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/providers/{provider_id}/rename": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Llm Provider Rename Put
+         * @description 改提供方 ID：改行内 id 并同步 routing / 主配置引用。
+         */
+        put: operations["_llm_provider_rename_put_pallas_api_common_config_llm_providers__provider_id__rename_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/providers/{provider_id}/models": {
         parameters: {
             query?: never;
@@ -7359,6 +7379,11 @@ export interface components {
              * @default
              */
             request_method: string;
+        };
+        /** _LlmProviderRenameBody */
+        _LlmProviderRenameBody: {
+            /** New Id */
+            new_id: string;
         };
         /** _LlmProviderRowBody */
         _LlmProviderRowBody: {
@@ -15026,6 +15051,46 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["_LlmProviderRowBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_provider_rename_put_pallas_api_common_config_llm_providers__provider_id__rename_put: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_LlmProviderRenameBody"];
             };
         };
         responses: {
