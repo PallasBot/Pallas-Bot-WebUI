@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, RefreshCw, Trash2 } from "lucide-react";
+import { Ban, CircleCheck, Ellipsis, Gauge, RefreshCw, Trash2, X } from "lucide-react";
 import {
   fetchGroupStyleGovernance,
   fetchLlmRepeaterSemanticStyle,
@@ -23,12 +23,27 @@ import type {
 } from "@/api/pallasTypes";
 import { useAiGovernanceScope } from "@/components/ai/AiGovernanceScope";
 import AiScopeHint from "@/components/ai/AiScopeHint";
+import CollapseToggle from "@/components/CollapseToggle";
 import CopyIconButton from "@/components/CopyIconButton";
 import StateBlock from "@/components/StateBlock";
-import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { copyTextToClipboard } from "@/utils/clipboard";
@@ -62,13 +77,46 @@ function Kv({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 items-baseline gap-2 text-sm">
       <span className="shrink-0 text-muted-foreground">{label}</span>
-      <span className="min-w-0 truncate tabular-nums text-foreground/90">{children}</span>
+      <span
+        className="min-w-0 truncate tabular-nums text-foreground/90"
+        title={typeof children === "string" ? children : undefined}
+      >
+        {children}
+      </span>
     </div>
   );
 }
 
+/** 防抖值：延迟同步，用于输入触发的查询。 */
+function useDebouncedValue<T>(value: T, delayMs = 400): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 type SemanticStyleAction = "direct_enabled" | "rebuild" | "quality" | "disable" | "enable" | "set_governance" | "clear";
 type GroupStyleAction = "collection" | "injection" | "clear" | "rebuild";
+type ClearKind = "群风格" | "语义风格";
+
+const SEMANTIC_ACTION_TOASTS: Record<SemanticStyleAction, string> = {
+  direct_enabled: "直给倾向已更新",
+  rebuild: "语义风格已重建",
+  quality: "质量评价已完成",
+  disable: "语义风格已全部停用",
+  enable: "语义风格已全部启用",
+  set_governance: "学习开关已更新",
+  clear: "语义风格已清空",
+};
+
+const GROUP_ACTION_TOASTS: Record<GroupStyleAction, string> = {
+  collection: "采集开关已更新",
+  injection: "注入开关已更新",
+  rebuild: "群风格已重建",
+  clear: "群风格已清空",
+};
 
 function isSemanticStyleQuality(
   data: SemanticStyleStatusData | SemanticStyleQualityData,
@@ -76,25 +124,32 @@ function isSemanticStyleQuality(
   return "status" in data && "label_version" in data;
 }
 
-/** 行式开关：左+切换右。 */
+/** 行式开关：左标签+说明，右切换。 */
 function ToggleRow({
   id,
   label,
+  hint,
   checked,
   disabled,
   onChange,
 }: {
   id: string;
   label: string;
+  hint?: string;
   checked: boolean;
   disabled: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label htmlFor={id} className="flex min-h-10 cursor-pointer items-center justify-between gap-2 rounded-md border px-3 text-sm">
-      <span>{label}</span>
+    <div className="flex min-h-9 items-center justify-between gap-3 py-0.5 text-sm">
+      <div className="min-w-0">
+        <label htmlFor={id} className="cursor-pointer select-none font-medium">
+          {label}
+        </label>
+        {hint ? <p className="text-xs leading-4 text-muted-foreground">{hint}</p> : null}
+      </div>
       <Switch id={id} checked={checked} disabled={disabled} onCheckedChange={onChange} />
-    </label>
+    </div>
   );
 }
 
@@ -107,20 +162,15 @@ function GroupStyleControls({
   data: GroupStyleGovernanceData | undefined;
   busy: boolean;
   onAction: (action: GroupStyleAction, value?: boolean) => void;
-  onClear: (continueLearning: boolean) => void;
+  onClear: () => void;
 }) {
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={data?.injection_enabled === false ? "muted" : "success"}>
-          {data?.injection_enabled === false ? "未注入" : "正在注入"}
-        </Badge>
-        <Badge variant="outline">采集 {data?.collection_enabled === false ? "停用" : "启用"}</Badge>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-x-5 gap-y-1 sm:grid-cols-2">
         <ToggleRow
           id="gov-style-tab-collection"
           label="继续采集"
+          hint="关闭后不再从本群收集新的对话样本"
           checked={data?.collection_enabled !== false}
           disabled={busy}
           onChange={(value) => onAction("collection", value)}
@@ -128,15 +178,15 @@ function GroupStyleControls({
         <ToggleRow
           id="gov-style-tab-injection"
           label="参与注入"
+          hint="关闭后群风格画像不进入回复提示词"
           checked={data?.injection_enabled !== false}
           disabled={busy}
           onChange={(value) => onAction("injection", value)}
         />
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" icon={RefreshCw} iconMotion="spin" disabled={busy} onClick={() => onAction("rebuild")}>立即重建</Button>
-        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onClear(true)}>清空并继续学习</Button>
-        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onClear(false)}>清空并暂停学习</Button>
+        <Button size="sm" variant="outline" icon={RefreshCw} iconMotion="spin" disabled={busy} onClick={() => onAction("rebuild")}>重建</Button>
+        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={onClear}>清空数据…</Button>
       </div>
     </div>
   );
@@ -148,26 +198,26 @@ function SemanticStyleControls({
   busy,
   onAction,
   onClear,
+  onCloseQuality,
 }: {
   data: SemanticStyleStatusData | undefined;
   qualityData: SemanticStyleQualityData | null;
   busy: boolean;
   onAction: (request: { action: SemanticStyleAction; directEnabled?: boolean; collectionEnabled?: boolean; injectionEnabled?: boolean }) => void;
-  onClear: (continueLearning: boolean) => void;
+  onClear: () => void;
+  onCloseQuality: () => void;
 }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={data?.injection_enabled === false ? "muted" : "success"}>
-          {data?.injection_enabled === false ? "未注入" : "正在注入"}
-        </Badge>
         <Badge variant="outline">样例 {num(data?.example_count)}</Badge>
         <Badge variant="outline">画像 {num(data?.profile_count)}</Badge>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-x-5 gap-y-1 sm:grid-cols-2">
         <ToggleRow
           id="gov-sem-tab-collection"
           label="继续学习"
+          hint="关闭后不再收集新的语义样例"
           checked={data?.collection_enabled !== false}
           disabled={busy}
           onChange={(collectionEnabled) => onAction({ action: "set_governance", collectionEnabled })}
@@ -175,6 +225,7 @@ function SemanticStyleControls({
         <ToggleRow
           id="gov-sem-tab-injection"
           label="参与注入"
+          hint="关闭后语义参考不进入回复提示词"
           checked={data?.injection_enabled !== false}
           disabled={busy}
           onChange={(injectionEnabled) => onAction({ action: "set_governance", injectionEnabled })}
@@ -182,6 +233,7 @@ function SemanticStyleControls({
         <ToggleRow
           id="gov-sem-tab-direct"
           label="直给倾向"
+          hint="开启后回复更倾向直接给出结论"
           checked={data?.direct_enabled !== false}
           disabled={busy}
           onChange={(directEnabled) => onAction({ action: "direct_enabled", directEnabled })}
@@ -189,17 +241,37 @@ function SemanticStyleControls({
       </div>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" icon={RefreshCw} iconMotion="spin" disabled={busy} onClick={() => onAction({ action: "rebuild" })}>重建</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction({ action: "quality" })}>质量评价</Button>
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction({ action: "enable" })}>全部启用</Button>
-        <Button size="sm" variant="ghost" className="text-destructive" icon={Ban} disabled={busy} onClick={() => onAction({ action: "disable" })}>全部停用</Button>
-        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onClear(true)}>清空并继续学习</Button>
-        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={() => onClear(false)}>清空并暂停学习</Button>
+        <Button size="sm" variant="destructive" icon={Trash2} disabled={busy} onClick={onClear}>清空数据…</Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" icon={Ellipsis} disabled={busy}>更多操作</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem disabled={busy} onClick={() => onAction({ action: "quality" })}>
+              <Gauge className="size-4" /> 质量评价
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={busy} onClick={() => onAction({ action: "enable" })}>
+              <CircleCheck className="size-4" /> 全部启用
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={busy} className="text-destructive focus:text-destructive" onClick={() => onAction({ action: "disable" })}>
+              <Ban className="size-4" /> 全部停用
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       {qualityData ? (
-        <div className="grid gap-1 rounded-md border p-3 sm:grid-cols-2">
-          {semanticStyleQualityView(qualityData).map(([label, value]) => (
-            <Kv key={label} label={label}>{value}</Kv>
-          ))}
+        <div className="space-y-2 rounded-md border p-3">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">质量评价结果</h4>
+            <Button size="icon" variant="ghost" aria-label="关闭质量评价结果" onClick={onCloseQuality}>
+              <X className="size-4" />
+            </Button>
+          </div>
+          <div className="grid gap-1 sm:grid-cols-2">
+            {semanticStyleQualityView(qualityData).map(([label, value]) => (
+              <Kv key={label} label={label}>{value}</Kv>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>
@@ -264,20 +336,49 @@ function StickerLabelCard({
 }) {
   const labels = data.labels;
   const jobs = data.jobs;
+  const total = num(labels.total);
+  const sticker = num(labels.sticker);
+  const notSticker = num(labels.not_sticker);
+  const denom = sticker + notSticker;
+  const stickerPct = denom > 0 ? Math.round((sticker / denom) * 100) : 0;
+  const hasIssue =
+    num(labels.low_confidence) > 0 || num(jobs.pending) > 0 || num(jobs.failed) > 0 || data.label_circuit_open;
+
   return (
     <div className="space-y-3">
-      <div className="grid gap-x-5 gap-y-2 rounded-md border p-3 sm:grid-cols-2">
-        <Kv label="已标注">{labels.total}</Kv>
-        <Kv label="表情">{labels.sticker}</Kv>
-        <Kv label="非表情">{labels.not_sticker}</Kv>
-        <Kv label="低置信">{labels.low_confidence}</Kv>
-        <Kv label="待处理">{jobs.pending}</Kv>
-        <Kv label="失败">{jobs.failed}</Kv>
-        <Kv label="当前版本">{labels.current_version}</Kv>
-        <Kv label="VLM 精修避免">{data.vlm_refine_avoided}</Kv>
-        <Kv label="VLM 精修实际">{data.vlm_refine_actual}</Kv>
-        <Kv label="发送命中">{data.send_hits}</Kv>
+      <div className="space-y-2 rounded-md border p-3">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="text-xl font-semibold leading-none tabular-nums">{total}</span>
+          <span className="text-sm text-muted-foreground">已标注</span>
+          <span className="ml-auto text-sm text-muted-foreground tabular-nums">表情占 {stickerPct}%</span>
+        </div>
+        <div className="flex h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+          <div className="bg-primary" style={{ width: `${stickerPct}%` }} />
+          <div className="bg-muted-foreground/40" style={{ width: `${Math.max(100 - stickerPct, 0)}%` }} />
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="outline">表情 {sticker}</Badge>
+          <Badge variant="outline">非表情 {notSticker}</Badge>
+          {num(labels.low_confidence) > 0 ? <Badge variant="warn">低置信 {labels.low_confidence}</Badge> : null}
+          {num(jobs.pending) > 0 ? <Badge variant="pending">待处理 {jobs.pending}</Badge> : null}
+          {num(jobs.failed) > 0 ? <Badge variant="destructive">失败 {jobs.failed}</Badge> : null}
+          {data.label_circuit_open ? <Badge variant="warn">标签熔断中</Badge> : null}
+          {data.lazy_labels_paused ? <Badge variant="muted">懒标注已暂停</Badge> : null}
+          {!hasIssue ? <span className="text-xs text-muted-foreground">无低置信、待处理与失败任务</span> : null}
+        </div>
       </div>
+      <details className="rounded-md border px-3 py-2 text-sm">
+        <summary className="cursor-pointer select-none text-muted-foreground">详细统计</summary>
+        <div className="mt-2 grid gap-1 sm:grid-cols-2">
+          <Kv label="低置信">{labels.low_confidence}</Kv>
+          <Kv label="待处理">{jobs.pending}</Kv>
+          <Kv label="失败">{jobs.failed}</Kv>
+          <Kv label="标签版本">v{labels.current_version}</Kv>
+          <Kv label="VLM 精修避免">{data.vlm_refine_avoided}</Kv>
+          <Kv label="VLM 精修实际">{data.vlm_refine_actual}</Kv>
+          <Kv label="发送命中">{data.send_hits}</Kv>
+        </div>
+      </details>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" icon={RefreshCw} iconMotion="spin" disabled={busy} onClick={() => onManage({ action: "requeue" })}>
           重排陈旧标签
@@ -391,15 +492,18 @@ function ExportCard({
 /** 群风格与语义 tab：群级风格治理 + 全局表情标签 / 场景正反例 / 人设导出。 */
 export default function GovernanceStyleTab() {
   const qc = useQueryClient();
-  const { confirm, confirmDialog } = useConsoleConfirm();
   const { scope } = useAiGovernanceScope();
   const [plainText, setPlainText] = useState("");
   const [semanticQuality, setSemanticQuality] = useState<ScopedSemanticStyleQuality | null>(null);
+  const [clearTarget, setClearTarget] = useState<ClearKind | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const debouncedPlainText = useDebouncedValue(plainText);
 
   const bot = scope?.botId ?? 0;
   const group = scope?.groupId ?? null;
   const botReady = scope != null;
   const groupReady = scope != null && scope.groupId != null;
+  const scopeLabel = groupReady ? `Bot ${bot} · 群 ${group}` : `Bot ${bot}`;
 
   const styleQ = useQuery({
     queryKey: ["llm-persona-group-style", bot, group, "group_chat"],
@@ -421,13 +525,13 @@ export default function GovernanceStyleTab() {
     queryFn: () => fetchLlmStickerLabelOverview(),
   });
   const exportQ = useQuery({
-    queryKey: ["llm-persona-export", bot, group, plainText],
-    enabled: botReady,
+    queryKey: ["llm-persona-export", bot, group, debouncedPlainText],
+    enabled: botReady && exportOpen,
     queryFn: () =>
       fetchLlmPersonaExport({
         botId: bot,
         groupId: group,
-        plainText: plainText.trim() || undefined,
+        plainText: debouncedPlainText.trim() || undefined,
       }),
   });
 
@@ -462,7 +566,7 @@ export default function GovernanceStyleTab() {
       if (variables.action === "quality" && isSemanticStyleQuality(data)) {
         setSemanticQuality({ scopeKey: semanticStyleScopeKey(bot, group), data });
       }
-      pushConsoleToast("群表达已更新", "ok");
+      pushConsoleToast(SEMANTIC_ACTION_TOASTS[variables.action] ?? "群表达已更新", "ok");
       await qc.invalidateQueries({ queryKey: ["llm-repeater-semantic-style"] });
     },
     onError: (error) => pushConsoleToast(axiosErrorDetail(error), "err"),
@@ -478,8 +582,8 @@ export default function GovernanceStyleTab() {
         ...(action === "clear" ? { continueLearning: value } : {}),
       });
     },
-    onSuccess: async () => {
-      pushConsoleToast("群风格已更新", "ok");
+    onSuccess: async (_data, variables) => {
+      pushConsoleToast(GROUP_ACTION_TOASTS[variables.action] ?? "群风格已更新", "ok");
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["llm-group-style-governance"] }),
         qc.invalidateQueries({ queryKey: ["llm-persona-group-style"] }),
@@ -498,28 +602,12 @@ export default function GovernanceStyleTab() {
     onError: (error) => pushConsoleToast(axiosErrorDetail(error), "err"),
   });
 
-  const confirmClear = (kind: "群风格" | "语义风格", continueLearning: boolean): Promise<boolean> =>
-    confirm({
-      title: `清空${kind}`,
-      subtitle: `范围为当前 Bot + 当前群。${continueLearning ? "历史记录会被删除，之后继续学习。" : "历史记录会被删除，并暂停后续学习。"}`,
-      warnings: ["此操作不能恢复。"],
-      confirmLabel: continueLearning ? "清空并继续学习" : "清空并暂停学习",
-    });
-
-  const handleGroupClear = (continueLearning: boolean) => {
-    void confirmClear("群风格", continueLearning).then((accepted) => {
-      if (accepted) groupGovernanceMut.mutate({ action: "clear", value: continueLearning });
-    });
-  };
-
-  const handleSemanticAction = (request: { action: SemanticStyleAction; continueLearning?: boolean; collectionEnabled?: boolean; injectionEnabled?: boolean }) => {
-    if (request.action === "clear") {
-      void confirmClear("语义风格", request.continueLearning !== false).then((accepted) => {
-        if (accepted) semanticMut.mutate({ action: "clear", continueLearning: request.continueLearning });
-      });
-      return;
-    }
-    semanticMut.mutate(request);
+  /** 确认框内二选一：清空后继续学习，或清空并暂停学习。 */
+  const runClear = (continueLearning: boolean) => {
+    if (clearTarget == null) return;
+    if (clearTarget === "群风格") groupGovernanceMut.mutate({ action: "clear", value: continueLearning });
+    else semanticMut.mutate({ action: "clear", continueLearning });
+    setClearTarget(null);
   };
 
   if (!botReady) {
@@ -529,54 +617,59 @@ export default function GovernanceStyleTab() {
   return (
     <div className="space-y-4">
       {groupReady ? (
-        <>
-          <Card>
-            <CardHeader>
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-base">群风格与语义</CardTitle>
-              <CardDescription>群范围表达的采集与注入开关，下方为整理出的回复习惯画像。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium">群风格画像</h3>
-                <StateBlock loading={groupGovernanceQ.isLoading} error={groupGovernanceQ.error}>
-                  <GroupStyleControls
-                    data={groupGovernanceQ.data}
-                    busy={groupGovernanceMut.isPending}
-                    onAction={(action, value) => {
-                      if (action !== "clear") groupGovernanceMut.mutate({ action, value });
-                    }}
-                    onClear={handleGroupClear}
-                  />
-                </StateBlock>
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium">语义风格</h3>
-                <StateBlock loading={semanticQ.isLoading} error={semanticQ.error}>
-                  <SemanticStyleControls
-                    data={semanticQ.data}
-                    qualityData={scopedSemanticStyleQuality(semanticQuality, bot, group)}
-                    busy={semanticMut.isPending}
-                    onAction={handleSemanticAction}
-                    onClear={(continueLearning) => handleSemanticAction({ action: "clear", continueLearning })}
-                  />
-                </StateBlock>
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium">回复习惯画像</h3>
-                <StateBlock loading={styleQ.isLoading} error={styleQ.error} empty={!styleQ.data} emptyText="暂无画像数据。">
-                  {styleQ.data ? <GroupExpressionViewCard data={groupExpressionView(styleQ.data)} /> : null}
-                </StateBlock>
-              </div>
-            </CardContent>
-          </Card>
-        </>
+              <Badge variant="outline">{scopeLabel}</Badge>
+            </div>
+            <CardDescription>群范围表达的采集与注入开关，下方为整理出的回复习惯画像。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium">群风格画像</h3>
+              <StateBlock loading={groupGovernanceQ.isLoading} error={groupGovernanceQ.error}>
+                <GroupStyleControls
+                  data={groupGovernanceQ.data}
+                  busy={groupGovernanceMut.isPending}
+                  onAction={(action, value) => {
+                    if (action !== "clear") groupGovernanceMut.mutate({ action, value });
+                  }}
+                  onClear={() => setClearTarget("群风格")}
+                />
+              </StateBlock>
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium">语义风格</h3>
+              <StateBlock loading={semanticQ.isLoading} error={semanticQ.error}>
+                <SemanticStyleControls
+                  data={semanticQ.data}
+                  qualityData={scopedSemanticStyleQuality(semanticQuality, bot, group)}
+                  busy={semanticMut.isPending}
+                  onAction={semanticMut.mutate}
+                  onClear={() => setClearTarget("语义风格")}
+                  onCloseQuality={() => setSemanticQuality(null)}
+                />
+              </StateBlock>
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium">回复习惯画像</h3>
+              <StateBlock loading={styleQ.isLoading} error={styleQ.error} empty={!styleQ.data} emptyText="暂无画像数据。">
+                {styleQ.data ? <GroupExpressionViewCard data={groupExpressionView(styleQ.data)} /> : null}
+              </StateBlock>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <AiScopeHint>请在顶部选择群号，以查看群级风格与语义。</AiScopeHint>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">全局表情标签</CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className="text-base">全局表情标签</CardTitle>
+            <Badge variant="outline">全局</Badge>
+          </div>
           <CardDescription>跨群缓存统计；不随当前 Bot 或群范围变化。</CardDescription>
         </CardHeader>
         <CardContent>
@@ -592,27 +685,58 @@ export default function GovernanceStyleTab() {
         </CardContent>
       </Card>
 
-      <SceneDialogueExamplesCard botId={botReady ? bot : null} />
+      <SceneDialogueExamplesCard botId={botReady ? bot : null} defaultOpen={false} />
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">人设导出</CardTitle>
-          <CardDescription>编译后发给模型的人设文本，需填写 Bot QQ。</CardDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1.5">
+              <CardTitle className="text-base">人设导出</CardTitle>
+              <CardDescription>编译后发给模型的人设文本，需填写 Bot QQ。</CardDescription>
+            </div>
+            <CollapseToggle open={exportOpen} onToggle={() => setExportOpen((v) => !v)} label="人设导出" />
+          </div>
         </CardHeader>
-        <CardContent>
-          <StateBlock loading={exportQ.isLoading && botReady} error={exportQ.error}>
-            <ExportCard
-              data={asRecord(exportQ.data) ?? undefined}
-              botReady={botReady}
-              plainText={plainText}
-              setPlainText={setPlainText}
-              loading={exportQ.isFetching}
-              onReload={() => void exportQ.refetch()}
-            />
-          </StateBlock>
-        </CardContent>
+        {exportOpen ? (
+          <CardContent>
+            <StateBlock loading={exportQ.isLoading && botReady} error={exportQ.error}>
+              <ExportCard
+                data={asRecord(exportQ.data) ?? undefined}
+                botReady={botReady}
+                plainText={plainText}
+                setPlainText={setPlainText}
+                loading={exportQ.isFetching}
+                onReload={() => void exportQ.refetch()}
+              />
+            </StateBlock>
+          </CardContent>
+        ) : null}
       </Card>
-      {confirmDialog}
+
+      <AlertDialog
+        open={clearTarget != null}
+        onOpenChange={(next) => {
+          if (!next) setClearTarget(null);
+        }}
+      >
+        <AlertDialogContent className="bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>清空{clearTarget ?? ""}</AlertDialogTitle>
+            <AlertDialogDescription>
+              将删除 {scopeLabel} 范围内已整理的数据，此操作不能恢复。请选择清空后的学习模式。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <Button type="button" variant="outline" className="text-destructive" icon={Trash2} iconMotion="scale" onClick={() => runClear(true)}>
+              清空并继续学习
+            </Button>
+            <Button type="button" variant="destructive" icon={Trash2} iconMotion="scale" onClick={() => runClear(false)}>
+              清空并暂停学习
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

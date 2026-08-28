@@ -149,12 +149,16 @@ describe("GovernanceStyleTab", () => {
   });
 
   it("requests global data as soon as a Bot is ready in a Bot-only scope", async () => {
+    const user = userEvent.setup();
     renderRoute(botOnlyScope);
 
     await screen.findByText("请在顶部选择群号，以查看群级风格与语义。");
     expect(fetchLlmStickerLabelOverview).toHaveBeenCalledTimes(1);
     expect(fetchSceneDialogueExamples).toHaveBeenCalledWith(10001);
-    expect(fetchLlmPersonaExport).toHaveBeenCalledWith({ botId: 10001, groupId: null, plainText: undefined });
+    expect(fetchLlmPersonaExport).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "展开人设导出" }));
+    await waitFor(() => expect(fetchLlmPersonaExport).toHaveBeenCalledWith({ botId: 10001, groupId: null, plainText: undefined }));
   });
 
   it("toggles direct_enabled through the semantic manage action", async () => {
@@ -187,7 +191,8 @@ describe("GovernanceStyleTab", () => {
     const user = userEvent.setup();
     renderRoute(fullScope);
 
-    await user.click(await screen.findByRole("button", { name: "质量评价" }));
+    await user.click(await screen.findByRole("button", { name: "更多操作" }));
+    await user.click(await screen.findByRole("menuitem", { name: "质量评价" }));
 
     await waitFor(() => expect(postLlmRepeaterSemanticStyleManage).toHaveBeenCalledWith({
       action: "quality",
@@ -195,9 +200,11 @@ describe("GovernanceStyleTab", () => {
       groupId: 20002,
       scene: "group_chat",
     }));
-    const exampleKv = (await screen.findByText("样例 / 画像")).closest("div");
+    const qualityBlock = (await screen.findByText("质量评价结果")).parentElement?.parentElement;
+    expect(qualityBlock).not.toBeNull();
+    const exampleKv = (await within(qualityBlock ?? document.body).findByText("样例 / 画像")).closest("div");
     expect(exampleKv?.textContent ?? "").toContain("3 / 2");
-    const versionKv = (await screen.findByText("标签版本")).closest("div");
+    const versionKv = (await within(qualityBlock ?? document.body).findByText("标签版本")).closest("div");
     expect(versionKv?.textContent ?? "").toContain("5");
   });
 
@@ -205,13 +212,13 @@ describe("GovernanceStyleTab", () => {
     const user = userEvent.setup();
     renderRoute(fullScope);
 
-    const clearButtons = await screen.findAllByRole("button", { name: "清空并继续学习" });
+    const clearButtons = await screen.findAllByRole("button", { name: "清空数据…" });
     await user.click(clearButtons[1]);
 
     expect(postLlmRepeaterSemanticStyleManage).not.toHaveBeenCalled();
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByText("清空语义风格")).not.toBeNull();
-    expect(within(dialog).getByText("此操作不能恢复。")).not.toBeNull();
+    expect(within(dialog).getByText(/此操作不能恢复/)).not.toBeNull();
     await user.click(within(dialog).getByRole("button", { name: "清空并继续学习" }));
 
     await waitFor(() => expect(postLlmRepeaterSemanticStyleManage).toHaveBeenCalledWith({
@@ -241,9 +248,10 @@ describe("GovernanceStyleTab", () => {
   });
 
   it("sends the group id with persona export when a group is selected", async () => {
+    const user = userEvent.setup();
     renderRoute(fullScope);
 
-    await screen.findByRole("heading", { name: "人设导出" });
+    await user.click(await screen.findByRole("button", { name: "展开人设导出" }));
     await waitFor(() => expect(fetchLlmPersonaExport).toHaveBeenCalledWith({
       botId: 10001,
       groupId: 20002,
