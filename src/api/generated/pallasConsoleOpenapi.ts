@@ -513,6 +513,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/persona/semantic-style-examples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Persona Semantic Style Examples Get */
+        get: operations["_llm_persona_semantic_style_examples_get_pallas_api_common_config_llm_persona_semantic_style_examples_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/persona/group-style": {
         parameters: {
             query?: never;
@@ -6458,6 +6475,18 @@ export interface components {
             /** Error */
             error?: null;
         };
+        /** _ApiOkResponse[_SemanticStyleExamplesData] */
+        _ApiOkResponse__SemanticStyleExamplesData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_SemanticStyleExamplesData"];
+            /** Error */
+            error?: null;
+        };
         /** _ApiOkResponse[_SemanticStyleStatusData] */
         _ApiOkResponse__SemanticStyleStatusData_: {
             /**
@@ -7866,6 +7895,79 @@ export interface components {
             user_id: number;
             /** Group Id */
             group_id: number;
+        };
+        /** _SemanticStyleBehaviorStrategyData */
+        _SemanticStyleBehaviorStrategyData: {
+            /**
+             * Scene
+             * @default
+             */
+            scene: string;
+            /**
+             * Action
+             * @default
+             */
+            action: string;
+            /**
+             * Outcome
+             * @default
+             */
+            outcome: string;
+            /**
+             * Learning Type
+             * @default observed
+             * @enum {string}
+             */
+            learning_type: "observed" | "self_reflection";
+            /**
+             * Count
+             * @default 1
+             */
+            count: number;
+        };
+        /** _SemanticStyleExampleData */
+        _SemanticStyleExampleData: {
+            /** Example Id */
+            example_id: string;
+            /** Created At */
+            created_at: number;
+            /**
+             * Pair Relation
+             * @enum {string}
+             */
+            pair_relation: "quoted" | "adjacent";
+            /** Trigger Text */
+            trigger_text: string;
+            /** Reply Text */
+            reply_text: string;
+            /** Learning Type */
+            learning_type?: ("observed" | "self_reflection") | null;
+            label: components["schemas"]["_SemanticStyleLabelData"];
+            behavior_strategy?: components["schemas"]["_SemanticStyleBehaviorStrategyData"] | null;
+        };
+        /** _SemanticStyleExamplesData */
+        _SemanticStyleExamplesData: {
+            /** Items */
+            items?: components["schemas"]["_SemanticStyleExampleData"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** _SemanticStyleLabelData */
+        _SemanticStyleLabelData: {
+            /** Interaction Actions */
+            interaction_actions?: string[];
+            /** Semantic Relations */
+            semantic_relations?: string[];
+            /**
+             * Intensity
+             * @default neutral
+             */
+            intensity: string;
+            /** Forms */
+            forms?: string[];
         };
         /** _SemanticStyleManageBody */
         _SemanticStyleManageBody: {
@@ -9667,6 +9769,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_semantic_style_examples_get_pallas_api_common_config_llm_persona_semantic_style_examples_get: {
+        parameters: {
+            query: {
+                bot_id: number;
+                group_id: number;
+                scene?: string;
+                limit?: number;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__SemanticStyleExamplesData_"];
                 };
             };
             /** @description Validation Error */

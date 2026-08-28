@@ -71,6 +71,30 @@ const fetchLlmPersonaGroupStyle = vi.fn().mockResolvedValue({
   },
   updated_at: "2026-01-01",
 });
+const fetchLlmPersonaSemanticStyleExamples = vi.fn().mockResolvedValue({
+  total: 1,
+  items: [{
+    example_id: "42:100:7",
+    created_at: 100,
+    pair_relation: "quoted",
+    trigger_text: "前句",
+    reply_text: "接话",
+    learning_type: "observed",
+    label: {
+      interaction_actions: ["接住"],
+      semantic_relations: ["回应"],
+      intensity: "soft",
+      forms: ["短句"],
+    },
+    behavior_strategy: {
+      scene: "轻松闲聊",
+      action: "接住前句",
+      outcome: "保持互动",
+      learning_type: "observed",
+      count: 1,
+    },
+  }],
+});
 const fetchLlmPersonaExport = vi.fn().mockResolvedValue({});
 const fetchSceneDialogueExamples = vi.fn().mockResolvedValue({ items: [], count: 0 });
 const postSceneDialogueExample = vi.fn().mockResolvedValue({});
@@ -89,6 +113,7 @@ vi.mock("@/api/console", async (importOriginal) => ({
 vi.mock("@/api/fullConsole", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/fullConsole")>()),
   fetchLlmPersonaGroupStyle,
+  fetchLlmPersonaSemanticStyleExamples,
   fetchLlmPersonaExport,
   fetchSceneDialogueExamples,
   postSceneDialogueExample,
@@ -176,6 +201,20 @@ describe("GovernanceStyleTab", () => {
     }));
   });
 
+  it("renders the production semantic style examples for a group scope", async () => {
+    renderRoute(fullScope);
+
+    expect((await screen.findAllByText("前句")).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("接话").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("引用接话")).not.toBeNull();
+    expect(fetchLlmPersonaSemanticStyleExamples).toHaveBeenCalledWith({
+      botId: 10001,
+      groupId: 20002,
+      scene: "group_chat",
+      limit: 20,
+    });
+  });
+
   it("runs the quality action and renders the quality view", async () => {
     postLlmRepeaterSemanticStyleManage.mockResolvedValueOnce({
       status: {
@@ -257,5 +296,14 @@ describe("GovernanceStyleTab", () => {
       groupId: 20002,
       plainText: undefined,
     }));
+  });
+
+  it("keeps actual semantic samples visible when the group profile fails", async () => {
+    fetchLlmPersonaGroupStyle.mockRejectedValueOnce(new Error("group profile unavailable"));
+    renderRoute(fullScope);
+
+    expect(await screen.findByText("实际语义样本")).not.toBeNull();
+    expect((await screen.findAllByText("前句")).length).toBeGreaterThan(1);
+    expect((await screen.findAllByText("接话")).length).toBeGreaterThan(1);
   });
 });
