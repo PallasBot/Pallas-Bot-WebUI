@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.16] - 2026-08-29
 
 ### 更新公告
 
@@ -18,6 +18,29 @@
   - 导出菜单新增「调用明细」：bot 按请求级 usage 账本流式导出每次 LLM 调用的时间、任务、Provider、模型、Token 与费用明细（需配套 Bot）
 - **配置**：
   - 提供方名称支持改名，并级联同步引用
+
+### 提交明细
+
+### Added
+
+* feat(ai): 展示群语义实际样本 ([6a43256](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6a432569f9aea03476d9b4329a27f9f785c711b7))
+* feat(ai): 整理依据与表情标签统计可读性优化 ([21f26ff](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/21f26fff9d7c71009d459a3c722d25ccd127f29d))
+* feat(ai): 治理页群风格与语义操作收敛与信息分层 ([0959418](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/09594180b240f45e82766cf8ad0506cf8d1772ee))
+* feat(ai): 提供方配置名称支持改名 ([dcf821e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dcf821ede226fc78c3188146d812f1016394db14))
+* feat(ai): 统计页导出下拉新增调用明细 CSV ([136116b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/136116bdb3995bc465169597716251da02d47150))
+* feat(ai): 统计页新增计费导出 CSV ([91a71cc](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/91a71cce5a0db342526a3403ee5df84b1d8ec99d))
+* feat(ai): 观测页任务名中文化 ([1b20751](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1b20751c156be9be1acaa59b48fc8bb0aabd66c4))
+* feat(ai): 语义风格移除摆设开关，合并群风格与语义面板 ([7ca20cd](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7ca20cd1a83b8d92a1a2ad5a71a75194b7a1f7f2))
+
+### Changed
+
+* chore(api): 同步 OpenAPI 类型（提供方改名端点） ([35ac4c8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/35ac4c8c9ea7bed30a05822c9184931e07092b43))
+* chore(api): 同步 OpenAPI 类型 ([dbb9faf](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dbb9faf75f81fc8ea377525c25052455a11b87a5))
+* chore(api): 同步 OpenAPI 类型 ([459f5a5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/459f5a5237567f9c6031d3c3482008dbdba079a5))
+* chore(ai): 移除观测队列前端轮询 ([349dc9d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/349dc9d3ab0f558ae49c68d42c8b5d2d55de49e5))
+
+**完整变更**: [`v0.9.15...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.15...HEAD)
+
 
 ## [0.9.15] - 2026-08-27
 
@@ -56,7 +79,6 @@
 * fix(ai): 优化 Provider 默认设置文案 ([e41a3dc](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e41a3dcb3a3f5d4df6d13baf5b98aad2e16a443b))
 
 **完整变更**: [`v0.9.14...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.14...HEAD)
-
 
 ## [0.9.14] - 2026-08-25
 
