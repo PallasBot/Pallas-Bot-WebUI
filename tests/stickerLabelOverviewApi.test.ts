@@ -47,10 +47,9 @@ describe("表情标签全局维护入口", () => {
     expect(source).toContain('queryKey: ["llm-sticker-label-overview"]');
     expect(source).toContain('action: "requeue"');
     expect(source).toContain('action: "pause"');
-    expect(source).toContain('label="VLM 精修避免"');
     expect(source).toContain("vlm_refine_avoided");
-    expect(source).toContain('label="VLM 精修实际"');
     expect(source).toContain("vlm_refine_actual");
+    expect(source).toContain("label=\"避免 / 实际\"");
     expect(source).not.toContain("fetchLlmStickerLabelOverview({");
     expect(source).not.toContain("全量扫描");
   });

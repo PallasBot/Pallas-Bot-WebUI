@@ -13,6 +13,7 @@ const fetchLlmRepeaterSemanticStyle = vi.fn().mockResolvedValue({
   enabled: true,
   collection_enabled: true,
   injection_enabled: true,
+  direct_enabled: true,
   example_count: 3,
   profile_count: 2,
 });
@@ -70,6 +71,30 @@ const fetchLlmPersonaGroupStyle = vi.fn().mockResolvedValue({
   },
   updated_at: "2026-01-01",
 });
+const fetchLlmPersonaSemanticStyleExamples = vi.fn().mockResolvedValue({
+  total: 1,
+  items: [{
+    example_id: "42:100:7",
+    created_at: 100,
+    pair_relation: "quoted",
+    trigger_text: "前句",
+    reply_text: "接话",
+    learning_type: "observed",
+    label: {
+      interaction_actions: ["接住"],
+      semantic_relations: ["回应"],
+      intensity: "soft",
+      forms: ["短句"],
+    },
+    behavior_strategy: {
+      scene: "轻松闲聊",
+      action: "接住前句",
+      outcome: "保持互动",
+      learning_type: "observed",
+      count: 1,
+    },
+  }],
+});
 const fetchLlmPersonaExport = vi.fn().mockResolvedValue({});
 const fetchSceneDialogueExamples = vi.fn().mockResolvedValue({ items: [], count: 0 });
 const postSceneDialogueExample = vi.fn().mockResolvedValue({});
@@ -88,6 +113,7 @@ vi.mock("@/api/console", async (importOriginal) => ({
 vi.mock("@/api/fullConsole", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/fullConsole")>()),
   fetchLlmPersonaGroupStyle,
+  fetchLlmPersonaSemanticStyleExamples,
   fetchLlmPersonaExport,
   fetchSceneDialogueExamples,
   postSceneDialogueExample,
@@ -148,28 +174,45 @@ describe("GovernanceStyleTab", () => {
   });
 
   it("requests global data as soon as a Bot is ready in a Bot-only scope", async () => {
+    const user = userEvent.setup();
     renderRoute(botOnlyScope);
 
     await screen.findByText("请在顶部选择群号，以查看群级风格与语义。");
     expect(fetchLlmStickerLabelOverview).toHaveBeenCalledTimes(1);
     expect(fetchSceneDialogueExamples).toHaveBeenCalledWith(10001);
-    expect(fetchLlmPersonaExport).toHaveBeenCalledWith({ botId: 10001, groupId: null, plainText: undefined });
+    expect(fetchLlmPersonaExport).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "展开人设导出" }));
+    await waitFor(() => expect(fetchLlmPersonaExport).toHaveBeenCalledWith({ botId: 10001, groupId: null, plainText: undefined }));
   });
 
-  it("submits overrides through the semantic manage action", async () => {
+  it("toggles direct_enabled through the semantic manage action", async () => {
     const user = userEvent.setup();
     renderRoute(fullScope);
 
-    await user.click(await screen.findByRole("checkbox", { name: "攻击性" }));
-    await user.click(await screen.findByRole("button", { name: "应用开关" }));
+    await user.click(await screen.findByRole("checkbox", { name: "直给倾向" }));
 
     await waitFor(() => expect(postLlmRepeaterSemanticStyleManage).toHaveBeenCalledWith({
-      action: "overrides",
-      overrides: { aggressive: true, nonsense: false, direct: false, image: false },
+      action: "direct_enabled",
+      directEnabled: false,
       botId: 10001,
       groupId: 20002,
       scene: "group_chat",
     }));
+  });
+
+  it("renders the production semantic style examples for a group scope", async () => {
+    renderRoute(fullScope);
+
+    expect((await screen.findAllByText("前句")).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("接话").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("引用接话")).not.toBeNull();
+    expect(fetchLlmPersonaSemanticStyleExamples).toHaveBeenCalledWith({
+      botId: 10001,
+      groupId: 20002,
+      scene: "group_chat",
+      limit: 20,
+    });
   });
 
   it("runs the quality action and renders the quality view", async () => {
@@ -187,7 +230,8 @@ describe("GovernanceStyleTab", () => {
     const user = userEvent.setup();
     renderRoute(fullScope);
 
-    await user.click(await screen.findByRole("button", { name: "质量评价" }));
+    await user.click(await screen.findByRole("button", { name: "更多操作" }));
+    await user.click(await screen.findByRole("menuitem", { name: "质量评价" }));
 
     await waitFor(() => expect(postLlmRepeaterSemanticStyleManage).toHaveBeenCalledWith({
       action: "quality",
@@ -195,9 +239,11 @@ describe("GovernanceStyleTab", () => {
       groupId: 20002,
       scene: "group_chat",
     }));
-    const exampleKv = (await screen.findByText("样例 / 画像")).closest("div");
+    const qualityBlock = (await screen.findByText("质量评价结果")).parentElement?.parentElement;
+    expect(qualityBlock).not.toBeNull();
+    const exampleKv = (await within(qualityBlock ?? document.body).findByText("样例 / 画像")).closest("div");
     expect(exampleKv?.textContent ?? "").toContain("3 / 2");
-    const versionKv = (await screen.findByText("标签版本")).closest("div");
+    const versionKv = (await within(qualityBlock ?? document.body).findByText("标签版本")).closest("div");
     expect(versionKv?.textContent ?? "").toContain("5");
   });
 
@@ -205,13 +251,13 @@ describe("GovernanceStyleTab", () => {
     const user = userEvent.setup();
     renderRoute(fullScope);
 
-    const clearButtons = await screen.findAllByRole("button", { name: "清空并继续学习" });
+    const clearButtons = await screen.findAllByRole("button", { name: "清空数据…" });
     await user.click(clearButtons[1]);
 
     expect(postLlmRepeaterSemanticStyleManage).not.toHaveBeenCalled();
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByText("清空语义风格")).not.toBeNull();
-    expect(within(dialog).getByText("此操作不能恢复。")).not.toBeNull();
+    expect(within(dialog).getByText(/此操作不能恢复/)).not.toBeNull();
     await user.click(within(dialog).getByRole("button", { name: "清空并继续学习" }));
 
     await waitFor(() => expect(postLlmRepeaterSemanticStyleManage).toHaveBeenCalledWith({
@@ -241,13 +287,23 @@ describe("GovernanceStyleTab", () => {
   });
 
   it("sends the group id with persona export when a group is selected", async () => {
+    const user = userEvent.setup();
     renderRoute(fullScope);
 
-    await screen.findByRole("heading", { name: "人设导出" });
+    await user.click(await screen.findByRole("button", { name: "展开人设导出" }));
     await waitFor(() => expect(fetchLlmPersonaExport).toHaveBeenCalledWith({
       botId: 10001,
       groupId: 20002,
       plainText: undefined,
     }));
+  });
+
+  it("keeps actual semantic samples visible when the group profile fails", async () => {
+    fetchLlmPersonaGroupStyle.mockRejectedValueOnce(new Error("group profile unavailable"));
+    renderRoute(fullScope);
+
+    expect(await screen.findByText("实际语义样本")).not.toBeNull();
+    expect((await screen.findAllByText("前句")).length).toBeGreaterThan(1);
+    expect((await screen.findAllByText("接话")).length).toBeGreaterThan(1);
   });
 });

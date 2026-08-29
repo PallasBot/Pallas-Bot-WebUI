@@ -2042,9 +2042,9 @@ export interface SemanticExamplesSummary {
   updated_at?: string | null;
 }
 
-export type SemanticStyleOverridesData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleOverridesData"];
 export type SemanticStyleStatusData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleStatusData"];
 export type SemanticStyleQualityData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleQualityData"];
+export type SemanticStyleExamplesData = ConsoleOpenapiComponents["schemas"]["_SemanticStyleExamplesData"];
 export type GroupStyleGovernanceData = ConsoleOpenapiComponents["schemas"]["_GroupStyleGovernanceData"];
 export type BasePromptPreviewData = ConsoleOpenapiComponents["schemas"]["_BasePromptPreviewData"];
 export type BasePromptOverrideData = Omit<BasePromptPreviewData, "mode" | "versions"> & {

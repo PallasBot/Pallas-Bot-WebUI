@@ -513,6 +513,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/persona/semantic-style-examples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Persona Semantic Style Examples Get */
+        get: operations["_llm_persona_semantic_style_examples_get_pallas_api_common_config_llm_persona_semantic_style_examples_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/persona/group-style": {
         parameters: {
             query?: never;
@@ -1199,23 +1216,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/pallas/api/llm/agent-platform/observations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Observations List */
-        get: operations["observations_list_pallas_api_llm_agent_platform_observations_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/pallas/api/llm/agent-platform/tasks": {
         parameters: {
             query?: never;
@@ -1244,40 +1244,6 @@ export interface paths {
         put?: never;
         /** Tasks Cancel */
         post: operations["tasks_cancel_pallas_api_llm_agent_platform_tasks_cancel_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/llm/agent-platform/catchphrases": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Catchphrases List */
-        get: operations["catchphrases_list_pallas_api_llm_agent_platform_catchphrases_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/llm/agent-platform/catchphrases/resolve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Catchphrases Resolve */
-        post: operations["catchphrases_resolve_pallas_api_llm_agent_platform_catchphrases_resolve_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2737,6 +2703,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/providers/{provider_id}/rename": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Llm Provider Rename Put
+         * @description 改提供方 ID：改行内 id 并同步 routing / 主配置引用。
+         */
+        put: operations["_llm_provider_rename_put_pallas_api_common_config_llm_providers__provider_id__rename_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/providers/{provider_id}/models": {
         parameters: {
             query?: never;
@@ -2781,6 +2767,26 @@ export interface paths {
         };
         /** Llm Task Stats Get */
         get: operations["_llm_task_stats_get_pallas_api_common_config_llm_task_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/usage-ledger/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Llm Usage Ledger Export
+         * @description 导出请求级 usage 账本明细 CSV（llm_usage JSONL 原始记录）。
+         */
+        get: operations["_llm_usage_ledger_export_pallas_api_common_config_llm_usage_ledger_export_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3296,40 +3302,6 @@ export interface paths {
         put?: never;
         /** Llm Repeater Feedback Manage */
         post: operations["_llm_repeater_feedback_manage_pallas_api_llm_repeater_feedback_manage_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/llm/expression-bank": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Llm Expression Bank Get */
-        get: operations["_llm_expression_bank_get_pallas_api_llm_expression_bank_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/llm/expression-bank/resolve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Llm Expression Bank Resolve */
-        post: operations["_llm_expression_bank_resolve_pallas_api_llm_expression_bank_resolve_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5527,7 +5499,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "undo_outcome" | "restore_expression" | "restore_semantic";
+            action: "undo_outcome" | "restore_semantic";
             /** Bot Id */
             bot_id: string;
             /** Group Id */
@@ -6503,6 +6475,18 @@ export interface components {
             /** Error */
             error?: null;
         };
+        /** _ApiOkResponse[_SemanticStyleExamplesData] */
+        _ApiOkResponse__SemanticStyleExamplesData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_SemanticStyleExamplesData"];
+            /** Error */
+            error?: null;
+        };
         /** _ApiOkResponse[_SemanticStyleStatusData] */
         _ApiOkResponse__SemanticStyleStatusData_: {
             /**
@@ -6861,21 +6845,6 @@ export interface components {
             data?: {
                 [key: string]: unknown;
             };
-        };
-        /** _ExpressionBankResolveRequest */
-        _ExpressionBankResolveRequest: {
-            /** Entry Id */
-            entry_id: string;
-            /**
-             * Action
-             * @enum {string}
-             */
-            action: "approve" | "reject" | "restore";
-            /**
-             * Reason
-             * @default
-             */
-            reason: string;
         };
         /** _FilesCreateBody */
         _FilesCreateBody: {
@@ -7440,6 +7409,11 @@ export interface components {
              */
             request_method: string;
         };
+        /** _LlmProviderRenameBody */
+        _LlmProviderRenameBody: {
+            /** New Id */
+            new_id: string;
+        };
         /** _LlmProviderRowBody */
         _LlmProviderRowBody: {
             /** Id */
@@ -7922,13 +7896,86 @@ export interface components {
             /** Group Id */
             group_id: number;
         };
+        /** _SemanticStyleBehaviorStrategyData */
+        _SemanticStyleBehaviorStrategyData: {
+            /**
+             * Scene
+             * @default
+             */
+            scene: string;
+            /**
+             * Action
+             * @default
+             */
+            action: string;
+            /**
+             * Outcome
+             * @default
+             */
+            outcome: string;
+            /**
+             * Learning Type
+             * @default observed
+             * @enum {string}
+             */
+            learning_type: "observed" | "self_reflection";
+            /**
+             * Count
+             * @default 1
+             */
+            count: number;
+        };
+        /** _SemanticStyleExampleData */
+        _SemanticStyleExampleData: {
+            /** Example Id */
+            example_id: string;
+            /** Created At */
+            created_at: number;
+            /**
+             * Pair Relation
+             * @enum {string}
+             */
+            pair_relation: "quoted" | "adjacent";
+            /** Trigger Text */
+            trigger_text: string;
+            /** Reply Text */
+            reply_text: string;
+            /** Learning Type */
+            learning_type?: ("observed" | "self_reflection") | null;
+            label: components["schemas"]["_SemanticStyleLabelData"];
+            behavior_strategy?: components["schemas"]["_SemanticStyleBehaviorStrategyData"] | null;
+        };
+        /** _SemanticStyleExamplesData */
+        _SemanticStyleExamplesData: {
+            /** Items */
+            items?: components["schemas"]["_SemanticStyleExampleData"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** _SemanticStyleLabelData */
+        _SemanticStyleLabelData: {
+            /** Interaction Actions */
+            interaction_actions?: string[];
+            /** Semantic Relations */
+            semantic_relations?: string[];
+            /**
+             * Intensity
+             * @default neutral
+             */
+            intensity: string;
+            /** Forms */
+            forms?: string[];
+        };
         /** _SemanticStyleManageBody */
         _SemanticStyleManageBody: {
             /**
              * Action
              * @enum {string}
              */
-            action: "status" | "overrides" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance";
+            action: "status" | "direct_enabled" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance";
             /** Bot Id */
             bot_id?: number | null;
             /** Group Id */
@@ -7938,35 +7985,14 @@ export interface components {
              * @default group_chat
              */
             scene: string;
-            overrides?: components["schemas"]["_SemanticStyleOverridesPatch"] | null;
+            /** Direct Enabled */
+            direct_enabled?: boolean | null;
             /** Collection Enabled */
             collection_enabled?: boolean | null;
             /** Injection Enabled */
             injection_enabled?: boolean | null;
             /** Continue Learning */
             continue_learning?: boolean | null;
-        };
-        /** _SemanticStyleOverridesData */
-        _SemanticStyleOverridesData: {
-            /** Aggressive */
-            aggressive: boolean;
-            /** Nonsense */
-            nonsense: boolean;
-            /** Direct */
-            direct: boolean;
-            /** Image */
-            image: boolean;
-        };
-        /** _SemanticStyleOverridesPatch */
-        _SemanticStyleOverridesPatch: {
-            /** Aggressive */
-            aggressive?: boolean | null;
-            /** Nonsense */
-            nonsense?: boolean | null;
-            /** Direct */
-            direct?: boolean | null;
-            /** Image */
-            image?: boolean | null;
         };
         /** _SemanticStyleProfileSummaryData */
         _SemanticStyleProfileSummaryData: {
@@ -8060,7 +8086,8 @@ export interface components {
              * @default true
              */
             injection_enabled: boolean;
-            overrides?: components["schemas"]["_SemanticStyleOverridesData"] | null;
+            /** Direct Enabled */
+            direct_enabled?: boolean | null;
             /**
              * Example Count
              * @default 0
@@ -9742,6 +9769,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_persona_semantic_style_examples_get_pallas_api_common_config_llm_persona_semantic_style_examples_get: {
+        parameters: {
+            query: {
+                bot_id: number;
+                group_id: number;
+                scene?: string;
+                limit?: number;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__SemanticStyleExamplesData_"];
                 };
             };
             /** @description Validation Error */
@@ -11522,44 +11587,6 @@ export interface operations {
             };
         };
     };
-    observations_list_pallas_api_llm_agent_platform_observations_get: {
-        parameters: {
-            query?: {
-                bot_id?: number | null;
-                group_id?: number | null;
-                status?: string | null;
-                limit?: number;
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     tasks_list_pallas_api_llm_agent_platform_tasks_get: {
         parameters: {
             query?: {
@@ -11597,84 +11624,6 @@ export interface operations {
         };
     };
     tasks_cancel_pallas_api_llm_agent_platform_tasks_cancel_post: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    catchphrases_list_pallas_api_llm_agent_platform_catchphrases_get: {
-        parameters: {
-            query?: {
-                bot_id?: number | null;
-                status?: string | null;
-                offset?: number;
-                limit?: number;
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    catchphrases_resolve_pallas_api_llm_agent_platform_catchphrases_resolve_post: {
         parameters: {
             query?: {
                 token?: string | null;
@@ -15265,6 +15214,46 @@ export interface operations {
             };
         };
     };
+    _llm_provider_rename_put_pallas_api_common_config_llm_providers__provider_id__rename_put: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_LlmProviderRenameBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     _llm_provider_models_get_pallas_api_common_config_llm_providers__provider_id__models_get: {
         parameters: {
             query?: {
@@ -15388,6 +15377,44 @@ export interface operations {
                 start?: string | null;
                 /** @description YYYY-MM-DD，含当日 */
                 end?: string | null;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+                "X-Pallas-Api-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_usage_ledger_export_pallas_api_common_config_llm_usage_ledger_export_get: {
+        parameters: {
+            query: {
+                /** @description YYYY-MM-DD，含当日 */
+                start: string;
+                /** @description YYYY-MM-DD，含当日 */
+                end: string;
                 token?: string | null;
             };
             header?: {
@@ -16639,83 +16666,6 @@ export interface operations {
                 "application/json": {
                     [key: string]: unknown;
                 };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_expression_bank_get_pallas_api_llm_expression_bank_get: {
-        parameters: {
-            query: {
-                /** @description 群号 */
-                group_id: number;
-                /** @description 状态筛选 */
-                status?: ("shadow" | "active" | "rejected") | null;
-                limit?: number;
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _llm_expression_bank_resolve_pallas_api_llm_expression_bank_resolve_post: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-                "X-Pallas-Api-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["_ExpressionBankResolveRequest"];
             };
         };
         responses: {

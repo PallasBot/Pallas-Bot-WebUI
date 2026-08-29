@@ -95,3 +95,22 @@ export function labelLlmRoute(raw?: string | null): string {
   if (!key) return "未知路由";
   return LLM_ROUTE_LABELS[key.toLowerCase()] || key;
 }
+
+/** 用量统计里 by_task 的 LLM 任务显示名（API value 仍为英文 task key）。 */
+const LLM_TASK_LABELS: Record<string, string> = {
+  llm_chat: "对话",
+  affect_refine: "情感润色",
+  drunk: "醉聊",
+  llm_prompt_preview: "提示词预览",
+  memory_extract: "记忆抽取",
+  "repeater.semantic_style": "语义风格",
+  sticker_label: "表情标签",
+  sticker_vision: "表情视觉",
+  turn_decision: "本轮决策",
+};
+
+export function labelLlmTask(raw?: string | null): string {
+  const key = String(raw || "").trim();
+  if (!key) return "未知任务";
+  return LLM_TASK_LABELS[key.toLowerCase()] || key;
+}

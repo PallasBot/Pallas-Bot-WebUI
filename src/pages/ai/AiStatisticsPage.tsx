@@ -3,10 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Boxes,
   CheckCircle2,
+  ChevronDown,
   CircleOff,
   Cloud,
   Coins,
   Database,
+  Download,
   Filter,
   ImageIcon,
   Library,
@@ -80,9 +82,26 @@ import {
   type TokenRow,
 } from "@/utils/aiTaskStats";
 import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { fetchLlmUsageLedgerCsv } from "@/api/consoleApi";
 import { fixedChartPalette } from "@/utils/chartTheme";
 import { countShareRows } from "@/utils/shareDistribution";
-import { labelLlmRoute } from "@/utils/aiHistoryLabels";
+import { labelLlmRoute, labelLlmTask } from "@/utils/aiHistoryLabels";
+import { pushConsoleToast } from "@/utils/consoleToast";
+import {
+  aiBillingExportFilename,
+  aiBillingHasData,
+  buildAiBillingCsv,
+  downloadBlobFile,
+  downloadCsvFile,
+  type AiBillingExportData,
+} from "@/utils/aiStatsExport";
 import type { LlmStickerVisionStats } from "@/api/pallasTypes";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 
@@ -645,6 +664,10 @@ export default function AiStatisticsPage() {
     () => rangeTokenTaskRows.find((row) => row.key === "sticker_vision"),
     [rangeTokenTaskRows],
   );
+  const rangeTokenTaskDisplayRows = useMemo(
+    () => rangeTokenTaskRows.map((row) => ({ ...row, key: labelLlmTask(row.key) })),
+    [rangeTokenTaskRows],
+  );
 
   const rangeCacheHitRate = useMemo(
     () => cacheHitRateFromBucket(selectedRange),
@@ -927,6 +950,10 @@ export default function AiStatisticsPage() {
     () => buildRangeCostSummary(historyRows, start, end),
     [end, historyRows, start],
   );
+  const rangeTaskCostDisplayRows = useMemo(
+    () => rangeCost.tokenTaskRows.map((row) => ({ ...row, key: labelLlmTask(row.key) })),
+    [rangeCost.tokenTaskRows],
+  );
 
   const rangeImageGatewayRows = useMemo(
     () => aggregateHistoryImageRows(historyRows, start, end, "by_gateway"),
@@ -981,7 +1008,83 @@ export default function AiStatisticsPage() {
     });
   }, [qc]);
 
-  useRegisterAiObservationChrome({ middle: dateFilter, onRefresh });
+  const onExportBilling = useCallback(() => {
+    const data: AiBillingExportData = {
+      start,
+      end,
+      historyRows,
+      rangeTokens: selectedRange,
+      rangeImages: selectedImages,
+      rangeCost,
+    };
+    if (!aiBillingHasData(data)) {
+      pushConsoleToast("当前区间无可导出的计费数据", "warn");
+      return;
+    }
+    const { csv, rowCount } = buildAiBillingCsv(data);
+    downloadCsvFile(aiBillingExportFilename(start, end), csv);
+    pushConsoleToast(`已导出计费统计 ${rowCount} 行`, "ok");
+  }, [end, historyRows, rangeCost, selectedImages, selectedRange, start]);
+
+  const [detailExporting, setDetailExporting] = useState(false);
+  const onExportUsageDetail = useCallback(async () => {
+    if (detailExporting) return;
+    setDetailExporting(true);
+    try {
+      const { blob, rows } = await fetchLlmUsageLedgerCsv({ start, end });
+      if (rows === 0) {
+        pushConsoleToast("区间内暂无调用明细记录", "warn");
+        return;
+      }
+      downloadBlobFile(`pallas-ai-usage-detail_${start}_${end}.csv`, blob);
+      pushConsoleToast(
+        rows > 0 ? `已导出调用明细 ${rows} 条` : "已开始下载调用明细",
+        "ok",
+      );
+    } catch (e) {
+      pushConsoleToast(e instanceof Error && e.message ? e.message : "导出调用明细失败", "err");
+    } finally {
+      setDetailExporting(false);
+    }
+  }, [detailExporting, end, start]);
+
+  const exportButton = useMemo(
+    () => (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
+            icon={Download}
+            iconMotion="down"
+            iconBusy={detailExporting}
+            disabled={taskStatsQ.isLoading}
+          >
+            导出
+            <ChevronDown className="size-3.5 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-0 w-max">
+          <DropdownMenuItem onSelect={() => onExportBilling()}>
+            区间汇总（CSV）
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void onExportUsageDetail()}>
+            调用明细（CSV）
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ),
+    [detailExporting, onExportBilling, onExportUsageDetail, taskStatsQ.isLoading],
+  );
+
+  // trailing 引用需稳定（useMemo），否则 setSlots 每次渲染都触发会造成死循环
+  useRegisterAiObservationChrome({
+    middle: dateFilter,
+    trailing: exportButton,
+    onRefresh,
+  });
 
   const onTabChange = useCallback((value: string) => {
     const next = TAB_OPTIONS.some((opt) => opt.value === value)
@@ -1472,7 +1575,7 @@ export default function AiStatisticsPage() {
               </CardHeader>
               <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                 <ShareDistribution
-                  rows={rangeTokenTaskRows}
+                  rows={rangeTokenTaskDisplayRows}
                   limit={12}
                   prefer="bars"
                   emptyText="暂无按任务数据"
@@ -1725,7 +1828,7 @@ export default function AiStatisticsPage() {
                 />
                 <CostDetailTable
                   title="按任务"
-                  rows={rangeCost.tokenTaskRows}
+                  rows={rangeTaskCostDisplayRows}
                   kind="token"
                   currency={costCurrency}
                   showUnitCost

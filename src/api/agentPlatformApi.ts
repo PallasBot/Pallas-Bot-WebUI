@@ -56,24 +56,6 @@ export async function saveAgentPersonFact(body: {
   );
 }
 
-export async function fetchAgentObservations(params?: {
-  botId?: number | null;
-  groupId?: number | null;
-  status?: string;
-  limit?: number;
-}) {
-  return unwrapData(
-    http.get("/llm/agent-platform/observations", {
-      params: {
-        bot_id: params?.botId || undefined,
-        group_id: params?.groupId ?? undefined,
-        status: params?.status || "all",
-        limit: params?.limit ?? 50,
-      },
-    }),
-  ) as Promise<{ items: Array<Record<string, unknown>>; count: number; queue_size: number }>;
-}
-
 export async function fetchAgentTasks(params?: { groupId?: number | null; limit?: number }) {
   return unwrapData(
     http.get("/llm/agent-platform/tasks", {

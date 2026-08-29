@@ -52,23 +52,23 @@ describe("persona generated contracts", () => {
     >();
     const query = { bot_id: 100, group_id: 42, scene: "group_chat" } satisfies SemanticGetQuery;
     const body = {
-      action: "overrides",
+      action: "direct_enabled",
       bot_id: 100,
       group_id: 42,
       scene: "group_chat",
-      overrides: { direct: null },
+      direct_enabled: false,
     } satisfies SemanticManage;
     const status = {
       enabled: true,
       collection_enabled: true,
       injection_enabled: true,
-      overrides: { aggressive: false, nonsense: false, direct: true, image: false },
+      direct_enabled: true,
       example_count: 2,
       profile_count: 1,
     } satisfies SemanticStatus;
 
     expect(query.scene).toBe("group_chat");
-    expect(body.overrides.direct).toBeNull();
+    expect(body.direct_enabled).toBe(false);
     expect(status.profile_count).toBe(1);
   });
 });
