@@ -115,7 +115,7 @@ export default function AiTasksPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">范围摘要</CardTitle>
-          <CardDescription>按顶栏 Bot / 群汇总观察、任务与口癖。</CardDescription>
+          <CardDescription>按顶栏 Bot / 群汇总观察与任务。</CardDescription>
         </CardHeader>
         <CardContent>
           <StateBlock loading={overviewQuery.isLoading} error={overviewQuery.error}>
@@ -126,8 +126,6 @@ export default function AiTasksPage() {
                   ["工具数", overview?.tool_count],
                   ["任务总数", overview?.task_count],
                   ["未完成", overview?.open_tasks],
-                  ["口癖待审", overview?.catchphrase_candidates],
-                  ["口癖已启用", overview?.catchphrase_active],
                 ] as Array<[string, unknown]>
               ).map(([label, value]) => (
                 <div key={label} className="rounded-md border p-3">

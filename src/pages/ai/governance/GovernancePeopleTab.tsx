@@ -1,12 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CircleOff, Heart, PenLine, Search, Trash2, X } from "lucide-react";
-import {
-  fetchAgentCatchphrases,
-  fetchAgentPersonFacts,
-  resolveAgentCatchphrase,
-  saveAgentPersonFact,
-} from "@/api/agentPlatformApi";
+import { Heart, PenLine, Search, Trash2 } from "lucide-react";
+import { fetchAgentPersonFacts, saveAgentPersonFact } from "@/api/agentPlatformApi";
 import {
   fetchConversationKernelRelationshipNotes,
   postConversationKernelRelationshipNoteDelete,
@@ -23,9 +18,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { pushConsoleToast } from "@/utils/consoleToast";
-
-type CatchStatusFilter = "candidate" | "active" | "all";
-const CATCHPHRASE_PAGE_SIZE = 50;
 
 const AFFINITY_LEVELS: Array<{ max: number; label: string }> = [
   { max: -0.5, label: "厌恶" },
@@ -55,13 +47,6 @@ function friendDisplayName(row: { nickname?: string; remark?: string; user_id: n
   return remark || nick || String(row.user_id);
 }
 
-function catchphraseStatusLabel(status: string): string {
-  if (status === "candidate") return "待审";
-  if (status === "active") return "已启用";
-  if (status === "rejected") return "已驳回";
-  return status || "—";
-}
-
 function factScopeLabel(scope: string): string {
   if (scope === "group") return "本群";
   if (scope === "global") return "全局";
@@ -77,8 +62,6 @@ export default function GovernancePeopleTab() {
   const group = scope?.groupId ?? null;
   const [userId, setUserId] = useState("");
   const [content, setContent] = useState("");
-  const [catchFilter, setCatchFilter] = useState<CatchStatusFilter>("candidate");
-  const [catchOffset, setCatchOffset] = useState(0);
   const [notesSearch, setNotesSearch] = useState("");
 
   const factsQuery = useQuery({
@@ -88,17 +71,6 @@ export default function GovernancePeopleTab() {
       fetchAgentPersonFacts({
         botId: bot,
         groupId: group,
-      }),
-  });
-  const catchphrasesQuery = useQuery({
-    queryKey: ["agent-catchphrases", bot, catchFilter, catchOffset],
-    enabled: groupReady,
-    queryFn: () =>
-      fetchAgentCatchphrases({
-        botId: bot,
-        status: catchFilter === "all" ? undefined : catchFilter,
-        offset: catchOffset,
-        limit: CATCHPHRASE_PAGE_SIZE,
       }),
   });
   const friendsQuery = useQuery({
@@ -136,14 +108,6 @@ export default function GovernancePeopleTab() {
     onSuccess: async () => {
       setContent("");
       await qc.invalidateQueries({ queryKey: ["agent-person-facts"] });
-    },
-  });
-
-  const resolveCatchphrase = useMutation({
-    mutationFn: ({ entryId, action }: { entryId: string; action: "approve" | "reject" }) =>
-      resolveAgentCatchphrase(entryId, action),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["agent-catchphrases"] });
     },
   });
 
@@ -195,7 +159,6 @@ export default function GovernancePeopleTab() {
   });
 
   const facts = useMemo(() => factsQuery.data?.items || [], [factsQuery.data]);
-  const catchphrases = useMemo(() => catchphrasesQuery.data?.items || [], [catchphrasesQuery.data]);
   const friends = useMemo(() => friendsQuery.data?.friends || [], [friendsQuery.data]);
 
   const friendOptions = useMemo(() => {
@@ -219,10 +182,6 @@ export default function GovernancePeopleTab() {
     }
     return out;
   }, [friends, userId]);
-
-  const catchCounts = catchphrasesQuery.data?.counts ?? { candidate: 0, active: 0, all: 0 };
-  const catchTotal = catchphrasesQuery.data?.total ?? 0;
-  const catchPageEnd = catchOffset + catchphrases.length;
 
   if (!botReady) {
     return <p className="mt-4 text-sm text-muted-foreground">请先选择 Bot QQ。</p>;
@@ -476,156 +435,6 @@ export default function GovernancePeopleTab() {
                 <li className="text-sm text-muted-foreground">还没有关系笔记。</li>
               ) : null}
             </ul>
-          </StateBlock>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <CardTitle className="text-base">口癖候选</CardTitle>
-              <CardDescription>成功回复里提炼的短习惯，通过后注入人设。</CardDescription>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {(
-                [
-                  ["candidate", `待审 ${catchCounts.candidate}`],
-                  ["active", `已启用 ${catchCounts.active}`],
-                  ["all", `全部 ${catchCounts.all}`],
-                ] as const
-              ).map(([key, label]) => (
-                <Button
-                  key={key}
-                  size="sm"
-                  variant={catchFilter === key ? "secondary" : "ghost"}
-                  className="h-7 px-2 text-xs"
-                  onClick={() => {
-                    setCatchFilter(key);
-                    setCatchOffset(0);
-                  }}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <StateBlock loading={catchphrasesQuery.isLoading} error={catchphrasesQuery.error}>
-            <ul className="max-h-[min(22rem,50vh)] divide-y overflow-y-auto overscroll-contain rounded-md border">
-              {catchphrases.map((item) => {
-                const status = String(item.status || "");
-                const saying = String(item.saying || "");
-                return (
-                  <li
-                    key={String(item.entry_id)}
-                    className="flex flex-col gap-1.5 px-2.5 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium leading-snug" title={saying}>
-                        {truncateText(saying, 80)}
-                      </div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <Badge
-                          variant={status === "active" ? "default" : "outline"}
-                          className="h-5 px-1.5 text-[10px]"
-                        >
-                          {catchphraseStatusLabel(status)}
-                        </Badge>
-                        <span>支持 {String(item.support)}</span>
-                        <span>
-                          出现过的群 {Array.isArray(item.groups_seen) ? item.groups_seen.length : 0}
-                        </span>
-                      </div>
-                    </div>
-                    {status === "candidate" ? (
-                      <div className="flex shrink-0 gap-1.5">
-                        <Button
-                          size="sm"
-                          className="h-7 px-2"
-                          icon={Check}
-                          disabled={resolveCatchphrase.isPending}
-                          onClick={() =>
-                            resolveCatchphrase.mutate({
-                              entryId: String(item.entry_id),
-                              action: "approve",
-                            })
-                          }
-                        >
-                          通过
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2"
-                          icon={X}
-                          iconMotion="close"
-                          disabled={resolveCatchphrase.isPending}
-                          onClick={() =>
-                            resolveCatchphrase.mutate({
-                              entryId: String(item.entry_id),
-                              action: "reject",
-                            })
-                          }
-                        >
-                          驳回
-                        </Button>
-                      </div>
-                    ) : null}
-                    {status === "active" ? (
-                      <div className="flex shrink-0 gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2"
-                          icon={CircleOff}
-                          disabled={resolveCatchphrase.isPending}
-                          onClick={() =>
-                            resolveCatchphrase.mutate({
-                              entryId: String(item.entry_id),
-                              action: "reject",
-                            })
-                          }
-                        >
-                          停用
-                        </Button>
-                      </div>
-                    ) : null}
-                  </li>
-                );
-              })}
-              {!catchphrases.length ? (
-                <li className="px-2.5 py-3 text-sm text-muted-foreground">当前筛选下没有口癖。</li>
-              ) : null}
-            </ul>
-            {catchTotal > CATCHPHRASE_PAGE_SIZE ? (
-              <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>
-                  {catchOffset + 1}-{catchPageEnd} / {catchTotal}
-                </span>
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs"
-                    disabled={catchOffset === 0 || catchphrasesQuery.isFetching}
-                    onClick={() => setCatchOffset((offset) => Math.max(0, offset - CATCHPHRASE_PAGE_SIZE))}
-                  >
-                    上一页
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs"
-                    disabled={catchPageEnd >= catchTotal || catchphrasesQuery.isFetching}
-                    onClick={() => setCatchOffset((offset) => offset + CATCHPHRASE_PAGE_SIZE)}
-                  >
-                    下一页
-                  </Button>
-                </div>
-              </div>
-            ) : null}
           </StateBlock>
         </CardContent>
       </Card>
