@@ -101,7 +101,7 @@ const PROVIDER_TABS: Array<{ id: Tab; label: string; icon: LucideIcon; lead: str
     id: "tasks",
     label: "任务编排",
     icon: ListTree,
-    lead: "按场景指定主用/备用：@ LLM 对话、醉聊、本轮动作决策等。",
+    lead: "按场景指定主用/备用：@ LLM 对话、酒后聊天、本轮动作决策等。",
   },
   {
     id: "runtime",
@@ -1901,7 +1901,7 @@ export default function LlmProvidersForm() {
                       <TierCard
                         kind="high"
                         title="高级任务"
-                        description="对话、醉聊"
+                        description="对话、酒后聊天"
                         primaryInvalid={!taskTiers.high.primary.providerId}
                         primary={renderProviderModelSlot({
                           providerId: taskTiers.high.primary.providerId,

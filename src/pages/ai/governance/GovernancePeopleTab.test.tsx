@@ -18,8 +18,6 @@ beforeAll(() => {
 const apiMocks = vi.hoisted(() => ({
   fetchAgentPersonFacts: vi.fn(),
   saveAgentPersonFact: vi.fn(),
-  fetchAgentCatchphrases: vi.fn(),
-  resolveAgentCatchphrase: vi.fn(),
   fetchFriendList: vi.fn(),
   fetchConversationKernelRelationshipNotes: vi.fn(),
   postConversationKernelRelationshipNoteSetContent: vi.fn(),
@@ -154,51 +152,5 @@ describe("GovernancePeopleTab", () => {
       });
     });
     expect(apiMocks.postConversationKernelRelationshipNoteSetContent).not.toHaveBeenCalled();
-  });
-
-  it("filters candidate catchphrases and approves/rejects", async () => {
-    apiMocks.fetchAgentCatchphrases.mockResolvedValue({
-      items: [{ entry_id: "c1", saying: "主打一个真诚", status: "candidate", support: 3, groups_seen: [1] }],
-      count: 1,
-      total: 1,
-      counts: { candidate: 1, active: 0, all: 1 },
-    });
-    apiMocks.resolveAgentCatchphrase.mockResolvedValue({ ok: true });
-    const user = userEvent.setup();
-
-    renderRoute(fullScope);
-
-    expect(await screen.findByText("主打一个真诚")).not.toBeNull();
-    expect(screen.getByText("待审 1")).not.toBeNull();
-
-    await user.click(screen.getByRole("button", { name: "通过" }));
-    await waitFor(() => {
-      expect(apiMocks.resolveAgentCatchphrase).toHaveBeenCalledWith("c1", "approve");
-    });
-
-    await user.click(screen.getByRole("button", { name: "驳回" }));
-    await waitFor(() => {
-      expect(apiMocks.resolveAgentCatchphrase).toHaveBeenCalledWith("c1", "reject");
-    });
-  });
-
-  it("shows working catchphrase with 停用 in active filter", async () => {
-    apiMocks.fetchAgentCatchphrases.mockResolvedValue({
-      items: [{ entry_id: "a1", saying: "稳了", status: "active", support: 8, groups_seen: [1, 2] }],
-      count: 1,
-      total: 1,
-      counts: { candidate: 0, active: 1, all: 1 },
-    });
-    const user = userEvent.setup();
-
-    renderRoute(fullScope);
-
-    await user.click(await screen.findByRole("button", { name: "已启用 1" }));
-
-    expect(await screen.findByText("稳了")).not.toBeNull();
-    await user.click(screen.getByRole("button", { name: "停用" }));
-    await waitFor(() => {
-      expect(apiMocks.resolveAgentCatchphrase).toHaveBeenCalledWith("a1", "reject");
-    });
   });
 });
