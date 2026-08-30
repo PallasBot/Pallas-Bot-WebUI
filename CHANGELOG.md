@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.18] - 2026-08-30
 
 ### 更新公告
 
@@ -22,6 +22,19 @@
 * fix(ai): 好感度判定任务补中文名，醉聊统一为酒后聊天
 * refactor(ai): 移除退役的口癖候选链路
 
+### 提交明细
+
+### Fixed
+
+* fix(ai): 好感度判定任务补中文名，醉聊统一为酒后聊天 ([e1e4733](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e1e473304989e6b3df0ecccaf2b6c801c890cda0))
+
+### Changed
+
+* refactor(ai): 移除退役的口癖候选链路 ([b07f715](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b07f715c966f6a411984b16b871b8865202bd324))
+
+**完整变更**: [`v0.9.17...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.17...HEAD)
+
+
 ## [0.9.17] - 2026-08-30
 
 ### 更新公告
@@ -38,7 +51,6 @@
 * feat(charts): 展示入站调度诊断指标 ([dfe8a31](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dfe8a3144b32f6ddd58506aef8059f888b2ab294))
 
 **完整变更**: [`v0.9.16...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.16...HEAD)
-
 
 ## [0.9.16] - 2026-08-29
 
