@@ -81,7 +81,7 @@ export const LLM_PROVIDER_PRESETS: readonly LlmProviderPreset[] = [
 
 export const LLM_TASK_ROUTE_LABELS: Record<string, string> = {
   llm_chat: "@对话",
-  drunk: "醉聊",
+  drunk: "酒后聊天",
   other: "其他",
 };
 

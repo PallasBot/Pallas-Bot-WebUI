@@ -42,7 +42,7 @@ export const TASK_ROUTE_META: Record<
     kind: "high",
   },
   drunk: {
-    title: "醉聊",
+    title: "酒后聊天",
     description: "酒后玩法专用对话；与日常 @ 分开配模型",
     kind: "high",
   },

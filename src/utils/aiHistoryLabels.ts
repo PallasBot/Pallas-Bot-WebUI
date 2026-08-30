@@ -87,7 +87,7 @@ const LLM_ROUTE_LABELS: Record<string, string> = {
   ambient: "主动发言",
   followup: "续聊",
   corpus_select: "语料选句",
-  drunk: "醉聊",
+  drunk: "酒后聊天",
 };
 
 export function labelLlmRoute(raw?: string | null): string {
@@ -100,7 +100,8 @@ export function labelLlmRoute(raw?: string | null): string {
 const LLM_TASK_LABELS: Record<string, string> = {
   llm_chat: "对话",
   affect_refine: "情感润色",
-  drunk: "醉聊",
+  drunk: "酒后聊天",
+  "llm.relationship.affinity": "好感度判定",
   llm_prompt_preview: "提示词预览",
   memory_extract: "记忆抽取",
   "repeater.semantic_style": "语义风格",
