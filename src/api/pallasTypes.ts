@@ -2628,6 +2628,11 @@ export interface IngressDispatchHotpath {
   llm_budget_skipped_repeater_strong?: number;
   llm_budget_skipped_repeater_weak?: number;
   llm_budget_skipped_proactive?: number;
+  repeater_event_gate_ms_p95?: number | null;
+  repeater_scrub_ms_p95?: number | null;
+  repeater_prepare_ms_p95?: number | null;
+  repeater_answer_ms_p95?: number | null;
+  repeater_cooldown_ms_p95?: number | null;
 }
 
 export interface IngressDispatchWorkAux {
@@ -2654,6 +2659,14 @@ export interface IngressDispatchConversationScheduler {
   wait_ms_p95?: number | null;
   run_ms_p95?: number | null;
   backpressure_waits?: number;
+  passive_repeater_pending?: number;
+  passive_repeater_active?: number;
+  passive_repeater_run_ms_p95?: number | null;
+  passive_repeater_active_oldest_ms?: number | null;
+  passive_llm_pending?: number;
+  passive_llm_active?: number;
+  passive_llm_run_ms_p95?: number | null;
+  passive_llm_active_oldest_ms?: number | null;
 }
 
 export interface IngressDispatchWorker {

@@ -47,7 +47,7 @@ import {
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 import { querySettled } from "@/utils/querySettled";
-import { ingressCapacityMetrics, ingressSchedulerMetrics, ingressWorkAuxMetrics } from "@/utils/ingressDispatchWorkQueue";
+import { ingressCapacityMetrics, ingressPassiveMetrics, ingressSchedulerMetrics, ingressWorkAuxMetrics } from "@/utils/ingressDispatchWorkQueue";
 import {
   buildIngressHistoryView,
   DEFAULT_INGRESS_HISTORY_WINDOW_SEC,
@@ -429,6 +429,11 @@ export default function ChartsPage() {
   const ingress = ingressQ.data;
   const workAux = ingressWorkAuxMetrics(ingress?.work_aux);
   const scheduler = ingressSchedulerMetrics(ingress?.conversation_scheduler);
+  const passiveRepeater = ingressPassiveMetrics({
+    active: ingress?.conversation_scheduler?.passive_repeater_active,
+    run_ms_p95: ingress?.conversation_scheduler?.passive_repeater_run_ms_p95,
+    active_oldest_ms: ingress?.conversation_scheduler?.passive_repeater_active_oldest_ms,
+  });
   const capacity = ingressCapacityMetrics(ingress?.lanes, {
     selected: ingress?.matchers_selected,
     completed: ingress?.matchers_run,
@@ -611,8 +616,10 @@ export default function ChartsPage() {
               <MetricTile label="群消息" value={ingressMetric(ingress?.group_messages)} hint="今日累计" />
               <MetricTile label="入站分发 P95" value={ingressMetric(ingress?.ingress_duration_ms_p95, " ms")} hint={`背压 ${ingressMetric(ingress?.overload_signals)}`} />
               <MetricTile label="入站全执行 P95" value={ingressMetric(ingress?.ingress_full_ms_p95, " ms")} hint="含 matcher/handler 执行" />
-              <MetricTile label="调度等待 P95" value={ingressMetric(scheduler.waitP95Ms, " ms")} hint={`执行 ${ingressMetric(scheduler.runP95Ms, " ms")} · 背压 ${ingressMetric(scheduler.backpressureWaits)}`} />
-              <MetricTile label="Matcher 完成率" value={completionRate} hint={`完成 ${ingressMetric(capacity.completed)}/${ingressMetric(capacity.selected)} · 忙 ${ingressMetric(capacity.laneBusy)}`} />
+               <MetricTile label="调度等待 P95" value={ingressMetric(scheduler.waitP95Ms, " ms")} hint={`执行 ${ingressMetric(scheduler.runP95Ms, " ms")} · 背压 ${ingressMetric(scheduler.backpressureWaits)}`} />
+               <MetricTile label="复读准备 P95" value={ingressMetric(ingress?.hotpath?.repeater_prepare_ms_p95, " ms")} hint={`任务 ${ingressMetric(passiveRepeater.runP95Ms, " ms")} · 最老 ${ingressMetric(passiveRepeater.activeOldestMs, " ms")}`} />
+               <MetricTile label="复读任务" value={ingressMetric(passiveRepeater.active)} hint="当前执行中" />
+               <MetricTile label="Matcher 完成率" value={completionRate} hint={`完成 ${ingressMetric(capacity.completed)}/${ingressMetric(capacity.selected)} · 忙 ${ingressMetric(capacity.laneBusy)}`} />
               <MetricTile label="Chat Lane" value={chatLane} hint="执行中 / 上限" />
               <MetricTile label="后台任务" value={ingressMetric(workAux.pending)} hint={`执行中 ${ingressMetric(workAux.leased)} · ${ingressMetric(workAux.consumers)} 路`} />
             </div>

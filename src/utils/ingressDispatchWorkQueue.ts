@@ -29,6 +29,12 @@ export interface IngressSchedulerSource {
   backpressure_waits?: number;
 }
 
+export interface IngressPassiveSource {
+  active?: number;
+  run_ms_p95?: number | null;
+  active_oldest_ms?: number | null;
+}
+
 export interface IngressLaneSource {
   limit?: number;
   in_use?: number;
@@ -74,6 +80,14 @@ export function ingressSchedulerMetrics(source: IngressSchedulerSource | undefin
     waitP95Ms: source?.wait_ms_p95 ?? 0,
     runP95Ms: source?.run_ms_p95 ?? 0,
     backpressureWaits: source?.backpressure_waits ?? 0,
+  };
+}
+
+export function ingressPassiveMetrics(source: IngressPassiveSource | undefined) {
+  return {
+    active: source?.active ?? 0,
+    runP95Ms: source?.run_ms_p95 ?? 0,
+    activeOldestMs: source?.active_oldest_ms ?? 0,
   };
 }
 
