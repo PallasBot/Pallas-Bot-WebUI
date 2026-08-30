@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.17] - 2026-08-30
 
 ### 更新公告
 
@@ -12,6 +12,15 @@
 - **入站调度观测**：
   - Charts 页新增复读准备 P95 与复读任务数量
   - 展示被动任务执行 P95、最老任务年龄及复读各阶段耗时
+
+### 提交明细
+
+### Added
+
+* feat(charts): 展示入站调度诊断指标 ([dfe8a31](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dfe8a3144b32f6ddd58506aef8059f888b2ab294))
+
+**完整变更**: [`v0.9.16...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.16...HEAD)
+
 
 ## [0.9.16] - 2026-08-29
 
@@ -49,7 +58,6 @@
 * chore(ai): 移除观测队列前端轮询 ([349dc9d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/349dc9d3ab0f558ae49c68d42c8b5d2d55de49e5))
 
 **完整变更**: [`v0.9.15...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.15...HEAD)
-
 
 ## [0.9.15] - 2026-08-27
 
