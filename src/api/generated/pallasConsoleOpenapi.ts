@@ -5388,6 +5388,68 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** IngressDispatchConversationScheduler */
+        IngressDispatchConversationScheduler: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Pending
+             * @default 0
+             */
+            pending: number;
+            /**
+             * Pending Peak
+             * @default 0
+             */
+            pending_peak: number;
+            /**
+             * Active
+             * @default 0
+             */
+            active: number;
+            /**
+             * Active Peak
+             * @default 0
+             */
+            active_peak: number;
+            /** Wait Ms P95 */
+            wait_ms_p95?: number | null;
+            /** Run Ms P95 */
+            run_ms_p95?: number | null;
+            /**
+             * Passive Repeater Pending
+             * @default 0
+             */
+            passive_repeater_pending: number;
+            /**
+             * Passive Repeater Active
+             * @default 0
+             */
+            passive_repeater_active: number;
+            /** Passive Repeater Run Ms P95 */
+            passive_repeater_run_ms_p95?: number | null;
+            /** Passive Repeater Active Oldest Ms */
+            passive_repeater_active_oldest_ms?: number | null;
+            /**
+             * Passive Llm Pending
+             * @default 0
+             */
+            passive_llm_pending: number;
+            /**
+             * Passive Llm Active
+             * @default 0
+             */
+            passive_llm_active: number;
+            /** Passive Llm Run Ms P95 */
+            passive_llm_run_ms_p95?: number | null;
+            /** Passive Llm Active Oldest Ms */
+            passive_llm_active_oldest_ms?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** IngressDispatchData */
         IngressDispatchData: {
             /**
@@ -5399,6 +5461,8 @@ export interface components {
             workers?: {
                 [key: string]: unknown;
             }[];
+            hotpath?: components["schemas"]["IngressDispatchHotpath"];
+            conversation_scheduler?: components["schemas"]["IngressDispatchConversationScheduler"];
         } & {
             [key: string]: unknown;
         };
@@ -5492,6 +5556,21 @@ export interface components {
             learn_persisted: number;
             /** Work Completed */
             work_completed: number;
+        };
+        /** IngressDispatchHotpath */
+        IngressDispatchHotpath: {
+            /** Repeater Event Gate Ms P95 */
+            repeater_event_gate_ms_p95?: number | null;
+            /** Repeater Scrub Ms P95 */
+            repeater_scrub_ms_p95?: number | null;
+            /** Repeater Prepare Ms P95 */
+            repeater_prepare_ms_p95?: number | null;
+            /** Repeater Answer Ms P95 */
+            repeater_answer_ms_p95?: number | null;
+            /** Repeater Cooldown Ms P95 */
+            repeater_cooldown_ms_p95?: number | null;
+        } & {
+            [key: string]: unknown;
         };
         /** InjectionGovernanceManageRequest */
         InjectionGovernanceManageRequest: {
