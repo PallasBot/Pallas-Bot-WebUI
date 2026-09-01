@@ -7558,6 +7558,16 @@ export interface components {
             model_pricing?: {
                 [key: string]: components["schemas"]["_LlmModelPricingRowBody"];
             };
+            /**
+             * Daily Tokens Cap
+             * @default 0
+             */
+            daily_tokens_cap: number;
+            /**
+             * Daily Cost Cap
+             * @default 0
+             */
+            daily_cost_cap: number;
         };
         /** _LlmProviderTestData */
         _LlmProviderTestData: {
