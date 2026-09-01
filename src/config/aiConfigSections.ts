@@ -30,6 +30,12 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
     lead: "唱歌、语音、画画、网易云等媒体能力（与文字聊天提供方分开）。",
     icon: "layers",
   },
+  {
+    id: "budget",
+    label: "预算",
+    lead: "各任务每日调用/输入上限与单次上下文预算，防止成本失控。",
+    icon: "sliders",
+  },
   ];
 
 export type AiConfigSectionId = (typeof AI_CONFIG_SECTIONS)[number]["id"];

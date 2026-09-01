@@ -26,6 +26,11 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_speak_followup_window_sec: "续聊软窗时长（秒）",
   llm_speak_followup_max_total_sec: "续聊最长总时长（秒）",
   llm_chat_char_budget: "LLM 对话上下文字符预算",
+  llm_chat_daily_calls_limit: "智能对话每日调用上限（次数）",
+  llm_chat_daily_tokens_limit: "智能对话每日输入 token 上限（token）",
+  llm_semantic_style_realtime_daily_limit: "语义风格标注每日预算（次数）",
+  llm_memory_graph_extract_daily_budget: "图谱抽取每日上限（次数）",
+  llm_relationship_affinity_llm_daily_limit: "好感度大模型判定每日上限（次数）",
   llm_tools_enabled: "允许调用工具",
   llm_tools_selective: "按意图筛选工具",
   llm_tools_soft_recall_enabled: "软召回工具候选",
@@ -55,9 +60,9 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_memory_content_max_len: "单条记忆字数上限",
   llm_memory_auto_episode_enabled: "自动沉淀会话为记忆",
   llm_memory_auto_episode_cooldown_sec: "自动沉淀冷却（秒）",
-  llm_memory_auto_episode_daily_budget: "自动摘要每日预算",
+  llm_memory_auto_episode_daily_budget: "自动摘要每日预算（次数）",
   llm_memory_auto_ip_enabled: "自动提炼 IP 知识",
-  llm_memory_auto_ip_daily_budget: "IP 知识每日预算",
+  llm_memory_auto_ip_daily_budget: "IP 知识每日预算（次数）",
   llm_memory_auto_ip_cooldown_sec: "IP 知识提炼冷却（秒）",
   llm_memory_graph_extract_enabled: "记忆图谱抽取",
   llm_memory_graph_extract_on_write: "写入后自动抽取图谱",
@@ -276,6 +281,20 @@ export const LLM_MEMORY_DETAIL_KEYS = [
 ] as const;
 
 export const LLM_BUDGET_DETAIL_KEYS = ["llm_chat_char_budget"] as const;
+
+/** AI 配置「预算」分段：各任务每日调用/输入上限与上下文预算。 */
+export const LLM_DAILY_BUDGET_DETAIL_KEYS = [
+  "llm_chat_daily_calls_limit",
+  "llm_chat_daily_tokens_limit",
+  "llm_chat_char_budget",
+  "llm_semantic_style_realtime_daily_limit",
+  "llm_memory_graph_extract_daily_budget",
+  "llm_relationship_affinity_llm_daily_limit",
+  "llm_sticker_label_realtime_daily_limit",
+  "llm_sticker_label_backfill_daily_limit",
+  "llm_memory_auto_episode_daily_budget",
+  "llm_memory_auto_ip_daily_budget",
+] as const;
 
 /** 媒体地址已迁到「媒体」分段；会话/记忆/预算细项在专面，策略表单隐藏避免重复。 */
 export const HIDDEN_LLM_STRATEGY_FIELDS = new Set([

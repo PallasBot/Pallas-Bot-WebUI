@@ -13,6 +13,7 @@ import { AiConfigChromeProvider } from "@/components/ai/AiConfigChromeContext";
 import AiConfigChromeTools from "@/components/ai/AiConfigChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import AiConfigBehaviorSection from "@/pages/ai/sections/AiConfigBehaviorSection";
+import AiConfigBudgetSection from "@/pages/ai/sections/AiConfigBudgetSection";
 import AiConfigDialogueSection from "@/pages/ai/sections/AiConfigDialogueSection";
 import AiConfigMediaSection from "@/pages/ai/sections/AiConfigMediaSection";
 import AiConfigProviderSection from "@/pages/ai/sections/AiConfigProviderSection";
@@ -22,6 +23,7 @@ const SECTION_BODY: Record<string, ComponentType> = {
   dialogue: AiConfigDialogueSection,
   media: AiConfigMediaSection,
   behavior: AiConfigBehaviorSection,
+  budget: AiConfigBudgetSection,
 };
 
 /** 工具条刷新：按段 invalidate 相关 query（前缀匹配） */
@@ -45,6 +47,10 @@ const SECTION_REFRESH_KEYS: Record<string, string[][]> = {
     ["llm-repeater-feedback"],
     ["llm-repeater-summary"],
     ["llm-persona-observe"],
+  ],
+  budget: [
+    ["common-config", "llm"],
+    ["common-config-raw", "llm"],
   ],
 };
 
