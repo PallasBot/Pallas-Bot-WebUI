@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.19] - 2026-09-01
 
 ### 更新公告
 
@@ -20,6 +20,21 @@
 * refactor(webui): 预算分段单位说明移入字段帮助
 * feat(webui): 预算分段帮助标注次数与 token 单位
 * feat(webui): AI 配置新增预算分段集中管理每日上限
+
+### 提交明细
+
+### Added
+
+* feat(webui): 预算分段帮助标注次数与 token 单位 ([373abc5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/373abc5ac16ce6d6a3d80a872de002f342f950c3))
+* feat(webui): AI 配置新增预算分段集中管理每日上限 ([baed002](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/baed00284ffb7a41f2d39f3c2336a4bd95dd5112))
+
+### Changed
+
+* refactor(webui): 预算分段单位说明移入字段帮助 ([c761917](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c7619173cb2fe47ee176886fde0c278608f6a0e3))
+* chore(webui): 同步控制台 OpenAPI 预算字段类型 ([4893ef8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4893ef8eb90c42babba56befb816da78d006fae9))
+
+**完整变更**: [`v0.9.18...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.18...HEAD)
+
 
 ## [0.9.18] - 2026-08-30
 
@@ -50,7 +65,6 @@
 * refactor(ai): 移除退役的口癖候选链路 ([b07f715](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b07f715c966f6a411984b16b871b8865202bd324))
 
 **完整变更**: [`v0.9.17...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.17...HEAD)
-
 
 ## [0.9.17] - 2026-08-30
 
