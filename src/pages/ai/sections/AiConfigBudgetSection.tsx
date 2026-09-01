@@ -46,7 +46,7 @@ export default function AiConfigBudgetSection() {
       <AiLlmFieldPanel
         icon={SlidersHorizontal}
         title="预算"
-        lead="各任务每日调用/输入上限与单次上下文预算。0 表示不限制。"
+        lead="各任务每日上限与单次上下文预算。单位：次数=调用次数，token=输入 token 量，字符=上下文字符数。0 表示不限制。"
         detailKeys={LLM_DAILY_BUDGET_DETAIL_KEYS}
         savedMessage="预算配置已保存"
         inlineSave={false}
