@@ -2061,6 +2061,7 @@ html[data-layout="hub"][data-surface="solid"][data-theme="light"] .log-errors-pa
 }
 
 .log-error-card {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2213,13 +2214,14 @@ html[data-layout="hub"][data-surface="solid"][data-theme="light"] .log-errors-pa
 }
 
 .log-error-card--expanded {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
 .log-error-card--expanded .log-error-card__tb {
   flex: 1 1 auto;
   min-height: 0;
+  max-height: min(70vh, 720px);
   overflow: auto;
   overscroll-behavior: contain;
 }
