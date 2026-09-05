@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.20] - 2026-09-05
 
 ### 更新公告
 
@@ -17,6 +17,14 @@
 ### Fixed
 
 * fix(webui): 治理页开关标题恢复加粗
+
+### 提交明细
+
+### Fixed
+
+* fix(webui): 治理页开关标题恢复加粗 ([6c69c4b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6c69c4bc84d02252b042710b689116b74ca883d6))
+
+**完整变更**: [`v0.9.19...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.19...HEAD)
 
 
 ## [0.9.19] - 2026-09-01
@@ -49,7 +57,6 @@
 * chore(webui): 同步控制台 OpenAPI 预算字段类型 ([4893ef8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4893ef8eb90c42babba56befb816da78d006fae9))
 
 **完整变更**: [`v0.9.18...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.18...HEAD)
-
 
 ## [0.9.18] - 2026-08-30
 
