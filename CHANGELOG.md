@@ -4,6 +4,23 @@
 
 <!-- entries -->
 
+## [0.9.21] - 2026-09-05
+
+### 更新公告
+
+- 需要 Bot commit `aa1f1092` 及以上；请勿只升控制台
+- **日志报错**：
+  - 列表溢出时保持展开卡片完整，堆栈区域在卡片内滚动
+
+### 提交明细
+
+### Fixed
+
+* fix(webui): 日志报错卡片保持展开布局 ([511410e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/511410ecc8b3d976c0c40b1f69527df9b16e33d5))
+
+**完整变更**: [`v0.9.20...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.20...HEAD)
+
+
 ## [0.9.20] - 2026-09-05
 
 ### 更新公告
