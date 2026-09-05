@@ -676,6 +676,8 @@ export interface PluginRow {
   uninstall_kind?: "dir" | "pip" | "community" | "official";
   /** 卸载目标：目录相对路径或 pip 包名 */
   uninstall_target?: string | null;
+  /** 社区插件缺失的 pyproject 依赖（未安装或版本不满足） */
+  deps_missing?: string[];
   icon?: string | null;
   cover?: string | null;
   avatar?: string | null;

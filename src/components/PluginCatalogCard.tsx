@@ -73,6 +73,7 @@ export default function PluginCatalogCard({
   const loadWhere = pluginLoadWhere(plugin);
   const sourceLabel = pluginSourceLabel(plugin.plugin_source);
   const versionLabel = pluginVersionLabel(plugin);
+  const depsMissing = plugin.deps_missing ?? [];
   const isFavorite = favorites.has(pluginIdValue);
   const globallyDisabled = Boolean(plugin.globally_disabled);
   const disableProtected = Boolean(plugin.global_disable_protected);
@@ -219,9 +220,18 @@ export default function PluginCatalogCard({
               ) : null}
             </div>
 
-            {globallyDisabled || loadBadge || loadProcessTags.length || sourceLabel || versionLabel ? (
+            {globallyDisabled || loadBadge || loadProcessTags.length || sourceLabel || versionLabel || depsMissing.length ? (
               <div className="plugin-store-card__meta-row plugin-catalog-card__meta-row">
                 {globallyDisabled ? <Badge variant="neutral" size="compact">已禁用</Badge> : null}
+                {depsMissing.length ? (
+                  <Badge
+                    variant="warn"
+                    size="compact"
+                    title={`缺少依赖：${depsMissing.join("、")}。请在 Bot 环境执行 uv pip install 补装。`}
+                  >
+                    缺依赖 {depsMissing.length}
+                  </Badge>
+                ) : null}
                 {loadBadge ? (
                   <Badge variant="warn" size="compact" title={loadWhere}>
                     {loadBadge}
