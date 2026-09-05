@@ -668,7 +668,7 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .pl
 
 .plugin-governance-panel--dialog .plugin-runtime-switch__title {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text);
 }
 
