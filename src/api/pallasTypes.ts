@@ -2142,6 +2142,9 @@ export interface GroupConfigPublic {
 export interface UserConfigPublic {
   user_id: number;
   banned: boolean;
+  /** 最后一次拉黑 / 解禁操作的操作者与时间；旧记录可能没有。 */
+  banned_by?: string;
+  banned_at?: number;
 }
 
 /** 协议账号信息 */
