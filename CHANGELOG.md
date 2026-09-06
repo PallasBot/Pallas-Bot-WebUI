@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.22] - 2026-09-06
 
 ### 更新公告
 
@@ -28,6 +28,21 @@
 
 * feat(ai): 媒体服务安装区增加详细安装文档链接
 
+### 提交明细
+
+### Added
+
+* feat(webui): 媒体服务安装区增加详细安装文档链接 ([60821d3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/60821d3e599fe66a0bad66fd95a3baf95d7bcb8f))
+* feat(database): 展示黑名单审计历史 ([5519a3f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5519a3f7e349ae76ec15aa51e4edc6fccd023740))
+* feat(webui): 插件目录展示社区插件缺失依赖 ([214aa66](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/214aa66d69910b8102f81b80660f7f81c33e1e19))
+
+### Fixed
+
+* fix(webui): 合并 v0.9.21 CHANGELOG 重复段 ([57d1da3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/57d1da399f3232c75012a0a445c8b1640f34c8f6))
+
+**完整变更**: [`v0.9.21...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.21...HEAD)
+
+
 ## [0.9.21] - 2026-09-05
 
 ### 更新公告
@@ -43,7 +58,6 @@
 * fix(webui): 日志报错卡片保持展开布局 ([511410e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/511410ecc8b3d976c0c40b1f69527df9b16e33d5))
 
 **完整变更**: [`v0.9.20...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.20...HEAD)
-
 
 ## [0.9.20] - 2026-09-05
 
@@ -66,7 +80,6 @@
 * fix(webui): 治理页开关标题恢复加粗 ([6c69c4b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6c69c4bc84d02252b042710b689116b74ca883d6))
 
 **完整变更**: [`v0.9.19...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.19...HEAD)
-
 
 ## [0.9.19] - 2026-09-01
 
