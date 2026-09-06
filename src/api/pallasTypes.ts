@@ -676,6 +676,8 @@ export interface PluginRow {
   uninstall_kind?: "dir" | "pip" | "community" | "official";
   /** 卸载目标：目录相对路径或 pip 包名 */
   uninstall_target?: string | null;
+  /** 社区插件缺失的 pyproject 依赖（未安装或版本不满足） */
+  deps_missing?: string[];
   icon?: string | null;
   cover?: string | null;
   avatar?: string | null;
@@ -2140,6 +2142,9 @@ export interface GroupConfigPublic {
 export interface UserConfigPublic {
   user_id: number;
   banned: boolean;
+  /** 最后一次拉黑 / 解禁操作的操作者与时间；旧记录可能没有。 */
+  banned_by?: string;
+  banned_at?: number;
 }
 
 /** 协议账号信息 */

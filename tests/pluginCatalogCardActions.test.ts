@@ -26,6 +26,11 @@ describe("plugin catalog card actions", () => {
     expect(card).toContain("global_disable_protected");
     expect(card).toContain("不可禁用");
   });
+
+  it("shows a missing dependency badge for community plugins", () => {
+    expect(card).toContain("deps_missing");
+    expect(card).toContain("缺依赖");
+  });
 });
 
 describe("plugin store card update button", () => {

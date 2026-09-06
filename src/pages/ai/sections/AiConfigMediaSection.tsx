@@ -69,6 +69,7 @@ import {
   showAiInstallBootstrapSecondary,
 } from "@/utils/aiInstallPrimary";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { PALLAS_BOT_DOC } from "@/utils/pallasExternalLinks";
 import { buildSvcBackendSelectOptions } from "@/utils/svcBackendOptions";
 
 function notifyOk(message: string) {
@@ -1149,7 +1150,19 @@ export default function AiConfigMediaSection() {
         <div className="space-y-4">
           <PluginConfigFormSection
             title="安装与运行"
-            subtitle={installSubtitle}
+            subtitle={
+              <>
+                {installSubtitle}{" "}
+                <a
+                  className="text-primary underline-offset-2 hover:underline"
+                  href={PALLAS_BOT_DOC.aiRuntime}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  查看详细安装文档
+                </a>
+              </>
+            }
             bodyClassName="!grid-cols-1 gap-3"
           >
             <div className="flex flex-wrap gap-2">

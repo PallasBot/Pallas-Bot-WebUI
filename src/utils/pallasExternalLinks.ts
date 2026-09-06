@@ -22,6 +22,7 @@ export const PALLAS_BOT_DOC = {
   localReadme: `${PALLAS_BOT_REPO}/blob/main/local/README.md`,
   deployment: pallasDocsUrl("/deploy/deployment"),
   dockerDeployment: pallasDocsUrl("/deploy/docker"),
+  aiRuntime: pallasDocsUrl("/maintainer/install/ai-runtime"),
   faqUpdates: `${pallasDocsUrl("/deploy/faq")}#更新与版本`,
   /** 遗忘控制台密钥（无在线找回，见 FAQ） */
   faqConsolePassword: `${pallasDocsUrl("/deploy/faq")}#forgot-console-password`,

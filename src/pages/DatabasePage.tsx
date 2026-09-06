@@ -74,9 +74,27 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const BROWSE_ID_KEYS = ["account", "group_id", "user_id", "id"] as const;
+const BROWSE_ID_KEYS = ["account", "group_id", "user_id", "target_id", "id"] as const;
 const BROWSE_SUMMARY_MAX_COLS = 4;
 const BROWSE_CELL_MAX_CHARS = 36;
+const BLACKLIST_AUDIT_COLUMN_LABELS: Record<string, string> = {
+  target_type: "对象",
+  target_id: "目标",
+  group_id: "群号",
+  action: "动作",
+  operator: "操作者",
+  reason: "原因",
+  created_at: "时间",
+};
+const BLACKLIST_AUDIT_TARGET_LABELS: Record<string, string> = {
+  user: "全局用户",
+  group: "群",
+  group_user: "群内用户",
+};
+const BLACKLIST_AUDIT_ACTION_LABELS: Record<string, string> = {
+  ban: "拉黑",
+  unban: "解禁",
+};
 
 function isBrowseScalar(value: unknown): boolean {
   return value == null || ["string", "number", "boolean"].includes(typeof value);
@@ -89,19 +107,42 @@ function browseRowIdLabel(row: Record<string, unknown>): string {
   return "行详情";
 }
 
-function browseSummaryColumns(rows: Record<string, unknown>[]): string[] {
+function browseSummaryColumns(rows: Record<string, unknown>[], table = ""): string[] {
   if (!rows.length) return [];
   const keys = Object.keys(rows[0] ?? {});
-  const preferred = BROWSE_ID_KEYS.filter((k) => keys.includes(k));
+  const preferredKeys =
+    table === "blacklist_audit" ? Object.keys(BLACKLIST_AUDIT_COLUMN_LABELS) : BROWSE_ID_KEYS;
+  const preferred = preferredKeys.filter((k) => keys.includes(k));
+  const preferredSet = new Set(preferred);
   const scalars = keys.filter(
     (k) =>
-      !preferred.includes(k as (typeof BROWSE_ID_KEYS)[number]) &&
+      !preferredSet.has(k) &&
       rows.every((r) => isBrowseScalar(r[k])),
   );
-  return [...preferred, ...scalars].slice(0, BROWSE_SUMMARY_MAX_COLS);
+  const maxColumns =
+    table === "blacklist_audit" ? Object.keys(BLACKLIST_AUDIT_COLUMN_LABELS).length : BROWSE_SUMMARY_MAX_COLS;
+  return [...preferred, ...scalars].slice(0, maxColumns);
 }
 
-function formatBrowseCell(value: unknown): string {
+function storageTableLabel(table: string): string {
+  return table === "blacklist_audit" ? "黑名单审计" : table;
+}
+
+function browseColumnLabel(table: string, column: string): string {
+  return table === "blacklist_audit" ? BLACKLIST_AUDIT_COLUMN_LABELS[column] ?? column : column;
+}
+
+function formatBrowseCell(value: unknown, table = "", column = ""): string {
+  if (table === "blacklist_audit") {
+    if (column === "target_type") {
+      return BLACKLIST_AUDIT_TARGET_LABELS[String(value)] ?? String(value || "—");
+    }
+    if (column === "action") {
+      return BLACKLIST_AUDIT_ACTION_LABELS[String(value)] ?? String(value || "—");
+    }
+    if (column === "operator") return formatBanOperator(typeof value === "string" ? value : undefined);
+    if (column === "created_at") return formatBanTime(typeof value === "number" ? value : undefined);
+  }
   if (value == null) return "—";
   if (typeof value === "boolean") return value ? "是" : "否";
   if (typeof value === "number") return String(value);
@@ -114,6 +155,22 @@ function formatBrowseCell(value: unknown): string {
   if (Array.isArray(value)) return `数组(${value.length})`;
   if (typeof value === "object") return `对象(${Object.keys(value).length})`;
   return String(value);
+}
+
+function formatBanOperator(operator?: string): string {
+  const value = operator?.trim();
+  if (!value) return "—";
+  if (value === "webui") return "WebUI";
+  if (value === "system:kick_me") return "系统（被踢）";
+  if (value === "system:rage") return "系统（脏话自动拉黑）";
+  if (value.startsWith("u:")) return `QQ ${value.slice(2)}`;
+  return value;
+}
+
+function formatBanTime(timestamp?: number): string {
+  if (typeof timestamp !== "number" || !Number.isFinite(timestamp) || timestamp <= 0) return "—";
+  const date = new Date(timestamp * 1000);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("zh-CN", { hour12: false });
 }
 
 function formatBrowseRowJson(row: Record<string, unknown>): string {
@@ -323,7 +380,12 @@ export default function DatabasePage() {
     const needle = listNeedle(userListQ);
     if (!needle) return sortedUserConfigs;
     return sortedUserConfigs.filter((u) =>
-      rowMatchesNeedle(needle, [u.user_id, u.banned ? "封禁" : "正常"]),
+      rowMatchesNeedle(needle, [
+        u.user_id,
+        u.banned ? "封禁" : "正常",
+        u.banned_by,
+        formatBanOperator(u.banned_by),
+      ]),
     );
   }, [sortedUserConfigs, userListQ]);
 
@@ -623,8 +685,8 @@ export default function DatabasePage() {
   const showBody = Boolean(overview) && !dbRefreshBusy;
   const browseableTables = tableMeta.filter((t) => t.browseable);
   const browseColumns = useMemo(
-    () => browseSummaryColumns(browseRows?.rows ?? []),
-    [browseRows],
+    () => browseSummaryColumns(browseRows?.rows ?? [], browseTable),
+    [browseRows, browseTable],
   );
   const listSearch =
     activeSection === "group"
@@ -644,8 +706,8 @@ export default function DatabasePage() {
               setUserListQ(v);
               setPageUsers(1);
             },
-            placeholder: "搜索 QQ、封禁状态…",
-            title: "可按 QQ、封禁状态筛选",
+            placeholder: "搜索 QQ、封禁状态、操作人…",
+            title: "可按 QQ、封禁状态、操作人筛选",
           }
         : null;
 
@@ -654,7 +716,7 @@ export default function DatabasePage() {
       ? "后端"
       : activeSection === "tables"
         ? browseTable
-          ? `只读浏览 · ${browseTable}`
+          ? `只读浏览 · ${storageTableLabel(browseTable)}`
           : overview?.backend === "postgres"
             ? "表与行数"
             : "集合与文档数"
@@ -786,8 +848,8 @@ export default function DatabasePage() {
                 },
                 ...browseableTables.map((t) => ({
                   value: t.name,
-                  label: t.name,
-                  keywords: t.name,
+                  label: storageTableLabel(t.name),
+                  keywords: `${t.name} ${storageTableLabel(t.name)}`,
                 })),
               ]}
             />
@@ -1025,7 +1087,7 @@ export default function DatabasePage() {
             <>
               <div className="database-user-config-add" style={{ marginBottom: 12 }}>
                 <p className="muted" style={{ margin: "0 0 8px", fontSize: 12 }}>
-                  添加后可设置全局封禁（与私聊「牛牛拉黑」相同）。仅本群拉黑请到「群配置」里设置。
+                  添加后可设置全局封禁（与私聊「牛牛拉黑」相同）。仅本群拉黑请到「群配置」里设置；「最近操作」显示最后一次拉黑或解禁的操作者与时间。
                 </p>
                 <div className="row-actions database-user-config-add__row">
                   <UiInput
@@ -1085,6 +1147,7 @@ export default function DatabasePage() {
                         </th>
                         <th>QQ</th>
                         <th>封禁</th>
+                        <th>最近操作</th>
                         <th style={{ minWidth: 112, width: "1%" }}>操作</th>
                       </tr>
                     </thead>
@@ -1105,6 +1168,16 @@ export default function DatabasePage() {
                             <span className={`badge ${u.banned ? "badge--warn" : "badge--ok"}`}>
                               {u.banned ? "是" : "否"}
                             </span>
+                          </td>
+                          <td>
+                            {u.banned_by || u.banned_at ? (
+                              <div className="flex min-w-[7rem] flex-col items-center gap-0.5">
+                                <span>{formatBanOperator(u.banned_by)}</span>
+                                <time className="muted text-xs">{formatBanTime(u.banned_at)}</time>
+                              </div>
+                            ) : (
+                              <span className="muted">—</span>
+                            )}
                           </td>
                           <td>
                             <div className="console-table-actions">
@@ -1150,7 +1223,7 @@ export default function DatabasePage() {
                       <thead>
                         <tr>
                           {browseColumns.map((col) => (
-                            <th key={col}>{col}</th>
+                            <th key={col}>{browseColumnLabel(browseTable, col)}</th>
                           ))}
                           <th style={{ minWidth: 72, width: "1%" }}>操作</th>
                         </tr>
@@ -1169,9 +1242,9 @@ export default function DatabasePage() {
                                     textOverflow: "ellipsis",
                                     whiteSpace: "nowrap",
                                   }}
-                                  title={formatBrowseCell(r[col])}
+                                  title={formatBrowseCell(r[col], browseTable, col)}
                                 >
-                                  {formatBrowseCell(r[col])}
+                                  {formatBrowseCell(r[col], browseTable, col)}
                                 </td>
                               ))}
                               <td>
@@ -1252,7 +1325,7 @@ export default function DatabasePage() {
                           }))
                     ).map((row) => (
                       <tr key={row.name}>
-                        <td style={{ fontWeight: 600 }}>{row.name}</td>
+                        <td style={{ fontWeight: 600 }}>{storageTableLabel(row.name)}</td>
                         {overview?.backend === "mongodb" ? (
                           <td className="muted">{row.document}</td>
                         ) : null}
@@ -1400,7 +1473,7 @@ export default function DatabasePage() {
         <DialogContent className="max-w-[min(42rem,calc(100vw-24px))] gap-0 overflow-hidden p-0">
           <DialogHeader className="border-b px-4 py-3 text-left">
             <DialogTitle className="text-left">
-              {browseTable ? `${browseTable} · ` : ""}
+              {browseTable ? `${storageTableLabel(browseTable)} · ` : ""}
               {browseDetail ? browseRowIdLabel(browseDetail) : "行详情"}
             </DialogTitle>
           </DialogHeader>
