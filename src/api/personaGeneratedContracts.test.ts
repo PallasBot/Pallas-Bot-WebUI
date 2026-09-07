@@ -63,8 +63,12 @@ describe("persona generated contracts", () => {
       collection_enabled: true,
       injection_enabled: true,
       direct_enabled: true,
+      active_pipeline: "v3",
       example_count: 2,
       profile_count: 1,
+      schema_version: 3,
+      injectable_behavior_patterns: 0,
+      injectable_continuation_patterns: 0,
     } satisfies SemanticStatus;
 
     expect(query.scene).toBe("group_chat");

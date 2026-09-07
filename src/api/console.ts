@@ -1873,10 +1873,10 @@ export function postLlmRepeaterSemanticStyleManage(
   body: SemanticStyleManageBase & { action: "quality" },
 ): Promise<SemanticStyleQualityData>;
 export function postLlmRepeaterSemanticStyleManage(
-  body: SemanticStyleManageBase & { action: "status" | "direct_enabled" | "clear" | "rebuild" | "recover" | "disable" | "enable" | "set_governance" },
+  body: SemanticStyleManageBase & { action: "status" | "direct_enabled" | "clear" | "rebuild" | "recover" | "disable" | "enable" | "set_governance" | "rollback_v2" },
 ): Promise<SemanticStyleStatusData>;
 export async function postLlmRepeaterSemanticStyleManage(body: SemanticStyleManageBase & {
-  action: "status" | "direct_enabled" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance";
+  action: "status" | "direct_enabled" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance" | "rollback_v2";
 }): Promise<SemanticStyleStatusData | SemanticStyleQualityData> {
   const { data: res } = await http.post("/llm/repeater-semantic-style/manage", {
     action: body.action,

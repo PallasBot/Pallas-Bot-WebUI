@@ -126,7 +126,7 @@ function useDebouncedValue<T>(value: T, delayMs = 400): T {
   return debounced;
 }
 
-type SemanticStyleAction = "direct_enabled" | "rebuild" | "quality" | "disable" | "enable" | "set_governance" | "clear";
+type SemanticStyleAction = "direct_enabled" | "rebuild" | "quality" | "disable" | "enable" | "set_governance" | "clear" | "rollback_v2";
 type GroupStyleAction = "collection" | "injection" | "clear" | "rebuild";
 type ClearKind = "群风格" | "语义风格";
 
@@ -138,6 +138,7 @@ const SEMANTIC_ACTION_TOASTS: Record<SemanticStyleAction, string> = {
   enable: "语义风格已全部启用",
   set_governance: "学习开关已更新",
   clear: "语义风格已清空",
+  rollback_v2: "已回滚至 v2 读管线",
 };
 
 const GROUP_ACTION_TOASTS: Record<GroupStyleAction, string> = {
@@ -241,6 +242,11 @@ function SemanticStyleControls({
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline">样例 {num(data?.example_count)}</Badge>
         <Badge variant="outline">画像 {num(data?.profile_count)}</Badge>
+        <Badge variant="outline">管线 {data?.active_pipeline ?? "v3"}</Badge>
+        {data?.v2_backup ? <Badge variant="outline">备份 {data.v2_backup}</Badge> : null}
+        {data?.experiment_governance?.circuit_disabled ? (
+          <Badge variant="destructive">实验已熔断</Badge>
+        ) : null}
       </div>
       <div className="grid gap-x-5 gap-y-1 sm:grid-cols-2">
         <ToggleRow
@@ -276,6 +282,12 @@ function SemanticStyleControls({
             <Button size="sm" variant="outline" icon={Ellipsis} disabled={busy}>更多操作</Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
+            <DropdownMenuItem
+              disabled={busy}
+              onClick={() => onAction({ action: "rollback_v2" })}
+            >
+              <RefreshCw className="size-4" /> 回滚 v2 读管线
+            </DropdownMenuItem>
             <DropdownMenuItem disabled={busy} onClick={() => onAction({ action: "quality" })}>
               <Gauge className="size-4" /> 质量评价
             </DropdownMenuItem>

@@ -8064,7 +8064,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "status" | "direct_enabled" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance";
+            action: "status" | "direct_enabled" | "clear" | "rebuild" | "quality" | "recover" | "disable" | "enable" | "set_governance" | "rollback_v2";
             /** Bot Id */
             bot_id?: number | null;
             /** Group Id */
@@ -8178,6 +8178,11 @@ export interface components {
             /** Direct Enabled */
             direct_enabled?: boolean | null;
             /**
+             * Active Pipeline
+             * @default v3
+             */
+            active_pipeline: string;
+            /**
              * Example Count
              * @default 0
              */
@@ -8187,6 +8192,27 @@ export interface components {
              * @default 0
              */
             profile_count: number;
+            /**
+             * Schema Version
+             * @default 3
+             */
+            schema_version: number;
+            /**
+             * Injectable Behavior Patterns
+             * @default 0
+             */
+            injectable_behavior_patterns: number;
+            /**
+             * Injectable Continuation Patterns
+             * @default 0
+             */
+            injectable_continuation_patterns: number;
+            /** V2 Backup */
+            v2_backup?: string | null;
+            /** Experiment Governance */
+            experiment_governance?: {
+                [key: string]: unknown;
+            };
             /** Backfill Cursor */
             backfill_cursor?: {
                 [key: string]: unknown;
