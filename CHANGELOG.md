@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.23] - 2026-09-08
 
 ### 更新公告
 
@@ -12,6 +12,15 @@
 - **语义风格治理**：
   - 语义风格卡展示当前读管线、v2 备份和实验熔断状态
   - 支持从「更多操作」回滚至 v2 读管线
+
+### 提交明细
+
+### Added
+
+* feat(webui): 语义风格 v3 状态与回滚维护 ([65beb30](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/65beb301c4b18d351b01e464fbad95ad9085393a))
+
+**完整变更**: [`v0.9.22...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.22...HEAD)
+
 
 ## [0.9.22] - 2026-09-06
 
@@ -50,7 +59,6 @@
 * fix(webui): 合并 v0.9.21 CHANGELOG 重复段 ([57d1da3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/57d1da399f3232c75012a0a445c8b1640f34c8f6))
 
 **完整变更**: [`v0.9.21...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.21...HEAD)
-
 
 ## [0.9.21] - 2026-09-05
 
