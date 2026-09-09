@@ -1,10 +1,9 @@
-import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import { AI_OBSERVATION_DEFAULT_PATH } from "@/config/aiObservationSections";
 
 /** 配置 / 治理 / 观测入口的统一说明与跳转目标 */
 export const AI_ENTRY_RUNTIME = {
   label: "AI 观测",
-  shortLead: "查看用量、回放会话与诊断运行问题；媒体启停见 AI 配置 · 媒体。",
+  shortLead: "查看用量、回放会话与诊断运行问题；媒体启停见媒体配置。",
   path: AI_OBSERVATION_DEFAULT_PATH,
 } as const;
 
@@ -17,7 +16,7 @@ export const AI_ENTRY_GOVERNANCE = {
 export const AI_ENTRY_SITE_GATEWAY_CHECK = {
   label: "站点级网关检测",
   shortLead: "按画画等服务网关地址，批量探测画画、点歌、MAA 等连通性。",
-  path: aiConfigSectionPath("media", "draw"),
+  path: "/media?panel=draw",
 } as const;
 
 export const AI_ENTRY_PLUGIN_CONFIG_CHECK = {
@@ -28,7 +27,7 @@ export const AI_ENTRY_PLUGIN_CONFIG_CHECK = {
 export const AI_ENTRY_CONNECTION_DIAG = {
   label: "连接诊断",
   shortLead: "按当前地址与 Token 探测媒体服务（Pallas-Bot-AI）。",
-  path: aiConfigSectionPath("media", "service"),
+  path: "/media?panel=service",
 } as const;
 
 /** task 相关配置分层说明（Provider / 路由页共用，避免同名 task 被当成同一项） */

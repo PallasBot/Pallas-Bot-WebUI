@@ -10,7 +10,6 @@ import type {
   PluginRow,
 } from "@/api/pallasTypes";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
-import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import { Save, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -146,7 +145,7 @@ export default function PluginConfigDialog({
         <div className="plugin-config-dialog__bd min-h-0 flex-1 overflow-auto">
           {showDrawAiConfigHint ? (
             <p className="px-4 pt-3 text-sm text-muted-foreground">
-              推荐在 <Link to={aiConfigSectionPath("media", "draw")} className="text-primary underline-offset-2 hover:underline">AI 配置 · 画画</Link>
+              推荐在 <Link to="/media?panel=draw" className="text-primary underline-offset-2 hover:underline">媒体配置 · 画画</Link>
               管理网关；本页为兼容入口，配置键相同。
             </p>
           ) : null}

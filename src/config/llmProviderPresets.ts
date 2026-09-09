@@ -7,6 +7,7 @@ export type LlmProviderPresetId =
   | "deepseek"
   | "dashscope"
   | "siliconflow"
+  | "ollama"
   | "custom";
 
 export type LlmProviderPreset = {
@@ -16,7 +17,7 @@ export type LlmProviderPreset = {
   base_url: string;
   host_match: string[];
   /** 应用预设时写入的请求方式 */
-  request_method?: "chat_completions" | "responses" | "anthropic_messages";
+  request_method?: "chat_completions" | "responses" | "anthropic_messages" | "ollama_chat";
 };
 
 export const LLM_PROVIDER_PRESETS: readonly LlmProviderPreset[] = [
@@ -68,6 +69,14 @@ export const LLM_PROVIDER_PRESETS: readonly LlmProviderPreset[] = [
     base_url: "https://api.siliconflow.cn/v1",
     host_match: ["api.siliconflow.cn"],
     request_method: "chat_completions",
+  },
+  {
+    id: "ollama",
+    label: "Ollama",
+    kind: "openai-compatible",
+    base_url: "https://ollama.com",
+    host_match: ["ollama.com"],
+    request_method: "ollama_chat",
   },
   {
     id: "custom",
@@ -152,6 +161,7 @@ export const LLM_PROVIDER_REQUEST_METHODS = [
   { id: "chat_completions", label: "Chat Completions" },
   { id: "responses", label: "Responses" },
   { id: "anthropic_messages", label: "Anthropic Messages" },
+  { id: "ollama_chat", label: "Ollama 原生" },
 ] as const;
 
 export const LLM_LOCAL_BASE_URL_SUGGESTIONS: readonly string[] = [

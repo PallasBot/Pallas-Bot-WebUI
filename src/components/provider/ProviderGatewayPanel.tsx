@@ -446,7 +446,7 @@ export default function ProviderGatewayPanel({
             to={aiConfigSectionPath("provider")}
             className="text-primary underline-offset-2 hover:underline"
           >
-            AI 配置 · 接入
+            大模型配置 · 接入
           </Link>
           。
           {busy ? " 正在保存…" : null}

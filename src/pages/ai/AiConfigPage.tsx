@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import { useCallback, useState } from "react";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AI_CONFIG_SECTIONS,
@@ -12,17 +12,13 @@ import {
 import { AiConfigChromeProvider } from "@/components/ai/AiConfigChromeContext";
 import AiConfigChromeTools from "@/components/ai/AiConfigChromeTools";
 import PageMasthead from "@/components/PageMasthead";
-import AiConfigBehaviorSection from "@/pages/ai/sections/AiConfigBehaviorSection";
 import AiConfigBudgetSection from "@/pages/ai/sections/AiConfigBudgetSection";
 import AiConfigDialogueSection from "@/pages/ai/sections/AiConfigDialogueSection";
-import AiConfigMediaSection from "@/pages/ai/sections/AiConfigMediaSection";
 import AiConfigProviderSection from "@/pages/ai/sections/AiConfigProviderSection";
 
 const SECTION_BODY: Record<string, ComponentType> = {
   provider: AiConfigProviderSection,
   dialogue: AiConfigDialogueSection,
-  media: AiConfigMediaSection,
-  behavior: AiConfigBehaviorSection,
   budget: AiConfigBudgetSection,
 };
 
@@ -34,20 +30,6 @@ const SECTION_REFRESH_KEYS: Record<string, string[][]> = {
     ["common-config-raw", "llm"],
     ["conversation-kernel-knowledge-sources"],
   ],
-  media: [
-    ["ai-extension-config"], ["ai-runtime"], ["ai-install"],
-    ["media-assets"], ["sing-models"], ["tts-voices"],
-    ["plugin-config", "draw"],
-    ["plugin-config-raw", "draw"],
-    ["ai-ncm"],
-  ],
-  behavior: [
-    ["llm-behavior-runs"],
-    ["llm-behavior-patterns"],
-    ["llm-repeater-feedback"],
-    ["llm-repeater-summary"],
-    ["llm-persona-observe"],
-  ],
   budget: [
     ["common-config", "llm"],
     ["common-config-raw", "llm"],
@@ -56,6 +38,7 @@ const SECTION_REFRESH_KEYS: Record<string, string[][]> = {
 
 export default function AiConfigPage() {
   const { section: rawSection } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const section = normalizeAiConfigSection(rawSection);
@@ -82,6 +65,12 @@ export default function AiConfigPage() {
   if (rawSection === "logs") {
     return <Navigate to={AI_CONFIG_LOGS_REDIRECT} replace />;
   }
+  if (section === "media") {
+    const params = new URLSearchParams(location.search);
+    if (!params.has("panel") && legacyPanel) params.set("panel", legacyPanel);
+    const search = params.toString() ? `?${params.toString()}` : "";
+    return <Navigate to={{ pathname: "/media", search }} replace />;
+  }
   if (section !== rawSection) {
     return <Navigate to={aiConfigSectionPath(section, legacyPanel)} replace />;
   }
@@ -89,7 +78,7 @@ export default function AiConfigPage() {
   return (
     <AiConfigChromeProvider search={search} setSearch={setSearch}>
       <div className="console-hub-page">
-        <PageMasthead title="AI 配置" description={meta.lead} />
+        <PageMasthead title="大模型配置" description={meta.lead} />
 
         <AiConfigChromeTools
           section={section}

@@ -1,4 +1,4 @@
-import { Layers, Server, Sparkles, type LucideIcon } from "lucide-react";
+import { Layers, Server, SlidersHorizontal, Sparkles, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   AI_CONFIG_SECTIONS,
@@ -23,7 +23,7 @@ import {
 const SECTION_ICONS: Record<AiConfigSectionId, LucideIcon> = {
   provider: Server,
   dialogue: Sparkles,
-  media: Layers,
+  budget: SlidersHorizontal,
 };
 
 /**
@@ -39,6 +39,7 @@ export default function AiConfigChromeTools({
   search,
   className,
   trailing,
+  hideSectionSelect = false,
 }: {
   section: AiConfigSectionId;
   onSectionChange: (id: AiConfigSectionId) => void;
@@ -51,6 +52,7 @@ export default function AiConfigChromeTools({
   };
   className?: string;
   trailing?: ReactNode;
+  hideSectionSelect?: boolean;
 }) {
   const slots = useAiConfigChromeSlots();
   const middle = slots.middle;
@@ -61,24 +63,26 @@ export default function AiConfigChromeTools({
 
   return (
     <ChromeTools sticky className={className}>
-      <ChromeField label="选择" icon={Layers} className="shrink-0">
-        <Select value={section} onValueChange={(v) => onSectionChange(v as AiConfigSectionId)}>
-          <SelectTrigger className={CHROME_SELECT_TRIGGER}>
-            <SelectValue placeholder="选择">
-              <ChromeOptionLabel icon={SECTION_ICONS[section] ?? Layers}>
-                {currentLabel}
-              </ChromeOptionLabel>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent align="start">
-            {AI_CONFIG_SECTIONS.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                <ChromeOptionLabel icon={SECTION_ICONS[s.id] ?? Layers}>{s.label}</ChromeOptionLabel>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </ChromeField>
+      {!hideSectionSelect ? (
+        <ChromeField label="选择" icon={Layers} className="shrink-0">
+          <Select value={section} onValueChange={(v) => onSectionChange(v as AiConfigSectionId)}>
+            <SelectTrigger className={CHROME_SELECT_TRIGGER}>
+              <SelectValue placeholder="选择">
+                <ChromeOptionLabel icon={SECTION_ICONS[section] ?? Layers}>
+                  {currentLabel}
+                </ChromeOptionLabel>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent align="start">
+              {AI_CONFIG_SECTIONS.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  <ChromeOptionLabel icon={SECTION_ICONS[s.id] ?? Layers}>{s.label}</ChromeOptionLabel>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </ChromeField>
+      ) : null}
 
       {middle}
 

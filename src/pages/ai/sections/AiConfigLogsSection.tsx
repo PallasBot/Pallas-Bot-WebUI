@@ -22,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AI_EXTENSION_DOCKER_LOG_MOUNT, AI_EXTENSION_LOG_KINDS, AI_LOG_DEFAULTS, type AiExtensionLogKind } from "@/config/aiConstants";
-import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import { Link } from "react-router-dom";
 
 const LOG_KIND_ICONS: Record<AiExtensionLogKind, LucideIcon> = {
@@ -158,10 +157,10 @@ export default function AiConfigLogsSection({
       <p className="text-xs text-muted-foreground">
         查看 AI 扩展落盘日志（本机路径或远端回退），便于排查报错与任务失败。路径在{" "}
         <Link
-          to={aiConfigSectionPath("media", "service")}
+          to="/media?panel=service"
           className="text-primary underline-offset-2 hover:underline"
         >
-          AI 配置 · 媒体服务
+          媒体配置 · 媒体服务
         </Link>{" "}
         中配置。
       </p>

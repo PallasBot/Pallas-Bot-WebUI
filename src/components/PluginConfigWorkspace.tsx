@@ -48,7 +48,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import type { PluginReadmeTarget } from "@/utils/pluginReadmeTarget";
 import { normalizeBundledReadmeMarkdown, readmeMarkdownToSafeHtml } from "@/utils/pluginReadme";
 import { cn } from "@/lib/utils";
@@ -520,7 +519,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
       {showDrawAiConfigHint && !isDialog ? (
         <p className="muted plugin-config-dialog__ai-hint">
-          推荐在 <Link to={aiConfigSectionPath("media", "draw")}>AI 配置 · 画画</Link>
+          推荐在 <Link to="/media?panel=draw">媒体配置 · 画画</Link>
           管理网关；本页为兼容入口，配置键相同。
         </p>
       ) : null}

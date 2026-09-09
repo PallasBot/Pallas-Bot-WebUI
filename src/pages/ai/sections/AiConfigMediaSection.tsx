@@ -47,6 +47,7 @@ import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
 import ConsoleHint from "@/components/ConsoleHint";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import { ensureStringMapSpeakerGroup } from "@/components/config/StringMapField";
 import PluginConfigWorkspace, {
@@ -202,6 +203,7 @@ export default function AiConfigMediaSection() {
     });
   };
   const qc = useQueryClient();
+  const { confirm, confirmDialog } = useConsoleConfirm();
   /** ctl 已成功但冷启动 / 健康探活未就绪时，徽章显示「启动中」并加快轮询 */
   const [awaitingRuntimeUp, setAwaitingRuntimeUp] = useState(false);
 
@@ -442,6 +444,14 @@ export default function AiConfigMediaSection() {
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
+  const stopRuntime = async () => {
+    if (!(await confirm({
+      title: "停止媒体服务",
+      subtitle: "停止后唱歌、语音和画画等媒体能力将暂时不可用，确定继续？",
+      confirmLabel: "停止",
+    }))) return;
+    await stopMut.mutateAsync();
+  };
   const restartMut = useMutation({
     mutationFn: async () => {
       await postAiRuntimeStop();
@@ -695,6 +705,15 @@ export default function AiConfigMediaSection() {
     onSuccess: async () => { notifyOk("已删除选中资产"); await qc.invalidateQueries({ queryKey: ["media-assets"] }); },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
+  const deleteAssets = async (assets: string[]) => {
+    const label = assets.length === 1 ? `资产「${assets[0]}」` : `${assets.length} 个媒体资产`;
+    if (!(await confirm({
+      title: "删除媒体资产",
+      subtitle: `将永久删除${label}，确定继续？`,
+      confirmLabel: "删除",
+    }))) return;
+    await deleteMut.mutateAsync(assets);
+  };
   const singMut = useMutation({
     mutationFn: (body: {
       default_speaker: string;
@@ -941,7 +960,7 @@ export default function AiConfigMediaSection() {
             })();
           }}
         >
-          {singMut.isPending || singPluginStatus.saving ? "保存中…" : "保存"}
+          {singMut.isPending || singPluginStatus.saving ? "保存中…" : "保存唱歌设置"}
         </Button>
       );
     }
@@ -955,7 +974,7 @@ export default function AiConfigMediaSection() {
           disabled={busy || ttsQ.isLoading || ttsMut.isPending}
           onClick={() => { void ttsSaveRef.current(); }}
         >
-          {ttsMut.isPending ? "保存中…" : "保存"}
+          {ttsMut.isPending ? "保存中…" : "保存语音设置"}
         </Button>
       );
     }
@@ -993,7 +1012,7 @@ export default function AiConfigMediaSection() {
           }
           onClick={() => void drawWorkspaceRef.current?.save()}
         >
-          {drawStatus.saving ? "保存中…" : "保存"}
+          {drawStatus.saving ? "保存中…" : "保存画画配置"}
         </Button>
       </>
     );
@@ -1008,7 +1027,7 @@ export default function AiConfigMediaSection() {
     ttsMut.isPending,
   ]);
 
-  useRegisterAiConfigChrome({ middle: chromeMiddle, trailing: chromeTrailing });
+  useRegisterAiConfigChrome({ middle: chromeMiddle, trailing: chromeTrailing, onRefresh: invalidate });
 
   const panelMeta =
     contentPanel === "draw"
@@ -1128,7 +1147,7 @@ export default function AiConfigMediaSection() {
     return null;
   }, [contentPanel, singModelsAbs, singModelsRel]);
 
-  return <AiConfigSectionCard contentClassName="space-y-4">
+  return <><AiConfigSectionCard contentClassName="space-y-4">
     <AiSectionHeader
       icon={panelMeta.icon}
       title={panelMeta.label}
@@ -1238,7 +1257,7 @@ export default function AiConfigMediaSection() {
                   >
                     重启
                   </Button>
-                  <Button size="sm" variant="outline" icon={Square} disabled={busy || !canManageRuntime} onClick={() => { void stopMut.mutateAsync(); }}>停止</Button>
+                  <Button size="sm" variant="outline" icon={Square} disabled={busy || !canManageRuntime} onClick={() => { void stopRuntime(); }}>停止</Button>
                   {installPrimary.visible !== false ? (
                     <Button
                       size="sm"
@@ -1421,7 +1440,7 @@ export default function AiConfigMediaSection() {
               </AiConfigField>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" icon={Save} disabled={busy} onClick={() => { void saveMut.mutateAsync(); }}>保存</Button>
+              <Button size="sm" icon={Save} disabled={busy} onClick={() => { void saveMut.mutateAsync(); }}>保存连接配置</Button>
               <Button size="sm" variant="outline" icon={Unplug} disabled={busy} onClick={() => { void testMut.mutateAsync(); }}>测试连通</Button>
             </div>
           </PluginConfigFormSection>
@@ -1499,7 +1518,7 @@ export default function AiConfigMediaSection() {
                       variant="outline"
                       icon={Trash2}
                       disabled={busy || !asset?.ready || mediaQ.data?.delete_allowed === false}
-                      onClick={() => { void deleteMut.mutateAsync([key]); }}
+                      onClick={() => { void deleteAssets([key]); }}
                     >
                       删除
                     </Button>
@@ -2039,5 +2058,5 @@ export default function AiConfigMediaSection() {
       </div>
       )
     ) : null}
-  </AiConfigSectionCard>;
+  </AiConfigSectionCard>{confirmDialog}</>;
 }
