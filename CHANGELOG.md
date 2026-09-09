@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.24] - 2026-09-09
 
 ### 更新公告
 
@@ -18,6 +18,23 @@
   - 媒体配置独立为单独页面
 - **配置页**：
   - 优化配置页操作逻辑
+
+### 提交明细
+
+### Added
+
+* feat(webui): 注册模型配置默认折叠显示 ([1ee05d1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1ee05d183e11bfbd39ae9107a32e5b9cde8099c6))
+* feat(webui): 提供方定价规则支持多时段配置 ([33cffdb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/33cffdb6813387a6b5da804a9a2b73e147af30c6))
+* feat(webui): 优化配置页操作逻辑 ([689145f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/689145f542a31d70e9090be5f4854df9c466d583))
+* feat(webui): 提供方预设支持 Ollama 原生请求 ([e618025](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e6180257ef95275a8381163df4feca4e3364d9c7))
+* feat(webui): 将媒体配置独立为单独页面 ([a31f745](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a31f7452811731b84553a80954c02a3c4715c177))
+
+### Changed
+
+* chore(webui): 统一大模型配置导航文案 ([82b1d68](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/82b1d6818aa84a1c203635ea5eb94d4fabe48cf6))
+
+**完整变更**: [`v0.9.23...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.23...HEAD)
+
 
 ## [0.9.23] - 2026-09-08
 
@@ -35,7 +52,6 @@
 * feat(webui): 语义风格 v3 状态与回滚维护 ([65beb30](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/65beb301c4b18d351b01e464fbad95ad9085393a))
 
 **完整变更**: [`v0.9.22...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.22...HEAD)
-
 
 ## [0.9.22] - 2026-09-06
 
