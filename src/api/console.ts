@@ -474,7 +474,7 @@ export type LlmProviderModelEffort =
   | "high"
   | "xhigh";
 
-export type LlmProviderRequestMethod = "chat_completions" | "responses";
+export type LlmProviderRequestMethod = "chat_completions" | "responses" | "anthropic_messages" | "ollama_chat";
 
 export type LlmModelPricingRow = {
   price_in?: number;

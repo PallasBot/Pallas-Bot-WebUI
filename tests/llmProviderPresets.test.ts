@@ -15,6 +15,7 @@ describe("llmProviderPresets", () => {
       "deepseek",
       "dashscope",
       "siliconflow",
+      "ollama",
       "custom",
     ]);
   });
