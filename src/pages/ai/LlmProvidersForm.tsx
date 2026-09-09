@@ -1617,7 +1617,7 @@ export default function LlmProvidersForm() {
                     <div className="space-y-1.5">
                       {(draft.models || []).map((model) => {
                         const modelKey = model.model_id || model.name;
-                        const collapsed = Boolean(collapsedModels[modelKey]);
+                        const collapsed = collapsedModels[modelKey] !== false;
                         return <div key={modelKey} className="space-y-1.5 rounded border border-border/70 px-2.5 py-2">
                           <div className="flex items-center justify-between gap-2">
                             <span className="min-w-0 truncate font-mono text-xs">{model.name}</span>
