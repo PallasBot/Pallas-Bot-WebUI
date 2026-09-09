@@ -199,6 +199,15 @@ function fmtPrice(v: number | undefined): string {
   return String(parseFloat(v.toFixed(6)));
 }
 
+/** 兼容读取：优先 daily_ranges，缺失时回退旧的 daily_start/daily_end 单段。 */
+function rangesOf(rule: LlmProviderPricingRule): [string, string][] {
+  if (rule.daily_ranges?.length) return rule.daily_ranges;
+  if (rule.daily_start || rule.daily_end) {
+    return [[rule.daily_start || "00:00", rule.daily_end || "24:00"]];
+  }
+  return [];
+}
+
 function formatPricingRuleSummary(rule: LlmProviderPricingRule): string {
   const parts: string[] = [];
   if (rule.kind === "per_request") {
@@ -222,9 +231,8 @@ function formatPricingRuleSummary(rule: LlmProviderPricingRule): string {
   if (rule.input_tokens_min != null || rule.input_tokens_max != null) {
     parts.push(`[${rule.input_tokens_min ?? ""}-${rule.input_tokens_max ?? ""}]`);
   }
-  if (rule.daily_start || rule.daily_end) {
-    parts.push(`${rule.daily_start || "00:00"}~${rule.daily_end || "24:00"}`);
-  }
+  const ranges = rangesOf(rule);
+  parts.push(ranges.length ? ranges.map(([s, e]) => `${s}~${e}`).join("、") : "全天默认");
   return parts.join(" · ");
 }
 
@@ -241,6 +249,54 @@ function DailyTimeSelect({ value, onValueChange, label }: { value?: string; onVa
       </div>
     </PopoverContent>
   </Popover>;
+}
+
+function DailyRangesEditor({ ranges, onChange }: { ranges: [string, string][]; onChange: (ranges: [string, string][]) => void }) {
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [open, setOpen] = useState(false);
+  const add = () => {
+    const next = [...ranges, [start || "00:00", end || "24:00"] as [string, string]];
+    next.sort((a, b) => a[0].localeCompare(b[0]));
+    onChange(next);
+    setStart("");
+    setEnd("");
+    setOpen(false);
+  };
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-[11px] text-muted-foreground">每日时段（不选 = 全天默认，其余时间用此价）</Label>
+      <div className="flex flex-wrap items-center gap-1">
+        {ranges.map(([s, e], i) => (
+          <span key={`${s}-${e}-${i}`} className="inline-flex items-center gap-1 rounded border px-1.5 font-mono text-[11px]">
+            {s}~{e}
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground"
+              aria-label={`删除时段 ${s}~${e}`}
+              onClick={() => onChange(ranges.filter((_, idx) => idx !== i))}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button type="button" size="sm" variant="outline" className="h-6 px-1.5 text-[11px]">
+              {ranges.length ? "添加时段" : "选择时段"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 space-y-2 p-2" align="start">
+            <div className="grid grid-cols-2 gap-2">
+              <DailyTimeSelect label="开始" value={start} onValueChange={setStart} />
+              <DailyTimeSelect label="结束" value={end} onValueChange={setEnd} />
+            </div>
+            <Button type="button" size="sm" className="h-7 w-full text-xs" onClick={add}>添加时段</Button>
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+  );
 }
 
 export default function LlmProvidersForm() {
@@ -517,7 +573,7 @@ export default function LlmProvidersForm() {
 
   function setPricingRuleKind(modelName: string, ruleId: string, kind: LlmProviderPricingRule["kind"]) {
     setDraft((d) => ({ ...d, models: (d.models || []).map((model) => model.name !== modelName ? model : {
-      ...model, pricing_rules: (model.pricing_rules || []).map((rule) => rule.id !== ruleId ? rule : { ...newPricingRule(kind), id: rule.id, input_tokens_min: rule.input_tokens_min, input_tokens_max: rule.input_tokens_max, daily_start: rule.daily_start, daily_end: rule.daily_end }),
+      ...model, pricing_rules: (model.pricing_rules || []).map((rule) => rule.id !== ruleId ? rule : { ...newPricingRule(kind), id: rule.id, input_tokens_min: rule.input_tokens_min, input_tokens_max: rule.input_tokens_max, daily_ranges: rule.daily_ranges }),
     }) }));
   }
 
@@ -536,9 +592,10 @@ export default function LlmProvidersForm() {
     }));
   }
 
-  function setPricingRuleText(modelName: string, ruleId: string, field: "daily_start" | "daily_end", value: string) {
+  function setPricingRuleRanges(modelName: string, ruleId: string, ranges: [string, string][]) {
     setDraft((d) => ({ ...d, models: (d.models || []).map((model) => model.name !== modelName ? model : {
-      ...model, pricing_rules: (model.pricing_rules || []).map((rule) => rule.id === ruleId ? { ...rule, [field]: value || undefined } : rule),
+      ...model,
+      pricing_rules: (model.pricing_rules || []).map((rule) => rule.id === ruleId ? { ...rule, daily_ranges: ranges, daily_start: undefined, daily_end: undefined } : rule),
     }) }));
   }
 
@@ -1678,10 +1735,7 @@ export default function LlmProvidersForm() {
                                 <Input className="h-8 font-mono text-xs" inputMode="numeric" value={rule.input_tokens_min || ""} placeholder="输入 >=（可空）" onChange={(event) => setPricingRuleValue(model.name, rule.id, "input_tokens_min", parseModelPrice(event.target.value))} />
                                 <Input className="h-8 font-mono text-xs" inputMode="numeric" value={rule.input_tokens_max || ""} placeholder="输入 <=（可空）" onChange={(event) => setPricingRuleValue(model.name, rule.id, "input_tokens_max", parseModelPrice(event.target.value))} />
                               </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <DailyTimeSelect label="开始时间" value={rule.daily_start} onValueChange={(value) => setPricingRuleText(model.name, rule.id, "daily_start", value)} />
-                                <DailyTimeSelect label="结束时间" value={rule.daily_end} onValueChange={(value) => setPricingRuleText(model.name, rule.id, "daily_end", value)} />
-                              </div>
+                              <DailyRangesEditor ranges={rangesOf(rule)} onChange={(ranges) => setPricingRuleRanges(model.name, rule.id, ranges)} />
                             </div>
                           ))}
                           <Button type="button" size="sm" variant="outline" className="h-8" icon={Plus} onClick={() => addPricingRule(model.name)}>添加价格条件</Button>

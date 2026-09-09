@@ -497,6 +497,8 @@ export type LlmProviderPricingRule = {
   priority?: number;
   daily_start?: string;
   daily_end?: string;
+  /** 每日时段区间列表（可多条、可跨零点）；缺失/空 = 全天兜底。优先于 daily_start/end。 */
+  daily_ranges?: [string, string][];
   /** 单次请求输入 Token 闭区间。 */
   input_tokens_min?: number;
   input_tokens_max?: number;
