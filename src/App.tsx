@@ -30,6 +30,7 @@ const ProtocolImportTab = lazy(() => import("@/pages/protocol/ProtocolImportTab"
 const ProtocolRuntimeTab = lazy(() => import("@/pages/protocol/ProtocolRuntimeTab"));
 const UpdatePage = lazy(() => import("@/pages/UpdatePage"));
 const AiConfigPage = lazy(() => import("@/pages/ai/AiConfigPage"));
+const MediaPage = lazy(() => import("@/pages/media/MediaPage"));
 const AiGovernancePage = lazy(() => import("@/pages/ai/governance/AiGovernancePage"));
 const AiHistoryPage = lazy(() => import("@/pages/ai/AiHistoryPage"));
 const AiLayout = lazy(() => import("@/pages/ai/AiLayout"));
@@ -112,6 +113,7 @@ export default function App() {
         <Route path="setup" element={<SetupWizardPage />} />
         <Route path="security" element={<Navigate to="/preferences#console-password" replace />} />
         <Route path="update" element={<UpdatePage />} />
+        <Route path="media" element={<MediaPage />} />
         <Route path="ai" element={<AiLayout />}>
           <Route path="governance" element={<AiGovernancePage />} />
           <Route path="memory" element={<AiRetiredSectionRedirect tab="memory" />} />

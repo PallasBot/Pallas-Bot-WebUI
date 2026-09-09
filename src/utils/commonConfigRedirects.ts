@@ -44,6 +44,6 @@ export function commonConfigLegacyRedirectPath(sectionId: string): string {
   const id = sectionId.trim();
   if (id === "llm") return "/ai/config/dialogue?panel=form";
   if (id === "arknights_kb") return "/ai/config/dialogue?panel=arknights";
-  if (id === "service_gateways") return "/ai/config/media?panel=draw";
+  if (id === "service_gateways") return "/media?panel=draw";
   return commonConfigSectionRedirectTarget(id) || "/plugins";
 }

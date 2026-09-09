@@ -1008,7 +1008,7 @@ export default function AiConfigMediaSection() {
     ttsMut.isPending,
   ]);
 
-  useRegisterAiConfigChrome({ middle: chromeMiddle, trailing: chromeTrailing });
+  useRegisterAiConfigChrome({ middle: chromeMiddle, trailing: chromeTrailing, onRefresh: invalidate });
 
   const panelMeta =
     contentPanel === "draw"

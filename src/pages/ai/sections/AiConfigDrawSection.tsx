@@ -10,7 +10,6 @@ import PluginConfigWorkspace, {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
-import { aiConfigSectionPath } from "@/config/aiConfigSections";
 
 /** 旧独立画画段；现行入口为媒体 · 画画。 */
 export default function AiConfigDrawSection() {
@@ -56,8 +55,8 @@ export default function AiConfigDrawSection() {
               <span>
                 画画配置已并入
                 {" "}
-                <Link to={aiConfigSectionPath("media", "draw")}>
-                  AI 配置 · 媒体 · 画画
+                <Link to="/media?panel=draw">
+                  媒体配置 · 画画
                 </Link>
                 ；此处与插件配置共享。未安装时请先到
                 {" "}

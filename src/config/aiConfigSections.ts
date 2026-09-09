@@ -25,12 +25,6 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
     icon: "sparkles",
   },
   {
-    id: "media",
-    label: "媒体",
-    lead: "唱歌、语音、画画、网易云等媒体能力（与文字聊天提供方分开）。",
-    icon: "layers",
-  },
-  {
     id: "budget",
     label: "预算",
     lead: "各任务每日调用/输入上限与单次上下文预算，防止成本失控。",
@@ -40,8 +34,9 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
 
 export type AiConfigSectionId = (typeof AI_CONFIG_SECTIONS)[number]["id"];
 
-/** 旧分区 id → 现行分区（logs 不在此表，由配置页单独重定向到观测） */
+/** 旧分区 id → 现行分区；media 是独立页面的迁移哨兵。 */
 const LEGACY_SECTION_ALIASES: Record<string, AiConfigSectionId> = {
+  media: "media",
   model: "provider",
   runtime: "provider",
   routing: "provider",
@@ -84,7 +79,7 @@ export const AI_TOP_LEVEL_NAV: AiTopLevelNavDef[] = [
   {
     id: "config",
     label: "AI 配置",
-    lead: "接模型、调群聊策略、管媒体能力。",
+    lead: "接模型、调群聊策略、管预算与限制。",
     icon: "sparkles",
     path: "/ai/config/provider",
   },
@@ -127,7 +122,7 @@ export function legacyAiConfigPanel(raw: unknown): string | undefined {
   return s ? LEGACY_SECTION_DEFAULT_PANEL[s] : undefined;
 }
 
-/** 旧运行态分区已并入 AI 观测 · 统计（媒体启停见 AI 配置 · 媒体服务）。 */
+/** 旧运行态分区已并入 AI 观测 · 统计。媒体启停见独立媒体页。 */
 export const AI_CONFIG_LEGACY_RUNTIME_REDIRECT = "/ai/statistics";
 
 /** 牛格观测已迁入 AI 历史 · 群维护工作区。 */

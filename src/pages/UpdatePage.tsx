@@ -1197,7 +1197,7 @@ export default function UpdatePage() {
             </div>
             <div className="update-page__panel-hd-actions">
               <Button asChild type="button" variant="secondary" size="sm" className="group">
-                <Link to="/ai/config/media?panel=service">前往 AI 配置</Link>
+                <Link to="/media?panel=service">前往媒体配置</Link>
               </Button>
             </div>
           </CardHeader>
