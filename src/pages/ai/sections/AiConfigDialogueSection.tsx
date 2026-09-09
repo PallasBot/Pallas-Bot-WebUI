@@ -63,9 +63,9 @@ const SELECT_OPTIONS: Array<{ value: ContentPanel; label: string; icon: LucideIc
   },
   {
     value: "budget",
-    label: "上下文预算",
+    label: "上下文长度",
     icon: Gauge,
-    lead: "单次对话最多塞进多少字的记忆/旁听/说明，防止撑爆模型。",
+    lead: "单次对话最多注入多少字的记忆、旁听与说明，防止撑爆模型。",
   },
   { value: "arknights", label: "方舟知识库", icon: BookOpen, lead: "明日方舟相关知识的检索与注入。" },
   { value: "sources", label: "语料源", icon: Library, lead: "当前已登记、可供接话选用的语料来源。" },
@@ -187,6 +187,18 @@ export default function AiConfigDialogueSection() {
 
   const chromeTrailing = useMemo(() => {
     if (contentPanel === "sources" || contentPanel === "tools") return null;
+    const saveLabel =
+      contentPanel === "form"
+        ? editMode === "raw"
+          ? "保存 TOML"
+          : "保存对话配置"
+        : contentPanel === "session"
+          ? "保存会话设置"
+          : contentPanel === "memory"
+            ? "保存记忆设置"
+            : contentPanel === "budget"
+              ? "保存上下文设置"
+              : "保存配置";
     return (
       <Button
         type="button"
@@ -195,10 +207,10 @@ export default function AiConfigDialogueSection() {
         disabled={!saveState?.dirty || Boolean(saveState?.saving)}
         onClick={() => saveState?.save()}
       >
-        {saveState?.saving ? "保存中…" : "保存"}
+        {saveState?.saving ? "保存中…" : saveLabel}
       </Button>
     );
-  }, [contentPanel, saveState]);
+  }, [contentPanel, editMode, saveState]);
 
   useRegisterAiConfigChrome({ middle: chromeMiddle, trailing: chromeTrailing });
 
@@ -209,7 +221,7 @@ export default function AiConfigDialogueSection() {
         : SELECT_OPTIONS[0]
       : SELECT_OPTIONS.find((p) => p.value === contentPanel) || SELECT_OPTIONS[0];
 
-  // 会话 / 记忆 / 上下文预算：AiLlmFieldPanel 已有图标段头，外层再写分区名会重复。
+  // 会话 / 记忆 / 上下文长度：AiLlmFieldPanel 已有图标段头，外层再写分区名会重复。
   const fieldPanelIds = new Set<ContentPanel>(["session", "memory", "budget"]);
   const showCardHeader = !fieldPanelIds.has(contentPanel);
 
@@ -272,10 +284,10 @@ export default function AiConfigDialogueSection() {
       {contentPanel === "budget" ? (
         <AiLlmFieldPanel
           icon={Gauge}
-          title="上下文预算"
+          title="上下文长度"
           lead="单次 LLM 对话可注入的字符上限。0 表示不限制。"
           detailKeys={LLM_BUDGET_DETAIL_KEYS}
-          savedMessage="上下文预算已保存"
+          savedMessage="上下文长度已保存"
           inlineSave={false}
           onSaveState={onSaveState}
         />

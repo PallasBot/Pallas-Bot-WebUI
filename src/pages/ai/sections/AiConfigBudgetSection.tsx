@@ -33,7 +33,7 @@ export default function AiConfigBudgetSection() {
         disabled={!saveState?.dirty || Boolean(saveState?.saving)}
         onClick={() => saveState?.save()}
       >
-        {saveState?.saving ? "保存中…" : "保存"}
+        {saveState?.saving ? "保存中…" : "保存调用限额"}
       </Button>
     ),
     [saveState],
@@ -45,10 +45,10 @@ export default function AiConfigBudgetSection() {
     <AiConfigSectionCard contentClassName="space-y-4">
       <AiLlmFieldPanel
         icon={SlidersHorizontal}
-        title="预算"
-        lead="各任务每日上限与单次上下文预算。0 表示不限制。"
+        title="调用限额"
+        lead="各任务每日调用与输入上限。0 表示不限制。"
         detailKeys={LLM_DAILY_BUDGET_DETAIL_KEYS}
-        savedMessage="预算配置已保存"
+        savedMessage="调用限额已保存"
         inlineSave={false}
         onSaveState={onSaveState}
       />

@@ -1124,7 +1124,7 @@ export default function LlmProvidersForm() {
     [tab, doc.routing.cost_currency, tasksViewMode],
   );
 
-  /** 工具条右钉：保存 / 测试共用一个按钮位（在刷新左侧） */
+  /** 工具条右钉：按当前接入分区标明保存或测试范围。 */
   const chromeTrailing = useMemo(() => {
     if (tab === "runtime") return null;
     if (tab === "routing") {
@@ -1138,7 +1138,7 @@ export default function LlmProvidersForm() {
           disabled={!localDirty || localSaving}
           onClick={() => void saveLocal()}
         >
-          {localSaving ? "保存中…" : "保存"}
+          {localSaving ? "保存中…" : "保存 Ollama 分档"}
         </Button>
       );
     }
@@ -1153,7 +1153,7 @@ export default function LlmProvidersForm() {
           disabled={!dirty || saving}
           onClick={() => void saveProviders()}
         >
-          {saving ? "保存中…" : "保存"}
+          {saving ? "保存中…" : tab === "tasks" ? "保存任务编排" : "保存提供方"}
         </Button>
       );
     }
@@ -1166,7 +1166,7 @@ export default function LlmProvidersForm() {
         disabled={Boolean(testBusy) || doc.providers.length === 0}
         onClick={() => void testAllProviders()}
       >
-        {testBusy === "__all__" ? "测试中…" : "测试"}
+        {testBusy === "__all__" ? "测试中…" : "测试所有提供方"}
       </Button>
     );
   }, [
@@ -1798,7 +1798,7 @@ export default function LlmProvidersForm() {
                           disabled={Boolean(testBusy)}
                           onClick={() => void testDraftProvider()}
                         >
-                          {testBusy ? "测试中…" : "测试"}
+                          {testBusy ? "测试中…" : "测试提供方"}
                         </Button>
                         {editIndex !== null ? (
                           <Button type="button" variant="destructive" size="sm" icon={Trash2} onClick={() => void removeProvider(editIndex)}>
@@ -1830,7 +1830,7 @@ export default function LlmProvidersForm() {
                       disabled={saving}
                       onClick={() => void submitEdit()}
                     >
-                      {saving ? "保存中…" : "保存"}
+                      {saving ? "保存中…" : "保存提供方"}
                     </Button>
                   </div>
                 </CardContent>

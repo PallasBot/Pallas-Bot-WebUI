@@ -9,7 +9,7 @@ import {
 describe("aiConfigSections", () => {
   it("keeps top-level sections with stable ids", () => {
     expect(AI_CONFIG_SECTIONS.map((s) => s.id)).toEqual(["provider", "dialogue", "budget"]);
-    expect(AI_CONFIG_SECTIONS.map((s) => s.label)).toEqual(["接入", "接话", "预算"]);
+    expect(AI_CONFIG_SECTIONS.map((s) => s.label)).toEqual(["接入", "接话", "调用限额"]);
   });
 
   it("normalizes legacy section aliases", () => {

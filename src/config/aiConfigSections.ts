@@ -26,8 +26,8 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   },
   {
     id: "budget",
-    label: "预算",
-    lead: "各任务每日调用/输入上限与单次上下文预算，防止成本失控。",
+    label: "调用限额",
+    lead: "各任务每日调用与输入上限，防止成本失控。",
     icon: "sliders",
   },
   ];
