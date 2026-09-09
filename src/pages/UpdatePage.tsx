@@ -1216,7 +1216,7 @@ export default function UpdatePage() {
             {aiInstallQ.data?.update_check_error ? (
               <p className="update-page__release-foot muted">检查失败：{aiInstallQ.data.update_check_error}</p>
             ) : aiRuntime.state === "update_available" ? (
-              <p className="update-page__release-foot muted">更新会在 AI 配置页执行，并重新运行依赖安装与运行时启动流程。</p>
+              <p className="update-page__release-foot muted">更新会在媒体配置页执行，并重新运行依赖安装与运行时启动流程。</p>
             ) : null}
           </CardContent>
         </Card>

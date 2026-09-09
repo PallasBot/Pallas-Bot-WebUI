@@ -78,7 +78,7 @@ export default function AiConfigPage() {
   return (
     <AiConfigChromeProvider search={search} setSearch={setSearch}>
       <div className="console-hub-page">
-        <PageMasthead title="AI 配置" description={meta.lead} />
+        <PageMasthead title="大模型配置" description={meta.lead} />
 
         <AiConfigChromeTools
           section={section}

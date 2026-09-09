@@ -78,7 +78,7 @@ export const AI_TOP_LEVEL_NAV: AiTopLevelNavDef[] = [
   },
   {
     id: "config",
-    label: "AI 配置",
+    label: "大模型配置",
     lead: "接模型、调群聊策略、管预算与限制。",
     icon: "sparkles",
     path: "/ai/config/provider",
