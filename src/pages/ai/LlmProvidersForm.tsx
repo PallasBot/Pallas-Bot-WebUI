@@ -101,7 +101,7 @@ const PROVIDER_TABS: Array<{ id: Tab; label: string; icon: LucideIcon; lead: str
     id: "tasks",
     label: "任务编排",
     icon: ListTree,
-    lead: "按场景指定主用/备用：@ LLM 对话、酒后聊天、本轮动作决策等。",
+    lead: "按场景指定主用/备用：@ LLM 对话、酒后聊天、记忆与后台任务等。",
   },
   {
     id: "runtime",
@@ -1079,6 +1079,7 @@ export default function LlmProvidersForm() {
         title={meta.title}
         description={meta.description}
         className={className}
+        // 后台任务未指定时沿用全局兜底，属正常状态，不标红
         primaryInvalid={!slot.primary.providerId}
         primary={renderProviderModelSlot({
           providerId: slot.primary.providerId,
@@ -1909,7 +1910,7 @@ export default function LlmProvidersForm() {
             title={activeTabMeta.label}
             lead={
               tab === "tasks"
-                ? "高低两档即对应任务组；改档会同步全任务列表。运行时若同任务既有全任务备用又有档位备用，优先全任务。"
+                ? "高低两档即对应任务组；改档会同步全任务列表（含记忆与后台任务）。视觉选图独立于档位，单独指定。运行时若同任务既有全任务备用又有档位备用，优先全任务。"
                 : tab === "runtime"
                   ? "切换本机 Ollama 模型与 GPU 层数。"
                   : activeTabMeta.lead
@@ -2003,7 +2004,7 @@ export default function LlmProvidersForm() {
                   <div className="mt-4">{renderRoutableTaskCard("sticker_vision")}</div>
                 </>
               ) : (
-                <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-4">
+                <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-4 max-sm:grid-cols-1">
                   {ALL_ROUTABLE_TASKS.map((task) =>
                     renderRoutableTaskCard(task, task === "sticker_vision" ? "col-span-full" : undefined),
                   )}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_ROUTABLE_TASKS,
+  AUX_TASKS,
   LOW_TIER_TASKS,
   TASK_ROUTE_META,
   applyLocalTiers,
@@ -19,6 +20,18 @@ describe("llmTierRouting task tiers", () => {
       title: "本轮动作决策",
       kind: "low",
     });
+  });
+
+  it("folds background memory tasks into the low tier", () => {
+    for (const task of ["memory_episode", "memory_person_facts", "llm.relationship.affinity"]) {
+      expect(AUX_TASKS).toContain(task);
+      expect(LOW_TIER_TASKS).toContain(task);
+      expect(ALL_ROUTABLE_TASKS).toContain(task);
+      expect(TASK_ROUTE_META[task].kind).toBe("low");
+    }
+    // 档位分组本身不受影响
+    expect(AUX_TASKS).not.toContain("llm_chat");
+    expect(AUX_TASKS).not.toContain("affect_refine");
   });
 
   it("expands high/low primary into task routes and chain", () => {
@@ -40,26 +53,22 @@ describe("llmTierRouting task tiers", () => {
       },
     });
     expect(next.routing.tasks.llm_chat).toBe("cloud");
-    expect(next.routing.tasks.repeater_select).toBe("local");
+    expect(next.routing.tasks.turn_decision).toBe("local");
     expect(next.routing.tasks.affect_refine).toBe("local");
     expect(next.routing.chain_fallback).toEqual(["cloud", "local"]);
     expect(next.providers.find((p) => p.id === "cloud")?.task_models.llm_chat).toBe("gpt-4o");
-    expect(next.providers.find((p) => p.id === "local")?.task_models.repeater_select).toBe("qwen7");
+    expect(next.providers.find((p) => p.id === "local")?.task_models.turn_decision).toBe("qwen7");
     expect(next.providers.find((p) => p.id === "local")?.task_models.affect_refine).toBe("qwen7");
     expect(next.providers.find((p) => p.id === "local")?.task_models.llm_chat).toBe("qwen14");
-    expect(next.providers.find((p) => p.id === "cloud")?.task_models.repeater_select).toBe(
+    expect(next.providers.find((p) => p.id === "cloud")?.task_models.turn_decision).toBe(
       "gpt-mini",
     );
     expect(next.routing.route_source).toBe("tiers");
+    // 低档现在覆盖记忆与后台任务，备用随低档一并同步
     expect(next.routing.task_backups).toEqual({
       llm_chat: "local",
       drunk: "local",
-      repeater_polish: "local",
-      repeater_select: "cloud",
-      repeater_polish_lite: "cloud",
-      repeater_fallback: "cloud",
-      affect_refine: "cloud",
-      turn_decision: "cloud",
+      ...Object.fromEntries(LOW_TIER_TASKS.map((task) => [task, "cloud"])),
     });
     expect(next.routing.tier_backups).toEqual({ high: "local", low: "cloud" });
   });
@@ -84,7 +93,7 @@ describe("llmTierRouting task tiers", () => {
     });
     const local = next.providers.find((p) => p.id === "local");
     expect(local?.task_models.llm_chat).toBe("qwen14");
-    expect(local?.task_models.repeater_select).toBe("qwen7");
+    expect(local?.task_models.turn_decision).toBe("qwen7");
     const folded = foldTaskTiers(next);
     expect(folded.high.backup).toEqual({ providerId: "local", model: "qwen14" });
     expect(folded.low.primary).toEqual({ providerId: "local", model: "qwen7" });
@@ -97,7 +106,7 @@ describe("llmTierRouting task tiers", () => {
         {
           id: "ds",
           default_model: "flash",
-          task_models: { llm_chat: "flash", drunk: "flash", repeater_polish: "flash" },
+          task_models: { llm_chat: "flash", drunk: "flash", affect_refine: "flash" },
         },
         {
           id: "local",
@@ -105,10 +114,8 @@ describe("llmTierRouting task tiers", () => {
           task_models: {
             llm_chat: "qwen14",
             drunk: "qwen14",
-            repeater_polish: "qwen14",
-            repeater_select: "qwen7",
-            repeater_polish_lite: "qwen7",
-            repeater_fallback: "qwen7",
+            affect_refine: "qwen14",
+            turn_decision: "qwen7",
           },
         },
       ],
@@ -117,10 +124,8 @@ describe("llmTierRouting task tiers", () => {
         tasks: {
           llm_chat: "ds",
           drunk: "ds",
-          repeater_polish: "ds",
-          repeater_select: "local",
-          repeater_polish_lite: "local",
-          repeater_fallback: "local",
+          affect_refine: "ds",
+          turn_decision: "local",
         },
       },
     };
@@ -135,7 +140,7 @@ describe("llmTierRouting task tiers", () => {
       },
     });
     expect(next.providers.find((p) => p.id === "local")?.task_models.llm_chat).toBeUndefined();
-    expect(next.providers.find((p) => p.id === "local")?.task_models.repeater_select).toBe("qwen7");
+    expect(next.providers.find((p) => p.id === "local")?.task_models.turn_decision).toBe("qwen7");
     const folded = foldTaskTiers(next);
     expect(folded.high.backup.model).toBe("");
     expect(folded.low.backup.model).toBe("");
@@ -147,15 +152,14 @@ describe("llmTierRouting task tiers", () => {
         {
           id: "cloud",
           default_model: "gpt-4o",
-          task_models: { llm_chat: "gpt-4o", drunk: "gpt-4o", repeater_polish: "gpt-4o" },
+          task_models: { llm_chat: "gpt-4o", drunk: "gpt-4o" },
         },
         {
           id: "local",
           default_model: "qwen",
           task_models: {
-            repeater_select: "qwen7",
-            repeater_polish_lite: "qwen7",
-            repeater_fallback: "qwen7",
+            affect_refine: "qwen7",
+            turn_decision: "qwen7",
           },
         },
       ],
@@ -164,10 +168,8 @@ describe("llmTierRouting task tiers", () => {
         tasks: {
           llm_chat: "cloud",
           drunk: "cloud",
-          repeater_polish: "cloud",
-          repeater_select: "local",
-          repeater_polish_lite: "local",
-          repeater_fallback: "local",
+          affect_refine: "local",
+          turn_decision: "local",
         },
       },
     });
@@ -240,7 +242,7 @@ describe("llmTierRouting task tiers", () => {
     expect(next.routing.tier_backup_models).toEqual({ high: "reasoner", low: "chat" });
     // 同提供方备用不得覆盖主配置 task_models
     expect(next.providers[0]?.task_models.llm_chat).toBe("flash");
-    expect(next.providers[0]?.task_models.repeater_select).toBe("flash");
+    expect(next.providers[0]?.task_models.turn_decision).toBe("flash");
     const folded = foldTaskTiers(next);
     expect(folded.high.backup).toEqual({ providerId: "ds", model: "reasoner" });
     expect(folded.low.backup).toEqual({ providerId: "ds", model: "chat" });
@@ -265,7 +267,7 @@ describe("llmTierRouting local tiers", () => {
     });
     expect(next.llm_model).toBe("m7");
     expect(next.task_models?.llm_chat).toBe("c14");
-    expect(next.task_models?.repeater_select).toBe("m7");
+    expect(next.task_models?.turn_decision).toBe("m7");
   });
 
   it("folds moe sibling slots when backup differs", () => {
@@ -349,6 +351,35 @@ describe("llmTierRouting per-task routes", () => {
     expect(next.providers.find((provider) => provider.id === "vision")?.task_models.sticker_vision).toBe(
       "vision-primary",
     );
+  });
+
+  it("syncs background memory tasks with the low tier", () => {
+    const doc = {
+      providers: [
+        { id: "cloud", default_model: "gpt-4o", task_models: {} },
+        { id: "cheap", default_model: "cheap-default", task_models: {} },
+      ],
+      routing: {
+        chain_fallback: [],
+        tasks: { memory_episode: "cheap", "llm.relationship.affinity": "cheap" },
+      },
+    };
+
+    const next = applyTaskTiers(doc, {
+      high: { primary: { providerId: "cloud", model: "gpt-4o" }, backup: { providerId: "", model: "" } },
+      low: { primary: { providerId: "cheap", model: "cheap-small" }, backup: { providerId: "", model: "" } },
+    });
+
+    // 低档写入即覆盖这些任务，与 affect_refine / turn_decision 行为一致
+    expect(next.routing.tasks.memory_episode).toBe("cheap");
+    expect(next.routing.tasks["llm.relationship.affinity"]).toBe("cheap");
+    expect(next.providers.find((p) => p.id === "cheap")?.task_models.memory_episode).toBe(
+      "cheap-small",
+    );
+    const folded = foldTaskRoutes(next);
+    expect(folded.memory_episode.primary).toEqual({ providerId: "cheap", model: "cheap-small" });
+    // 未配低档备用，备用随档位为空
+    expect(folded.memory_episode.backup.providerId).toBe("");
   });
 
   it("applies and folds per-task primary/backup including affect_refine", () => {
