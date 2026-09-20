@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.25] - 2026-09-20
 
 ### 更新公告
 
@@ -14,6 +14,15 @@
   - 并入低级任务：改一次低档主备即全部生效，无需逐项配置；未配置时仍跟随提供方默认模型
   - 这些任务调用量大，低级任务建议选择价格更低的模型
   - 修正文案，说明低档覆盖范围与视觉选图独立配置
+
+### 提交明细
+
+### Fixed
+
+* fix(webui): 记忆与后台任务并入低档编排 ([20a9999](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/20a99998b64237fc755e7f240bd7fbac03e87d03))
+
+**完整变更**: [`v0.9.24...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.24...HEAD)
+
 
 ## [0.9.24] - 2026-09-09
 
@@ -45,7 +54,6 @@
 * chore(webui): 统一大模型配置导航文案 ([82b1d68](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/82b1d6818aa84a1c203635ea5eb94d4fabe48cf6))
 
 **完整变更**: [`v0.9.23...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.23...HEAD)
-
 
 ## [0.9.23] - 2026-09-08
 
