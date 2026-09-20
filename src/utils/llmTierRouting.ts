@@ -19,11 +19,29 @@ export type LocalTierState = {
 };
 
 export const HIGH_TIER_TASKS = ["llm_chat", "drunk"] as const;
-export const LOW_TIER_TASKS = ["affect_refine", "turn_decision"] as const;
+
+/** 后台与记忆任务：调用量大、无需强模型，并入低档随主备同步 */
+export const AUX_TASKS = [
+  "memory_episode",
+  "memory_person_facts",
+  "memory_ip_knowledge",
+  "memory_graph_extract",
+  "memory_graph_hiergraph",
+  "memory_session_summary",
+  "memory_tool_summary",
+  "llm.relationship.affinity",
+  "repeater.semantic_style",
+] as const;
+
+export const LOW_TIER_TASKS = ["affect_refine", "turn_decision", ...AUX_TASKS] as const;
 
 export const VISION_TASKS = ["sticker_vision"] as const;
 
-export const ALL_ROUTABLE_TASKS = [...HIGH_TIER_TASKS, ...LOW_TIER_TASKS, ...VISION_TASKS] as const;
+export const ALL_ROUTABLE_TASKS = [
+  ...HIGH_TIER_TASKS,
+  ...LOW_TIER_TASKS,
+  ...VISION_TASKS,
+] as const;
 
 export type RoutableTask = (typeof ALL_ROUTABLE_TASKS)[number];
 
@@ -61,6 +79,51 @@ export const TASK_ROUTE_META: Record<
     description: "选择表情图；也复用于「聊天看图」——主对话模型不支持图片时，用它把图转成文字描述",
     kind: "vision",
     capability: "image",
+  },
+  memory_episode: {
+    title: "群事件记忆",
+    description: "后台从近期群聊总结共同事件写入长期记忆；调用量大，随低级任务同步",
+    kind: "low",
+  },
+  memory_person_facts: {
+    title: "群友偏好记忆",
+    description: "后台归纳群友稳定偏好写入人物记忆",
+    kind: "low",
+  },
+  memory_ip_knowledge: {
+    title: "IP 知识记忆",
+    description: "后台提炼作品/角色设定等可复用 IP 事实",
+    kind: "low",
+  },
+  memory_graph_extract: {
+    title: "记忆图谱抽取",
+    description: "后台从记忆文本抽取实体与关系，输出 JSON",
+    kind: "low",
+  },
+  memory_graph_hiergraph: {
+    title: "记忆图谱分层",
+    description: "后台为图谱类目做分层归类",
+    kind: "low",
+  },
+  memory_session_summary: {
+    title: "会话历史摘要",
+    description: "长对话压缩为摘要后回插，控制上下文长度",
+    kind: "low",
+  },
+  memory_tool_summary: {
+    title: "聊天记录总结",
+    description: "模型调用工具总结群聊最近话题时使用",
+    kind: "low",
+  },
+  "llm.relationship.affinity": {
+    title: "好感度判定",
+    description: "规则词表拿不准时交给模型判断好感倾向",
+    kind: "low",
+  },
+  "repeater.semantic_style": {
+    title: "语义风格标注",
+    description: "后台标注接话语料风格；同时供看图标注使用，需要 image 能力时请选带图模型",
+    kind: "low",
   },
 };
 
@@ -304,6 +367,7 @@ export function applyTaskTiers<P extends ProviderLike, D extends ProvidersDocLik
   const tasks: Record<string, string> = { ...(doc.routing.tasks || {}) };
   const task_backups: Record<string, string> = {};
   const task_backup_models: Record<string, string> = {};
+  // 视觉任务独立于档位：主配置随 tasks 拷贝保留，备用在此显式保留
   for (const task of VISION_TASKS) {
     const backupId = String(doc.routing.task_backups?.[task] || "").trim();
     const backupModel = String(doc.routing.task_backup_models?.[task] || "").trim();
@@ -413,7 +477,7 @@ export function foldTaskRoutes<P extends ProviderLike>(doc: ProvidersDocLike<P>)
     if (hasTaskBackups) {
       backupId = String(taskBackups[task] || "").trim();
       backupModel = String(taskBackupModels[task] || "").trim();
-    } else if (kind !== "vision") {
+    } else if (kind === "high" || kind === "low") {
       backupId = String(doc.routing.tier_backups?.[kind] || "").trim();
       backupModel = String(doc.routing.tier_backup_models?.[kind] || "").trim();
     }
