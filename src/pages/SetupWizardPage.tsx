@@ -5,6 +5,7 @@ import { changeConsoleLogin, fetchConsoleSetupStatus } from "@/api/fullConsole";
 import PageMasthead from "@/components/PageMasthead";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
+import { safeInternalRedirect } from "@/utils/safeInternalRedirect";
 
 function setupSatisfied(data: Awaited<ReturnType<typeof fetchConsoleSetupStatus>> | undefined): boolean {
   if (!data) return false;
@@ -23,9 +24,7 @@ export default function SetupWizardPage() {
   const setupQ = useQuery({ queryKey: ["auth-setup"], queryFn: fetchConsoleSetupStatus });
 
   const redirectTarget = useMemo(() => {
-    const raw = searchParams.get("redirect");
-    if (raw && raw.startsWith("/")) return raw;
-    return "/";
+    return safeInternalRedirect(searchParams.get("redirect"), window.location.origin);
   }, [searchParams]);
 
   const redirectTargetLabel = useMemo(() => {
