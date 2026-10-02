@@ -47,7 +47,6 @@ export default function ProtocolPage() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["protocol-accounts"] }),
         qc.invalidateQueries({ queryKey: ["protocol-snowluma-runtimes"] }),
-        qc.invalidateQueries({ queryKey: ["instances"] }),
       ]);
     } finally {
       setRefreshing(false);

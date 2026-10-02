@@ -12,6 +12,11 @@ import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
 import { protocolAccountsSignature } from "@/utils/protocolUi";
 import type { AiExtensionLogKind } from "@/config/aiConstants";
 import type {
+  PluginConfigData as PluginFormConfigData,
+  PluginConfigField,
+  PluginConfigFieldGroup,
+} from "./console";
+import type {
   UpdateCheckData,
   UpdateCheckAllData,
   UpdateApplyJobStartData,
@@ -55,6 +60,8 @@ import type {
   GroupConfigPublic,
   GroupExpressionProfile,
   GroupListData,
+  OpenapiPluginConfigData,
+  OpenapiPluginConfigRawData,
   InstancesData,
   NapcatAccountRow,
   NapcatManagerSnapshot,
@@ -75,7 +82,7 @@ import type {
   GroupFleetWhitelistData,
   GroupFleetWhitelistEntry,
   HelpMenuVisibilityData,
-  PluginConfigData,
+  PluginConfigData as CommonPluginConfigData,
   ExtensionInstallJobData,
   PluginCapabilitiesData,
   PluginGovernanceBody,
@@ -149,6 +156,146 @@ import type {
  */
 const CATALOG_FRESH_MS = 45_000;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function optionalIs(
+  value: Record<string, unknown>,
+  key: string,
+  check: (field: unknown) => boolean,
+): boolean {
+  return !(key in value) || check(value[key]);
+}
+
+const isString = (value: unknown): value is string => typeof value === "string";
+const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
+const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+const isNullableString = (value: unknown) => value === null || isString(value);
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(isString);
+}
+
+function isNumberRecord(value: unknown): value is Record<string, number> {
+  return isRecord(value) && Object.values(value).every(isNumber);
+}
+
+function isPluginConfigField(value: unknown): value is PluginConfigField {
+  return isRecord(value) && isString(value.name) && isString(value.kind);
+}
+
+function isPluginConfigFieldGroup(value: unknown): value is PluginConfigFieldGroup {
+  return isRecord(value)
+    && isString(value.id)
+    && isString(value.title)
+    && isStringArray(value.field_names);
+}
+
+// Config fields and optional UI metadata are plugin-extensible; validate only keys the form indexes.
+function isPluginFormConfig(value: unknown): value is PluginFormConfigData {
+  if (!isRecord(value) || !isString(value.plugin) || !isString(value.module)) return false;
+  if (!Array.isArray(value.fields) || !value.fields.every(isPluginConfigField)) return false;
+  return optionalIs(value, "field_groups", (groups) =>
+    Array.isArray(groups) && groups.every(isPluginConfigFieldGroup),
+  );
+}
+
+function parsePluginFormConfig(value: OpenapiPluginConfigData): PluginFormConfigData {
+  if (!isPluginFormConfig(value)) throw new Error("插件配置: 响应异常");
+  return value;
+}
+
+function isPluginRow(value: unknown): value is PluginRow {
+  // /plugins currently has no generated response schema; validate only the row envelope.
+  return isRecord(value)
+    && isString(value.name)
+    && isString(value.module)
+    && (value.metadata === null || isRecord(value.metadata));
+}
+
+function parsePluginRows(value: unknown): PluginRow[] {
+  if (!Array.isArray(value) || !value.every(isPluginRow)) throw new Error("/plugins: 响应异常");
+  return value;
+}
+
+function isBotRow(value: unknown): value is BotRow {
+  return isRecord(value)
+    && isString(value.connection_key)
+    && isString(value.self_id)
+    && isString(value.adapter)
+    && optionalIs(value, "connected_at_unix", (field) => field === null || isNumber(field))
+    && optionalIs(value, "ws_port", (field) => field === null || isNumber(field))
+    && optionalIs(value, "shard_id", (field) => field === null || isNumber(field))
+    && optionalIs(value, "nickname", isNullableString)
+    && optionalIs(value, "online", isBoolean);
+}
+
+function isBotConfigPublic(value: unknown): value is BotConfigPublic {
+  return isRecord(value)
+    && isNumber(value.account)
+    && Array.isArray(value.admins) && value.admins.every(isNumber)
+    && isBoolean(value.auto_accept_friend)
+    && isBoolean(value.auto_accept_group)
+    && isBoolean(value.security)
+    && isNumberRecord(value.taken_name)
+    && isNumberRecord(value.drunk)
+    && isStringArray(value.disabled_plugins)
+    && isBoolean(value.community_roster_show_qq)
+    && optionalIs(value, "persona", (field) => field === null || isRecord(field))
+    && optionalIs(value, "account_profile_effective", (field) => field === null || isRecord(field))
+    && optionalIs(value, "group_style_enabled", isBoolean);
+}
+
+function isNapcatSnapshot(value: unknown): value is NapcatManagerSnapshot {
+  return isRecord(value)
+    && isString(value.plugin)
+    && isBoolean(value.webui_enabled)
+    && isString(value.webui_path)
+    && isBoolean(value.console_auth_configured)
+    && Array.isArray(value.accounts) && value.accounts.every(isRecord);
+}
+
+function isProtocolExtension(value: unknown): boolean {
+  return isRecord(value)
+    && isBoolean(value.installed)
+    && isString(value.package)
+    && optionalIs(value, "uv_extra", isNullableString)
+    && optionalIs(value, "install_cli", isNullableString)
+    && optionalIs(value, "repository_url", isNullableString);
+}
+
+function isBotProfiles(value: unknown): boolean {
+  return isRecord(value) && Object.values(value).every((profile) =>
+    isRecord(profile)
+      && optionalIs(profile, "nickname", isString)
+      && optionalIs(profile, "user_id", (id) => id === null || isNumber(id))
+      && optionalIs(profile, "connection_key", isString)
+      && optionalIs(profile, "adapter", isString),
+  );
+}
+
+// /instances has no generated item schema; this checks the currently consumed response shape only.
+function isInstancesData(value: unknown): value is InstancesData {
+  return isRecord(value)
+    && Array.isArray(value.nonebot_bots) && value.nonebot_bots.every(isBotRow)
+    && Array.isArray(value.db_bot_configs) && value.db_bot_configs.every(isBotConfigPublic)
+    && (value.pallas_protocol === null || isNapcatSnapshot(value.pallas_protocol))
+    && optionalIs(value, "napcat", (snap) => snap === null || isNapcatSnapshot(snap))
+    && optionalIs(value, "protocol_extension", (extension) => extension === null || isProtocolExtension(extension))
+    && optionalIs(value, "bot_profiles", isBotProfiles);
+}
+
+function parseInstancesData(value: unknown): InstancesData {
+  if (!isRecord(value)) throw new Error("/instances: 响应异常");
+  const normalized = {
+    ...value,
+    pallas_protocol: value.pallas_protocol ?? value.napcat ?? null,
+  };
+  if (!isInstancesData(normalized)) throw new Error("/instances: 响应异常");
+  return normalized;
+}
+
 let instancesCache: { data: InstancesData; ts: number } | null = null;
 let instancesInflight: Promise<InstancesData> | null = null;
 /** 写操作或强制刷新后递增，丢弃过期的在途响应写回 */
@@ -175,8 +322,10 @@ export function peekInstancesCacheAgeMs(): number | null {
 export function invalidateInstancesCache() {
   instancesCache = null;
   instancesInflight = null;
+  instancesCatalogRefreshInflight = null;
   instancesFetchGen++;
   lastPatchedProtocolAccountsSig = "";
+  invalidateHomeOverviewCache();
 }
 
 function patchProtocolSnapAccounts(
@@ -215,14 +364,17 @@ export function refreshInstancesCatalogGlobal(): Promise<InstancesData> {
   if (instancesCatalogRefreshInflight) {
     return instancesCatalogRefreshInflight;
   }
-  instancesCatalogRefreshInflight = fetchInstances({ bypassCache: true }).finally(() => {
-    instancesCatalogRefreshInflight = null;
+  let request: Promise<InstancesData>;
+  request = fetchInstances({ bypassCache: true }).finally(() => {
+    if (instancesCatalogRefreshInflight === request) instancesCatalogRefreshInflight = null;
   });
-  return instancesCatalogRefreshInflight;
+  instancesCatalogRefreshInflight = request;
+  return request;
 }
 
 async function fetchInstancesFromNetwork(): Promise<InstancesData> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/instances"]["get"]>("/instances")) as InstancesData;
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/instances"]["get"]>("/instances");
+  return parseInstancesData(data);
 }
 
 export type FetchInstancesOptions = {
@@ -280,10 +432,12 @@ export function invalidatePluginsCache() {
   pluginsCache = null;
   pluginsInflight = null;
   pluginsFetchGen++;
+  invalidateHomeOverviewCache();
 }
 
 async function fetchPluginsFromNetwork(): Promise<PluginRow[]> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins"]["get"]>("/plugins")) as PluginRow[];
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins"]["get"]>("/plugins");
+  return parsePluginRows(data);
 }
 
 export async function fetchPluginCapabilities(): Promise<PluginCapabilitiesData> {
@@ -296,15 +450,28 @@ export type FetchPluginsOptions = {
   bypassCache?: boolean;
 };
 
+function startPluginsFetch(gen: number): Promise<PluginRow[]> {
+  let request: Promise<PluginRow[]>;
+  request = fetchPluginsFromNetwork()
+    .then((data) => {
+      if (gen === pluginsFetchGen) touchPluginsCache(data);
+      return data;
+    })
+    .finally(() => {
+      if (pluginsInflight === request) pluginsInflight = null;
+    });
+  pluginsInflight = request;
+  return request;
+}
+
 export async function fetchPlugins(opts?: FetchPluginsOptions): Promise<PluginRow[]> {
   const bypass = Boolean(opts?.bypassCache);
   const now = Date.now();
 
   if (bypass) {
-    const gen = pluginsFetchGen;
-    const d = await fetchPluginsFromNetwork();
-    if (gen === pluginsFetchGen) touchPluginsCache(d);
-    return d;
+    const gen = ++pluginsFetchGen;
+    invalidateHomeOverviewCache();
+    return startPluginsFetch(gen);
   }
 
   if (pluginsInflight) {
@@ -317,28 +484,12 @@ export async function fetchPlugins(opts?: FetchPluginsOptions): Promise<PluginRo
       return pluginsCache.data;
     }
     const snap = pluginsCache.data;
-    const gen = pluginsFetchGen;
-    pluginsInflight = fetchPluginsFromNetwork()
-      .then((d) => {
-        if (gen === pluginsFetchGen) touchPluginsCache(d);
-        return d;
-      })
-      .finally(() => {
-        pluginsInflight = null;
-      });
+    const request = startPluginsFetch(pluginsFetchGen);
+    void request.catch(() => {});
     return snap;
   }
 
-  const gen = pluginsFetchGen;
-  pluginsInflight = fetchPluginsFromNetwork()
-    .then((d) => {
-      if (gen === pluginsFetchGen) touchPluginsCache(d);
-      return d;
-    })
-    .finally(() => {
-      pluginsInflight = null;
-    });
-  return pluginsInflight;
+  return startPluginsFetch(pluginsFetchGen);
 }
 
 /** 商店列表可能顺带刷新资源快照，冷启动时超过默认 20s */
@@ -683,25 +834,41 @@ export function invalidateBotsCache() {
   botsCache = null;
   botsInflight = null;
   botsFetchGen++;
+  invalidateHomeOverviewCache();
 }
 
 async function fetchBotsFromNetwork(): Promise<BotRow[]> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/bots"]["get"]>("/bots")) as BotRow[];
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/bots"]["get"]>("/bots");
+  if (!Array.isArray(data) || !data.every(isBotRow)) throw new Error("/bots: 响应异常");
+  return data;
 }
 
 export type FetchBotsOptions = {
   bypassCache?: boolean;
 };
 
+function startBotsFetch(gen: number): Promise<BotRow[]> {
+  let request: Promise<BotRow[]>;
+  request = fetchBotsFromNetwork()
+    .then((data) => {
+      if (gen === botsFetchGen) touchBotsCache(data);
+      return data;
+    })
+    .finally(() => {
+      if (botsInflight === request) botsInflight = null;
+    });
+  botsInflight = request;
+  return request;
+}
+
 export async function fetchBots(opts?: FetchBotsOptions): Promise<BotRow[]> {
   const bypass = Boolean(opts?.bypassCache);
   const now = Date.now();
 
   if (bypass) {
-    const gen = botsFetchGen;
-    const d = await fetchBotsFromNetwork();
-    if (gen === botsFetchGen) touchBotsCache(d);
-    return d;
+    const gen = ++botsFetchGen;
+    invalidateHomeOverviewCache();
+    return startBotsFetch(gen);
   }
 
   if (botsInflight) {
@@ -714,28 +881,12 @@ export async function fetchBots(opts?: FetchBotsOptions): Promise<BotRow[]> {
       return botsCache.data;
     }
     const snap = botsCache.data;
-    const gen = botsFetchGen;
-    botsInflight = fetchBotsFromNetwork()
-      .then((d) => {
-        if (gen === botsFetchGen) touchBotsCache(d);
-        return d;
-      })
-      .finally(() => {
-        botsInflight = null;
-      });
+    const request = startBotsFetch(botsFetchGen);
+    void request.catch(() => {});
     return snap;
   }
 
-  const gen = botsFetchGen;
-  botsInflight = fetchBotsFromNetwork()
-    .then((d) => {
-      if (gen === botsFetchGen) touchBotsCache(d);
-      return d;
-    })
-    .finally(() => {
-      botsInflight = null;
-    });
-  return botsInflight;
+  return startBotsFetch(botsFetchGen);
 }
 
 export function buildHelpPreviewUrl(opts: {
@@ -847,38 +998,41 @@ export async function putPluginsGroupFleetWhitelist(
   return out;
 }
 
-export async function fetchPluginConfig(pluginName: string): Promise<PluginConfigData> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["get"]>(
-    `/plugins/${encodeURIComponent(pluginName)}/config`,
-  )) as unknown as PluginConfigData;
+export async function fetchPluginConfig(pluginName: string): Promise<PluginFormConfigData> {
+  return parsePluginFormConfig(
+    await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["get"]>(
+      `/plugins/${encodeURIComponent(pluginName)}/config`,
+    ),
+  );
 }
 
 export async function putPluginConfig(
   pluginName: string,
   values: Record<string, unknown>,
-): Promise<PluginConfigData> {
-  const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["put"]>(
+): Promise<PluginFormConfigData> {
+  const out = await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["put"]>(
     `/plugins/${encodeURIComponent(pluginName)}/config`,
     { values },
-  )) as unknown as PluginConfigData;
+  );
   invalidatePluginsCache();
-  return out;
+  return parsePluginFormConfig(out);
 }
 
 export async function fetchPluginConfigRaw(pluginName: string): Promise<string> {
-  const out = await consoleOpenapiGet<
+  const out: OpenapiPluginConfigRawData = await consoleOpenapiGet<
     ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config/raw"]["get"]
   >(`/plugins/${encodeURIComponent(pluginName)}/config/raw`);
+  if (!isRecord(out) || !isString(out.toml)) throw new Error("插件原始配置: 响应异常");
   return out.toml;
 }
 
-export async function putPluginConfigRaw(pluginName: string, toml: string): Promise<PluginConfigData> {
-  const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config/raw"]["put"]>(
+export async function putPluginConfigRaw(pluginName: string, toml: string): Promise<PluginFormConfigData> {
+  const out = await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config/raw"]["put"]>(
     `/plugins/${encodeURIComponent(pluginName)}/config/raw`,
     { toml },
-  )) as unknown as PluginConfigData;
+  );
   invalidatePluginsCache();
-  return out;
+  return parsePluginFormConfig(out);
 }
 
 export async function postPluginConfigCheck(
@@ -915,20 +1069,20 @@ export async function fetchCommonConfigSections(): Promise<CommonConfigSectionMe
   );
 }
 
-export async function fetchCommonConfig(sectionId: string): Promise<PluginConfigData> {
+export async function fetchCommonConfig(sectionId: string): Promise<CommonPluginConfigData> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["get"]>(
     `/common-config/${encodeURIComponent(sectionId)}`,
-  )) as unknown as PluginConfigData;
+  )) as unknown as CommonPluginConfigData;
 }
 
 export async function putCommonConfig(
   sectionId: string,
   values: Record<string, unknown>,
-): Promise<PluginConfigData> {
+): Promise<CommonPluginConfigData> {
   return (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["put"]>(
     `/common-config/${encodeURIComponent(sectionId)}`,
     { values },
-  )) as unknown as PluginConfigData;
+  )) as unknown as CommonPluginConfigData;
 }
 
 export async function fetchCommonConfigRaw(sectionId: string): Promise<string> {
@@ -938,11 +1092,11 @@ export async function fetchCommonConfigRaw(sectionId: string): Promise<string> {
   return out.toml;
 }
 
-export async function putCommonConfigRaw(sectionId: string, toml: string): Promise<PluginConfigData> {
+export async function putCommonConfigRaw(sectionId: string, toml: string): Promise<CommonPluginConfigData> {
   return (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["put"]>(
     `/common-config/${encodeURIComponent(sectionId)}/raw`,
     { toml },
-  )) as unknown as PluginConfigData;
+  )) as unknown as CommonPluginConfigData;
 }
 
 export async function postServiceGatewaysConnectivityCheck(
@@ -2497,12 +2651,22 @@ async function readPluginRunStatsCached<T extends PluginRunStatsData | LogErrors
 
 let homeOverviewCache: { data: HomeOverviewData; ts: number } | null = null;
 let homeOverviewInflight: Promise<HomeOverviewData> | null = null;
+let homeOverviewFetchGen = 0;
 const HOME_OVERVIEW_FRESH_MS = 5_000;
 const HOME_OVERVIEW_STALE_MS = 45_000;
 
-function storeHomeOverviewCache(data: HomeOverviewData): void {
+function invalidateHomeOverviewCache(): void {
+  homeOverviewCache = null;
+  homeOverviewInflight = null;
+  homeOverviewFetchGen++;
+}
+
+function storeHomeOverviewCache(
+  data: HomeOverviewData,
+  generations: { instances: number; bots: number; plugins: number },
+): void {
   homeOverviewCache = { data, ts: Date.now() };
-  seedCachesFromHomeOverview(data);
+  seedCachesFromHomeOverview(data, generations);
 }
 
 async function fetchHomeOverviewFromNetwork(bypass = false): Promise<HomeOverviewData> {
@@ -2510,8 +2674,27 @@ async function fetchHomeOverviewFromNetwork(bypass = false): Promise<HomeOvervie
     ...(bypass ? { params: { _ts: Date.now() } } : {}),
   });
   if (!data?.ok || !data.data) throw new Error("/home/overview: 响应异常");
-  storeHomeOverviewCache(data.data);
   return data.data;
+}
+
+function startHomeOverviewFetch(bypass = false): Promise<HomeOverviewData> {
+  const gen = bypass ? ++homeOverviewFetchGen : homeOverviewFetchGen;
+  const catalogGenerations = {
+    instances: instancesFetchGen,
+    bots: botsFetchGen,
+    plugins: pluginsFetchGen,
+  };
+  let request: Promise<HomeOverviewData>;
+  request = fetchHomeOverviewFromNetwork(bypass)
+    .then((data) => {
+      if (gen === homeOverviewFetchGen) storeHomeOverviewCache(data, catalogGenerations);
+      return data;
+    })
+    .finally(() => {
+      if (homeOverviewInflight === request) homeOverviewInflight = null;
+    });
+  homeOverviewInflight = request;
+  return request;
 }
 
 /** 同步读取上次成功的首页聚合快照（供首屏或静默刷新） */
@@ -2530,31 +2713,26 @@ export async function fetchHomeOverview(opts?: { bypassCache?: boolean }): Promi
   if (!bypass && homeOverviewCache && now - homeOverviewCache.ts < HOME_OVERVIEW_STALE_MS) {
     const snap = homeOverviewCache.data;
     if (!homeOverviewInflight) {
-      homeOverviewInflight = fetchHomeOverviewFromNetwork()
-        .finally(() => {
-          homeOverviewInflight = null;
-        });
+      const request = startHomeOverviewFetch();
+      void request.catch(() => {});
     }
     return snap;
   }
 
   if (bypass) {
-    return fetchHomeOverviewFromNetwork(true);
+    return startHomeOverviewFetch(true);
   }
 
-  if (!homeOverviewInflight) {
-    homeOverviewInflight = fetchHomeOverviewFromNetwork()
-      .finally(() => {
-        homeOverviewInflight = null;
-      });
-  }
-  return homeOverviewInflight;
+  return homeOverviewInflight ?? startHomeOverviewFetch();
 }
 
-function seedCachesFromHomeOverview(data: HomeOverviewData): void {
-  if (data.instances) touchInstancesCache(data.instances);
-  if (data.bots.length) touchBotsCache(data.bots);
-  if (data.plugins.length) touchPluginsCache(data.plugins);
+function seedCachesFromHomeOverview(
+  data: HomeOverviewData,
+  generations: { instances: number; bots: number; plugins: number },
+): void {
+  if (data.instances && generations.instances === instancesFetchGen) touchInstancesCache(data.instances);
+  if (generations.bots === botsFetchGen) touchBotsCache(data.bots);
+  if (generations.plugins === pluginsFetchGen) touchPluginsCache(data.plugins);
   if (data.message_stats) {
     messageStatsCache.set("all", { data: data.message_stats, ts: Date.now() });
   }
@@ -3013,15 +3191,28 @@ export async function deleteDbTableRow(params: {
   );
 }
 
+function startInstancesFetch(gen: number): Promise<InstancesData> {
+  let request: Promise<InstancesData>;
+  request = fetchInstancesFromNetwork()
+    .then((data) => {
+      if (gen === instancesFetchGen) touchInstancesCache(data);
+      return data;
+    })
+    .finally(() => {
+      if (instancesInflight === request) instancesInflight = null;
+    });
+  instancesInflight = request;
+  return request;
+}
+
 export async function fetchInstances(opts?: FetchInstancesOptions): Promise<InstancesData> {
   const bypass = Boolean(opts?.bypassCache);
   const now = Date.now();
 
   if (bypass) {
-    const gen = instancesFetchGen;
-    const d = await fetchInstancesFromNetwork();
-    if (gen === instancesFetchGen) touchInstancesCache(d);
-    return d;
+    const gen = ++instancesFetchGen;
+    invalidateHomeOverviewCache();
+    return startInstancesFetch(gen);
   }
 
   if (instancesInflight) {
@@ -3034,28 +3225,12 @@ export async function fetchInstances(opts?: FetchInstancesOptions): Promise<Inst
       return instancesCache.data;
     }
     const snap = instancesCache.data;
-    const gen = instancesFetchGen;
-    instancesInflight = fetchInstancesFromNetwork()
-      .then((d) => {
-        if (gen === instancesFetchGen) touchInstancesCache(d);
-        return d;
-      })
-      .finally(() => {
-        instancesInflight = null;
-      });
+    const request = startInstancesFetch(instancesFetchGen);
+    void request.catch(() => {});
     return snap;
   }
 
-  const gen = instancesFetchGen;
-  instancesInflight = fetchInstancesFromNetwork()
-    .then((d) => {
-      if (gen === instancesFetchGen) touchInstancesCache(d);
-      return d;
-    })
-    .finally(() => {
-      instancesInflight = null;
-    });
-  return instancesInflight;
+  return startInstancesFetch(instancesFetchGen);
 }
 
 /** 获取好友申请列表 */

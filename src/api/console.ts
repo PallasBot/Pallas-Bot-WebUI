@@ -17,6 +17,16 @@ import type {
   LlmStickerLabelOverviewData,
 } from "@/api/pallasTypes";
 import { http } from "./http";
+import { fetchInstances } from "./consoleApi";
+
+export {
+  fetchPlugins,
+  fetchInstances,
+  fetchPluginConfig,
+  putPluginConfig,
+  fetchPluginConfigRaw,
+  putPluginConfigRaw,
+} from "./consoleApi";
 
 export type {
   CommunityPluginRow,
@@ -176,20 +186,37 @@ export type PluginConfigField = {
   multiline?: boolean;
   min_value?: number;
   max_value?: number;
-  ui_group?: string;
-  ui_order?: number;
-  ui_hidden?: boolean;
-  ui_widget?: string;
+  ui_group?: string | null;
+  ui_order?: number | null;
+  ui_hidden?: boolean | null;
+  ui_widget?: string | null;
   ui_gateway?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+export type PluginConfigFieldGroup = {
+  id: string;
+  title: string;
+  field_names: string[];
+  plugin_config_path?: string;
+  advanced?: boolean;
+  [key: string]: unknown;
 };
 
 export type PluginConfigData = {
   plugin: string;
   module?: string;
   fields: PluginConfigField[];
-  field_groups?: import("@/api/pallasTypes").PluginConfigFieldGroup[];
-  unexpected_keys?: string[];
-  hot_reload?: boolean;
+  field_groups?: PluginConfigFieldGroup[];
+  unexpected_keys?: unknown[];
+  hot_reload?: boolean | null;
+  gateway_editor?: boolean | null;
+  supports_connectivity_check?: boolean | null;
+  llm_model_admin?: boolean | null;
+  dev_mode_hot_reload?: boolean | null;
+  command_perm_ui?: Record<string, unknown> | null;
+  command_limits_ui?: Record<string, unknown> | null;
+  [key: string]: unknown;
 };
 
 export type ExtensionInstallJob = { job_id: string; package?: string; plugin_id?: string; target?: string };
@@ -349,14 +376,6 @@ function envelopeData<T>(body: unknown): T {
   return body as T;
 }
 
-export async function fetchPlugins(): Promise<PluginRow[]> {
-  const { data: body } = await http.get("/plugins");
-  const data = envelopeData<PluginRow[] | { plugins?: PluginRow[] }>(body);
-  if (Array.isArray(data)) return data;
-  if (data && typeof data === "object" && Array.isArray(data.plugins)) return data.plugins;
-  return [];
-}
-
 export async function fetchSystem(): Promise<SystemData> {
   const { data: body } = await http.get("/system");
   return envelopeData<SystemData>(body);
@@ -366,11 +385,6 @@ export async function fetchLogs(n = 200): Promise<string[]> {
   const { data: body } = await http.get("/logs", { params: { n, scope: "all" } });
   const data = envelopeData<{ lines?: string[] }>(body);
   return Array.isArray(data?.lines) ? data.lines : [];
-}
-
-export async function fetchInstances(): Promise<InstancesData> {
-  const { data: body } = await http.get("/instances");
-  return envelopeData<InstancesData>(body) || {};
 }
 
 export async function fetchInstancesSummary(): Promise<{ bot_count: number; account_count: number }> {
@@ -822,30 +836,6 @@ export async function changeConsoleLogin(newPassword: string): Promise<{ ok?: bo
 export async function fetchUpdateCheck(): Promise<UpdateCheckData> {
   const { data: body } = await http.get("/update/check");
   return envelopeData<UpdateCheckData>(body) || {};
-}
-
-export async function fetchPluginConfig(pluginName: string): Promise<PluginConfigData> {
-  const { data: body } = await http.get(`/plugins/${encodeURIComponent(pluginName)}/config`);
-  return envelopeData<PluginConfigData>(body);
-}
-
-export async function putPluginConfig(
-  pluginName: string,
-  values: Record<string, unknown>,
-): Promise<PluginConfigData> {
-  const { data: body } = await http.put(`/plugins/${encodeURIComponent(pluginName)}/config`, { values });
-  return envelopeData<PluginConfigData>(body);
-}
-
-export async function fetchPluginConfigRaw(pluginName: string): Promise<string> {
-  const { data: body } = await http.get(`/plugins/${encodeURIComponent(pluginName)}/config/raw`);
-  const data = envelopeData<{ toml?: string }>(body);
-  return typeof data?.toml === "string" ? data.toml : "";
-}
-
-export async function putPluginConfigRaw(pluginName: string, toml: string): Promise<PluginConfigData> {
-  const { data: body } = await http.put(`/plugins/${encodeURIComponent(pluginName)}/config/raw`, { toml });
-  return envelopeData<PluginConfigData>(body);
 }
 
 export async function postRequestAction(body: {

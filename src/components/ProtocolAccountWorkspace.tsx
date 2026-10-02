@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import "@/styles/protocol-account-workspace.css";
+import { invalidateInstanceCatalogQueries } from "@/utils/catalogQueryInvalidation";
 import type { NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import {
@@ -651,7 +652,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         await loadAccount(false);
         await Promise.all([
           qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] }),
-          qc.invalidateQueries({ queryKey: ["instances"] }),
+          invalidateInstanceCatalogQueries(qc),
         ]);
       } catch (e) {
         notify(protocolApiErrorMessage(e, "保存失败"), "err");
@@ -682,7 +683,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         notify("实例名已保存", "ok");
         await Promise.all([
           qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] }),
-          qc.invalidateQueries({ queryKey: ["instances"] }),
+          invalidateInstanceCatalogQueries(qc),
         ]);
       } catch (e) {
         notify(protocolApiErrorMessage(e, "实例名保存失败"), "err");

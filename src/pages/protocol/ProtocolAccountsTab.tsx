@@ -16,6 +16,7 @@ import {
 } from "@/utils/protocolLinks";
 import { qqAvatarUrl } from "@/utils/botDisplay";
 import { slicePage } from "@/utils/paginate";
+import { invalidateInstanceCatalogQueries } from "@/utils/catalogQueryInvalidation";
 import {
   protocolApiErrorMessage,
   protocolDeleteAccount,
@@ -578,7 +579,6 @@ export default function ProtocolAccountsTab() {
       await disconnectBotWs(qq);
       pushConsoleToast(`已断开 ${title}`, "warn");
       await reload();
-      await qc.invalidateQueries({ queryKey: ["instances"] });
     } catch (e) {
       pushConsoleToast(e instanceof Error ? e.message : String(e), "err");
     } finally {
@@ -752,7 +752,7 @@ export default function ProtocolAccountsTab() {
       setDeleteModalOpen(false);
       if (configAccountId && managedIds.includes(configAccountId)) setConfigAccountId(null);
       await refreshLists();
-      await qc.invalidateQueries({ queryKey: ["instances"] });
+      await invalidateInstanceCatalogQueries(qc);
     } catch (e) {
       setDeleteErr(
         e instanceof Error && !mountUrl

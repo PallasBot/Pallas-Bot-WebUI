@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import { Bot, MessagesSquare, Puzzle, Zap, Activity, Package, Server } from "lucide-react";
@@ -19,7 +19,8 @@ import {
   fetchUpdateCheck,
   fetchWebuiAutoUpdateStatus,
   peekHomeOverviewCache,
-  refreshInstancesCatalogGlobal,
+  peekInstancesCache,
+  peekPluginsCache,
 } from "@/api/fullConsole";
 import { pendingAutoUpdateLabel } from "@/utils/autoUpdateNotice";
 import type { BotConfigPublic, InstancesData } from "@/api/pallasTypes";
@@ -211,10 +212,12 @@ function gpuNameShort(name: string, maxLen = 28): string {
 }
 
 export default function HomePage() {
+  const queryClient = useQueryClient();
+  const forceOverviewFetch = useRef(false);
   const overviewPeek = peekHomeOverviewCache();
   const overviewQ = useQuery({
     queryKey: ["home-overview"],
-    queryFn: () => fetchHomeOverview(),
+    queryFn: () => fetchHomeOverview({ bypassCache: forceOverviewFetch.current }),
     initialData: overviewPeek ?? undefined,
     initialDataUpdatedAt: overviewPeek ? Date.now() - 1_000 : undefined,
   });
@@ -649,17 +652,31 @@ export default function HomePage() {
   })();
 
   async function refreshAll(force = false) {
-    await Promise.all([
-      overviewQ.refetch(),
-      botUpdateQ.refetch(),
-      webUpdateQ.refetch(),
-      systemQ.refetch(),
-      communityQ.refetch(),
-      throughputQ.refetch(),
-      accountStatsQ.refetch(),
-      socialQ.refetch(),
-    ]);
-    if (force) void refreshInstancesCatalogGlobal().catch(() => {});
+    forceOverviewFetch.current = force;
+    try {
+      const [overviewResult] = await Promise.all([
+        overviewQ.refetch(),
+        botUpdateQ.refetch(),
+        webUpdateQ.refetch(),
+        systemQ.refetch(),
+        communityQ.refetch(),
+        throughputQ.refetch(),
+        accountStatsQ.refetch(),
+        socialQ.refetch(),
+      ]);
+      if (force && overviewResult.isSuccess) {
+        const refreshedInstances = overviewResult.data.instances ? peekInstancesCache() : null;
+        const refreshedPlugins = peekPluginsCache();
+        if (refreshedInstances) queryClient.setQueryData(["instances"], refreshedInstances);
+        if (refreshedPlugins) {
+          queryClient.setQueryData(["plugins"], refreshedPlugins);
+          queryClient.setQueryData(["plugins-catalog"], refreshedPlugins);
+          await queryClient.invalidateQueries({ queryKey: ["plugin-row"] });
+        }
+      }
+    } finally {
+      forceOverviewFetch.current = false;
+    }
   }
 
   const pageReady = Boolean(overviewQ.data);

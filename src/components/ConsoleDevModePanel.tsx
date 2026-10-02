@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { axiosErrorDetail } from "@/api/http";
 import { putPluginConfig } from "@/api/console";
 import ConsoleSwitch from "@/components/ConsoleSwitch";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
+import { invalidatePluginCatalogQueries } from "@/utils/catalogQueryInvalidation";
 
 const PB_WEBUI_PLUGIN = "pb_webui";
 
@@ -32,6 +34,7 @@ export default function ConsoleDevModePanel({
   showPanel?: boolean;
   onUpdated?: (active: boolean) => void;
 }) {
+  const queryClient = useQueryClient();
   const { confirm, confirmDialog } = useConsoleConfirm();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -54,6 +57,7 @@ export default function ConsoleDevModePanel({
     setErr("");
     try {
       await putPluginConfig(PB_WEBUI_PLUGIN, { pallas_webui_dev_mode: next });
+      await invalidatePluginCatalogQueries(queryClient);
       onUpdated?.(next);
       pushConsoleToast(
         next ? "开发模式已开启（鉴权已跳过，立即生效）" : "开发模式已关闭（鉴权已恢复）",

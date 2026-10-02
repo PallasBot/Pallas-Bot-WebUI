@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
+import { invalidatePluginCatalogQueries } from "@/utils/catalogQueryInvalidation";
 
 type Props = {
   pluginName: string;
@@ -132,10 +133,12 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
     },
     onSuccess: async () => {
       notifyOk("治理配置已保存");
-      await qc.invalidateQueries({ queryKey: ["plugin-governance", pluginName] });
-      await qc.invalidateQueries({ queryKey: ["plugins"] });
-      await qc.invalidateQueries({ queryKey: ["plugins-global-disable"] });
-      await qc.invalidateQueries({ queryKey: ["plugins-help-menu-visibility"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["plugin-governance", pluginName] }),
+        invalidatePluginCatalogQueries(qc),
+        qc.invalidateQueries({ queryKey: ["plugins-global-disable"] }),
+        qc.invalidateQueries({ queryKey: ["plugins-help-menu-visibility"] }),
+      ]);
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
@@ -144,7 +147,10 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
     mutationFn: (entries: GroupFleetWhitelistEntry[]) => putPluginsGroupFleetWhitelist(entries),
     onSuccess: async () => {
       notifyOk("群白名单已更新");
-      await qc.invalidateQueries({ queryKey: ["plugin-fleet-whitelist"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["plugin-fleet-whitelist"] }),
+        invalidatePluginCatalogQueries(qc),
+      ]);
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
