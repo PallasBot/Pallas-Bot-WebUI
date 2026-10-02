@@ -15,6 +15,7 @@ import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 export default function AiConfigDrawSection() {
   const workspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
   const [status, setStatus] = useState<PluginConfigWorkspaceStatus>({
+    dirty: false,
     saving: false,
     checking: false,
     loading: true,
