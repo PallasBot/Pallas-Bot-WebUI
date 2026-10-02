@@ -8,10 +8,14 @@ type HelpPreviewPluginRow = {
   resolved_plugin_id?: string;
   nb_plugin_name?: string;
   metadata?: {
-    name?: string;
-    extra?: Record<string, unknown> & { menu_data?: unknown[] };
+    name?: string | null;
+    extra?: unknown;
   } | null;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
 
 function pluginDisplayTitle(plugin: HelpPreviewPluginRow): string {
   const metaName = (plugin.metadata?.name || "").trim();
@@ -35,8 +39,8 @@ export function listHelpPreviewPluginOptions(rows: HelpPreviewPluginRow[]): Help
   return rows
     .filter((row) => {
       const extra = row.metadata?.extra;
-      if (!extra || typeof extra !== "object") return true;
-      return isUserHelpAudience((extra as Record<string, unknown>).help_audience);
+      if (!isRecord(extra)) return true;
+      return isUserHelpAudience(extra.help_audience);
     })
     .map((row) => {
       const title = pluginDisplayTitle(row);
@@ -50,7 +54,8 @@ export function listHelpPreviewPluginOptions(rows: HelpPreviewPluginRow[]): Help
 export function listHelpPreviewFunctionOptions(
   row: HelpPreviewPluginRow | null | undefined,
 ): HelpPreviewSelectOption[] {
-  const menu = row?.metadata?.extra?.menu_data;
+  const extra = row?.metadata?.extra;
+  const menu = isRecord(extra) ? extra.menu_data : null;
   if (!Array.isArray(menu)) return [];
   const options: HelpPreviewSelectOption[] = [];
   menu.forEach((item, index) => {

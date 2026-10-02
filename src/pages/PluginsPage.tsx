@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Boxes, Cpu, FolderOpen, Globe, Puzzle, RefreshCw, Search, Tags, Users } from "lucide-react";
 import {
   fetchCommunityPluginStore,
@@ -41,12 +41,17 @@ export default function PluginsPage() {
   const { name: routeName } = useParams();
   const navigate = useNavigate();
   const { favorites } = usePluginFavorites();
+  const queryClient = useQueryClient();
+  const forcePluginFetch = useRef(false);
   const [q, setQ] = useState("");
   const [activeCategory, setActiveCategory] = useState<PluginCategory | "all">("all");
   const [iconByPlugin, setIconByPlugin] = useState<Record<string, string>>({});
   const [uninstallRow, setUninstallRow] = useState<PluginRow | null>(null);
 
-  const pluginsQ = useQuery<PluginRow[]>({ queryKey: ["plugins"], queryFn: () => fetchPlugins() });
+  const pluginsQ = useQuery<PluginRow[]>({
+    queryKey: ["plugins"],
+    queryFn: () => fetchPlugins({ bypassCache: forcePluginFetch.current }),
+  });
   const officialQ = useQuery<OfficialExtensionRow[]>({
     queryKey: ["official-extensions"],
     queryFn: () => fetchOfficialExtensions(),
@@ -148,6 +153,22 @@ export default function PluginsPage() {
     if (selectedPluginName) navigate("/plugins", { replace: true });
   }
 
+  async function refreshPlugins() {
+    forcePluginFetch.current = true;
+    try {
+      const result = await pluginsQ.refetch();
+      if (result.data) {
+        queryClient.setQueryData(["plugins-catalog"], result.data);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["plugin-row"] }),
+          queryClient.invalidateQueries({ queryKey: ["home-overview"] }),
+        ]);
+      }
+    } finally {
+      forcePluginFetch.current = false;
+    }
+  }
+
   return (
     <div className="plugins-page plugins-page--hub console-hub-page">
       <div className="plugins-page__body">
@@ -218,7 +239,7 @@ export default function PluginsPage() {
               iconMotion="spin"
               iconBusy={pluginsQ.isFetching}
               disabled={pluginsQ.isFetching}
-              onClick={() => void pluginsQ.refetch()}
+              onClick={() => void refreshPlugins()}
             >
               {pluginsQ.isFetching ? "刷新中…" : "刷新"}
             </Button>

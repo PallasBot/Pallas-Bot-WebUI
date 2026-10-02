@@ -28,6 +28,7 @@ import HelpImagePreview from "@/components/HelpImagePreview";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, { CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
+import { invalidatePluginCatalogQueries } from "@/utils/catalogQueryInvalidation";
 import DynamicConfigPanel from "@/components/config/DynamicConfigPanel";
 import {
   DRAW_GATEWAY_PANEL_FIELD_NAMES,
@@ -286,6 +287,11 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   });
 
   const pluginRow = initialPluginRow ?? pluginRowQ.data ?? null;
+  const pluginMetadataExtra = pluginRow?.metadata?.extra;
+  const pluginMetadataExtraRecord =
+    pluginMetadataExtra !== null && typeof pluginMetadataExtra === "object" && !Array.isArray(pluginMetadataExtra)
+      ? pluginMetadataExtra as Record<string, unknown>
+      : null;
   const hasConfigFields = Boolean(cfgQ.data?.fields.length);
   const hasGovernanceTab = Boolean(pluginResolvedId) && !compact;
   const showReadmeTab = isDialog && !compact;
@@ -381,9 +387,11 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
       const nextBaseline = JSON.stringify(snapshot);
       formBaselineRef.current = nextBaseline;
       setFormBaseline(nextBaseline);
-      await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
-      await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
-      await qc.invalidateQueries({ queryKey: ["plugins"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["plugin-config", name] }),
+        qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] }),
+        invalidatePluginCatalogQueries(qc),
+      ]);
     },
     onError: (e) => {
       pushConsoleToast(
@@ -406,9 +414,11 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
       const nextBaseline = JSON.stringify(snapshot);
       formBaselineRef.current = nextBaseline;
       setFormBaseline(nextBaseline);
-      await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
-      await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
-      await qc.invalidateQueries({ queryKey: ["plugins"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["plugin-config", name] }),
+        qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] }),
+        invalidatePluginCatalogQueries(qc),
+      ]);
     },
   });
 
@@ -418,9 +428,11 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
       pushConsoleToast("原始 TOML 已保存", "ok");
       rawBaselineRef.current = snapshot;
       setRawBaseline(snapshot);
-      await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
-      await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
-      await qc.invalidateQueries({ queryKey: ["plugins"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["plugin-config", name] }),
+        qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] }),
+        invalidatePluginCatalogQueries(qc),
+      ]);
     },
     onError: (e) => {
       pushConsoleToast(
@@ -624,9 +636,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                     pluginRow?.nb_plugin_name,
                     pluginRow?.resolved_plugin_id,
                   ].filter((x): x is string => Boolean(x && String(x).trim()))}
-                  metadataExtra={
-                    (pluginRow?.metadata?.extra as Record<string, unknown> | null | undefined) ?? null
-                  }
+                  metadataExtra={pluginMetadataExtraRecord}
                   onOverridesSynced={
                     isHelpPlugin
                       ? (serialized) =>

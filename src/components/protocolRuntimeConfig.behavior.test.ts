@@ -19,6 +19,14 @@ const accountWorkspaceSource = readFileSync(
   fileURLToPath(new URL("./ProtocolAccountWorkspace.tsx", import.meta.url)),
   "utf8",
 );
+const protocolMountSource = readFileSync(
+  fileURLToPath(new URL("../hooks/useProtocolMount.ts", import.meta.url)),
+  "utf8",
+);
+const catalogInvalidationSource = readFileSync(
+  fileURLToPath(new URL("../utils/catalogQueryInvalidation.ts", import.meta.url)),
+  "utf8",
+);
 const appCss = readFileSync(
   fileURLToPath(new URL("../styles/console/app.css", import.meta.url)),
   "utf8",
@@ -32,13 +40,18 @@ describe("SnowLuma Runtime 配置即时回显", () => {
   });
 
   it("协议刷新与 Runtime 保存都会刷新全局实例快照", () => {
-    expect(protocolPageSource).toContain('qc.invalidateQueries({ queryKey: ["instances"] })');
-    expect(runtimeTabSource).toContain('qc.invalidateQueries({ queryKey: ["instances"] })');
+    expect(protocolPageSource).toContain("await reload()");
+    expect(protocolMountSource).toContain("refreshInstancesCatalogGlobal()");
+    expect(protocolMountSource).toContain('queryClient.setQueryData(["instances"]');
+    expect(protocolMountSource).toContain("setReloadError(error)");
+    expect(runtimeTabSource).toContain("invalidateInstanceCatalogQueries(qc)");
+    expect(catalogInvalidationSource).toContain('queryClient.invalidateQueries({ queryKey: ["instances"] })');
+    expect(catalogInvalidationSource).toContain("invalidateInstancesCache()");
     expect(accountWorkspaceSource).toContain(
       'qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] })',
     );
     expect(accountWorkspaceSource).toContain(
-      'qc.invalidateQueries({ queryKey: ["instances"] })',
+      "invalidateInstanceCatalogQueries(qc)",
     );
   });
 
@@ -65,7 +78,7 @@ describe("协议账号昵称独立保存", () => {
       'qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] })',
     );
     expect(accountWorkspaceSource).toContain(
-      'qc.invalidateQueries({ queryKey: ["instances"] })',
+      "invalidateInstanceCatalogQueries(qc)",
     );
   });
 

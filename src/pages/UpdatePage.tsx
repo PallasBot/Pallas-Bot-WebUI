@@ -25,6 +25,7 @@ import { InstallJobFailedError, InstallJobStreamInterruptedError } from "@/utils
 import { getActiveJob } from "@/utils/activeJobSession";
 import { pallasBotVersionLabel, updateCheckCurrentTagLabel } from "@/utils/versionDisplay";
 import { aiRuntimeUpdateOverview } from "@/utils/updateOverview";
+import { invalidatePluginCatalogQueries } from "@/utils/catalogQueryInvalidation";
 import {
   PALLAS_BOT_DOC,
   PALLAS_BOT_RELEASES,
@@ -593,6 +594,7 @@ export default function UpdatePage() {
     setGhTokenErr("");
     try {
       await putPluginConfig(PB_PROTOCOL_PLUGIN, { [GITHUB_TOKEN_FIELD]: next });
+      await invalidatePluginCatalogQueries(qc);
       setGhTokenHadValue(true);
       setGhTokenInput("");
       pushConsoleToast("GitHub 令牌已保存；若未立即生效可重启 Bot", "ok");
@@ -618,6 +620,7 @@ export default function UpdatePage() {
     setGhTokenErr("");
     try {
       await putPluginConfig(PB_PROTOCOL_PLUGIN, { [GITHUB_TOKEN_FIELD]: "" });
+      await invalidatePluginCatalogQueries(qc);
       setGhTokenHadValue(false);
       setGhTokenInput("");
       pushConsoleToast("GitHub 令牌已清除；重启 Bot 后生效", "ok");
@@ -651,6 +654,7 @@ export default function UpdatePage() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] }),
         qc.invalidateQueries({ queryKey: ["update-check-all"] }),
+        invalidatePluginCatalogQueries(qc),
       ]);
       const anyOn = next.webui_enabled || next.bot_enabled || next.plugins_enabled;
       pushConsoleToast(

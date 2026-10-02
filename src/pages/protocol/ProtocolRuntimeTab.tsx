@@ -42,6 +42,7 @@ import { querySettled } from "@/utils/querySettled";
 import { cn } from "@/lib/utils";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { useConfirmAgain } from "@/hooks/useConfirmAgain";
+import { invalidateInstanceCatalogQueries } from "@/utils/catalogQueryInvalidation";
 
 const PROTO_PANEL = "protocol-page__panel flex flex-col overflow-hidden shadow-none";
 const PROTO_PANEL_HD =
@@ -205,9 +206,11 @@ export default function ProtocolRuntimeTab() {
   }, [configRuntime, configRuntimeId]);
 
   const refresh = useCallback(() => {
-    void qc.invalidateQueries({ queryKey: ["protocol-snowluma-runtimes", mountUrl] });
-    void qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] });
-    void qc.invalidateQueries({ queryKey: ["instances"] });
+    void Promise.all([
+      qc.invalidateQueries({ queryKey: ["protocol-snowluma-runtimes", mountUrl] }),
+      qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] }),
+      invalidateInstanceCatalogQueries(qc),
+    ]);
   }, [qc, mountUrl]);
 
   function setSelectedId(runtimeId: string, checked: boolean) {

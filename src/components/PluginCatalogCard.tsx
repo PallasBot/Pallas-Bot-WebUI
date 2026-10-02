@@ -28,6 +28,7 @@ import { usePluginFavorites } from "@/hooks/usePluginFavorites";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { cn } from "@/lib/utils";
+import { invalidatePluginCatalogQueries } from "@/utils/catalogQueryInvalidation";
 
 type Props = {
   plugin: PluginRow;
@@ -104,8 +105,10 @@ export default function PluginCatalogCard({
       }),
     onSuccess: async () => {
       notifyOk(globallyDisabled ? "已启用插件" : "已禁用插件");
-      await qc.invalidateQueries({ queryKey: ["plugins"] });
-      await qc.invalidateQueries({ queryKey: ["plugins-global-disable"] });
+      await Promise.all([
+        invalidatePluginCatalogQueries(qc),
+        qc.invalidateQueries({ queryKey: ["plugins-global-disable"] }),
+      ]);
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });

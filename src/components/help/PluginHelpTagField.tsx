@@ -8,6 +8,7 @@ import { Tags } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchPluginConfig, putPluginConfig } from "@/api/console";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { invalidatePluginCatalogQueries } from "@/utils/catalogQueryInvalidation";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import { HelpField } from "@/components/help/HelpPortalSelect";
 import HelpTagSelect from "@/components/help/HelpTagSelect";
@@ -85,7 +86,10 @@ export default function PluginHelpTagField({
     onSuccess: async ({ serialized }) => {
       onOverridesSynced?.(serialized);
       pushConsoleToast("帮助图分组已保存", "ok");
-      await qc.invalidateQueries({ queryKey: ["plugin-config", "help"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["plugin-config", "help"] }),
+        invalidatePluginCatalogQueries(qc),
+      ]);
     },
     onError: (e) => {
       pushConsoleToast(axiosErrorDetail(e) || "帮助图分组保存失败", "err");

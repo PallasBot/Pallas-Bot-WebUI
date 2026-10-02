@@ -673,7 +673,7 @@ export interface PluginRow {
   /** 是否可在管理页卸载（配置弹窗提供「卸载」入口） */
   uninstallable?: boolean;
   /** 卸载方式：dir 删除源码目录 / pip 卸载 / community 社区插件 / official 官方扩展 */
-  uninstall_kind?: "dir" | "pip" | "community" | "official";
+  uninstall_kind?: "dir" | "pip" | "community" | "official" | null;
   /** 卸载目标：目录相对路径或 pip 包名 */
   uninstall_target?: string | null;
   /** 社区插件缺失的 pyproject 依赖（未安装或版本不满足） */
@@ -682,11 +682,12 @@ export interface PluginRow {
   cover?: string | null;
   avatar?: string | null;
   metadata: {
-    name?: string;
+    name?: string | null;
     description?: string;
     usage?: string;
     type?: string;
-    extra?: Record<string, unknown>;
+    extra?: unknown;
+    [key: string]: unknown;
   } | null;
 }
 
@@ -734,13 +735,13 @@ export interface PluginConfigField {
   /** int/float 字段上界（含），由 Pydantic le/lt 推导 */
   max_value?: number;
   /** DynamicConfigPanel 分组标题 */
-  ui_group?: string;
+  ui_group?: string | null;
   /** 组内排序，越小越靠前 */
-  ui_order?: number;
+  ui_order?: number | null;
   /** 进阶项，默认折叠 */
-  ui_hidden?: boolean;
+  ui_hidden?: boolean | null;
   /** 专用控件，如 provider_gateway */
-  ui_widget?: string;
+  ui_widget?: string | null;
   /** provider_gateway 绑定声明 */
   ui_gateway?: Record<string, unknown>;
 }
