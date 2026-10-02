@@ -2,7 +2,7 @@
 import { lazy, Suspense } from "react";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Outlet } from "react-router-dom";
+import { createMemoryRouter, Outlet, RouterProvider } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -125,13 +125,13 @@ const App = lazy(() => import("@/App"));
 
 function renderRoute(entry: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const router = createMemoryRouter(
+    [{ path: "*", element: <Suspense fallback={null}><App /></Suspense> }],
+    { initialEntries: [entry], future: { v7_relativeSplatPath: true } },
+  );
   const view = render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[entry]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Suspense fallback={null}>
-          <App />
-        </Suspense>
-      </MemoryRouter>
+      <RouterProvider router={router} />
     </QueryClientProvider>,
   );
   return { ...view, client };

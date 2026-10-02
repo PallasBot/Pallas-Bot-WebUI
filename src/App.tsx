@@ -6,6 +6,7 @@ import AppShell from "@/layout/AppShell";
 import LoginPage from "@/pages/LoginPage";
 import { commonConfigLegacyRedirectPath } from "@/utils/commonConfigRedirects";
 import { AI_OBSERVATION_DEFAULT_PATH } from "@/config/aiObservationSections";
+import { DraftProtectionProvider } from "@/components/DraftProtection";
 
 const HomePage = lazy(() => import("@/pages/HomePage"));
 const ChartsPage = lazy(() => import("@/pages/ChartsPage"));
@@ -64,7 +65,8 @@ function AiRetiredSectionRedirect({ tab }: { tab: "style" | "people" | "memory" 
 
 export default function App() {
   return (
-    <Routes>
+    <DraftProtectionProvider>
+      <Routes>
       <Route
         path="/login"
         element={
@@ -136,6 +138,7 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
-    </Routes>
+      </Routes>
+    </DraftProtectionProvider>
   );
 }

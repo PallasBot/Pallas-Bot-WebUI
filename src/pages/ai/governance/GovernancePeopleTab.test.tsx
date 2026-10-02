@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { lazy, Suspense, type ReactNode } from "react";
-import { MemoryRouter, Outlet } from "react-router-dom";
+import { createMemoryRouter, Outlet, RouterProvider } from "react-router-dom";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 class ResizeObserverMock {
@@ -40,16 +40,13 @@ const App = lazy(() => import("@/App"));
 
 function renderRoute(entry: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const router = createMemoryRouter(
+    [{ path: "*", element: <Suspense fallback={null}><App /></Suspense> }],
+    { initialEntries: [entry], future: { v7_relativeSplatPath: true } },
+  );
   const view = render(
     <QueryClientProvider client={client}>
-      <MemoryRouter
-        initialEntries={[entry]}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
-        <Suspense fallback={null}>
-          <App />
-        </Suspense>
-      </MemoryRouter>
+      <RouterProvider router={router} />
     </QueryClientProvider>,
   );
   return { ...view, client };

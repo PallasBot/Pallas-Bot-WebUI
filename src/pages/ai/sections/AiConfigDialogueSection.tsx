@@ -230,25 +230,17 @@ export default function AiConfigDialogueSection() {
       {showCardHeader ? (
         <AiSectionHeader icon={panelMeta.icon} title={panelMeta.label} lead={panelMeta.lead} />
       ) : null}
-      {contentPanel === "form" && editMode === "form" ? (
-        <div className="space-y-4">
+      {contentPanel === "form" ? (
+        <div className={editMode === "form" ? "space-y-4" : undefined}>
           <CommonConfigForm
             sectionId="llm"
-            savedMessage="对话配置已保存"
+            mode={editMode}
+            savedMessage={editMode === "raw" ? "对话 TOML 已保存" : "对话配置已保存"}
             inlineSave={false}
             onSaveState={onSaveState}
           />
-          <BasePromptGovernanceSection />
+          {editMode === "form" ? <BasePromptGovernanceSection /> : null}
         </div>
-      ) : null}
-      {contentPanel === "form" && editMode === "raw" ? (
-        <CommonConfigForm
-          sectionId="llm"
-          mode="raw"
-          savedMessage="对话 TOML 已保存"
-          inlineSave={false}
-          onSaveState={onSaveState}
-        />
       ) : null}
       {contentPanel === "session" ? (
         <AiLlmFieldPanel
@@ -261,6 +253,7 @@ export default function AiConfigDialogueSection() {
           detailKeys={LLM_SESSION_DETAIL_KEYS}
           savedMessage="会话配置已保存"
           inlineSave={false}
+          navigationPanel="session"
           onSaveState={onSaveState}
         />
       ) : null}
@@ -277,6 +270,7 @@ export default function AiConfigDialogueSection() {
             detailKeys={LLM_MEMORY_DETAIL_KEYS}
             savedMessage="记忆配置已保存"
             inlineSave={false}
+            navigationPanel="memory"
             onSaveState={onSaveState}
           />
         </div>
@@ -289,6 +283,7 @@ export default function AiConfigDialogueSection() {
           detailKeys={LLM_BUDGET_DETAIL_KEYS}
           savedMessage="上下文长度已保存"
           inlineSave={false}
+          navigationPanel="budget"
           onSaveState={onSaveState}
         />
       ) : null}
@@ -297,6 +292,7 @@ export default function AiConfigDialogueSection() {
           sectionId="arknights_kb"
           savedMessage="方舟知识库配置已保存"
           inlineSave={false}
+          navigationPanel="arknights"
           onSaveState={onSaveState}
         />
       ) : null}

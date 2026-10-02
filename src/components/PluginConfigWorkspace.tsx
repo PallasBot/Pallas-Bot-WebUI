@@ -3,6 +3,7 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -54,6 +55,7 @@ import { cn } from "@/lib/utils";
 import { collectFieldValues, fieldValuesFromConfig, parsePluginConfigField } from "@/utils/pluginConfigFieldModel";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import type { PluginConfigField } from "@/api/console";
+import { useDraftProtection, type DraftNavigation } from "@/components/DraftProtection";
 import {
   DRAW_PROVIDER_GATEWAY_BINDING,
   normalizeProviderGatewayBinding,
@@ -128,6 +130,7 @@ export type PluginConfigWorkspaceHandle = {
   runConfigCheck: () => Promise<void>;
   getFieldValue: (fieldName: string) => string;
   setFieldValue: (fieldName: string, value: string) => void;
+  dirty: boolean;
   saving: boolean;
   checking: boolean;
   loading: boolean;
@@ -146,6 +149,7 @@ type Props = {
   initialPluginRow?: PluginRow | null;
   readmeTarget?: PluginReadmeTarget | null;
   onStatusChange?: (status: PluginConfigWorkspaceStatus) => void;
+  shouldBlockNavigation?: (transition: DraftNavigation) => boolean;
   /** 仅展示这些表单字段；未传则展示全部（网关绑定键仍隐藏） */
   includeFields?: string[];
   /**
@@ -216,6 +220,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
     initialPluginRow,
     readmeTarget,
     onStatusChange,
+    shouldBlockNavigation,
     includeFields,
     includeGateways,
     compact = false,
@@ -240,11 +245,25 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
   const [mode, setMode] = useState<"form" | "raw">("form");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+  const [formBaseline, setFormBaseline] = useState("");
+  const [formReady, setFormReady] = useState(false);
   const [raw, setRaw] = useState("");
+  const [rawBaseline, setRawBaseline] = useState("");
+  const [rawReady, setRawReady] = useState(false);
   const [checking, setChecking] = useState(false);
   const [checkErr, setCheckErr] = useState("");
   const [checkLines, setCheckLines] = useState<string[]>([]);
   const [detailTab, setDetailTab] = useState<ConfigTab>("config");
+  const fieldValuesRef = useRef(fieldValues);
+  fieldValuesRef.current = fieldValues;
+  const rawRef = useRef(raw);
+  rawRef.current = raw;
+  const formBaselineRef = useRef(formBaseline);
+  formBaselineRef.current = formBaseline;
+  const rawBaselineRef = useRef(rawBaseline);
+  rawBaselineRef.current = rawBaseline;
+  const formNameRef = useRef("");
+  const rawNameRef = useRef("");
 
   const cfgQ = useQuery({
     queryKey: ["plugin-config", name],
@@ -303,16 +322,25 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
   useEffect(() => {
     if (!cfgQ.data?.fields) return;
-    try {
-      setFieldValues(fieldValuesFromConfig(cfgQ.data.fields));
-    } catch (e) {
-      pushConsoleToast(e instanceof Error ? e.message : "配置字段解析失败", "err");
-      setFieldValues({});
+    const nameChanged = formNameRef.current !== name;
+    if (nameChanged || !formReady || JSON.stringify(fieldValuesRef.current) === formBaselineRef.current) {
+      let next: Record<string, string>;
+      try {
+        next = fieldValuesFromConfig(cfgQ.data.fields);
+      } catch (e) {
+        pushConsoleToast(e instanceof Error ? e.message : "配置字段解析失败", "err");
+        next = {};
+      }
+      const nextBaseline = JSON.stringify(next);
+      formNameRef.current = name;
+      fieldValuesRef.current = next;
+      formBaselineRef.current = nextBaseline;
+      setFieldValues(next);
+      setFormBaseline(nextBaseline);
+      setFormReady(true);
+      if (nameChanged) setMode("form");
     }
-    setMode("form");
-    setCheckErr("");
-    setCheckLines([]);
-  }, [cfgQ.data, name]);
+  }, [cfgQ.data, formReady, name]);
 
   useEffect(() => {
     setCheckErr("");
@@ -320,8 +348,17 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   }, [name]);
 
   useEffect(() => {
-    if (rawQ.data != null) setRaw(rawQ.data);
-  }, [rawQ.data]);
+    if (rawQ.data == null) return;
+    const nameChanged = rawNameRef.current !== name;
+    if (nameChanged || !rawReady || rawRef.current === rawBaselineRef.current) {
+      rawNameRef.current = name;
+      rawRef.current = rawQ.data;
+      rawBaselineRef.current = rawQ.data;
+      setRaw(rawQ.data);
+      setRawBaseline(rawQ.data);
+      setRawReady(true);
+    }
+  }, [name, rawQ.data, rawReady]);
 
   useEffect(() => {
     if (detailTab === "governance" && !hasGovernanceTab) setDetailTab("config");
@@ -331,16 +368,19 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   }, [detailTab, hasGovernanceTab, showReadmeTab]);
 
   const saveForm = useMutation({
-    mutationFn: () => {
+    mutationFn: (snapshot: Record<string, string>) => {
       const fields = cfgQ.data?.fields || [];
       const payload =
         name === "draw"
-          ? collectDrawPluginValues(fields, fieldValues)
-          : collectFieldValues(fields, fieldValues);
+          ? collectDrawPluginValues(fields, snapshot)
+          : collectFieldValues(fields, snapshot);
       return putPluginConfig(name, payload);
     },
-    onSuccess: async () => {
+    onSuccess: async (_, snapshot) => {
       pushConsoleToast("配置已保存", "ok");
+      const nextBaseline = JSON.stringify(snapshot);
+      formBaselineRef.current = nextBaseline;
+      setFormBaseline(nextBaseline);
       await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
       await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
       await qc.invalidateQueries({ queryKey: ["plugins"] });
@@ -354,17 +394,18 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   });
 
   const saveGatewayPatch = useMutation({
-    mutationFn: async (patch: Record<string, string>) => {
+    mutationFn: async (snapshot: Record<string, string>) => {
       const fields = cfgQ.data?.fields || [];
-      const merged = { ...fieldValues, ...patch };
-      setFieldValues(merged);
       const payload =
         name === "draw"
-          ? collectDrawPluginValues(fields, merged)
-          : collectFieldValues(fields, merged);
+          ? collectDrawPluginValues(fields, snapshot)
+          : collectFieldValues(fields, snapshot);
       return putPluginConfig(name, payload);
     },
-    onSuccess: async () => {
+    onSuccess: async (_, snapshot) => {
+      const nextBaseline = JSON.stringify(snapshot);
+      formBaselineRef.current = nextBaseline;
+      setFormBaseline(nextBaseline);
       await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
       await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
       await qc.invalidateQueries({ queryKey: ["plugins"] });
@@ -372,9 +413,11 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   });
 
   const saveRaw = useMutation({
-    mutationFn: () => putPluginConfigRaw(name, raw),
-    onSuccess: async () => {
+    mutationFn: (snapshot: string) => putPluginConfigRaw(name, snapshot),
+    onSuccess: async (_, snapshot) => {
       pushConsoleToast("原始 TOML 已保存", "ok");
+      rawBaselineRef.current = snapshot;
+      setRawBaseline(snapshot);
       await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
       await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
       await qc.invalidateQueries({ queryKey: ["plugins"] });
@@ -390,6 +433,10 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const saving = saveForm.isPending || saveRaw.isPending || saveGatewayPatch.isPending;
   const loading = cfgQ.isLoading;
   const hasData = Boolean(cfgQ.data);
+  const dirty =
+    (formReady && JSON.stringify(fieldValues) !== formBaseline) ||
+    (rawReady && raw !== rawBaseline);
+  useDraftProtection(dirty, shouldBlockNavigation);
   const usesHelpTagOverridesPanel = isHelpPlugin;
   const formFields = (() => {
     let list = fields;
@@ -403,7 +450,10 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const visibleGatewayWidgets = showGateways ? gatewayWidgets : [];
 
   async function patchFieldValuesAndPersist(patch: Record<string, string>) {
-    await saveGatewayPatch.mutateAsync(patch);
+    const snapshot = { ...fieldValuesRef.current, ...patch };
+    fieldValuesRef.current = snapshot;
+    setFieldValues(snapshot);
+    await saveGatewayPatch.mutateAsync(snapshot);
   }
   async function runConfigCheck() {
     if (!cfgQ.data || !supportsConfigCheck || checking) return;
@@ -428,8 +478,8 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   async function save() {
     if (!cfgQ.data) return;
     try {
-      if (mode === "raw") await saveRaw.mutateAsync();
-      else await saveForm.mutateAsync();
+      if (mode === "raw") await saveRaw.mutateAsync(rawRef.current);
+      else await saveForm.mutateAsync({ ...fieldValuesRef.current });
     } catch {
       // onError 已 toast；mutateAsync 仍会抛出，此处吞掉避免未处理 Promise
     }
@@ -442,9 +492,12 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
     setFieldValue: (fieldName: string, value: string) => {
       setFieldValues((prev) => {
         if (prev[fieldName] === value) return prev;
-        return { ...prev, [fieldName]: value };
+        const next = { ...prev, [fieldName]: value };
+        fieldValuesRef.current = next;
+        return next;
       });
     },
+    dirty,
     saving,
     checking,
     loading,
@@ -454,8 +507,8 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
   useEffect(() => {
     if (!onStatusChange) return;
-    onStatusChange({ saving, checking, loading, hasData, supportsConfigCheck });
-  }, [saving, checking, loading, hasData, supportsConfigCheck, onStatusChange]);
+    onStatusChange({ dirty, saving, checking, loading, hasData, supportsConfigCheck });
+  }, [dirty, saving, checking, loading, hasData, supportsConfigCheck, onStatusChange]);
 
   const tabButtons: Array<{ id: ConfigTab; label: string; show: boolean }> = [
     { id: "governance", label: "治理", show: hasGovernanceTab },
@@ -650,7 +703,10 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
               <textarea
                 className="inp textarea plugin-config-page__raw-toml min-h-[22rem] w-full font-mono text-xs leading-relaxed"
                 value={raw}
-                onChange={(e) => setRaw(e.target.value)}
+                onChange={(e) => {
+                  rawRef.current = e.target.value;
+                  setRaw(e.target.value);
+                }}
                 spellCheck={false}
               />
               {!isDialog ? (

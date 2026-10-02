@@ -267,6 +267,7 @@ export default function PluginsPage() {
         pluginRow={selectedPluginRow}
         officialExtensions={officialQ.data || []}
         communityPlugins={communityQ.data?.plugins || []}
+        closeHandledByNavigation
         onClose={closeConfigDialog}
       />
 

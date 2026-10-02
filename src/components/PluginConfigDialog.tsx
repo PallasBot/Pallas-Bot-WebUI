@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { resolvePluginReadmeTarget } from "@/utils/pluginReadmeTarget";
+import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
 type Props = {
   open: boolean;
@@ -29,6 +30,7 @@ type Props = {
   officialExtensions: OfficialExtensionRow[];
   communityPlugins: CommunityPluginRow[];
   onClose: () => void;
+  closeHandledByNavigation?: boolean;
 };
 
 /** 插件配置弹窗：shadcn Dialog（居中实心底）。 */
@@ -39,9 +41,12 @@ export default function PluginConfigDialog({
   officialExtensions,
   communityPlugins,
   onClose,
+  closeHandledByNavigation = false,
 }: Props) {
   const workspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
+  const { confirm, confirmDialog } = useConsoleConfirm();
   const [status, setStatus] = useState<PluginConfigWorkspaceStatus>({
+    dirty: false,
     saving: false,
     checking: false,
     loading: true,
@@ -52,6 +57,7 @@ export default function PluginConfigDialog({
   const onStatusChange = (next: PluginConfigWorkspaceStatus) => {
     setStatus((prev) => {
       if (
+        prev.dirty === next.dirty &&
         prev.saving === next.saving &&
         prev.checking === next.checking &&
         prev.loading === next.loading &&
@@ -80,8 +86,20 @@ export default function PluginConfigDialog({
   const canSave = status.hasData && !status.loading && !status.saving && !status.checking;
   const busy = status.saving;
 
-  function requestClose() {
+  async function requestClose() {
     if (busy) return;
+    if (
+      !closeHandledByNavigation &&
+      status.dirty &&
+      !(await confirm({
+        title: "放弃插件配置草稿？",
+        subtitle: "关闭将丢弃尚未保存的表单或 TOML 更改。",
+        confirmLabel: "放弃草稿",
+        confirmVariant: "default",
+      }))
+    ) {
+      return;
+    }
     onClose();
   }
 
@@ -119,7 +137,7 @@ export default function PluginConfigDialog({
     <Dialog
       open={open && Boolean(pluginName)}
       onOpenChange={(next) => {
-        if (!next) requestClose();
+        if (!next) void requestClose();
       }}
     >
       <DialogContent
@@ -164,6 +182,7 @@ export default function PluginConfigDialog({
 
         {footer}
       </DialogContent>
+      {confirmDialog}
     </Dialog>
   );
 }

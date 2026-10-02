@@ -54,6 +54,7 @@ import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
   type PluginConfigWorkspaceStatus,
 } from "@/components/PluginConfigWorkspace";
+import type { DraftNavigation } from "@/components/DraftProtection";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -187,6 +188,20 @@ function normalizeMediaPanel(raw: string): Panel {
   if (raw === "draw-raw") return "draw";
   if (PANEL_SET.has(raw)) return raw as Panel;
   return "service";
+}
+
+function shouldBlockMediaWorkspaceNavigation(
+  workspacePanel: "sing" | "draw",
+  { currentLocation, nextLocation }: DraftNavigation,
+): boolean {
+  if (currentLocation.pathname !== nextLocation.pathname) return true;
+  const currentPanel = normalizeMediaPanel(
+    new URLSearchParams(currentLocation.search).get("panel") || "",
+  );
+  const nextPanel = normalizeMediaPanel(
+    new URLSearchParams(nextLocation.search).get("panel") || "",
+  );
+  return currentPanel === workspacePanel && nextPanel !== workspacePanel;
 }
 
 export default function AiConfigMediaSection() {
@@ -855,6 +870,7 @@ export default function AiConfigMediaSection() {
   const singWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
   const singMappingSectionRef = useRef<HTMLDivElement>(null);
   const emptyPluginStatus: PluginConfigWorkspaceStatus = {
+    dirty: false,
     saving: false,
     checking: false,
     loading: true,
@@ -870,7 +886,8 @@ export default function AiConfigMediaSection() {
     ) => (next: PluginConfigWorkspaceStatus) => {
       setter((prev) => {
         if (
-          prev.saving === next.saving
+          prev.dirty === next.dirty
+          && prev.saving === next.saving
           && prev.checking === next.checking
           && prev.loading === next.loading
           && prev.hasData === next.hasData
@@ -1735,6 +1752,9 @@ export default function AiConfigMediaSection() {
               compact
               includeFields={["sing_speakers"]}
               hideGroupHeaders
+              shouldBlockNavigation={(transition) =>
+                shouldBlockMediaWorkspaceNavigation("sing", transition)
+              }
               onStatusChange={onSingPluginStatusChange}
             />
             <PluginConfigElsewhereHint
@@ -1943,6 +1963,9 @@ export default function AiConfigMediaSection() {
           compact
           includeFields={[]}
           includeGateways
+          shouldBlockNavigation={(transition) =>
+            shouldBlockMediaWorkspaceNavigation("draw", transition)
+          }
           onStatusChange={onDrawStatusChange}
         />
         <PluginConfigElsewhereHint

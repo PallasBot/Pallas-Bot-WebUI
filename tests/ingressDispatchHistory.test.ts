@@ -15,6 +15,7 @@ describe("buildIngressHistoryView", () => {
         {
           at: 100,
           ingress_p95_ms: 1200,
+          ingress_full_p95_ms: 1600,
           scheduler_wait_p95_ms: 600,
           scheduler_pending: 5,
           scheduler_active: 4,
@@ -30,7 +31,8 @@ describe("buildIngressHistoryView", () => {
     });
 
     expect(view.latency).toEqual([
-      { id: "ingress", label: "入站 P95", axis: "left", points: [{ at: 100, total: 1200 }] },
+      { id: "ingress", label: "入站分发 P95", axis: "left", points: [{ at: 100, total: 1200 }] },
+      { id: "ingressFull", label: "入站全执行 P95", axis: "left", points: [{ at: 100, total: 1600 }] },
       { id: "scheduler", label: "调度等待 P95", axis: "left", points: [{ at: 100, total: 600 }] },
     ]);
     expect(view.learning.map((row) => row.points[0]?.total)).toEqual([6, 5, 4]);
@@ -38,6 +40,7 @@ describe("buildIngressHistoryView", () => {
       {
         at: 100,
         ingressP95: 1200,
+        ingressFullP95: 1600,
         schedulerWaitP95: 600,
         queue: 5,
         concurrency: 50,
