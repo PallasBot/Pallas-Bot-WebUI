@@ -7,6 +7,7 @@ const page = readFileSync(
   resolve(process.cwd(), "src/pages/ai/AiStatisticsPage.tsx"),
   "utf8",
 );
+const compact = (value: string) => value.replace(/\s+/g, " ").trim();
 
 describe("AI 观测明细布局", () => {
   it("让 Token 和画画的三张明细表按两列换行", () => {
@@ -17,10 +18,10 @@ describe("AI 观测明细布局", () => {
       /<StatsSectionLabel>画画明细<\/StatsSectionLabel>[\s\S]*?<\/div>\n            \) : null}/,
     )?.[0];
 
-    expect(tokenDetails).toContain(
+    expect(compact(tokenDetails)).toContain(
       'className="console-panel-grid grid-cols-1 lg:grid-cols-2"',
     );
-    expect(imageDetails).toContain(
+    expect(compact(imageDetails)).toContain(
       'className="console-panel-grid grid-cols-1 lg:grid-cols-2"',
     );
   });
@@ -33,31 +34,31 @@ describe("AI 观测明细布局", () => {
       /activeTab === "token"[\s\S]*?<Card>[\s\S]*?Provider 堆叠/,
     )?.[0];
 
-    expect(imageUsage).toContain(
+    expect(compact(imageUsage)).toContain(
       'className="console-panel-grid grid-cols-1 lg:grid-cols-2"',
     );
-    expect(imageUsage).toContain(
-      'title="按模型"\n                    rows={rangeImageModelRows}\n                    emptyText="暂无模型数据"\n                    className="lg:col-span-2"',
+    expect(compact(imageUsage)).toContain(
+      'title="按模型" rows={rangeImageModelRows} emptyText="暂无模型数据" className="lg:col-span-2"',
     );
-    expect(tokenUsage).toContain(
+    expect(compact(tokenUsage)).toContain(
       'className="console-panel-grid grid-cols-1 lg:grid-cols-2"',
     );
-    expect(tokenUsage).toContain(
-      'rows={rangeTokenTaskRows}\n                  limit={12}\n                  prefer="bars"\n                  emptyText="暂无按任务数据"',
+    expect(compact(tokenUsage)).toContain(
+      'rows={rangeTokenTaskDisplayRows} limit={12} prefer="bars" emptyText="暂无按任务数据"',
     );
   });
 
   it("让费用按任务通栏展示单位成本，补充 Token 用量排行", () => {
     expect(page).toContain("每百万 Token");
-    expect(page).toContain(
-      'title="按任务"\n                  rows={rangeCost.tokenTaskRows}\n                  kind="token"\n                  currency={costCurrency}\n                  showUnitCost\n                  className="lg:col-span-2"',
+    expect(compact(page)).toContain(
+      'title="按任务" rows={rangeTaskCostDisplayRows} kind="token" currency={costCurrency} showUnitCost className="lg:col-span-2"',
     );
   });
 
   it("用量占比条丰富明细，并让费用按任务占满第二行", () => {
-    expect(page).toContain("const totalVolume = rows.reduce(");
-    expect(page).toContain(
-      'const volume =\n                  kind === "token"',
+    expect(compact(page)).toContain("const totalVolume = rows.reduce(");
+    expect(compact(page)).toContain(
+      'const volume = kind === "token"',
     );
     expect(page).toContain(
       'import AiProgressBar from "@/components/ai/AiProgressBar";',
@@ -66,16 +67,16 @@ describe("AI 观测明细布局", () => {
     expect(page).toContain(
       'title="按模型"\n                  rows={rangeCost.tokenModelRows}\n                  kind="token"\n                  currency={costCurrency}',
     );
-    expect(page).toContain(
-      'title="按任务"\n                  rows={rangeCost.tokenTaskRows}\n                  kind="token"\n                  currency={costCurrency}\n                  showUnitCost\n                  className="lg:col-span-2"',
+    expect(compact(page)).toContain(
+      'title="按任务" rows={rangeTaskCostDisplayRows} kind="token" currency={costCurrency} showUnitCost className="lg:col-span-2"',
     );
-    expect(page).toContain(
-      'title="按模型"\n                    rows={rangeCost.imageModelRows}\n                    kind="image"\n                    currency={costCurrency}\n                    className="lg:col-span-2"',
+    expect(compact(page)).toContain(
+      'title="按模型" rows={rangeCost.imageModelRows} kind="image" currency={costCurrency} className="lg:col-span-2"',
     );
   });
 
   it("将最近错误作为最近任务面板内的提示", () => {
-    expect(page).toContain(
+    expect(compact(page)).toContain(
       'import ConsoleHint from "@/components/ConsoleHint";',
     );
     expect(page).toContain(

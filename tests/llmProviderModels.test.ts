@@ -87,10 +87,10 @@ describe("registered provider models", () => {
     ]);
   });
 
-  it("does not repeat registered models in discovery options", () => {
+  it("keeps registered models available in discovery options", () => {
     expect(modelDiscoveryOptionsForProvider("deepseek", registered, {
       deepseek: ["deepseek-chat", "deepseek-reasoner", "deepseek-v3"],
-    })).toEqual(["deepseek-v3"]);
+    })).toEqual(["deepseek-chat", "deepseek-reasoner", "deepseek-v3"]);
   });
 });
 
