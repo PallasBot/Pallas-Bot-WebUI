@@ -133,7 +133,11 @@ beforeEach(() => {
   }));
 });
 
-afterEach(cleanup);
+afterEach(async () => {
+  cleanup();
+  // Drain preserveShellMainScroll's delayed restores before jsdom teardown.
+  await new Promise((resolve) => setTimeout(resolve, 200));
+});
 
 it("confirms dirty refresh and route exit, preserving edits made while a provider save is pending", async () => {
   const user = userEvent.setup();
