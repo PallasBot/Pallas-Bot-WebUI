@@ -15,7 +15,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
-import { InstallJobFailedError, InstallJobStreamInterruptedError } from "@/utils/installJobStream";
+import {
+  InstallJobFailedError,
+  InstallJobStreamCancelledError,
+  InstallJobStreamInterruptedError,
+} from "@/utils/installJobStream";
 import { waitForPluginStoreJob } from "@/utils/pluginStoreJobStream";
 
 type Props = {
@@ -46,6 +50,10 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
   const [resultMsg, setResultMsg] = useState("");
   const [needsRestart, setNeedsRestart] = useState(false);
   const uninstalledRef = useRef(false);
+  const watcherRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
+  const openRef = useRef(open);
+  openRef.current = open;
   const {
     restartAvailable,
     ensureRestartContext,
@@ -63,6 +71,14 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
   const canConfirm = Boolean(isUninstallable && (!requireName || nameMatched) && !busy && !finished);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      watcherRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     uninstalledRef.current = false;
     setConfirmText("");
@@ -73,6 +89,7 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
     setError("");
     setResultMsg("");
     setNeedsRestart(false);
+    return () => watcherRef.current?.abort();
   }, [open]);
 
   useEffect(() => {
@@ -93,6 +110,8 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
     setError("");
     setPercent(0);
     setProgressMsg("正在卸载…");
+    const controller = new AbortController();
+    watcherRef.current = controller;
     try {
       const job = await uninstallLocalPluginAsync(pluginId);
       const payload = await waitForPluginStoreJob(
@@ -103,19 +122,23 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
           if (progress.message) setProgressMsg(progress.message);
         },
         { kind: "local", target: pluginId, action: "uninstall" },
+        controller.signal,
       );
+      if (!mountedRef.current || controller.signal.aborted) return;
       const out = (payload.result ?? {}) as { message?: string; needs_restart?: boolean };
       setResultMsg(out.message || payload.message || "已卸载。");
       setNeedsRestart(Boolean(out.needs_restart));
       setFinished(true);
     } catch (e) {
+      if (e instanceof InstallJobStreamCancelledError || !mountedRef.current) return;
       if (e instanceof InstallJobStreamInterruptedError) {
         setError("操作仍在后台进行，可稍后查看插件列表确认结果。");
       } else {
         setError(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
       }
     } finally {
-      setBusy(false);
+      if (watcherRef.current === controller) watcherRef.current = null;
+      if (mountedRef.current && openRef.current && !controller.signal.aborted) setBusy(false);
     }
   }
 

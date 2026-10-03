@@ -64,7 +64,12 @@ import { Switch } from "@/components/ui/switch";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { AI_NCM_DEFAULTS, aiRuntimeLayoutLabel } from "@/config/aiConstants";
 import { clearActiveJob, getActiveJob, setActiveJob } from "@/utils/activeJobSession";
-import { InstallJobFailedError, InstallJobStreamInterruptedError, waitForInstallJob } from "@/utils/installJobStream";
+import {
+  InstallJobFailedError,
+  InstallJobStreamCancelledError,
+  InstallJobStreamInterruptedError,
+  waitForInstallJob,
+} from "@/utils/installJobStream";
 import {
   aiInstallSubtitle,
   resolveAiInstallPrimary,
@@ -296,6 +301,8 @@ export default function AiConfigMediaSection() {
   const [assetDlActive, setAssetDlActive] = useState(false);
   const [assetDlFailed, setAssetDlFailed] = useState(false);
   const pollRef = useRef<number | null>(null);
+  const jobWatchersRef = useRef(new Set<AbortController>());
+  const mountedRef = useRef(true);
   const [defaultSpeaker, setDefaultSpeaker] = useState("");
   const [preferredBackend, setPreferredBackend] = useState("");
   const [speakerBackends, setSpeakerBackends] = useState<Record<string, string>>({});
@@ -313,6 +320,15 @@ export default function AiConfigMediaSection() {
   const [ttsYoudaoSecret, setTtsYoudaoSecret] = useState("");
   const [ttsBaiduSecretConfigured, setTtsBaiduSecretConfigured] = useState(false);
   const [ttsYoudaoSecretConfigured, setTtsYoudaoSecretConfigured] = useState(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      for (const controller of jobWatchersRef.current) controller.abort();
+      jobWatchersRef.current.clear();
+    };
+  }, []);
   const [phone, setPhone] = useState("");
   const [ctcode, setCtcode] = useState(String(AI_NCM_DEFAULTS.countryCode));
   const [captcha, setCaptcha] = useState("");
@@ -506,27 +522,34 @@ export default function AiConfigMediaSection() {
   });
   const installMut = useMutation({
     mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap" | "update") => {
+      const controller = new AbortController();
+      jobWatchersRef.current.add(controller);
       setInstallProgress("已排队…");
       setInstallPercent(0);
       setInstallLogLines([]);
       setInstallFailTail("");
-      const job = await postAiInstall({
-        action,
-        no_start: noStart,
-        use_gpu: useGpu,
-      });
-      return waitForInstallJob(job.job_id, openAiInstallJobEventSource, (p) => {
-        setInstallPercent(p.percent);
-        if (p.message) setInstallProgress(p.message);
-        if (p.line != null && p.line !== "") {
-          setInstallLogLines((prev) => {
-            const next = [...prev, p.line as string];
-            return next.length > 400 ? next.slice(-320) : next;
-          });
-        }
-      });
+      try {
+        const job = await postAiInstall({
+          action,
+          no_start: noStart,
+          use_gpu: useGpu,
+        });
+        return await waitForInstallJob(job.job_id, openAiInstallJobEventSource, (p) => {
+          setInstallPercent(p.percent);
+          if (p.message) setInstallProgress(p.message);
+          if (p.line != null && p.line !== "") {
+            setInstallLogLines((prev) => {
+              const next = [...prev, p.line as string];
+              return next.length > 400 ? next.slice(-320) : next;
+            });
+          }
+        }, controller.signal);
+      } finally {
+        jobWatchersRef.current.delete(controller);
+      }
     },
     onSuccess: async () => {
+      if (!mountedRef.current) return;
       notifyOk("安装任务完成");
       setInstallProgress("");
       setInstallPercent(0);
@@ -536,6 +559,7 @@ export default function AiConfigMediaSection() {
       await invalidate();
     },
     onError: (e) => {
+      if (!mountedRef.current || e instanceof InstallJobStreamCancelledError) return;
       if (e instanceof InstallJobStreamInterruptedError) {
         setInstallProgress((prev) => prev || "下载/安装仍在后台进行，返回本页可续看进度");
         return;
@@ -631,6 +655,7 @@ export default function AiConfigMediaSection() {
 
   useEffect(() => {
     let cancelled = false;
+    let watcher: AbortController | null = null;
     const resumeDownload = async () => {
       try {
         const active = await fetchMediaAssetsDownloadActive();
@@ -674,8 +699,10 @@ export default function AiConfigMediaSection() {
         jobId = installSaved.jobId;
         setInstallProgress("正在恢复安装进度…");
       }
+      watcher = new AbortController();
+      jobWatchersRef.current.add(watcher);
       void waitForInstallJob(jobId, openAiInstallJobEventSource, (p) => {
-        if (cancelled) return;
+        if (cancelled || watcher?.signal.aborted) return;
         setInstallPercent(p.percent);
         if (p.message) setInstallProgress(p.message);
         if (p.line != null && p.line !== "") {
@@ -684,28 +711,33 @@ export default function AiConfigMediaSection() {
             return next.length > 400 ? next.slice(-320) : next;
           });
         }
-      })
+      }, watcher.signal)
         .then(async () => {
-          if (cancelled) return;
+          if (cancelled || watcher?.signal.aborted) return;
           notifyOk("安装任务完成");
           setInstallProgress("");
           setInstallPercent(0);
           await invalidate();
         })
         .catch((e) => {
-          if (cancelled || e instanceof InstallJobStreamInterruptedError) return;
+          if (cancelled || e instanceof InstallJobStreamCancelledError || e instanceof InstallJobStreamInterruptedError) return;
+          if (!mountedRef.current) return;
           if (e instanceof InstallJobFailedError) {
             notifyErr(e.message);
           } else {
             notifyErr(axiosErrorDetail(e));
           }
           setInstallProgress("");
+        })
+        .finally(() => {
+          if (watcher) jobWatchersRef.current.delete(watcher);
         });
     };
     void resumeInstall();
 
     return () => {
       cancelled = true;
+      watcher?.abort();
       if (pollRef.current != null) {
         window.clearInterval(pollRef.current);
         pollRef.current = null;
@@ -1286,7 +1318,7 @@ export default function AiConfigMediaSection() {
                       }
                       disabled={busy || !installPrimary.enabled}
                       title={installPrimary.title}
-                      onClick={() => { void installMut.mutateAsync(installPrimary.action); }}
+                      onClick={() => installMut.mutate(installPrimary.action)}
                     >
                       {installPrimary.label}
                     </Button>
@@ -1298,7 +1330,7 @@ export default function AiConfigMediaSection() {
                       icon={Package}
                       disabled={busy || !canBootstrap}
                       title="只重跑 bootstrap（不 git pull），用于修复依赖或切换 GPU 开关后重装"
-                      onClick={() => { void installMut.mutateAsync("bootstrap"); }}
+                      onClick={() => installMut.mutate("bootstrap")}
                     >
                       仅重装依赖
                     </Button>

@@ -2116,37 +2116,33 @@ export async function fetchLogs(
   if (!bypass && cached && now - cached.ts < LOGS_STALE_MS) {
     const snap = cached.data;
     if (!logsInflight.has(cacheKey)) {
-      const refresh = fetchLogsFromNetwork(n, scope, src)
-        .then((data) => {
-          logsCache.set(cacheKey, { data, ts: Date.now() });
-          return data;
-        })
-        .finally(() => {
-          logsInflight.delete(cacheKey);
-        });
-      logsInflight.set(cacheKey, refresh);
+      void startLogsFetch(cacheKey, n, scope, src).catch(() => {});
     }
     return snap;
   }
-  let inflight = logsInflight.get(cacheKey);
-  if (!inflight) {
-    inflight = fetchLogsFromNetwork(n, scope, src)
-      .then((data) => {
-        logsCache.set(cacheKey, { data, ts: Date.now() });
-        return data;
-      })
-      .finally(() => {
-        logsInflight.delete(cacheKey);
-      });
-    logsInflight.set(cacheKey, inflight);
-  }
-  return inflight;
+  return logsInflight.get(cacheKey) ?? startLogsFetch(cacheKey, n, scope, src);
 }
 
 const LOGS_FRESH_MS = 900;
 const LOGS_STALE_MS = 5_000;
 const logsCache = new Map<string, { data: LogsData; ts: number }>();
 const logsInflight = new Map<string, Promise<LogsData>>();
+let logsFetchGeneration = 0;
+
+function startLogsFetch(cacheKey: string, n: number, scope: LogScope, source: string): Promise<LogsData> {
+  const generation = logsFetchGeneration;
+  let request: Promise<LogsData>;
+  request = fetchLogsFromNetwork(n, scope, source)
+    .then((data) => {
+      if (generation === logsFetchGeneration) logsCache.set(cacheKey, { data, ts: Date.now() });
+      return data;
+    })
+    .finally(() => {
+      if (logsInflight.get(cacheKey) === request) logsInflight.delete(cacheKey);
+    });
+  logsInflight.set(cacheKey, request);
+  return request;
+}
 
 async function fetchLogsFromNetwork(n: number, scope: LogScope, source: string): Promise<LogsData> {
   const params: { n: number; scope: LogScope; source?: string } = { n, scope };
@@ -2157,6 +2153,7 @@ async function fetchLogsFromNetwork(n: number, scope: LogScope, source: string):
 export function invalidateLogsCache(): void {
   logsCache.clear();
   logsInflight.clear();
+  logsFetchGeneration++;
 }
 
 /** 分片 hub 实时日志 SSE（合并 hub 环与各 worker 落盘增量） */

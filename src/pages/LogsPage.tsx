@@ -47,6 +47,7 @@ import {
   persistLogsLastEventId,
 } from "@/utils/logStreamResume";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { probeConsoleStreamUnauthorized } from "@/utils/consoleStreamAuth";
 
 type LogsSnapshot = {
   scope: LogScope;
@@ -57,6 +58,7 @@ type LogsSnapshot = {
 
 let logsSnapshotCache: LogsSnapshot | null = null;
 const LOG_POLL_MS = 8000;
+const MAX_SEEN_STREAM_EVENTS = 1200;
 
 function onNInput(raw: string, setN: (n: number) => void) {
   const next = Number(raw);
@@ -132,8 +134,14 @@ export default function LogsPage() {
   const logPollTimerRef = useRef<number | null>(null);
   const logEsRef = useRef<EventSource | null>(null);
   const streamReconnectTimerRef = useRef<number | null>(null);
+  const streamGenerationRef = useRef(0);
+  const loadGenerationRef = useRef(0);
+  const mountedRef = useRef(true);
+  const selectionRef = useRef({ scope, logSource, n });
+  selectionRef.current = { scope, logSource, n };
   /** resume id 只放 ref，避免每条 SSE setState 拖垮整页并重建 EventSource */
   const lastStreamEventIdRef = useRef(0);
+  const seenStreamEventsRef = useRef(new Set<string>());
   const rawScrollElRef = useRef<HTMLPreElement | null>(null);
   const logFeedRef = useRef<LogVirtualFeedHandle | null>(null);
   const suppressRawFollowUpdateRef = useRef(0);
@@ -268,27 +276,40 @@ export default function LogsPage() {
   const load = useCallback(
     async (opts?: { silent?: boolean; bypassCache?: boolean }) => {
       const silent = Boolean(opts?.silent);
+      const generation = ++loadGenerationRef.current;
+      const isCurrent = () =>
+        mountedRef.current
+        && generation === loadGenerationRef.current
+        && selectionRef.current.scope === scope
+        && selectionRef.current.logSource === logSource
+        && selectionRef.current.n === n;
       if (!silent) setLoading(true);
       setErr("");
       try {
         const src = logSource === "all" ? undefined : logSource;
         const data = await fetchLogs(n, scope, src, { bypassCache: opts?.bypassCache === true });
+        if (!isCurrent()) return;
         setPayload(data);
         if (data.log_sources?.length) setLogSources(data.log_sources);
         logsSnapshotCache = { scope, logSource, n, payload: data };
       } catch (e) {
-        setErr(e instanceof Error ? e.message : String(e));
+        if (isCurrent()) setErr(e instanceof Error ? e.message : String(e));
       } finally {
-        if (!silent) setLoading(false);
-        setPageReady(true);
-        if (!silent) {
-          setFollowLogTail(true);
-          scheduleEnterLogScroll();
+        if (isCurrent()) {
+          if (!silent) setLoading(false);
+          setPageReady(true);
+          if (!silent) {
+            setFollowLogTail(true);
+            scheduleEnterLogScroll();
+          }
         }
       }
     },
     [logSource, n, scheduleEnterLogScroll, scope],
   );
+
+  const loadRef = useRef(load);
+  loadRef.current = load;
 
   const stopLogPolling = useCallback(() => {
     if (logPollTimerRef.current == null) return;
@@ -300,11 +321,12 @@ export default function LogsPage() {
     if (logPollTimerRef.current != null) return;
     logPollTimerRef.current = window.setInterval(() => {
       if (document.visibilityState === "hidden") return;
-      void load({ silent: true });
+      void loadRef.current({ silent: true });
     }, LOG_POLL_MS);
-  }, [load]);
+  }, []);
 
-  const stopLogStreamConnection = useCallback(() => {
+  const stopLogStreamConnection = useCallback((expected?: EventSource) => {
+    if (expected && logEsRef.current !== expected) return;
     logEsRef.current?.close();
     logEsRef.current = null;
     if (streamReconnectTimerRef.current != null) {
@@ -314,6 +336,7 @@ export default function LogsPage() {
   }, []);
 
   const closeLogStream = useCallback(() => {
+    streamGenerationRef.current += 1;
     stopLogStreamConnection();
     if (liveFlushTimerRef.current != null) {
       window.clearTimeout(liveFlushTimerRef.current);
@@ -327,6 +350,8 @@ export default function LogsPage() {
 
   const startLogStream = useCallback(() => {
     stopLogStreamConnection();
+    const generation = ++streamGenerationRef.current;
+    const isCurrent = () => mountedRef.current && generation === streamGenerationRef.current;
     // 故意重连时保持「实时」外观，仅在 onerror 时降为重连中，避免徽章闪烁
     setStreamReconnecting(false);
     try {
@@ -334,24 +359,31 @@ export default function LogsPage() {
       const es = openLogsEventSource(scope, logSource, resumeId);
       logEsRef.current = es;
       es.onopen = () => {
+        if (!isCurrent() || logEsRef.current !== es) return;
         setStreamLive(true);
         setStreamReconnecting(false);
       };
       es.onmessage = (ev) => {
-        if (!ev.data) return;
+        if (!isCurrent() || logEsRef.current !== es || !ev.data) return;
         try {
           const row = JSON.parse(ev.data) as LogEntry & { type?: string };
           if (row?.type === "ready") return;
           if (row.message != null) {
-            if (typeof row.id === "number" && row.id > 0) {
-              lastStreamEventIdRef.current = row.id;
-              persistLogsLastEventId(scope, logSource, row.id);
-            } else if (ev.lastEventId) {
-              const parsed = Number(ev.lastEventId);
-              if (Number.isFinite(parsed) && parsed > 0) {
-                lastStreamEventIdRef.current = parsed;
-                persistLogsLastEventId(scope, logSource, parsed);
+            const lastEventId = Number(ev.lastEventId);
+            const rowId = Number(row.id);
+            const eventId = Number.isFinite(lastEventId) && lastEventId > 0 ? lastEventId : rowId;
+            if (Number.isFinite(eventId) && eventId > 0) {
+              const eventKey = JSON.stringify([scope, logSource, eventId, ev.data]);
+              const seen = seenStreamEventsRef.current;
+              if (seen.has(eventKey)) return;
+              seen.add(eventKey);
+              // ponytail: retain one live-buffer's worth of identities; enlarge if replay tests exceed this bound.
+              if (seen.size > MAX_SEEN_STREAM_EVENTS) {
+                const oldest = seen.values().next().value;
+                if (oldest !== undefined) seen.delete(oldest);
               }
+              lastStreamEventIdRef.current = eventId;
+              persistLogsLastEventId(scope, logSource, eventId);
             }
             pushLiveEntryRef.current(row);
           }
@@ -360,14 +392,18 @@ export default function LogsPage() {
         }
       };
       es.onerror = () => {
+        if (!isCurrent() || logEsRef.current !== es) return;
         setStreamLive(false);
-        stopLogStreamConnection();
+        stopLogStreamConnection(es);
         if (streamReconnectTimerRef.current != null) return;
         setStreamReconnecting(true);
-        streamReconnectTimerRef.current = window.setTimeout(() => {
-          streamReconnectTimerRef.current = null;
-          setStreamReconnectCount((v) => v + 1);
-        }, 3000);
+        void probeConsoleStreamUnauthorized().then((unauthorized) => {
+          if (!isCurrent() || unauthorized || streamReconnectTimerRef.current != null) return;
+          streamReconnectTimerRef.current = window.setTimeout(() => {
+            streamReconnectTimerRef.current = null;
+            setStreamReconnectCount((v) => v + 1);
+          }, 3000);
+        });
       };
     } catch {
       stopLogStreamConnection();
@@ -384,6 +420,7 @@ export default function LogsPage() {
   }, [load, pageReady, scheduleEnterLogScroll, startLogPolling]);
 
   useEffect(() => {
+    mountedRef.current = true;
     if (logsSnapshotCache) {
       setScope(logsSnapshotCache.scope);
       setLogSource(logsSnapshotCache.logSource);
@@ -398,6 +435,9 @@ export default function LogsPage() {
     scheduleEnterLogScroll();
     void bootLogsPage();
     return () => {
+      mountedRef.current = false;
+      loadGenerationRef.current += 1;
+      streamGenerationRef.current += 1;
       cancelScrollActiveLogRetries();
       if (logScrollBottomRafRef.current) {
         window.cancelAnimationFrame(logScrollBottomRafRef.current);

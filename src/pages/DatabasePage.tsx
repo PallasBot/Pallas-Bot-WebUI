@@ -1003,7 +1003,11 @@ export default function DatabasePage() {
                   插件列表加载失败，禁用插件列可能显示不全：{axiosErrorDetail(pluginsQ.error)}
                 </p>
               ) : null}
-              {socialConfigsBusy && !groupConfigs.length ? (
+              {groupQ.error ? (
+                <p className="alert alert--err database-social-config-error" role="alert">
+                  群配置加载失败：{axiosErrorDetail(groupQ.error)}
+                </p>
+              ) : socialConfigsBusy && !groupConfigs.length ? (
                 <ConsoleBlockSkeleton lines={5} label="正在加载群配置" />
               ) : !filteredGroupConfigs.length ? (
                 <p className="muted">
@@ -1123,7 +1127,11 @@ export default function DatabasePage() {
                   </p>
                 ) : null}
               </div>
-              {socialConfigsBusy && !userConfigs.length ? (
+              {userQ.error ? (
+                <p className="alert alert--err database-user-config-error" role="alert">
+                  好友配置加载失败：{axiosErrorDetail(userQ.error)}
+                </p>
+              ) : socialConfigsBusy && !userConfigs.length ? (
                 <ConsoleBlockSkeleton lines={4} label="正在加载好友配置" />
               ) : !filteredUserConfigs.length ? (
                 <p className="muted">
@@ -1472,7 +1480,7 @@ export default function DatabasePage() {
       >
         <DialogContent className="max-w-[min(42rem,calc(100vw-24px))] gap-0 overflow-hidden p-0">
           <DialogHeader className="border-b px-4 py-3 text-left">
-            <DialogTitle className="text-left">
+            <DialogTitle className="break-words text-left">
               {browseTable ? `${storageTableLabel(browseTable)} · ` : ""}
               {browseDetail ? browseRowIdLabel(browseDetail) : "行详情"}
             </DialogTitle>

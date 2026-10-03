@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { AI_EXTENSION_DOCKER_LOG_MOUNT, AI_EXTENSION_LOG_KINDS, AI_LOG_DEFAULTS, type AiExtensionLogKind } from "@/config/aiConstants";
 import { Link } from "react-router-dom";
+import { probeConsoleStreamUnauthorized } from "@/utils/consoleStreamAuth";
 
 const LOG_KIND_ICONS: Record<AiExtensionLogKind, LucideIcon> = {
   uvicorn: ScrollText,
@@ -71,8 +72,12 @@ export default function AiConfigLogsSection({
     setStreamError("");
     const es = openAiExtensionLogsEventSource(kind);
     esRef.current = es;
+    const isCurrent = () => esRef.current === es;
+    es.onopen = () => {
+      if (isCurrent()) setStreamError("");
+    };
     es.onmessage = (ev) => {
-      if (!ev.data) return;
+      if (!isCurrent() || !ev.data) return;
       try {
         const payload = JSON.parse(ev.data) as {
           type?: string;
@@ -91,9 +96,18 @@ export default function AiConfigLogsSection({
       }
     };
     es.onerror = () => {
+      if (!isCurrent()) return;
       setStreamError((prev) => prev || "日志流连接中断");
+      void probeConsoleStreamUnauthorized().then((unauthorized) => {
+        if (!unauthorized || !isCurrent()) return;
+        es.close();
+        esRef.current = null;
+      });
     };
-    return () => es.close();
+    return () => {
+      if (isCurrent()) esRef.current = null;
+      es.close();
+    };
   }, [live, kind]);
 
   const payloadError = !live ? (logsQ.data?.error || "").trim() : streamError.trim();

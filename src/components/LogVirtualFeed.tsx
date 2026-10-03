@@ -42,11 +42,20 @@ function logLevelBadgeVariant(level: LogEntryLevel): NonNullable<BadgeProps["var
   return "neutral";
 }
 
-function stableRowKey(row: LogEntry, index: number): string {
+function stableRowKey(row: LogEntry): string {
   const id = row.id;
-  if (typeof id === "number" && Number.isFinite(id) && id > 0) return `id:${id}`;
   const msg = String(row.message ?? "");
-  return `c:${row.time}|${row.scope}|${row.level}|${index}|${msg.length}:${msg.slice(0, 48)}`;
+  const identity = JSON.stringify([row.time, row.scope, row.level, msg]);
+  return typeof id === "number" && Number.isFinite(id) && id > 0
+    ? `id:${id}:${identity}`
+    : `c:${identity}`;
+}
+
+function continuesPinnedRow(snapshot: LogEntry, row: LogEntry): boolean {
+  if (row.id !== snapshot.id || row.time !== snapshot.time || row.scope !== snapshot.scope) return false;
+  const before = String(snapshot.message ?? "");
+  const after = String(row.message ?? "");
+  return before ? after.startsWith(`${before}\n`) : Boolean(after);
 }
 
 function LogScopeChips({ scope }: { scope: string }) {
@@ -147,16 +156,28 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
   const suppressScrollStateRef = useRef(0);
   const scrollBottomTokenRef = useRef(0);
   const rowKeys = useMemo(
-    () => rows.map((row, index) => stableRowKey(row, index)),
+    () => {
+      const occurrences = new Map<string, number>();
+      return rows.map((row) => {
+        const key = stableRowKey(row);
+        const occurrence = occurrences.get(key) ?? 0;
+        occurrences.set(key, occurrence + 1);
+        return occurrence ? `${key}:${occurrence}` : key;
+      });
+    },
     [rows],
   );
 
-  const pinnedRow = useMemo(() => {
-    if (!pinnedKey) return null;
-    const liveIdx = rowKeys.indexOf(pinnedKey);
-    if (liveIdx >= 0) return rows[liveIdx] ?? null;
-    return pinnedSnapshot;
+  const pinnedIndex = useMemo(() => {
+    if (!pinnedKey) return -1;
+    const exactIndex = rowKeys.indexOf(pinnedKey);
+    if (exactIndex >= 0) return exactIndex;
+    if (!pinnedSnapshot) return -1;
+    return rows.findIndex((row) => continuesPinnedRow(pinnedSnapshot, row));
   }, [rows, rowKeys, pinnedKey, pinnedSnapshot]);
+  const pinnedRow = pinnedKey
+    ? pinnedIndex >= 0 ? rows[pinnedIndex] : pinnedSnapshot
+    : null;
 
   const isNearBottom = useCallback((el: HTMLElement) => {
     if (el.clientHeight < 8) return false;
@@ -238,7 +259,7 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
                 key={stableKey}
                 row={row}
                 rowKey={stableKey}
-                pinned={pinnedKey === stableKey}
+                pinned={pinnedIndex === index}
                 onPin={pinRow}
               />
             );
