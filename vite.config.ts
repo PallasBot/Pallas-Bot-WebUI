@@ -4,6 +4,7 @@ import os from "node:os";
 import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig, loadEnv } from "vite";
+import { fontsourceWoff2Only } from "./src/build/fontsourceWoff2Only";
 
 const reactSrc = fileURLToPath(new URL("./src", import.meta.url));
 
@@ -52,7 +53,17 @@ export default defineConfig(({ mode }) => {
     define: {
       __WEBUI_VERSION__: JSON.stringify(webuiVersion),
     },
-    plugins: [react()],
+    plugins: [
+      {
+        name: "fontsource-woff2-only",
+        enforce: "pre",
+        transform(code, id) {
+          const transformed = fontsourceWoff2Only(code, id);
+          return transformed === null ? null : { code: transformed, map: null };
+        },
+      },
+      react(),
+    ],
     resolve: {
       alias: {
         "@": reactSrc,
