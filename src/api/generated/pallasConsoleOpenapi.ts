@@ -5151,6 +5151,24 @@ export interface components {
              */
             source: "derived" | "manual" | "legacy_migrated";
         };
+        /** AccountPersonaProfileData */
+        AccountPersonaProfileData: {
+            /** Energy */
+            energy: number;
+            /** Warmth */
+            warmth: number;
+            /** Mischief */
+            mischief: number;
+            /** Restraint */
+            restraint: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "derived" | "manual" | "legacy_migrated";
+        } & {
+            [key: string]: unknown;
+        };
         /** Body__community_gallery_create_pallas_api_community_gallery_post */
         Body__community_gallery_create_pallas_api_community_gallery_post: {
             /**
@@ -5187,6 +5205,40 @@ export interface components {
         Body__files_upload_pallas_api_files_upload_post: {
             /** File */
             file: string;
+        };
+        /** BotConfigPublicData */
+        BotConfigPublicData: {
+            /** Account */
+            account: number;
+            /** Admins */
+            admins: number[];
+            /** Auto Accept Friend */
+            auto_accept_friend: boolean;
+            /** Auto Accept Group */
+            auto_accept_group: boolean;
+            /** Security */
+            security: boolean;
+            /** Taken Name */
+            taken_name: {
+                [key: string]: number;
+            };
+            /** Drunk */
+            drunk: {
+                [key: string]: number;
+            };
+            /** Disabled Plugins */
+            disabled_plugins: string[];
+            /** Community Roster Show Qq */
+            community_roster_show_qq: boolean;
+            /** Persona */
+            persona: {
+                [key: string]: unknown;
+            } | null;
+            account_profile_effective: components["schemas"]["AccountPersonaProfileData"];
+            /** Group Style Enabled */
+            group_style_enabled: boolean;
+        } & {
+            [key: string]: unknown;
         };
         /** BotFavoritesUpdate */
         BotFavoritesUpdate: {
@@ -5590,6 +5642,58 @@ export interface components {
             /** Source Example Id */
             source_example_id?: string | null;
         };
+        /** InstanceBotProfileData */
+        InstanceBotProfileData: {
+            /** Nickname */
+            nickname?: string | null;
+            /** User Id */
+            user_id?: number | null;
+            /** Connection Key */
+            connection_key?: string | null;
+            /** Adapter */
+            adapter?: string | null;
+            /** Shard Id */
+            shard_id?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** InstanceBotRow */
+        InstanceBotRow: {
+            /** Connection Key */
+            connection_key: string;
+            /** Self Id */
+            self_id: string;
+            /** Adapter */
+            adapter: string;
+            /** Connected At Unix */
+            connected_at_unix?: number | null;
+            /** Ws Port */
+            ws_port?: number | null;
+            /** Shard Id */
+            shard_id?: number | null;
+            /** Nickname */
+            nickname?: string | null;
+            /** Online */
+            online?: boolean | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** InstancesData */
+        InstancesData: {
+            /** Nonebot Bots */
+            nonebot_bots: components["schemas"]["InstanceBotRow"][];
+            /** Db Bot Configs */
+            db_bot_configs: components["schemas"]["BotConfigPublicData"][];
+            pallas_protocol: components["schemas"]["PallasProtocolSnapshot"] | null;
+            protocol_extension: components["schemas"]["ProtocolExtensionStatusData"];
+            /** Bot Profiles */
+            bot_profiles: {
+                [key: string]: components["schemas"]["InstanceBotProfileData"];
+            };
+            napcat?: components["schemas"]["PallasProtocolSnapshot"] | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** LifecycleCatalogModel */
         LifecycleCatalogModel: {
             /** Backend */
@@ -5822,6 +5926,182 @@ export interface components {
              */
             p90: number;
         };
+        /** PallasProtocolSnapshot */
+        PallasProtocolSnapshot: {
+            /** Plugin */
+            plugin: string;
+            /** Webui Enabled */
+            webui_enabled: boolean;
+            /** Webui Path */
+            webui_path: string;
+            /** Console Auth Configured */
+            console_auth_configured: boolean;
+            /** Accounts */
+            accounts: components["schemas"]["ProtocolAccountSnapshot"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginCatalogMetadata */
+        PluginCatalogMetadata: {
+            /** Name */
+            name: string | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Usage
+             * @default
+             */
+            usage: string;
+            /** Extra */
+            extra?: unknown;
+            /**
+             * Type
+             * @default
+             */
+            type: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginCatalogRow */
+        PluginCatalogRow: {
+            /** Name */
+            name: string;
+            /** Nb Plugin Name */
+            nb_plugin_name: string;
+            /** Module */
+            module: string;
+            /** Resolved Plugin Id */
+            resolved_plugin_id: string;
+            /** Resolved Module */
+            resolved_module: string;
+            metadata: components["schemas"]["PluginCatalogMetadata"] | null;
+            /** Load Role */
+            load_role: string;
+            /** Loaded In Process */
+            loaded_in_process: boolean;
+            /** Has Config */
+            has_config: boolean;
+            /** Configurable */
+            configurable: boolean;
+            /** Help Visible */
+            help_visible: boolean;
+            /** Help Ignored */
+            help_ignored: boolean;
+            /** Help Hidden */
+            help_hidden: boolean;
+            /** Globally Disabled */
+            globally_disabled: boolean;
+            /** Global Disable Protected */
+            global_disable_protected: boolean;
+            /** Plugin Source */
+            plugin_source: string;
+            /** Plugin Source Dir */
+            plugin_source_dir: string | null;
+            /** Plugin Version */
+            plugin_version: string | null;
+            /** Extra Package */
+            extra_package: string | null;
+            /** Uninstallable */
+            uninstallable: boolean;
+            /** Uninstall Kind */
+            uninstall_kind: string | null;
+            /** Uninstall Target */
+            uninstall_target: string | null;
+            /** Deps Missing */
+            deps_missing: string[];
+            /** Avatar */
+            avatar: string | null;
+            /** Icon */
+            icon: string | null;
+            /** Cover */
+            cover: string | null;
+            /** Catalog Process Role */
+            catalog_process_role: string;
+            /** Expected In Catalog Process */
+            expected_in_catalog_process: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginCommandLimitCommandData */
+        PluginCommandLimitCommandData: {
+            /** Command Id */
+            command_id: string;
+            /** Label */
+            label: string;
+            /** Default Cd Sec */
+            default_cd_sec: number;
+            /** Effective Cd Sec */
+            effective_cd_sec: number;
+            /** Trigger Condition */
+            trigger_condition?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginCommandLimitPluginData */
+        PluginCommandLimitPluginData: {
+            /** Plugin */
+            plugin: string;
+            /** Title */
+            title: string;
+            /** Commands */
+            commands: components["schemas"]["PluginCommandLimitCommandData"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginCommandLimitsUiData */
+        PluginCommandLimitsUiData: {
+            /** Plugins */
+            plugins: components["schemas"]["PluginCommandLimitPluginData"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginCommandPermCommandData */
+        PluginCommandPermCommandData: {
+            /** Command Id */
+            command_id: string;
+            /** Label */
+            label: string;
+            /** Default Level */
+            default_level: string;
+            /** Effective Level */
+            effective_level: string;
+            /** Trigger Condition */
+            trigger_condition?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginCommandPermLevelData */
+        PluginCommandPermLevelData: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginCommandPermPluginData */
+        PluginCommandPermPluginData: {
+            /** Plugin */
+            plugin: string;
+            /** Title */
+            title: string;
+            /** Commands */
+            commands: components["schemas"]["PluginCommandPermCommandData"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginCommandPermUiData */
+        PluginCommandPermUiData: {
+            /** Levels */
+            levels: components["schemas"]["PluginCommandPermLevelData"][];
+            /** Plugins */
+            plugins: components["schemas"]["PluginCommandPermPluginData"][];
+        } & {
+            [key: string]: unknown;
+        };
         /**
          * PluginConfigData
          * @description 插件 / 通用配置表单载荷。须声明 field_groups 等扩展键，否则 GET 的 response_model 会剥掉分组。
@@ -5835,17 +6115,11 @@ export interface components {
              */
             module: string;
             /** Fields */
-            fields?: {
-                [key: string]: unknown;
-            }[];
+            fields: components["schemas"]["PluginConfigFieldData"][];
             /** Unexpected Keys */
-            unexpected_keys?: {
-                [key: string]: string;
-            }[];
+            unexpected_keys?: components["schemas"]["PluginConfigUnexpectedKeyData"][];
             /** Field Groups */
-            field_groups?: {
-                [key: string]: unknown;
-            }[];
+            field_groups?: components["schemas"]["PluginConfigFieldGroupData"][];
             /** Hot Reload */
             hot_reload?: boolean | null;
             /** Gateway Editor */
@@ -5856,14 +6130,50 @@ export interface components {
             llm_model_admin?: boolean | null;
             /** Dev Mode Hot Reload */
             dev_mode_hot_reload?: boolean | null;
-            /** Command Perm Ui */
-            command_perm_ui?: {
+            command_perm_ui?: components["schemas"]["PluginCommandPermUiData"] | null;
+            command_limits_ui?: components["schemas"]["PluginCommandLimitsUiData"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginConfigFieldData */
+        PluginConfigFieldData: {
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Required */
+            required: boolean;
+            /** Description */
+            description: string;
+            /** Env Key */
+            env_key: string;
+            /** Default */
+            default: unknown;
+            /** Current */
+            current: unknown;
+            /** Ui Group */
+            ui_group?: unknown;
+            /** Ui Order */
+            ui_order?: unknown;
+            /** Ui Hidden */
+            ui_hidden?: unknown;
+            /** Ui Widget */
+            ui_widget?: unknown;
+            /** Ui Gateway */
+            ui_gateway?: {
                 [key: string]: unknown;
             } | null;
-            /** Command Limits Ui */
-            command_limits_ui?: {
-                [key: string]: unknown;
-            } | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginConfigFieldGroupData */
+        PluginConfigFieldGroupData: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Field Names */
+            field_names: string[];
         } & {
             [key: string]: unknown;
         };
@@ -5875,66 +6185,150 @@ export interface components {
              */
             toml: string;
         };
+        /** PluginConfigUnexpectedKeyData */
+        PluginConfigUnexpectedKeyData: {
+            /** Env Key */
+            env_key: string;
+            /** Value Preview */
+            value_preview: string;
+        };
+        /** PluginGovernanceCommandData */
+        PluginGovernanceCommandData: {
+            /** Command Id */
+            command_id: string;
+            /** Label */
+            label: string;
+            /** Trigger Condition */
+            trigger_condition?: string | null;
+            /** Default Level */
+            default_level?: string | null;
+            /** Effective Level */
+            effective_level?: string | null;
+            /** Default Cd Sec */
+            default_cd_sec?: number | null;
+            /** Effective Cd Sec */
+            effective_cd_sec?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** PluginGovernanceData */
         PluginGovernanceData: {
             /** Plugin */
             plugin: string;
-            /**
-             * Title
-             * @default
-             */
+            /** Title */
             title: string;
             /** Commands */
-            commands?: {
-                [key: string]: unknown;
-            }[];
+            commands: components["schemas"]["PluginGovernanceCommandData"][];
             /** Menu Items */
-            menu_items?: {
-                [key: string]: unknown;
-            }[];
+            menu_items: components["schemas"]["PluginGovernanceMenuItemData"][];
             runtime: components["schemas"]["PluginGovernanceRuntimeData"];
-            /** Perm Ui Filtered */
-            perm_ui_filtered?: {
-                [key: string]: unknown;
-            };
-            /** Limits Ui Filtered */
-            limits_ui_filtered?: {
-                [key: string]: unknown;
-            };
+            perm_ui_filtered: components["schemas"]["PluginCommandPermUiData"];
+            limits_ui_filtered: components["schemas"]["PluginCommandLimitsUiData"];
             /** Blocked User Ids */
-            blocked_user_ids?: number[];
+            blocked_user_ids: number[];
             /** Reload Policy */
-            reload_policy?: string | null;
+            reload_policy: string | null;
             /** Activation Policy */
-            activation_policy?: string | null;
+            activation_policy: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginGovernanceMenuItemData */
+        PluginGovernanceMenuItemData: {
+            /** Func */
+            func?: unknown;
+            /** Group */
+            group?: unknown;
+            /** Trigger Method */
+            trigger_method?: unknown;
+            /** Trigger Scene */
+            trigger_scene?: unknown;
+            /** Trigger Condition */
+            trigger_condition?: unknown;
+            /** Brief Des */
+            brief_des?: unknown;
+            /** Detail Des */
+            detail_des?: unknown;
+            /** Command Permission */
+            command_permission?: unknown;
+            /** Command Permissions */
+            command_permissions?: unknown;
+        } & {
+            [key: string]: unknown;
         };
         /** PluginGovernanceRuntimeData */
         PluginGovernanceRuntimeData: {
-            /**
-             * Global Disable
-             * @default false
-             */
+            /** Global Disable */
             global_disable: boolean;
-            /**
-             * Global Disable Revision
-             * @default
-             */
+            /** Global Disable Revision */
             global_disable_revision: string;
-            /**
-             * Help Hidden
-             * @default false
-             */
+            /** Help Hidden */
             help_hidden: boolean;
-            /**
-             * Global Disable Protected
-             * @default false
-             */
+            /** Global Disable Protected */
             global_disable_protected: boolean;
-            /**
-             * Help Ignored
-             * @default false
-             */
+            /** Help Ignored */
             help_ignored: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginGovernanceUpdateData */
+        PluginGovernanceUpdateData: {
+            /** Plugin */
+            plugin: string;
+            /** Command Permission Overrides */
+            command_permission_overrides: {
+                [key: string]: string;
+            };
+            /** Command Limit Overrides */
+            command_limit_overrides: {
+                [key: string]: number;
+            };
+            /** Blocked User Ids */
+            blocked_user_ids: number[];
+            runtime: components["schemas"]["PluginGovernanceUpdateRuntimeData"];
+        } & {
+            [key: string]: unknown;
+        };
+        /** PluginGovernanceUpdateRuntimeData */
+        PluginGovernanceUpdateRuntimeData: {
+            /** Global Disable */
+            global_disable: boolean;
+            /** Global Disable Revision */
+            global_disable_revision: string;
+            /** Help Hidden */
+            help_hidden: boolean;
+        };
+        /** ProtocolAccountSnapshot */
+        ProtocolAccountSnapshot: {
+            /** Id */
+            id?: string | null;
+            /** Qq */
+            qq?: string | null;
+            /** Display Name */
+            display_name?: string | null;
+            /** Webui Port */
+            webui_port?: number | string | null;
+            /** Ws Url */
+            ws_url?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ProtocolExtensionStatusData */
+        ProtocolExtensionStatusData: {
+            /** Installed */
+            installed: boolean;
+            /** Package */
+            package: string;
+            /** Uv Extra */
+            uv_extra: string | null;
+            /** Install Cli */
+            install_cli: string | null;
+            /** Activation Policy */
+            activation_policy: string | null;
+            /** Repository Url */
+            repository_url: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * SemanticExamplesSummary
@@ -6324,6 +6718,18 @@ export interface components {
             /** Error */
             error?: null;
         };
+        /** _ApiOkResponse[InstancesData] */
+        _ApiOkResponse_InstancesData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["InstancesData"];
+            /** Error */
+            error?: null;
+        };
         /** _ApiOkResponse[LogsData] */
         _ApiOkResponse_LogsData_: {
             /**
@@ -6369,6 +6775,18 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["PluginGovernanceData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[PluginGovernanceUpdateData] */
+        _ApiOkResponse_PluginGovernanceUpdateData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["PluginGovernanceUpdateData"];
             /** Error */
             error?: null;
         };
@@ -6599,6 +7017,19 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["_StickerLabelOverviewData"];
+            /** Error */
+            error?: null;
+        };
+        /** _ApiOkResponse[list[PluginCatalogRow]] */
+        _ApiOkResponse_list_PluginCatalogRow__: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            /** Data */
+            data: components["schemas"]["PluginCatalogRow"][];
             /** Error */
             error?: null;
         };
@@ -12721,7 +13152,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_list_PluginCatalogRow__"];
                 };
             };
             /** @description Validation Error */
@@ -12947,7 +13378,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_PluginGovernanceUpdateData_"];
                 };
             };
             /** @description Validation Error */
@@ -14651,7 +15082,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_PluginConfigData_"];
                 };
             };
             /** @description Validation Error */
@@ -14691,7 +15122,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_PluginConfigData_"];
                 };
             };
             /** @description Validation Error */
@@ -19059,7 +19490,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_InstancesData_"];
                 };
             };
             /** @description Validation Error */

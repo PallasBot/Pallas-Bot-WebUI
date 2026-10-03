@@ -60,8 +60,8 @@ import type {
   GroupConfigPublic,
   GroupExpressionProfile,
   GroupListData,
-  OpenapiPluginConfigData,
   OpenapiPluginConfigRawData,
+  OpenapiPluginGovernanceUpdateData,
   InstancesData,
   NapcatAccountRow,
   NapcatManagerSnapshot,
@@ -82,7 +82,6 @@ import type {
   GroupFleetWhitelistData,
   GroupFleetWhitelistEntry,
   HelpMenuVisibilityData,
-  PluginConfigData as CommonPluginConfigData,
   ExtensionInstallJobData,
   PluginCapabilitiesData,
   PluginGovernanceBody,
@@ -181,8 +180,33 @@ function isNumberRecord(value: unknown): value is Record<string, number> {
   return isRecord(value) && Object.values(value).every(isNumber);
 }
 
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return isRecord(value) && Object.values(value).every(isString);
+}
+
+function isNumberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every(isNumber);
+}
+
 function isPluginConfigField(value: unknown): value is PluginConfigField {
-  return isRecord(value) && isString(value.name) && isString(value.kind);
+  return isRecord(value)
+    && isString(value.name)
+    && isString(value.kind)
+    && isBoolean(value.required)
+    && isString(value.description)
+    && isString(value.env_key)
+    && "default" in value
+    && "current" in value
+    && optionalIs(value, "ui_gateway", (field) => field === null || isRecord(field));
+}
+
+function isPluginMetadata(value: unknown): boolean {
+  return isRecord(value)
+    && "name" in value
+    && isNullableString(value.name)
+    && optionalIs(value, "description", isString)
+    && optionalIs(value, "usage", isString)
+    && optionalIs(value, "type", isString);
 }
 
 function isPluginConfigFieldGroup(value: unknown): value is PluginConfigFieldGroup {
@@ -198,20 +222,135 @@ function isPluginFormConfig(value: unknown): value is PluginFormConfigData {
   if (!Array.isArray(value.fields) || !value.fields.every(isPluginConfigField)) return false;
   return optionalIs(value, "field_groups", (groups) =>
     Array.isArray(groups) && groups.every(isPluginConfigFieldGroup),
-  );
+  )
+    && optionalIs(value, "unexpected_keys", (rows) => Array.isArray(rows) && rows.every((row) =>
+      isRecord(row) && isString(row.env_key) && isString(row.value_preview),
+    ))
+    && ["hot_reload", "gateway_editor", "supports_connectivity_check", "llm_model_admin", "dev_mode_hot_reload"]
+      .every((key) => optionalIs(value, key, (flag) => flag === null || isBoolean(flag)))
+    && optionalIs(value, "command_perm_ui", (ui) => ui === null || isGovernancePermUi(ui))
+    && optionalIs(value, "command_limits_ui", (ui) => ui === null || isGovernanceLimitsUi(ui));
 }
 
-function parsePluginFormConfig(value: OpenapiPluginConfigData): PluginFormConfigData {
+function parsePluginFormConfig(value: unknown): PluginFormConfigData {
   if (!isPluginFormConfig(value)) throw new Error("插件配置: 响应异常");
   return value;
 }
 
+function isPluginGovernanceCommand(value: unknown): boolean {
+  return isRecord(value)
+    && isString(value.command_id)
+    && isString(value.label)
+    && optionalIs(value, "trigger_condition", isNullableString)
+    && optionalIs(value, "default_level", isNullableString)
+    && optionalIs(value, "effective_level", isNullableString)
+    && optionalIs(value, "default_cd_sec", (field) => field === null || isNumber(field))
+    && optionalIs(value, "effective_cd_sec", (field) => field === null || isNumber(field));
+}
+
+function isGovernancePermUi(value: unknown): boolean {
+  return isRecord(value)
+    && Array.isArray(value.levels)
+    && value.levels.every((level) => isRecord(level) && isString(level.id) && isString(level.label))
+    && Array.isArray(value.plugins)
+    && value.plugins.every((plugin) => isRecord(plugin)
+      && isString(plugin.plugin)
+      && isString(plugin.title)
+      && Array.isArray(plugin.commands)
+      && plugin.commands.every((command) => isRecord(command)
+        && isString(command.command_id)
+        && isString(command.label)
+        && isString(command.default_level)
+        && isString(command.effective_level)
+        && optionalIs(command, "trigger_condition", isNullableString)));
+}
+
+function isGovernanceLimitsUi(value: unknown): boolean {
+  return isRecord(value)
+    && Array.isArray(value.plugins)
+    && value.plugins.every((plugin) => isRecord(plugin)
+      && isString(plugin.plugin)
+      && isString(plugin.title)
+      && Array.isArray(plugin.commands)
+      && plugin.commands.every((command) => isRecord(command)
+        && isString(command.command_id)
+        && isString(command.label)
+        && isNumber(command.default_cd_sec)
+        && isNumber(command.effective_cd_sec)
+        && optionalIs(command, "trigger_condition", isNullableString)));
+}
+
+function isPluginGovernanceData(value: unknown): value is PluginGovernanceData {
+  return isRecord(value)
+    && isString(value.plugin)
+    && isString(value.title)
+    && Array.isArray(value.commands) && value.commands.every(isPluginGovernanceCommand)
+    && Array.isArray(value.menu_items) && value.menu_items.every(isRecord)
+    && isRecord(value.runtime)
+    && isBoolean(value.runtime.global_disable)
+    && isString(value.runtime.global_disable_revision)
+    && isBoolean(value.runtime.help_hidden)
+    && isBoolean(value.runtime.global_disable_protected)
+    && isBoolean(value.runtime.help_ignored)
+    && isGovernancePermUi(value.perm_ui_filtered)
+    && isGovernanceLimitsUi(value.limits_ui_filtered)
+    && isNumberArray(value.blocked_user_ids)
+    && optionalIs(value, "reload_policy", isNullableString)
+    && optionalIs(value, "activation_policy", isNullableString);
+}
+
+function parsePluginGovernanceData(value: unknown): PluginGovernanceData {
+  if (!isPluginGovernanceData(value)) throw new Error("插件治理: 响应异常");
+  return value;
+}
+
+function isPluginGovernanceUpdateData(value: unknown): value is OpenapiPluginGovernanceUpdateData {
+  return isRecord(value)
+    && isString(value.plugin)
+    && isStringRecord(value.command_permission_overrides)
+    && isNumberRecord(value.command_limit_overrides)
+    && isNumberArray(value.blocked_user_ids)
+    && isRecord(value.runtime)
+    && isBoolean(value.runtime.global_disable)
+    && isString(value.runtime.global_disable_revision)
+    && isBoolean(value.runtime.help_hidden);
+}
+
+function parsePluginGovernanceUpdateData(value: unknown): OpenapiPluginGovernanceUpdateData {
+  if (!isPluginGovernanceUpdateData(value)) throw new Error("插件治理保存: 响应异常");
+  return value;
+}
+
 function isPluginRow(value: unknown): value is PluginRow {
-  // /plugins currently has no generated response schema; validate only the row envelope.
   return isRecord(value)
     && isString(value.name)
+    && isString(value.nb_plugin_name)
     && isString(value.module)
-    && (value.metadata === null || isRecord(value.metadata));
+    && isString(value.resolved_plugin_id)
+    && isString(value.resolved_module)
+    && (value.metadata === null || isPluginMetadata(value.metadata))
+    && isString(value.load_role)
+    && isBoolean(value.loaded_in_process)
+    && isBoolean(value.has_config)
+    && isBoolean(value.configurable)
+    && isBoolean(value.help_visible)
+    && isBoolean(value.help_ignored)
+    && isBoolean(value.help_hidden)
+    && isBoolean(value.globally_disabled)
+    && isBoolean(value.global_disable_protected)
+    && isString(value.plugin_source)
+    && isNullableString(value.plugin_source_dir)
+    && isNullableString(value.plugin_version)
+    && isNullableString(value.extra_package)
+    && isBoolean(value.uninstallable)
+    && isNullableString(value.uninstall_kind)
+    && isNullableString(value.uninstall_target)
+    && isStringArray(value.deps_missing)
+    && isNullableString(value.avatar)
+    && isNullableString(value.icon)
+    && isNullableString(value.cover)
+    && isString(value.catalog_process_role)
+    && isBoolean(value.expected_in_catalog_process);
 }
 
 function parsePluginRows(value: unknown): PluginRow[] {
@@ -228,7 +367,7 @@ function isBotRow(value: unknown): value is BotRow {
     && optionalIs(value, "ws_port", (field) => field === null || isNumber(field))
     && optionalIs(value, "shard_id", (field) => field === null || isNumber(field))
     && optionalIs(value, "nickname", isNullableString)
-    && optionalIs(value, "online", isBoolean);
+    && optionalIs(value, "online", (field) => field === null || isBoolean(field));
 }
 
 function isBotConfigPublic(value: unknown): value is BotConfigPublic {
@@ -260,34 +399,40 @@ function isProtocolExtension(value: unknown): boolean {
   return isRecord(value)
     && isBoolean(value.installed)
     && isString(value.package)
-    && optionalIs(value, "uv_extra", isNullableString)
-    && optionalIs(value, "install_cli", isNullableString)
-    && optionalIs(value, "repository_url", isNullableString);
+    && isNullableString(value.uv_extra)
+    && isNullableString(value.install_cli)
+    && isNullableString(value.activation_policy)
+    && isNullableString(value.repository_url);
 }
 
 function isBotProfiles(value: unknown): boolean {
   return isRecord(value) && Object.values(value).every((profile) =>
     isRecord(profile)
-      && optionalIs(profile, "nickname", isString)
+      && optionalIs(profile, "nickname", isNullableString)
       && optionalIs(profile, "user_id", (id) => id === null || isNumber(id))
-      && optionalIs(profile, "connection_key", isString)
-      && optionalIs(profile, "adapter", isString),
+      && optionalIs(profile, "connection_key", isNullableString)
+      && optionalIs(profile, "adapter", isNullableString)
+      && optionalIs(profile, "shard_id", (id) => id === null || isNumber(id)),
   );
 }
 
-// /instances has no generated item schema; this checks the currently consumed response shape only.
 function isInstancesData(value: unknown): value is InstancesData {
   return isRecord(value)
     && Array.isArray(value.nonebot_bots) && value.nonebot_bots.every(isBotRow)
     && Array.isArray(value.db_bot_configs) && value.db_bot_configs.every(isBotConfigPublic)
     && (value.pallas_protocol === null || isNapcatSnapshot(value.pallas_protocol))
     && optionalIs(value, "napcat", (snap) => snap === null || isNapcatSnapshot(snap))
-    && optionalIs(value, "protocol_extension", (extension) => extension === null || isProtocolExtension(extension))
-    && optionalIs(value, "bot_profiles", isBotProfiles);
+    && isProtocolExtension(value.protocol_extension)
+    && isBotProfiles(value.bot_profiles);
 }
 
 function parseInstancesData(value: unknown): InstancesData {
-  if (!isRecord(value)) throw new Error("/instances: 响应异常");
+  if (!isRecord(value)
+    || !("pallas_protocol" in value || "napcat" in value)
+    || !optionalIs(value, "pallas_protocol", (snap) => snap === null || isNapcatSnapshot(snap))
+    || !optionalIs(value, "napcat", (snap) => snap === null || isNapcatSnapshot(snap))) {
+    throw new Error("/instances: 响应异常");
+  }
   const normalized = {
     ...value,
     pallas_protocol: value.pallas_protocol ?? value.napcat ?? null,
@@ -1046,21 +1191,22 @@ export async function postPluginConfigCheck(
 }
 
 export async function fetchPluginGovernance(pluginName: string): Promise<PluginGovernanceData> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["get"]>(
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["get"]>(
     `/plugins/${encodeURIComponent(pluginName)}/governance`,
-  )) as unknown as PluginGovernanceData;
+  );
+  return parsePluginGovernanceData(data);
 }
 
 export async function putPluginGovernance(
   pluginName: string,
   body: PluginGovernanceBody,
-): Promise<PluginGovernanceData> {
-  const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["put"]>(
+): Promise<OpenapiPluginGovernanceUpdateData> {
+  const out: unknown = await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["put"]>(
     `/plugins/${encodeURIComponent(pluginName)}/governance`,
     body,
-  )) as unknown as PluginGovernanceData;
+  );
   invalidatePluginsCache();
-  return out;
+  return parsePluginGovernanceUpdateData(out);
 }
 
 export async function fetchCommonConfigSections(): Promise<CommonConfigSectionMeta[]> {
@@ -1069,34 +1215,38 @@ export async function fetchCommonConfigSections(): Promise<CommonConfigSectionMe
   );
 }
 
-export async function fetchCommonConfig(sectionId: string): Promise<CommonPluginConfigData> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["get"]>(
+export async function fetchCommonConfig(sectionId: string): Promise<PluginFormConfigData> {
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["get"]>(
     `/common-config/${encodeURIComponent(sectionId)}`,
-  )) as unknown as CommonPluginConfigData;
+  );
+  return parsePluginFormConfig(data);
 }
 
 export async function putCommonConfig(
   sectionId: string,
   values: Record<string, unknown>,
-): Promise<CommonPluginConfigData> {
-  return (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["put"]>(
+): Promise<PluginFormConfigData> {
+  const data: unknown = await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["put"]>(
     `/common-config/${encodeURIComponent(sectionId)}`,
     { values },
-  )) as unknown as CommonPluginConfigData;
+  );
+  return parsePluginFormConfig(data);
 }
 
 export async function fetchCommonConfigRaw(sectionId: string): Promise<string> {
-  const out = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["get"]>(
+  const out: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["get"]>(
     `/common-config/${encodeURIComponent(sectionId)}/raw`,
   );
+  if (!isRecord(out) || !isString(out.toml)) throw new Error("通用配置原始文本: 响应异常");
   return out.toml;
 }
 
-export async function putCommonConfigRaw(sectionId: string, toml: string): Promise<CommonPluginConfigData> {
-  return (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["put"]>(
+export async function putCommonConfigRaw(sectionId: string, toml: string): Promise<PluginFormConfigData> {
+  const data: unknown = await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["put"]>(
     `/common-config/${encodeURIComponent(sectionId)}/raw`,
     { toml },
-  )) as unknown as CommonPluginConfigData;
+  );
+  return parsePluginFormConfig(data);
 }
 
 export async function postServiceGatewaysConnectivityCheck(

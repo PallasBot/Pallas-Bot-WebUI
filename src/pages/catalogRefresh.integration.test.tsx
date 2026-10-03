@@ -31,6 +31,7 @@ vi.mock("@/api/consoleOpenapiClient", () => ({
 vi.mock("@/api/http", () => ({
   DB_BACKUP_TIMEOUT_MS: 10,
   DB_HEAVY_READ_TIMEOUT_MS: 20,
+  axiosErrorDetail: (error: unknown) => error instanceof Error ? error.message : String(error),
   http: { delete: vi.fn(), get: network.httpGet, patch: vi.fn(), post: vi.fn(), put: vi.fn() },
 }));
 
@@ -60,12 +61,70 @@ vi.mock("@/api/fullConsole", async (importOriginal) => ({
   fetchWebuiAutoUpdateStatus: vi.fn(async () => ({})),
 }));
 
-let pluginRows: PluginRow[] = [{ name: "before", module: "before", metadata: null }];
-let instanceData: InstancesData = { nonebot_bots: [], db_bot_configs: [], pallas_protocol: null };
+function catalogRow(name: string, metadata: PluginRow["metadata"] = null): PluginRow {
+  return {
+    name,
+    nb_plugin_name: name,
+    module: name,
+    resolved_plugin_id: name,
+    resolved_module: name,
+    metadata,
+    load_role: "hub",
+    loaded_in_process: true,
+    has_config: true,
+    configurable: true,
+    help_visible: true,
+    help_ignored: false,
+    help_hidden: false,
+    globally_disabled: false,
+    global_disable_protected: false,
+    plugin_source: "core",
+    plugin_source_dir: null,
+    plugin_version: null,
+    extra_package: null,
+    uninstallable: false,
+    uninstall_kind: null,
+    uninstall_target: null,
+    deps_missing: [],
+    avatar: null,
+    icon: null,
+    cover: null,
+    catalog_process_role: "unified",
+    expected_in_catalog_process: true,
+  };
+}
+
+function emptyInstances(): InstancesData {
+  return {
+    nonebot_bots: [],
+    db_bot_configs: [],
+    pallas_protocol: null,
+    protocol_extension: {
+      installed: false,
+      package: "pallas-plugin-protocol",
+      uv_extra: null,
+      install_cli: null,
+      activation_policy: null,
+      repository_url: null,
+    },
+    bot_profiles: {},
+  };
+}
+
+let pluginRows: PluginRow[] = [catalogRow("before")];
+let instanceData: InstancesData = emptyInstances();
 let configData = {
   plugin: "demo",
   module: "demo",
-  fields: [{ name: "display_name", kind: "string", current: "before" }],
+  fields: [{
+    name: "display_name",
+    kind: "string",
+    required: false,
+    description: "",
+    env_key: "DEMO_DISPLAY_NAME",
+    default: "",
+    current: "before",
+  }],
 };
 
 function CatalogProbe() {
@@ -99,12 +158,20 @@ beforeEach(() => {
   invalidatePluginsCache();
   invalidateInstancesCache();
   invalidateBotsCache();
-  pluginRows = [{ name: "before", module: "before", metadata: null }];
-  instanceData = { nonebot_bots: [], db_bot_configs: [], pallas_protocol: null };
+  pluginRows = [catalogRow("before")];
+  instanceData = emptyInstances();
   configData = {
     plugin: "demo",
     module: "demo",
-    fields: [{ name: "display_name", kind: "string", current: "before" }],
+    fields: [{
+      name: "display_name",
+      kind: "string",
+      required: false,
+      description: "",
+      env_key: "DEMO_DISPLAY_NAME",
+      default: "",
+      current: "before",
+    }],
   };
   network.openapiGet.mockImplementation((url: string) => {
     if (url === "/plugins") return Promise.resolve(pluginRows);
@@ -128,7 +195,7 @@ it("PluginsPage refresh bypasses the module snapshot and renders the new directo
   renderPage("/plugins", <PluginsPage />);
   await screen.findByRole("heading", { name: "before" });
 
-  pluginRows = [{ name: "after", module: "after", metadata: null }];
+  pluginRows = [catalogRow("after")];
   await user.click(screen.getByRole("button", { name: "刷新" }));
 
   await screen.findByRole("heading", { name: "after" });
@@ -143,11 +210,10 @@ it("InstancesPage refresh bypasses both catalog snapshots and renders the new in
   );
 
   instanceData = {
+    ...emptyInstances(),
     nonebot_bots: [{ self_id: "123456", connection_key: "test", adapter: "onebot" }],
-    db_bot_configs: [],
-    pallas_protocol: null,
   };
-  pluginRows = [{ name: "after", module: "after", metadata: null }];
+  pluginRows = [catalogRow("after")];
   await user.click(screen.getByRole("button", { name: "刷新" }));
 
   await screen.findByText("123456");
@@ -167,6 +233,15 @@ it("BotConfigModal save reloads the real instances query with the saved config",
     drunk: {},
     disabled_plugins: [],
     community_roster_show_qq: true,
+    persona: null,
+    account_profile_effective: {
+      energy: 0,
+      warmth: 0,
+      mischief: 0,
+      restraint: 0,
+      source: "derived" as const,
+    },
+    group_style_enabled: true,
   };
   instanceData = { ...instanceData, db_bot_configs: [originalConfig] };
   network.openapiPut.mockImplementation((url: string, body: unknown) => {
@@ -200,7 +275,7 @@ it("plugin config save refetches an active catalog query after invalidating the 
       ...configData,
       fields: configData.fields.map((field) => ({ ...field, current: values[field.name] })),
     };
-    pluginRows = [{ name: "after", module: "after", metadata: { name: "After save" } }];
+    pluginRows = [catalogRow("after", { name: "After save" })];
     return Promise.resolve(configData);
   });
 
@@ -270,7 +345,7 @@ it("HomePage forced refresh synchronizes the existing plugin query caches before
   await user.click(screen.getByRole("button", { name: "前往首页" }));
   await screen.findByRole("button", { name: "刷新概况" });
 
-  homePlugins = [{ name: "after", module: "after", metadata: null }];
+  homePlugins = [catalogRow("after")];
   await user.click(screen.getByRole("button", { name: "刷新概况" }));
 
   await waitFor(() => {

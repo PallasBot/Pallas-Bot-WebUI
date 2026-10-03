@@ -26,6 +26,10 @@ export {
   putPluginConfig,
   fetchPluginConfigRaw,
   putPluginConfigRaw,
+  fetchCommonConfig,
+  putCommonConfig,
+  fetchCommonConfigRaw,
+  putCommonConfigRaw,
 } from "./consoleApi";
 
 export type {
@@ -186,11 +190,11 @@ export type PluginConfigField = {
   multiline?: boolean;
   min_value?: number;
   max_value?: number;
-  ui_group?: string | null;
-  ui_order?: number | null;
-  ui_hidden?: boolean | null;
-  ui_widget?: string | null;
-  ui_gateway?: Record<string, unknown>;
+  ui_group?: unknown;
+  ui_order?: unknown;
+  ui_hidden?: unknown;
+  ui_widget?: unknown;
+  ui_gateway?: Record<string, unknown> | null;
   [key: string]: unknown;
 };
 
@@ -1398,30 +1402,6 @@ export async function putTtsTranslator(body: {
 }): Promise<TtsTranslatorPayload> {
   const { data: res } = await http.put("/common-config/llm/media-models/tts/translator", body);
   return unwrapNestedEnvelope<TtsTranslatorPayload>(res);
-}
-
-export async function fetchCommonConfig(sectionId: string): Promise<PluginConfigData> {
-  const { data: body } = await http.get(`/common-config/${encodeURIComponent(sectionId)}`);
-  return envelopeData<PluginConfigData>(body);
-}
-
-export async function putCommonConfig(
-  sectionId: string,
-  values: Record<string, unknown>,
-): Promise<PluginConfigData> {
-  const { data: body } = await http.put(`/common-config/${encodeURIComponent(sectionId)}`, { values });
-  return envelopeData<PluginConfigData>(body);
-}
-
-export async function fetchCommonConfigRaw(sectionId: string): Promise<string> {
-  const { data: body } = await http.get(`/common-config/${encodeURIComponent(sectionId)}/raw`);
-  const data = envelopeData<{ toml?: string }>(body);
-  return typeof data?.toml === "string" ? data.toml : "";
-}
-
-export async function putCommonConfigRaw(sectionId: string, toml: string): Promise<PluginConfigData> {
-  const { data: body } = await http.put(`/common-config/${encodeURIComponent(sectionId)}/raw`, { toml });
-  return envelopeData<PluginConfigData>(body);
 }
 
 export type PromptPreviewSection = {
