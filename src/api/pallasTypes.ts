@@ -426,9 +426,9 @@ export interface PluginRunStatsData {
   }>;
 }
 
-export type PluginLoadRole = "hub" | "worker" | "both" | "infra" | "internal";
+export type PluginLoadRole = "hub" | "worker" | "both" | "infra" | "internal" | (string & {});
 
-export type PluginCatalogProcessRole = "hub" | "worker" | "unified";
+export type PluginCatalogProcessRole = "hub" | "worker" | "unified" | (string & {});
 
 export type PluginSourceKind =
   | "main"
@@ -438,7 +438,8 @@ export type PluginSourceKind =
   | "official"
   | "community"
   | "nonebot"
-  | "local";
+  | "local"
+  | (string & {});
 
 export type OfficialExtensionStatus =
   | "installed"
@@ -565,11 +566,12 @@ export interface CommunityPluginActionResult {
 export interface PluginCapabilitiesCommand {
   command_id: string;
   label: string;
-  trigger_condition?: string;
-  default_level?: string;
-  effective_level?: string;
-  default_cd_sec?: number;
-  effective_cd_sec?: number;
+  trigger_condition?: string | null;
+  default_level?: string | null;
+  effective_level?: string | null;
+  default_cd_sec?: number | null;
+  effective_cd_sec?: number | null;
+  [key: string]: unknown;
 }
 
 export interface PluginCapabilitiesLlmTool {
@@ -602,14 +604,16 @@ export interface PluginCapabilitiesData {
 // ── Plugin Governance API ──────────────────────────────────────────
 
 export interface PluginGovernanceMenuItem {
-  func: string;
-  trigger_method?: string;
-  trigger_scene?: string;
-  trigger_condition?: string;
-  brief_des?: string;
-  detail_des?: string;
-  command_permission?: string;
-  command_permissions?: string[];
+  func?: unknown;
+  group?: unknown;
+  trigger_method?: unknown;
+  trigger_scene?: unknown;
+  trigger_condition?: unknown;
+  brief_des?: unknown;
+  detail_des?: unknown;
+  command_permission?: unknown;
+  command_permissions?: unknown;
+  [key: string]: unknown;
 }
 
 export interface PluginGovernanceRuntime {
@@ -618,6 +622,7 @@ export interface PluginGovernanceRuntime {
   help_hidden: boolean;
   global_disable_protected?: boolean;
   help_ignored?: boolean;
+  [key: string]: unknown;
 }
 
 export interface PluginGovernanceData {
@@ -631,6 +636,7 @@ export interface PluginGovernanceData {
   blocked_user_ids?: number[];
   reload_policy?: string | null;
   activation_policy?: string | null;
+  [key: string]: unknown;
 }
 
 export interface PluginGovernanceBody {
@@ -673,7 +679,7 @@ export interface PluginRow {
   /** 是否可在管理页卸载（配置弹窗提供「卸载」入口） */
   uninstallable?: boolean;
   /** 卸载方式：dir 删除源码目录 / pip 卸载 / community 社区插件 / official 官方扩展 */
-  uninstall_kind?: "dir" | "pip" | "community" | "official" | null;
+  uninstall_kind?: "dir" | "pip" | "community" | "official" | (string & {}) | null;
   /** 卸载目标：目录相对路径或 pip 包名 */
   uninstall_target?: string | null;
   /** 社区插件缺失的 pyproject 依赖（未安装或版本不满足） */
@@ -689,6 +695,7 @@ export interface PluginRow {
     extra?: unknown;
     [key: string]: unknown;
   } | null;
+  [key: string]: unknown;
 }
 
 export interface HelpMenuVisibilityData {
@@ -735,15 +742,16 @@ export interface PluginConfigField {
   /** int/float 字段上界（含），由 Pydantic le/lt 推导 */
   max_value?: number;
   /** DynamicConfigPanel 分组标题 */
-  ui_group?: string | null;
+  ui_group?: unknown;
   /** 组内排序，越小越靠前 */
-  ui_order?: number | null;
+  ui_order?: unknown;
   /** 进阶项，默认折叠 */
-  ui_hidden?: boolean | null;
+  ui_hidden?: unknown;
   /** 专用控件，如 provider_gateway */
-  ui_widget?: string | null;
+  ui_widget?: unknown;
   /** provider_gateway 绑定声明 */
-  ui_gateway?: Record<string, unknown>;
+  ui_gateway?: Record<string, unknown> | null;
+  [key: string]: unknown;
 }
 
 export interface PluginConfigUnexpectedKey {
@@ -755,43 +763,50 @@ export interface PluginConfigUnexpectedKey {
 export interface CommandPermUiLevel {
   id: string;
   label: string;
+  [key: string]: unknown;
 }
 
 export interface CommandPermUiCommand {
   command_id: string;
   label: string;
-  trigger_condition?: string;
+  trigger_condition?: string | null;
   default_level: string;
   effective_level: string;
+  [key: string]: unknown;
 }
 
 export interface CommandPermUiPlugin {
   plugin: string;
   title: string;
   commands: CommandPermUiCommand[];
+  [key: string]: unknown;
 }
 
 export interface CommandPermUiData {
   levels: CommandPermUiLevel[];
   plugins: CommandPermUiPlugin[];
+  [key: string]: unknown;
 }
 
 export interface CommandLimitsUiCommand {
   command_id: string;
   label: string;
-  trigger_condition?: string;
+  trigger_condition?: string | null;
   default_cd_sec: number;
   effective_cd_sec: number;
+  [key: string]: unknown;
 }
 
 export interface CommandLimitsUiPlugin {
   plugin: string;
   title: string;
   commands: CommandLimitsUiCommand[];
+  [key: string]: unknown;
 }
 
 export interface CommandLimitsUiData {
   plugins: CommandLimitsUiPlugin[];
+  [key: string]: unknown;
 }
 
 export interface PluginConfigFieldGroup {
@@ -802,6 +817,7 @@ export interface PluginConfigFieldGroup {
   plugin_config_path?: string;
   /** 进阶分组默认折叠展示 */
   advanced?: boolean;
+  [key: string]: unknown;
 }
 
 export interface PluginConfigData {
@@ -824,6 +840,7 @@ export interface PluginConfigData {
   hot_reload?: boolean;
   /** webui.json 中存在但 schema 未声明的键 */
   unexpected_keys?: PluginConfigUnexpectedKey[];
+  [key: string]: unknown;
 }
 
 export interface PluginConfigRawData {
@@ -1720,7 +1737,7 @@ export interface BotRow {
   /** 分片 worker 编号；非分片或 hub 本地列表可能缺省 */
   shard_id?: number | null;
   nickname?: string | null;
-  online?: boolean;
+  online?: boolean | null;
 }
 
 /** GET /logs?scope= 与后端一致 */
@@ -2150,13 +2167,13 @@ export interface UserConfigPublic {
 
 /** 协议账号信息 */
 export interface NapcatAccountRow {
-  id?: string;
-  qq?: string;
-  display_name?: string;
-  webui_port?: number | string;
+  id?: string | null;
+  qq?: string | null;
+  display_name?: string | null;
+  webui_port?: number | string | null;
   webui_token?: string;
   /** OneBot 正向 WS 地址（协议端写入） */
-  ws_url?: string;
+  ws_url?: string | null;
   snowluma_docker_host_onebot_ws?: number | string;
   /** 内嵌 Web 地址 */
   native_webui_url?: string;
@@ -2196,6 +2213,7 @@ export interface NapcatManagerSnapshot {
   webui_path: string;
   console_auth_configured: boolean;
   accounts: NapcatAccountRow[];
+  [key: string]: unknown;
 }
 
 export interface ProtocolExtensionStatus {
@@ -2204,6 +2222,8 @@ export interface ProtocolExtensionStatus {
   uv_extra?: string | null;
   install_cli?: string | null;
   repository_url?: string | null;
+  activation_policy?: string | null;
+  [key: string]: unknown;
 }
 
 /** 实例数据 */
@@ -2215,14 +2235,17 @@ export interface InstancesData {
   bot_profiles?: Record<
     string,
     {
-      nickname?: string;
+      nickname?: string | null;
       user_id?: number | null;
-      connection_key?: string;
-      adapter?: string;
+      connection_key?: string | null;
+      adapter?: string | null;
+      shard_id?: number | null;
+      [key: string]: unknown;
     }
   >;
   /** 兼容字段 */
   napcat?: NapcatManagerSnapshot | null;
+  [key: string]: unknown;
 }
 
 /** 好友申请 */
@@ -2774,6 +2797,8 @@ export type OpenapiIngressDispatchData =
 export type OpenapiLogsData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/logs"]["get"]>;
 export type OpenapiPluginGovernanceData =
   OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["get"]>;
+export type OpenapiPluginGovernanceUpdateData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["put"]>;
 export type OpenapiPluginConfigData =
   OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["get"]>;
 

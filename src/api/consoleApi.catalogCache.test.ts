@@ -39,11 +39,53 @@ function deferred<T>() {
 }
 
 function plugin(name: string) {
-  return { name, module: name, metadata: null };
+  return {
+    name,
+    nb_plugin_name: name,
+    module: name,
+    resolved_plugin_id: name,
+    resolved_module: name,
+    metadata: null,
+    load_role: "infra",
+    loaded_in_process: true,
+    has_config: false,
+    configurable: false,
+    help_visible: true,
+    help_ignored: false,
+    help_hidden: false,
+    globally_disabled: false,
+    global_disable_protected: false,
+    plugin_source: "core",
+    plugin_source_dir: null,
+    plugin_version: null,
+    extra_package: null,
+    uninstallable: false,
+    uninstall_kind: null,
+    uninstall_target: null,
+    deps_missing: [],
+    avatar: null,
+    icon: null,
+    cover: null,
+    catalog_process_role: "unified",
+    expected_in_catalog_process: true,
+  };
 }
 
 function instances() {
-  return { nonebot_bots: [], db_bot_configs: [], pallas_protocol: null };
+  return {
+    nonebot_bots: [],
+    db_bot_configs: [],
+    pallas_protocol: null,
+    protocol_extension: {
+      installed: false,
+      package: "pallas-plugin-protocol",
+      uv_extra: null,
+      install_cli: null,
+      activation_policy: null,
+      repository_url: null,
+    },
+    bot_profiles: {},
+  };
 }
 
 function overview(plugins: ReturnType<typeof plugin>[] = [], bots: never[] = []) {
@@ -168,11 +210,14 @@ describe("plugin and instance catalog cache", () => {
     const config = {
       plugin: "demo",
       module: "demo",
-      fields: [{
-        name: "api_key",
-        kind: "string",
-        default: "fallback",
-        current: "configured",
+       fields: [{
+         name: "api_key",
+         kind: "string",
+         required: false,
+         description: "",
+         env_key: "API_KEY",
+         default: "fallback",
+         current: "configured",
         secret: true,
         ui_group: null,
         ui_order: null,
