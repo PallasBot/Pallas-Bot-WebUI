@@ -1,7 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
-import { InstallJobFailedError, InstallJobStreamInterruptedError, waitForInstallJob } from "@/utils/installJobStream";
+import {
+  InstallJobFailedError,
+  InstallJobStreamCancelledError,
+  InstallJobStreamInterruptedError,
+  waitForInstallJob,
+} from "@/utils/installJobStream";
 import { getActiveJob } from "@/utils/activeJobSession";
 import {
   fetchAiExtensionConfig,
@@ -56,6 +61,17 @@ export default function AiConfigConnectionSection() {
   const [remoteOnly, setRemoteOnly] = useState(true);
   const [useGpu, setUseGpu] = useState(false);
   const [noStart, setNoStart] = useState(false);
+  const jobWatchersRef = useRef(new Set<AbortController>());
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      for (const controller of jobWatchersRef.current) controller.abort();
+      jobWatchersRef.current.clear();
+    };
+  }, []);
 
   const aiCfgQ = useQuery({ queryKey: ["ai-extension-config"], queryFn: fetchAiExtensionConfig });
   const runtimeQ = useQuery({ queryKey: ["ai-runtime"], queryFn: fetchAiRuntimeStatus });
@@ -118,23 +134,31 @@ export default function AiConfigConnectionSection() {
 
   const installMut = useMutation({
     mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap" | "update") => {
-      const job = await postAiInstall({
-        action,
-        no_start: noStart,
-        remote_only: remoteOnly,
-        with_media: withMedia,
-        use_gpu: useGpu,
-      });
-      return waitForInstallJob(job.job_id, openAiInstallJobEventSource, (p) => {
-        setInstallProgress(p.message || `${p.percent}%`);
-      });
+      const controller = new AbortController();
+      jobWatchersRef.current.add(controller);
+      try {
+        const job = await postAiInstall({
+          action,
+          no_start: noStart,
+          remote_only: remoteOnly,
+          with_media: withMedia,
+          use_gpu: useGpu,
+        });
+        return await waitForInstallJob(job.job_id, openAiInstallJobEventSource, (p) => {
+          setInstallProgress(p.message || `${p.percent}%`);
+        }, controller.signal);
+      } finally {
+        jobWatchersRef.current.delete(controller);
+      }
     },
     onSuccess: async () => {
+      if (!mountedRef.current) return;
       notifyOk("安装任务已完成");
       setInstallProgress("");
       await invalidate();
     },
     onError: (e) => {
+      if (!mountedRef.current || e instanceof InstallJobStreamCancelledError) return;
       if (e instanceof InstallJobStreamInterruptedError) {
         setInstallProgress((prev) => prev || "安装仍在后台进行，返回本页可续看进度");
         return;
@@ -146,6 +170,7 @@ export default function AiConfigConnectionSection() {
 
   useEffect(() => {
     let cancelled = false;
+    let watcher: AbortController | null = null;
     const resume = async () => {
       let jobId = "";
       try {
@@ -164,25 +189,32 @@ export default function AiConfigConnectionSection() {
         jobId = saved.jobId;
         setInstallProgress("正在恢复安装进度…");
       }
+      watcher = new AbortController();
+      jobWatchersRef.current.add(watcher);
       void waitForInstallJob(jobId, openAiInstallJobEventSource, (p) => {
-        if (cancelled) return;
+        if (cancelled || watcher?.signal.aborted) return;
         setInstallProgress(p.message || `${p.percent}%`);
-      })
+      }, watcher.signal)
         .then(async () => {
-          if (cancelled) return;
+          if (cancelled || watcher?.signal.aborted) return;
           notifyOk("安装任务已完成");
           setInstallProgress("");
           await invalidate();
         })
         .catch((e) => {
-          if (cancelled || e instanceof InstallJobStreamInterruptedError) return;
+          if (cancelled || e instanceof InstallJobStreamCancelledError || e instanceof InstallJobStreamInterruptedError) return;
+          if (!mountedRef.current) return;
           setInstallProgress("");
           notifyErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+        })
+        .finally(() => {
+          if (watcher) jobWatchersRef.current.delete(watcher);
         });
     };
     void resume();
     return () => {
       cancelled = true;
+      watcher?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -306,7 +338,7 @@ export default function AiConfigConnectionSection() {
                   }
                   disabled={busy || !installPrimary.enabled}
                   title={installPrimary.title}
-                  onClick={() => void installMut.mutateAsync(installPrimary.action)}
+                  onClick={() => installMut.mutate(installPrimary.action)}
                 >
                   {installPrimary.label}
                 </Button>
@@ -319,7 +351,7 @@ export default function AiConfigConnectionSection() {
                   iconMotion="down"
                   disabled={busy || !canBootstrap}
                   title="只重跑 bootstrap（不 git pull），用于修复依赖或切换 GPU 开关后重装"
-                  onClick={() => void installMut.mutateAsync("bootstrap")}
+                  onClick={() => installMut.mutate("bootstrap")}
                 >
                   仅重装依赖
                 </Button>

@@ -51,18 +51,54 @@ export class InstallJobStreamInterruptedError extends Error {
   }
 }
 
+export class InstallJobStreamCancelledError extends Error {
+  constructor() {
+    super("已停止观看任务进度");
+    this.name = "InstallJobStreamCancelledError";
+  }
+}
+
 export function waitForInstallJob(
   jobId: string,
   openStream: (id: string) => EventSource,
   onProgress?: (progress: InstallJobProgress) => void,
+  signal?: AbortSignal,
 ): Promise<InstallJobCompletePayload> {
   const id = String(jobId || "").trim();
   if (id) setActiveJob("ai-install", id);
   return new Promise((resolve, reject) => {
-    const stream = openStream(id);
-    const closeStream = () => stream.close();
+    let settled = false;
+    let stream: EventSource | null = null;
+    const finish = (error?: unknown, payload?: InstallJobCompletePayload) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener("abort", onAbort);
+      if (stream) {
+        stream.onmessage = null;
+        stream.onerror = null;
+        stream.close();
+      }
+      if (error) reject(error);
+      else resolve(payload!);
+    };
+    const onAbort = () => finish(new InstallJobStreamCancelledError());
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
+    try {
+      stream = openStream(id);
+    } catch (error) {
+      finish(error);
+      return;
+    }
+    if (settled) {
+      stream.close();
+      return;
+    }
     stream.onmessage = (ev) => {
-      if (!ev.data) return;
+      if (settled || !ev.data) return;
       try {
         const payload = JSON.parse(ev.data) as InstallJobCompletePayload & {
           type?: string;
@@ -79,8 +115,7 @@ export function waitForInstallJob(
         if (payload.type === "complete") {
           if (payload.phase === "failed") {
             clearActiveJob("ai-install", id);
-            closeStream();
-            reject(
+            finish(
               new InstallJobFailedError(
                 payload.error || payload.message || "安装失败",
                 payload.result,
@@ -90,21 +125,18 @@ export function waitForInstallJob(
             return;
           }
           clearActiveJob("ai-install", id);
-          closeStream();
-          resolve(payload);
+          finish(undefined, payload);
         }
         if (payload.type === "error") {
           clearActiveJob("ai-install", id);
-          closeStream();
-          reject(new Error(payload.error || "任务不存在"));
+          finish(new Error(payload.error || "任务不存在"));
         }
       } catch {
         /* ignore malformed */
       }
     };
     stream.onerror = () => {
-      closeStream();
-      reject(new InstallJobStreamInterruptedError());
+      finish(new InstallJobStreamInterruptedError());
     };
   });
 }
