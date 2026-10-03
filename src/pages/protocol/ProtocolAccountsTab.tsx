@@ -1335,6 +1335,13 @@ export default function ProtocolAccountsTab() {
         warnings={deleteModalWarnings}
         busy={deleteBusy}
         error={deleteErr}
+        confirmLabel={
+          selectedExternalIds.length
+            ? selectedManagedIds.length
+              ? "确认删除并断开"
+              : "确认断开"
+            : undefined
+        }
         titleId="proto-delete-modal-title"
         onClose={closeDeleteModal}
         onConfirm={() => void confirmDeleteSelected()}
