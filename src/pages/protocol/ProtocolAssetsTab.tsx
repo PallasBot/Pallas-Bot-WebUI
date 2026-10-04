@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
   protocolApiErrorMessage,
@@ -232,6 +232,7 @@ export default function ProtocolAssetsTab() {
   const [dockerPullJob, setDockerPullJob] = useState<ProtocolDockerPullJob | null>(null);
   const [dockerPullWhich, setDockerPullWhich] = useState<"napcat" | "snowluma" | null>(null);
   const [dockerCapability, setDockerCapability] = useState<ProtocolDockerCapability | null>(null);
+  const dockerPullWatcherRef = useRef<AbortController | null>(null);
 
   const napcatJob = useMemo(() => jobFromOverview(overview, "job"), [overview]);
   const snowlumaJob = useMemo(() => {
@@ -274,6 +275,8 @@ export default function ProtocolAssetsTab() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load only
   }, [mountUrl]);
+
+  useEffect(() => () => dockerPullWatcherRef.current?.abort(), []);
 
   const chromeRefresh = useCallback(() => {
     void loadAssets();
@@ -357,6 +360,8 @@ export default function ProtocolAssetsTab() {
       confirmLabel: which === "snowluma" ? "确认拉取并重建" : "确认拉取",
     });
     if (!ok) return;
+    const controller = new AbortController();
+    dockerPullWatcherRef.current = controller;
     if (which === "napcat") setNapcatPullBusy(true);
     else setSnowlumaPullBusy(true);
     setDockerPullWhich(which);
@@ -385,12 +390,17 @@ export default function ProtocolAssetsTab() {
         };
       });
     }, 2500);
-    try {
-      const started = await protocolPullDockerImage(mountUrl, image, which);
+    const stopSoftTimer = () => {
       if (softTimer != null) {
         window.clearInterval(softTimer);
         softTimer = null;
       }
+    };
+    controller.signal.addEventListener("abort", stopSoftTimer, { once: true });
+    try {
+      const started = await protocolPullDockerImage(mountUrl, image, which);
+      if (controller.signal.aborted) return;
+      stopSoftTimer();
       const jobId = String(started.job_id ?? started.job?.job_id ?? "").trim();
       if (!jobId) {
         // 兼容旧插件：同步返回 ok/output
@@ -434,7 +444,9 @@ export default function ProtocolAssetsTab() {
           setDockerPullJob(next);
           if (next.output) setDockerPullLog(next.output);
         },
+        signal: controller.signal,
       });
+      if (controller.signal.aborted) return;
       setDockerPullJob(job);
       if (job.output) setDockerPullLog(job.output);
       if (job.status === "completed") {
@@ -450,6 +462,7 @@ export default function ProtocolAssetsTab() {
         notifyErr(job.message?.trim() || "Docker 镜像拉取失败");
       }
     } catch (e) {
+      if (controller.signal.aborted) return;
       notifyErr(protocolApiErrorMessage(e, "拉取失败"));
       setDockerPullJob((prev) =>
         prev
@@ -463,9 +476,13 @@ export default function ProtocolAssetsTab() {
           : prev,
       );
     } finally {
-      if (softTimer != null) window.clearInterval(softTimer);
-      if (which === "napcat") setNapcatPullBusy(false);
-      else setSnowlumaPullBusy(false);
+      stopSoftTimer();
+      controller.signal.removeEventListener("abort", stopSoftTimer);
+      if (dockerPullWatcherRef.current === controller) dockerPullWatcherRef.current = null;
+      if (!controller.signal.aborted) {
+        if (which === "napcat") setNapcatPullBusy(false);
+        else setSnowlumaPullBusy(false);
+      }
     }
   }
 

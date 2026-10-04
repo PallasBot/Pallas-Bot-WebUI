@@ -24,7 +24,6 @@ it("preserves governance scope query while switching observation sections", asyn
     <QueryClientProvider client={client}>
       <MemoryRouter
         initialEntries={["/ai/session?bot=10001&group=20002&scene=group_chat"]}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <Routes>
           <Route path="/ai" element={<AiObservationLayout />}>

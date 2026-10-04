@@ -27,7 +27,6 @@ function renderScope(path: string, actions = false) {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter
         initialEntries={[path]}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <AiGovernanceScope>
           <AiGovernanceScopeFields />
