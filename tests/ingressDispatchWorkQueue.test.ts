@@ -59,7 +59,7 @@ describe("ingressSchedulerMetrics", () => {
         wait_ms_p95: 451.2,
         backpressure_waits: 3,
       }),
-    ).toEqual({ pending: 2, pendingPeak: 20, active: 4, activePeak: 8, readyPeak: 6, waitP95Ms: 451.2, backpressureWaits: 3 });
+    ).toEqual({ pending: 2, pendingPeak: 20, active: 4, activePeak: 8, readyPeak: 6, waitP95Ms: 451.2, runP95Ms: 0, backpressureWaits: 3 });
   });
 });
 

@@ -20,6 +20,7 @@ import type {
   HomeOverviewData,
 } from "@/api/pallasTypes";
 import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
+import { invalidatePluginCatalogQueries } from "@/utils/catalogQueryInvalidation";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import CorpusWordCloud, { COMMUNITY_HOT_TAB_OPTIONS } from "@/components/CorpusWordCloud";
 import ConsoleHint from "@/components/ConsoleHint";
@@ -372,6 +373,7 @@ export default function CommunityPage() {
         qc.invalidateQueries({ queryKey: ["plugin-config", "pb_core"] }),
         qc.invalidateQueries({ queryKey: ["corpus-status"] }),
         qc.invalidateQueries({ queryKey: ["federation-onboarding"] }),
+        invalidatePluginCatalogQueries(qc),
       ]);
     },
     onError: (e) => {

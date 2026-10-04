@@ -536,6 +536,58 @@ html[data-theme="light"] .plugin-config-form-item .config-field-renderer__step {
   padding-inline: 1rem;
 }
 
+@media (pointer: coarse) {
+  .shell__mobile-topbar-btn,
+  .shell-mobile-nav__close,
+  .plugin-config-form-item__help-btn,
+  .ui-surface-dialog .ui-surface-dialog__close {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .shell-mobile-nav__links .shell-mobile-nav__link {
+    min-height: 44px;
+  }
+
+  .shell-mobile-nav__tools .shell__sidebar-exit--mobile,
+  .shell-mobile-nav__tools .shell__sidebar-restart--mobile {
+    min-height: 44px;
+  }
+
+  .shell-mobile-nav__external-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .plugin-config-dialog__foot button,
+  .plugin-config-page__mode-toggle [role="tablist"] [role="tab"],
+  .plugin-config-dialog [role="combobox"],
+  .plugin-config-dialog [role="tab"],
+  .plugin-config-dialog .plugin-config-group-card__collapse {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .plugin-config-dialog .chrome-tools [role="tablist"] {
+    height: 48px !important;
+    min-height: 48px !important;
+  }
+
+  .plugin-config-dialog .chrome-tools [role="tablist"] button[role="tab"] {
+    min-height: 44px !important;
+  }
+
+  .plugin-config-dialog .chrome-tools button[role="combobox"] {
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+}
+
 .plugin-config-page__tab-panel {
   display: grid;
   gap: 12px;

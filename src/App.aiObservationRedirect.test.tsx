@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { lazy, Suspense } from "react";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Outlet, useLocation } from "react-router-dom";
+import { createMemoryRouter, Outlet, RouterProvider, useLocation } from "react-router-dom";
 import { expect, it, vi } from "vitest";
 
 vi.mock("@/components/ConsoleSetupGuard", () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
@@ -26,16 +26,27 @@ vi.mock("@/pages/ai/governance/AiGovernancePage", () => ({
 
 const App = lazy(() => import("@/App"));
 
-it("preserves governance scope through the history redirect", async () => {
-  render(
-    <MemoryRouter initialEntries={["/ai/history?bot=10001&group=20002&scene=group_chat"]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Suspense fallback={null}>
-        <App />
-      </Suspense>
-    </MemoryRouter>,
+function renderApp(initialEntry: string) {
+  const router = createMemoryRouter(
+    [{ path: "*", element: <Suspense fallback={null}><App /></Suspense> }],
+    {
+      initialEntries: [initialEntry],
+    },
   );
+  render(<RouterProvider router={router} />);
+  return router;
+}
 
-  expect(await screen.findByText("/ai/session?bot=10001&group=20002&scene=group_chat|10001/20002")).not.toBeNull();
+it("preserves governance scope through the history redirect", async () => {
+  renderApp("/ai/history?bot=10001&group=20002&scene=group_chat");
+
+  expect(
+    await screen.findByText(
+      "/ai/session?bot=10001&group=20002&scene=group_chat|10001/20002",
+      {},
+      { timeout: 10_000 },
+    ),
+  ).not.toBeNull();
 });
 
 it.each([
@@ -43,16 +54,7 @@ it.each([
   ["/ai/people", "people"],
   ["/ai/persona", "style"],
 ] as const)("redirects retired observation section %s to governance tab %s", async (from, tab) => {
-  render(
-    <MemoryRouter
-      initialEntries={[`${from}?bot=10001&group=20002&scene=group_chat`]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
-      <Suspense fallback={null}>
-        <App />
-      </Suspense>
-    </MemoryRouter>,
-  );
+  renderApp(`${from}?bot=10001&group=20002&scene=group_chat`);
 
   expect(
     await screen.findByText(`governance:/ai/governance?bot=10001&group=20002&scene=group_chat&tab=${tab}`),

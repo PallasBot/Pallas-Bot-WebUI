@@ -16,8 +16,11 @@ export type ConsoleConfirmOptions = {
 export function useConsoleConfirm() {
   const [opts, setOpts] = useState<(ConsoleConfirmOptions & { open: boolean }) | null>(null);
   const resolver = useRef<((value: boolean) => void) | null>(null);
+  const returnFocusTarget = useRef<HTMLElement | null>(null);
+  const restoreFocusOnClose = useRef(false);
 
   const finish = useCallback((value: boolean) => {
+    restoreFocusOnClose.current = !value;
     resolver.current?.(value);
     resolver.current = null;
     setOpts(null);
@@ -25,6 +28,9 @@ export function useConsoleConfirm() {
 
   const confirm = useCallback((options: ConsoleConfirmOptions) => {
     return new Promise<boolean>((resolve) => {
+      const active = document.activeElement;
+      returnFocusTarget.current = active instanceof HTMLElement ? active : null;
+      restoreFocusOnClose.current = false;
       resolver.current?.(false);
       resolver.current = resolve;
       setOpts({ ...options, open: true });
@@ -39,6 +45,16 @@ export function useConsoleConfirm() {
       warnings={opts?.warnings}
       confirmLabel={opts?.confirmLabel}
       confirmVariant={opts?.confirmVariant ?? "destructive"}
+      onCloseAutoFocus={(event) => {
+        if (!restoreFocusOnClose.current) return;
+        const target = returnFocusTarget.current;
+        if (target?.isConnected) {
+          event.preventDefault();
+          target.focus({ preventScroll: true });
+        }
+        returnFocusTarget.current = null;
+        restoreFocusOnClose.current = false;
+      }}
       onClose={() => finish(false)}
       onConfirm={() => finish(true)}
     />

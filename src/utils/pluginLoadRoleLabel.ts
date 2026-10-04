@@ -1,4 +1,4 @@
-import type { PluginLoadRole, PluginRow } from "@/api/pallasTypes";
+import type { PluginCatalogProcessRole, PluginLoadRole, PluginRow } from "@/api/pallasTypes";
 
 const LOAD_WHERE: Record<PluginLoadRole, string> = {
   hub: "主节点",
@@ -7,8 +7,6 @@ const LOAD_WHERE: Record<PluginLoadRole, string> = {
   infra: "依赖",
   internal: "分片节点",
 };
-
-export type PluginCatalogProcessRole = "hub" | "worker" | "unified";
 
 /** 分片部署插件加载角色文案；单进程时 unified 显示「本进程」。 */
 export function loadRoleDisplayLabel(
@@ -19,7 +17,7 @@ export function loadRoleDisplayLabel(
     if (role === "infra") return "依赖";
     return "本进程";
   }
-  return LOAD_WHERE[role] ?? "";
+  return LOAD_WHERE[role] ?? role;
 }
 
 export function pluginLoadProcessTags(

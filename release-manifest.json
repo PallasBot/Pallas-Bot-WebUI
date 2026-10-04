@@ -2,7 +2,7 @@
   "schema_version": 1,
   "requires": {
     "bot": {
-      "min_commit": "0547b2389a27959954863af32a44e6e7f1971ab9"
+      "min_commit": "8cd3adfb4a24ebc128b89769c0cbe33d47470f5a"
     }
   }
 }

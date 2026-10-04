@@ -49,6 +49,12 @@ export default function ProtocolRuntimeImageSwitchDialog({
   const completedJobRef = useRef<string | null>(null);
   const statusErrorJobRef = useRef<string | null>(null);
   const wasOpenRef = useRef(false);
+  const startGenerationRef = useRef(0);
+  const openRef = useRef(open);
+  const mountUrlRef = useRef(mountUrl);
+  const activeJobMountRef = useRef<string | null>(null);
+  openRef.current = open;
+  mountUrlRef.current = mountUrl;
 
   const busy = starting || isRunning(job);
   const hasResults = Array.isArray(job?.results);
@@ -72,12 +78,18 @@ export default function ProtocolRuntimeImageSwitchDialog({
   }, [busy, onBusyChange]);
 
   useEffect(() => {
+    startGenerationRef.current += 1;
+    return () => { startGenerationRef.current += 1; };
+  }, [mountUrl, open]);
+
+  useEffect(() => {
     if (open && !wasOpenRef.current) {
       setImage("");
       setMode("rebuild_all");
       setJob(null);
       setStarting(false);
       setConfirmOpen(false);
+      activeJobMountRef.current = null;
       completedJobRef.current = null;
       statusErrorJobRef.current = null;
     }
@@ -85,7 +97,7 @@ export default function ProtocolRuntimeImageSwitchDialog({
   }, [open]);
 
   useEffect(() => {
-    if (!mountUrl || !job?.job_id || !isRunning(job)) return;
+    if (!open || !mountUrl || !job?.job_id || !isRunning(job) || activeJobMountRef.current !== mountUrl) return;
     const jobId = job.job_id;
     let disposed = false;
     let eventSource: EventSource | null = null;
@@ -116,13 +128,13 @@ export default function ProtocolRuntimeImageSwitchDialog({
       );
     };
     const apply = (next: SnowlumaRuntimeImageSwitchJob, fromSse = false) => {
-      if (disposed) return;
+      if (disposed || completedJobRef.current === jobId) return;
       setJob(next);
       if (fromSse) clearFallback();
       if (!isRunning(next)) finish(next);
     };
     const startFallback = () => {
-      if (disposed || polling) return;
+      if (disposed || completedJobRef.current === jobId || polling) return;
       polling = true;
       eventSource?.close();
       eventSource = null;
@@ -130,10 +142,11 @@ export default function ProtocolRuntimeImageSwitchDialog({
         if (disposed || completedJobRef.current === jobId) return;
         try {
           const next = await protocolFetchSnowlumaRuntimeImageSwitchJob(mountUrl, jobId);
+          if (disposed || completedJobRef.current === jobId) return;
           apply(next);
           if (isRunning(next) && !disposed) fallbackTimer = window.setTimeout(() => void poll(), 900);
         } catch (error) {
-          if (!disposed) {
+          if (!disposed && completedJobRef.current !== jobId) {
             if (statusErrorJobRef.current !== jobId) {
               statusErrorJobRef.current = jobId;
               pushConsoleToast(protocolApiErrorMessage(error, "无法读取批量镜像切换任务状态"), "err");
@@ -145,13 +158,16 @@ export default function ProtocolRuntimeImageSwitchDialog({
       void poll();
     };
     const armInactivityFallback = () => {
+      if (disposed || completedJobRef.current === jobId) return;
       clearInactivity();
       inactivityTimer = window.setTimeout(startFallback, 5_000);
     };
     const receiveSse = (event: Event) => {
+      if (disposed || completedJobRef.current === jobId) return;
       try {
-        apply(JSON.parse((event as MessageEvent).data) as SnowlumaRuntimeImageSwitchJob, true);
-        armInactivityFallback();
+        const next = JSON.parse((event as MessageEvent).data) as SnowlumaRuntimeImageSwitchJob;
+        apply(next, true);
+        if (isRunning(next)) armInactivityFallback();
       } catch {
         // Ignore malformed events and let the inactivity timeout enable polling.
       }
@@ -161,7 +177,9 @@ export default function ProtocolRuntimeImageSwitchDialog({
       eventSource = protocolStreamSnowlumaRuntimeImageSwitchJob(mountUrl, jobId);
       eventSource.addEventListener("snapshot", receiveSse);
       eventSource.addEventListener("progress", receiveSse);
-      eventSource.onerror = startFallback;
+      eventSource.onerror = () => {
+        if (!disposed && completedJobRef.current !== jobId) startFallback();
+      };
       armInactivityFallback();
     } catch {
       startFallback();
@@ -173,17 +191,25 @@ export default function ProtocolRuntimeImageSwitchDialog({
       clearInactivity();
       eventSource?.close();
     };
-  }, [job?.job_id, mountUrl, onFinished]);
+  }, [job?.job_id, mountUrl, onFinished, open]);
 
   async function start() {
-    if (!mountUrl || !image.trim()) return;
+    if (!mountUrl || !image.trim() || !openRef.current) return;
+    const requestMountUrl = mountUrl;
+    const generation = ++startGenerationRef.current;
+    const isCurrent = () =>
+      generation === startGenerationRef.current &&
+      openRef.current &&
+      mountUrlRef.current === requestMountUrl;
     setStarting(true);
     try {
-      const response = await protocolStartSnowlumaRuntimeImageSwitch(mountUrl, {
+      const response = await protocolStartSnowlumaRuntimeImageSwitch(requestMountUrl, {
         image: image.trim(),
         apply_mode: mode,
       });
+      if (!isCurrent()) return;
       const nextJob = { ...response.job, job_id: response.job.job_id ?? response.job_id };
+      activeJobMountRef.current = requestMountUrl;
       completedJobRef.current = null;
       setJob(nextJob);
       if (!isRunning(nextJob)) {
@@ -195,9 +221,9 @@ export default function ProtocolRuntimeImageSwitchDialog({
         );
       }
     } catch (error) {
-      pushConsoleToast(protocolApiErrorMessage(error, "启动批量镜像切换失败"), "err");
+      if (isCurrent()) pushConsoleToast(protocolApiErrorMessage(error, "启动批量镜像切换失败"), "err");
     } finally {
-      setStarting(false);
+      if (isCurrent()) setStarting(false);
     }
   }
 

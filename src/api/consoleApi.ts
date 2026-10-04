@@ -12,6 +12,16 @@ import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
 import { protocolAccountsSignature } from "@/utils/protocolUi";
 import type { AiExtensionLogKind } from "@/config/aiConstants";
 import type {
+  LlmProviderRow,
+  LlmProvidersConfig,
+  LlmProvidersSaveResult,
+} from "./console";
+import type {
+  PluginConfigData as PluginFormConfigData,
+  PluginConfigField,
+  PluginConfigFieldGroup,
+} from "./console";
+import type {
   UpdateCheckData,
   UpdateCheckAllData,
   UpdateApplyJobStartData,
@@ -55,6 +65,8 @@ import type {
   GroupConfigPublic,
   GroupExpressionProfile,
   GroupListData,
+  OpenapiPluginConfigRawData,
+  OpenapiPluginGovernanceUpdateData,
   InstancesData,
   NapcatAccountRow,
   NapcatManagerSnapshot,
@@ -75,7 +87,6 @@ import type {
   GroupFleetWhitelistData,
   GroupFleetWhitelistEntry,
   HelpMenuVisibilityData,
-  PluginConfigData,
   ExtensionInstallJobData,
   PluginCapabilitiesData,
   PluginGovernanceBody,
@@ -87,8 +98,6 @@ import type {
   LlmEmbeddingStatus,
   LlmRuntimeOverviewData,
   LlmLocalRoutingConfig,
-  LlmProvidersConfig,
-  LlmProvidersSaveResult,
   LlmProviderModelsResult,
   LlmProviderTestResult,
   LlmHistorySessionDetailData,
@@ -149,6 +158,292 @@ import type {
  */
 const CATALOG_FRESH_MS = 45_000;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function optionalIs(
+  value: Record<string, unknown>,
+  key: string,
+  check: (field: unknown) => boolean,
+): boolean {
+  return !(key in value) || check(value[key]);
+}
+
+const isString = (value: unknown): value is string => typeof value === "string";
+const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
+const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+const isNullableString = (value: unknown) => value === null || isString(value);
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(isString);
+}
+
+function isNumberRecord(value: unknown): value is Record<string, number> {
+  return isRecord(value) && Object.values(value).every(isNumber);
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return isRecord(value) && Object.values(value).every(isString);
+}
+
+function isNumberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every(isNumber);
+}
+
+function isPluginConfigField(value: unknown): value is PluginConfigField {
+  return isRecord(value)
+    && isString(value.name)
+    && isString(value.kind)
+    && isBoolean(value.required)
+    && isString(value.description)
+    && isString(value.env_key)
+    && "default" in value
+    && "current" in value
+    && optionalIs(value, "ui_gateway", (field) => field === null || isRecord(field));
+}
+
+function isPluginMetadata(value: unknown): boolean {
+  return isRecord(value)
+    && "name" in value
+    && isNullableString(value.name)
+    && optionalIs(value, "description", isString)
+    && optionalIs(value, "usage", isString)
+    && optionalIs(value, "type", isString);
+}
+
+function isPluginConfigFieldGroup(value: unknown): value is PluginConfigFieldGroup {
+  return isRecord(value)
+    && isString(value.id)
+    && isString(value.title)
+    && isStringArray(value.field_names);
+}
+
+// Config fields and optional UI metadata are plugin-extensible; validate only keys the form indexes.
+function isPluginFormConfig(value: unknown): value is PluginFormConfigData {
+  if (!isRecord(value) || !isString(value.plugin) || !isString(value.module)) return false;
+  if (!Array.isArray(value.fields) || !value.fields.every(isPluginConfigField)) return false;
+  return optionalIs(value, "field_groups", (groups) =>
+    Array.isArray(groups) && groups.every(isPluginConfigFieldGroup),
+  )
+    && optionalIs(value, "unexpected_keys", (rows) => Array.isArray(rows) && rows.every((row) =>
+      isRecord(row) && isString(row.env_key) && isString(row.value_preview),
+    ))
+    && ["hot_reload", "gateway_editor", "supports_connectivity_check", "llm_model_admin", "dev_mode_hot_reload"]
+      .every((key) => optionalIs(value, key, (flag) => flag === null || isBoolean(flag)))
+    && optionalIs(value, "command_perm_ui", (ui) => ui === null || isGovernancePermUi(ui))
+    && optionalIs(value, "command_limits_ui", (ui) => ui === null || isGovernanceLimitsUi(ui));
+}
+
+function parsePluginFormConfig(value: unknown): PluginFormConfigData {
+  if (!isPluginFormConfig(value)) throw new Error("插件配置: 响应异常");
+  return value;
+}
+
+function isPluginGovernanceCommand(value: unknown): boolean {
+  return isRecord(value)
+    && isString(value.command_id)
+    && isString(value.label)
+    && optionalIs(value, "trigger_condition", isNullableString)
+    && optionalIs(value, "default_level", isNullableString)
+    && optionalIs(value, "effective_level", isNullableString)
+    && optionalIs(value, "default_cd_sec", (field) => field === null || isNumber(field))
+    && optionalIs(value, "effective_cd_sec", (field) => field === null || isNumber(field));
+}
+
+function isGovernancePermUi(value: unknown): boolean {
+  return isRecord(value)
+    && Array.isArray(value.levels)
+    && value.levels.every((level) => isRecord(level) && isString(level.id) && isString(level.label))
+    && Array.isArray(value.plugins)
+    && value.plugins.every((plugin) => isRecord(plugin)
+      && isString(plugin.plugin)
+      && isString(plugin.title)
+      && Array.isArray(plugin.commands)
+      && plugin.commands.every((command) => isRecord(command)
+        && isString(command.command_id)
+        && isString(command.label)
+        && isString(command.default_level)
+        && isString(command.effective_level)
+        && optionalIs(command, "trigger_condition", isNullableString)));
+}
+
+function isGovernanceLimitsUi(value: unknown): boolean {
+  return isRecord(value)
+    && Array.isArray(value.plugins)
+    && value.plugins.every((plugin) => isRecord(plugin)
+      && isString(plugin.plugin)
+      && isString(plugin.title)
+      && Array.isArray(plugin.commands)
+      && plugin.commands.every((command) => isRecord(command)
+        && isString(command.command_id)
+        && isString(command.label)
+        && isNumber(command.default_cd_sec)
+        && isNumber(command.effective_cd_sec)
+        && optionalIs(command, "trigger_condition", isNullableString)));
+}
+
+function isPluginGovernanceData(value: unknown): value is PluginGovernanceData {
+  return isRecord(value)
+    && isString(value.plugin)
+    && isString(value.title)
+    && Array.isArray(value.commands) && value.commands.every(isPluginGovernanceCommand)
+    && Array.isArray(value.menu_items) && value.menu_items.every(isRecord)
+    && isRecord(value.runtime)
+    && isBoolean(value.runtime.global_disable)
+    && isString(value.runtime.global_disable_revision)
+    && isBoolean(value.runtime.help_hidden)
+    && isBoolean(value.runtime.global_disable_protected)
+    && isBoolean(value.runtime.help_ignored)
+    && isGovernancePermUi(value.perm_ui_filtered)
+    && isGovernanceLimitsUi(value.limits_ui_filtered)
+    && isNumberArray(value.blocked_user_ids)
+    && optionalIs(value, "reload_policy", isNullableString)
+    && optionalIs(value, "activation_policy", isNullableString);
+}
+
+function parsePluginGovernanceData(value: unknown): PluginGovernanceData {
+  if (!isPluginGovernanceData(value)) throw new Error("插件治理: 响应异常");
+  return value;
+}
+
+function isPluginGovernanceUpdateData(value: unknown): value is OpenapiPluginGovernanceUpdateData {
+  return isRecord(value)
+    && isString(value.plugin)
+    && isStringRecord(value.command_permission_overrides)
+    && isNumberRecord(value.command_limit_overrides)
+    && isNumberArray(value.blocked_user_ids)
+    && isRecord(value.runtime)
+    && isBoolean(value.runtime.global_disable)
+    && isString(value.runtime.global_disable_revision)
+    && isBoolean(value.runtime.help_hidden);
+}
+
+function parsePluginGovernanceUpdateData(value: unknown): OpenapiPluginGovernanceUpdateData {
+  if (!isPluginGovernanceUpdateData(value)) throw new Error("插件治理保存: 响应异常");
+  return value;
+}
+
+function isPluginRow(value: unknown): value is PluginRow {
+  return isRecord(value)
+    && isString(value.name)
+    && isString(value.nb_plugin_name)
+    && isString(value.module)
+    && isString(value.resolved_plugin_id)
+    && isString(value.resolved_module)
+    && (value.metadata === null || isPluginMetadata(value.metadata))
+    && isString(value.load_role)
+    && isBoolean(value.loaded_in_process)
+    && isBoolean(value.has_config)
+    && isBoolean(value.configurable)
+    && isBoolean(value.help_visible)
+    && isBoolean(value.help_ignored)
+    && isBoolean(value.help_hidden)
+    && isBoolean(value.globally_disabled)
+    && isBoolean(value.global_disable_protected)
+    && isString(value.plugin_source)
+    && isNullableString(value.plugin_source_dir)
+    && isNullableString(value.plugin_version)
+    && isNullableString(value.extra_package)
+    && isBoolean(value.uninstallable)
+    && isNullableString(value.uninstall_kind)
+    && isNullableString(value.uninstall_target)
+    && isStringArray(value.deps_missing)
+    && isNullableString(value.avatar)
+    && isNullableString(value.icon)
+    && isNullableString(value.cover)
+    && isString(value.catalog_process_role)
+    && isBoolean(value.expected_in_catalog_process);
+}
+
+function parsePluginRows(value: unknown): PluginRow[] {
+  if (!Array.isArray(value) || !value.every(isPluginRow)) throw new Error("/plugins: 响应异常");
+  return value;
+}
+
+function isBotRow(value: unknown): value is BotRow {
+  return isRecord(value)
+    && isString(value.connection_key)
+    && isString(value.self_id)
+    && isString(value.adapter)
+    && optionalIs(value, "connected_at_unix", (field) => field === null || isNumber(field))
+    && optionalIs(value, "ws_port", (field) => field === null || isNumber(field))
+    && optionalIs(value, "shard_id", (field) => field === null || isNumber(field))
+    && optionalIs(value, "nickname", isNullableString)
+    && optionalIs(value, "online", (field) => field === null || isBoolean(field));
+}
+
+function isBotConfigPublic(value: unknown): value is BotConfigPublic {
+  return isRecord(value)
+    && isNumber(value.account)
+    && Array.isArray(value.admins) && value.admins.every(isNumber)
+    && isBoolean(value.auto_accept_friend)
+    && isBoolean(value.auto_accept_group)
+    && isBoolean(value.security)
+    && isNumberRecord(value.taken_name)
+    && isNumberRecord(value.drunk)
+    && isStringArray(value.disabled_plugins)
+    && isBoolean(value.community_roster_show_qq)
+    && optionalIs(value, "persona", (field) => field === null || isRecord(field))
+    && optionalIs(value, "account_profile_effective", (field) => field === null || isRecord(field))
+    && optionalIs(value, "group_style_enabled", isBoolean);
+}
+
+function isNapcatSnapshot(value: unknown): value is NapcatManagerSnapshot {
+  return isRecord(value)
+    && isString(value.plugin)
+    && isBoolean(value.webui_enabled)
+    && isString(value.webui_path)
+    && isBoolean(value.console_auth_configured)
+    && Array.isArray(value.accounts) && value.accounts.every(isRecord);
+}
+
+function isProtocolExtension(value: unknown): boolean {
+  return isRecord(value)
+    && isBoolean(value.installed)
+    && isString(value.package)
+    && isNullableString(value.uv_extra)
+    && isNullableString(value.install_cli)
+    && isNullableString(value.activation_policy)
+    && isNullableString(value.repository_url);
+}
+
+function isBotProfiles(value: unknown): boolean {
+  return isRecord(value) && Object.values(value).every((profile) =>
+    isRecord(profile)
+      && optionalIs(profile, "nickname", isNullableString)
+      && optionalIs(profile, "user_id", (id) => id === null || isNumber(id))
+      && optionalIs(profile, "connection_key", isNullableString)
+      && optionalIs(profile, "adapter", isNullableString)
+      && optionalIs(profile, "shard_id", (id) => id === null || isNumber(id)),
+  );
+}
+
+function isInstancesData(value: unknown): value is InstancesData {
+  return isRecord(value)
+    && Array.isArray(value.nonebot_bots) && value.nonebot_bots.every(isBotRow)
+    && Array.isArray(value.db_bot_configs) && value.db_bot_configs.every(isBotConfigPublic)
+    && (value.pallas_protocol === null || isNapcatSnapshot(value.pallas_protocol))
+    && optionalIs(value, "napcat", (snap) => snap === null || isNapcatSnapshot(snap))
+    && isProtocolExtension(value.protocol_extension)
+    && isBotProfiles(value.bot_profiles);
+}
+
+function parseInstancesData(value: unknown): InstancesData {
+  if (!isRecord(value)
+    || !("pallas_protocol" in value || "napcat" in value)
+    || !optionalIs(value, "pallas_protocol", (snap) => snap === null || isNapcatSnapshot(snap))
+    || !optionalIs(value, "napcat", (snap) => snap === null || isNapcatSnapshot(snap))) {
+    throw new Error("/instances: 响应异常");
+  }
+  const normalized = {
+    ...value,
+    pallas_protocol: value.pallas_protocol ?? value.napcat ?? null,
+  };
+  if (!isInstancesData(normalized)) throw new Error("/instances: 响应异常");
+  return normalized;
+}
+
 let instancesCache: { data: InstancesData; ts: number } | null = null;
 let instancesInflight: Promise<InstancesData> | null = null;
 /** 写操作或强制刷新后递增，丢弃过期的在途响应写回 */
@@ -175,8 +470,10 @@ export function peekInstancesCacheAgeMs(): number | null {
 export function invalidateInstancesCache() {
   instancesCache = null;
   instancesInflight = null;
+  instancesCatalogRefreshInflight = null;
   instancesFetchGen++;
   lastPatchedProtocolAccountsSig = "";
+  invalidateHomeOverviewCache();
 }
 
 function patchProtocolSnapAccounts(
@@ -215,14 +512,17 @@ export function refreshInstancesCatalogGlobal(): Promise<InstancesData> {
   if (instancesCatalogRefreshInflight) {
     return instancesCatalogRefreshInflight;
   }
-  instancesCatalogRefreshInflight = fetchInstances({ bypassCache: true }).finally(() => {
-    instancesCatalogRefreshInflight = null;
+  let request: Promise<InstancesData>;
+  request = fetchInstances({ bypassCache: true }).finally(() => {
+    if (instancesCatalogRefreshInflight === request) instancesCatalogRefreshInflight = null;
   });
-  return instancesCatalogRefreshInflight;
+  instancesCatalogRefreshInflight = request;
+  return request;
 }
 
 async function fetchInstancesFromNetwork(): Promise<InstancesData> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/instances"]["get"]>("/instances")) as InstancesData;
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/instances"]["get"]>("/instances");
+  return parseInstancesData(data);
 }
 
 export type FetchInstancesOptions = {
@@ -280,10 +580,12 @@ export function invalidatePluginsCache() {
   pluginsCache = null;
   pluginsInflight = null;
   pluginsFetchGen++;
+  invalidateHomeOverviewCache();
 }
 
 async function fetchPluginsFromNetwork(): Promise<PluginRow[]> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins"]["get"]>("/plugins")) as PluginRow[];
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins"]["get"]>("/plugins");
+  return parsePluginRows(data);
 }
 
 export async function fetchPluginCapabilities(): Promise<PluginCapabilitiesData> {
@@ -296,15 +598,28 @@ export type FetchPluginsOptions = {
   bypassCache?: boolean;
 };
 
+function startPluginsFetch(gen: number): Promise<PluginRow[]> {
+  let request: Promise<PluginRow[]>;
+  request = fetchPluginsFromNetwork()
+    .then((data) => {
+      if (gen === pluginsFetchGen) touchPluginsCache(data);
+      return data;
+    })
+    .finally(() => {
+      if (pluginsInflight === request) pluginsInflight = null;
+    });
+  pluginsInflight = request;
+  return request;
+}
+
 export async function fetchPlugins(opts?: FetchPluginsOptions): Promise<PluginRow[]> {
   const bypass = Boolean(opts?.bypassCache);
   const now = Date.now();
 
   if (bypass) {
-    const gen = pluginsFetchGen;
-    const d = await fetchPluginsFromNetwork();
-    if (gen === pluginsFetchGen) touchPluginsCache(d);
-    return d;
+    const gen = ++pluginsFetchGen;
+    invalidateHomeOverviewCache();
+    return startPluginsFetch(gen);
   }
 
   if (pluginsInflight) {
@@ -317,28 +632,12 @@ export async function fetchPlugins(opts?: FetchPluginsOptions): Promise<PluginRo
       return pluginsCache.data;
     }
     const snap = pluginsCache.data;
-    const gen = pluginsFetchGen;
-    pluginsInflight = fetchPluginsFromNetwork()
-      .then((d) => {
-        if (gen === pluginsFetchGen) touchPluginsCache(d);
-        return d;
-      })
-      .finally(() => {
-        pluginsInflight = null;
-      });
+    const request = startPluginsFetch(pluginsFetchGen);
+    void request.catch(() => {});
     return snap;
   }
 
-  const gen = pluginsFetchGen;
-  pluginsInflight = fetchPluginsFromNetwork()
-    .then((d) => {
-      if (gen === pluginsFetchGen) touchPluginsCache(d);
-      return d;
-    })
-    .finally(() => {
-      pluginsInflight = null;
-    });
-  return pluginsInflight;
+  return startPluginsFetch(pluginsFetchGen);
 }
 
 /** 商店列表可能顺带刷新资源快照，冷启动时超过默认 20s */
@@ -683,25 +982,41 @@ export function invalidateBotsCache() {
   botsCache = null;
   botsInflight = null;
   botsFetchGen++;
+  invalidateHomeOverviewCache();
 }
 
 async function fetchBotsFromNetwork(): Promise<BotRow[]> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/bots"]["get"]>("/bots")) as BotRow[];
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/bots"]["get"]>("/bots");
+  if (!Array.isArray(data) || !data.every(isBotRow)) throw new Error("/bots: 响应异常");
+  return data;
 }
 
 export type FetchBotsOptions = {
   bypassCache?: boolean;
 };
 
+function startBotsFetch(gen: number): Promise<BotRow[]> {
+  let request: Promise<BotRow[]>;
+  request = fetchBotsFromNetwork()
+    .then((data) => {
+      if (gen === botsFetchGen) touchBotsCache(data);
+      return data;
+    })
+    .finally(() => {
+      if (botsInflight === request) botsInflight = null;
+    });
+  botsInflight = request;
+  return request;
+}
+
 export async function fetchBots(opts?: FetchBotsOptions): Promise<BotRow[]> {
   const bypass = Boolean(opts?.bypassCache);
   const now = Date.now();
 
   if (bypass) {
-    const gen = botsFetchGen;
-    const d = await fetchBotsFromNetwork();
-    if (gen === botsFetchGen) touchBotsCache(d);
-    return d;
+    const gen = ++botsFetchGen;
+    invalidateHomeOverviewCache();
+    return startBotsFetch(gen);
   }
 
   if (botsInflight) {
@@ -714,28 +1029,12 @@ export async function fetchBots(opts?: FetchBotsOptions): Promise<BotRow[]> {
       return botsCache.data;
     }
     const snap = botsCache.data;
-    const gen = botsFetchGen;
-    botsInflight = fetchBotsFromNetwork()
-      .then((d) => {
-        if (gen === botsFetchGen) touchBotsCache(d);
-        return d;
-      })
-      .finally(() => {
-        botsInflight = null;
-      });
+    const request = startBotsFetch(botsFetchGen);
+    void request.catch(() => {});
     return snap;
   }
 
-  const gen = botsFetchGen;
-  botsInflight = fetchBotsFromNetwork()
-    .then((d) => {
-      if (gen === botsFetchGen) touchBotsCache(d);
-      return d;
-    })
-    .finally(() => {
-      botsInflight = null;
-    });
-  return botsInflight;
+  return startBotsFetch(botsFetchGen);
 }
 
 export function buildHelpPreviewUrl(opts: {
@@ -847,38 +1146,41 @@ export async function putPluginsGroupFleetWhitelist(
   return out;
 }
 
-export async function fetchPluginConfig(pluginName: string): Promise<PluginConfigData> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["get"]>(
-    `/plugins/${encodeURIComponent(pluginName)}/config`,
-  )) as unknown as PluginConfigData;
+export async function fetchPluginConfig(pluginName: string): Promise<PluginFormConfigData> {
+  return parsePluginFormConfig(
+    await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["get"]>(
+      `/plugins/${encodeURIComponent(pluginName)}/config`,
+    ),
+  );
 }
 
 export async function putPluginConfig(
   pluginName: string,
   values: Record<string, unknown>,
-): Promise<PluginConfigData> {
-  const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["put"]>(
+): Promise<PluginFormConfigData> {
+  const out = await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["put"]>(
     `/plugins/${encodeURIComponent(pluginName)}/config`,
     { values },
-  )) as unknown as PluginConfigData;
+  );
   invalidatePluginsCache();
-  return out;
+  return parsePluginFormConfig(out);
 }
 
 export async function fetchPluginConfigRaw(pluginName: string): Promise<string> {
-  const out = await consoleOpenapiGet<
+  const out: OpenapiPluginConfigRawData = await consoleOpenapiGet<
     ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config/raw"]["get"]
   >(`/plugins/${encodeURIComponent(pluginName)}/config/raw`);
+  if (!isRecord(out) || !isString(out.toml)) throw new Error("插件原始配置: 响应异常");
   return out.toml;
 }
 
-export async function putPluginConfigRaw(pluginName: string, toml: string): Promise<PluginConfigData> {
-  const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config/raw"]["put"]>(
+export async function putPluginConfigRaw(pluginName: string, toml: string): Promise<PluginFormConfigData> {
+  const out = await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config/raw"]["put"]>(
     `/plugins/${encodeURIComponent(pluginName)}/config/raw`,
     { toml },
-  )) as unknown as PluginConfigData;
+  );
   invalidatePluginsCache();
-  return out;
+  return parsePluginFormConfig(out);
 }
 
 export async function postPluginConfigCheck(
@@ -892,21 +1194,22 @@ export async function postPluginConfigCheck(
 }
 
 export async function fetchPluginGovernance(pluginName: string): Promise<PluginGovernanceData> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["get"]>(
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["get"]>(
     `/plugins/${encodeURIComponent(pluginName)}/governance`,
-  )) as unknown as PluginGovernanceData;
+  );
+  return parsePluginGovernanceData(data);
 }
 
 export async function putPluginGovernance(
   pluginName: string,
   body: PluginGovernanceBody,
-): Promise<PluginGovernanceData> {
-  const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["put"]>(
+): Promise<OpenapiPluginGovernanceUpdateData> {
+  const out: unknown = await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["put"]>(
     `/plugins/${encodeURIComponent(pluginName)}/governance`,
     body,
-  )) as unknown as PluginGovernanceData;
+  );
   invalidatePluginsCache();
-  return out;
+  return parsePluginGovernanceUpdateData(out);
 }
 
 export async function fetchCommonConfigSections(): Promise<CommonConfigSectionMeta[]> {
@@ -915,34 +1218,38 @@ export async function fetchCommonConfigSections(): Promise<CommonConfigSectionMe
   );
 }
 
-export async function fetchCommonConfig(sectionId: string): Promise<PluginConfigData> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["get"]>(
+export async function fetchCommonConfig(sectionId: string): Promise<PluginFormConfigData> {
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["get"]>(
     `/common-config/${encodeURIComponent(sectionId)}`,
-  )) as unknown as PluginConfigData;
+  );
+  return parsePluginFormConfig(data);
 }
 
 export async function putCommonConfig(
   sectionId: string,
   values: Record<string, unknown>,
-): Promise<PluginConfigData> {
-  return (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["put"]>(
+): Promise<PluginFormConfigData> {
+  const data: unknown = await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["put"]>(
     `/common-config/${encodeURIComponent(sectionId)}`,
     { values },
-  )) as unknown as PluginConfigData;
+  );
+  return parsePluginFormConfig(data);
 }
 
 export async function fetchCommonConfigRaw(sectionId: string): Promise<string> {
-  const out = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["get"]>(
+  const out: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["get"]>(
     `/common-config/${encodeURIComponent(sectionId)}/raw`,
   );
+  if (!isRecord(out) || !isString(out.toml)) throw new Error("通用配置原始文本: 响应异常");
   return out.toml;
 }
 
-export async function putCommonConfigRaw(sectionId: string, toml: string): Promise<PluginConfigData> {
-  return (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["put"]>(
+export async function putCommonConfigRaw(sectionId: string, toml: string): Promise<PluginFormConfigData> {
+  const data: unknown = await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["put"]>(
     `/common-config/${encodeURIComponent(sectionId)}/raw`,
     { toml },
-  )) as unknown as PluginConfigData;
+  );
+  return parsePluginFormConfig(data);
 }
 
 export async function postServiceGatewaysConnectivityCheck(
@@ -953,10 +1260,163 @@ export async function postServiceGatewaysConnectivityCheck(
   >("/common-config/service_gateways/connectivity-check", values ? { values } : {})) as PluginConfigCheckResult;
 }
 
+function isLlmProviderModel(value: unknown): boolean {
+  return isRecord(value)
+    && optionalIs(value, "model_id", isString)
+    && optionalIs(value, "name", isString)
+    && optionalIs(value, "capabilities", isStringArray)
+    && optionalIs(value, "model_effort", isString)
+    && optionalIs(value, "pricing_rules", (rules) => Array.isArray(rules) && rules.every(isRecord));
+}
+
+function isLlmModelPricing(value: unknown): boolean {
+  return isRecord(value)
+    && Object.values(value).every((row) => isRecord(row)
+      && ["price_in", "price_out", "cache_price_in", "cache_price_out"]
+        .every((key) => optionalIs(row, key, isNumber)));
+}
+
+function isLlmProviderConfigRow(value: unknown): value is LlmProviderRow {
+  return isRecord(value)
+    && isString(value.id)
+    && Boolean(value.id.trim())
+    && isString(value.kind)
+    && Boolean(value.kind.trim())
+    && ["base_url", "api_key", "api_key_env", "default_model", "model_effort", "request_method"]
+      .every((key) => optionalIs(value, key, isString))
+    && optionalIs(value, "api_keys", isStringArray)
+    && optionalIs(value, "api_key_hints", isStringArray)
+    && optionalIs(value, "api_key_set", isBoolean)
+    && optionalIs(value, "api_keys_count", isNumber)
+    && optionalIs(value, "enabled", isBoolean)
+    && optionalIs(value, "models", (models) => Array.isArray(models) && models.every(isLlmProviderModel))
+    && optionalIs(value, "task_models", isStringRecord)
+    && optionalIs(value, "capabilities", isStringArray)
+    && optionalIs(value, "model_pricing", isLlmModelPricing);
+}
+
+function isTierBackupMap(value: unknown): boolean {
+  return isRecord(value)
+    && ["high", "low"].every((key) => optionalIs(value, key, isString));
+}
+
+function isLlmProvidersRouting(value: unknown): value is Record<string, unknown> {
+  return isRecord(value)
+    && optionalIs(value, "chain_fallback", isStringArray)
+    && optionalIs(value, "tasks", isStringRecord)
+    && optionalIs(value, "tier_backups", isTierBackupMap)
+    && optionalIs(value, "tier_backup_models", isTierBackupMap)
+    && optionalIs(value, "task_backups", isStringRecord)
+    && optionalIs(value, "task_backup_models", isStringRecord)
+    && optionalIs(value, "route_source", isString)
+    && optionalIs(value, "cost_currency", isString);
+}
+
+function normalizeTierBackupMap(value: Record<string, unknown>): Record<string, unknown> {
+  const normalized = { ...value };
+  for (const key of ["high", "low"]) {
+    const item = (value[key] as string | undefined)?.trim();
+    if (item) normalized[key] = item;
+    else delete normalized[key];
+  }
+  return normalized;
+}
+
+function normalizeTaskBackupMap(value: Record<string, string>): Record<string, string> {
+  const normalized: Record<string, string> = {};
+  for (const [key, item] of Object.entries(value)) {
+    const task = key.trim();
+    const target = item.trim();
+    if (task && target) normalized[task] = target;
+  }
+  return normalized;
+}
+
+function parseLlmProvidersConfig(value: unknown): LlmProvidersConfig {
+  if (!isRecord(value)) throw new Error("LLM providers config: 响应异常");
+  const providers = "providers" in value ? value.providers : [];
+  const routingIn = "routing" in value ? value.routing : {};
+  if (!Array.isArray(providers) || !providers.every(isLlmProviderConfigRow) || !isLlmProvidersRouting(routingIn)) {
+    throw new Error("LLM providers config: 响应异常");
+  }
+  if (!optionalIs(value, "providers_file", isString) || !optionalIs(value, "file_exists", isBoolean)) {
+    throw new Error("LLM providers config: 响应异常");
+  }
+
+  const routing: Record<string, unknown> = {
+    ...routingIn,
+    chain_fallback: routingIn.chain_fallback ?? [],
+    tasks: routingIn.tasks ?? {},
+  };
+  for (const key of ["tier_backups", "tier_backup_models"] as const) {
+    if (key in routingIn) routing[key] = normalizeTierBackupMap(routingIn[key] as Record<string, unknown>);
+  }
+  for (const key of ["task_backups", "task_backup_models"] as const) {
+    if (key in routingIn) routing[key] = normalizeTaskBackupMap(routingIn[key] as Record<string, string>);
+  }
+  if ("route_source" in routingIn) {
+    const routeSource = (routingIn.route_source as string).trim();
+    if (routeSource === "tiers" || routeSource === "tasks") routing.route_source = routeSource;
+    else delete routing.route_source;
+  }
+  if ("cost_currency" in routingIn) {
+    routing.cost_currency = (routingIn.cost_currency as string).trim().toUpperCase();
+  }
+
+  return {
+    ...value,
+    providers: providers.map((provider) => ({
+      ...provider,
+      base_url: provider.base_url ?? "",
+      api_key_env: provider.api_key_env ?? "",
+      default_model: provider.default_model ?? "",
+      enabled: provider.enabled ?? false,
+      task_models: provider.task_models ?? {},
+    })),
+    routing,
+  } as LlmProvidersConfig;
+}
+
+function providerWritePayload(row: LlmProviderRow, id = row.id): Record<string, unknown> {
+  if (row.models !== undefined && (!Array.isArray(row.models) || !row.models.every(isLlmProviderModel))) {
+    throw new Error("LLM provider models: 响应异常");
+  }
+  if (row.model_pricing !== undefined && !isLlmModelPricing(row.model_pricing)) {
+    throw new Error("LLM provider pricing: 响应异常");
+  }
+  const apiKeys = (Array.isArray(row.api_keys) ? row.api_keys : [])
+    .map((key) => String(key || "").trim())
+    .filter(Boolean);
+  const apiKey = String(row.api_key ?? "").trim() || apiKeys[0] || "";
+  const payload: Record<string, unknown> = {
+    id,
+    kind: row.kind,
+    base_url: row.base_url,
+    api_key_env: String(row.api_key_env ?? "").trim(),
+    default_model: row.default_model,
+    models: row.models ?? [],
+    enabled: row.enabled,
+    task_models: row.task_models,
+    capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
+    model_effort: row.model_effort ?? "",
+    request_method: row.request_method || "chat_completions",
+    model_pricing: row.model_pricing ?? {},
+  };
+  if (apiKeys.length) payload.api_keys = apiKeys;
+  if (apiKey) payload.api_key = apiKey;
+  return payload;
+}
+
+function parseLlmProvidersSaveResult(value: unknown): LlmProvidersSaveResult {
+  if (!isRecord(value)) throw new Error("LLM providers save: 响应异常");
+  return value as LlmProvidersSaveResult;
+}
+
 export async function fetchLlmProvidersConfig(): Promise<LlmProvidersConfig> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["get"]>(
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["get"]>(
     "/common-config/llm/providers",
-  )) as LlmProvidersConfig;
+  );
+  return parseLlmProvidersConfig(data);
 }
 
 export async function fetchLlmLocalRoutingConfig(): Promise<LlmLocalRoutingConfig> {
@@ -978,91 +1438,31 @@ export async function putLlmProvidersConfig(
   body: LlmProvidersConfig,
 ): Promise<LlmProvidersSaveResult> {
   const payload = {
-    providers: body.providers.map((row) => {
-      const raw = row as {
-        id: string;
-        kind?: string;
-        base_url?: string;
-        api_key?: string;
-        api_keys?: string[];
-        api_key_env?: string;
-        default_model?: string;
-        enabled?: boolean;
-        task_models?: Record<string, string>;
-        capabilities?: string[];
-        model_effort?: string;
-        request_method?: string;
-      };
-      const apiKeys = (Array.isArray(raw.api_keys) ? raw.api_keys : [])
-        .map((k: string) => String(k || "").trim())
-        .filter(Boolean);
-      const apiKey = String(raw.api_key ?? "").trim() || apiKeys[0] || "";
-      const apiKeyEnv = String(raw.api_key_env ?? "").trim();
-      const item: Record<string, unknown> = {
-        id: raw.id,
-        kind: raw.kind,
-        base_url: raw.base_url,
-        api_key_env: apiKeyEnv,
-        default_model: raw.default_model,
-        enabled: raw.enabled,
-        task_models: raw.task_models,
-        capabilities: Array.isArray(raw.capabilities) ? raw.capabilities : [],
-        model_effort: raw.model_effort ?? "",
-        request_method: raw.request_method || "chat_completions",
-      };
-      // 空密钥不传，避免后端误清空已保存密钥
-      if (apiKeys.length) item.api_keys = apiKeys;
-      if (apiKey) item.api_key = apiKey;
-      return item;
-    }),
+    providers: body.providers.map((row) => providerWritePayload(row)),
     routing: body.routing,
   };
-  return consoleOpenapiPut(
+  const result: unknown = await consoleOpenapiPut<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["put"]
+  >(
     "/common-config/llm/providers",
     payload,
-  ) as Promise<LlmProvidersSaveResult>;
+    { timeout: 60_000 },
+  );
+  return parseLlmProvidersSaveResult(result);
 }
 
 /** 只保存单个提供方，避免整表 PUT 误擦其他提供方已存密钥。 */
-export async function putLlmProvider(row: {
-  id: string;
-  kind?: string;
-  base_url?: string;
-  api_key?: string;
-  api_keys?: string[];
-  api_key_env?: string;
-  default_model?: string;
-  enabled?: boolean;
-  task_models?: Record<string, string>;
-  capabilities?: string[];
-  model_effort?: string;
-  request_method?: string;
-}): Promise<LlmProvidersSaveResult> {
+export async function putLlmProvider(row: LlmProviderRow): Promise<LlmProvidersSaveResult> {
   const id = String(row.id || "").trim();
   if (!id) throw new Error("provider id is required");
-  const apiKeys = (Array.isArray(row.api_keys) ? row.api_keys : [])
-    .map((k: string) => String(k || "").trim())
-    .filter(Boolean);
-  const apiKey = String(row.api_key ?? "").trim() || apiKeys[0] || "";
-  const apiKeyEnv = String(row.api_key_env ?? "").trim();
-  const payload: Record<string, unknown> = {
-    id,
-    kind: row.kind,
-    base_url: row.base_url,
-    api_key_env: apiKeyEnv,
-    default_model: row.default_model,
-    enabled: row.enabled,
-    task_models: row.task_models,
-    capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
-    model_effort: row.model_effort ?? "",
-    request_method: row.request_method || "chat_completions",
-  };
-  if (apiKeys.length) payload.api_keys = apiKeys;
-  if (apiKey) payload.api_key = apiKey;
-  return consoleOpenapiPut(
+  const result: unknown = await consoleOpenapiPut<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers/{provider_id}"]["put"]
+  >(
     `/common-config/llm/providers/${encodeURIComponent(id)}`,
-    payload,
-  ) as Promise<LlmProvidersSaveResult>;
+    providerWritePayload(row, id),
+    { timeout: 60_000 },
+  );
+  return parseLlmProvidersSaveResult(result);
 }
 
 /** Provider 在线模型发现（Bot 直连上游；可传草稿 base_url / api_key）。 */
@@ -1962,37 +2362,33 @@ export async function fetchLogs(
   if (!bypass && cached && now - cached.ts < LOGS_STALE_MS) {
     const snap = cached.data;
     if (!logsInflight.has(cacheKey)) {
-      const refresh = fetchLogsFromNetwork(n, scope, src)
-        .then((data) => {
-          logsCache.set(cacheKey, { data, ts: Date.now() });
-          return data;
-        })
-        .finally(() => {
-          logsInflight.delete(cacheKey);
-        });
-      logsInflight.set(cacheKey, refresh);
+      void startLogsFetch(cacheKey, n, scope, src).catch(() => {});
     }
     return snap;
   }
-  let inflight = logsInflight.get(cacheKey);
-  if (!inflight) {
-    inflight = fetchLogsFromNetwork(n, scope, src)
-      .then((data) => {
-        logsCache.set(cacheKey, { data, ts: Date.now() });
-        return data;
-      })
-      .finally(() => {
-        logsInflight.delete(cacheKey);
-      });
-    logsInflight.set(cacheKey, inflight);
-  }
-  return inflight;
+  return logsInflight.get(cacheKey) ?? startLogsFetch(cacheKey, n, scope, src);
 }
 
 const LOGS_FRESH_MS = 900;
 const LOGS_STALE_MS = 5_000;
 const logsCache = new Map<string, { data: LogsData; ts: number }>();
 const logsInflight = new Map<string, Promise<LogsData>>();
+let logsFetchGeneration = 0;
+
+function startLogsFetch(cacheKey: string, n: number, scope: LogScope, source: string): Promise<LogsData> {
+  const generation = logsFetchGeneration;
+  let request: Promise<LogsData>;
+  request = fetchLogsFromNetwork(n, scope, source)
+    .then((data) => {
+      if (generation === logsFetchGeneration) logsCache.set(cacheKey, { data, ts: Date.now() });
+      return data;
+    })
+    .finally(() => {
+      if (logsInflight.get(cacheKey) === request) logsInflight.delete(cacheKey);
+    });
+  logsInflight.set(cacheKey, request);
+  return request;
+}
 
 async function fetchLogsFromNetwork(n: number, scope: LogScope, source: string): Promise<LogsData> {
   const params: { n: number; scope: LogScope; source?: string } = { n, scope };
@@ -2003,6 +2399,7 @@ async function fetchLogsFromNetwork(n: number, scope: LogScope, source: string):
 export function invalidateLogsCache(): void {
   logsCache.clear();
   logsInflight.clear();
+  logsFetchGeneration++;
 }
 
 /** 分片 hub 实时日志 SSE（合并 hub 环与各 worker 落盘增量） */
@@ -2497,12 +2894,22 @@ async function readPluginRunStatsCached<T extends PluginRunStatsData | LogErrors
 
 let homeOverviewCache: { data: HomeOverviewData; ts: number } | null = null;
 let homeOverviewInflight: Promise<HomeOverviewData> | null = null;
+let homeOverviewFetchGen = 0;
 const HOME_OVERVIEW_FRESH_MS = 5_000;
 const HOME_OVERVIEW_STALE_MS = 45_000;
 
-function storeHomeOverviewCache(data: HomeOverviewData): void {
+function invalidateHomeOverviewCache(): void {
+  homeOverviewCache = null;
+  homeOverviewInflight = null;
+  homeOverviewFetchGen++;
+}
+
+function storeHomeOverviewCache(
+  data: HomeOverviewData,
+  generations: { instances: number; bots: number; plugins: number },
+): void {
   homeOverviewCache = { data, ts: Date.now() };
-  seedCachesFromHomeOverview(data);
+  seedCachesFromHomeOverview(data, generations);
 }
 
 async function fetchHomeOverviewFromNetwork(bypass = false): Promise<HomeOverviewData> {
@@ -2510,8 +2917,27 @@ async function fetchHomeOverviewFromNetwork(bypass = false): Promise<HomeOvervie
     ...(bypass ? { params: { _ts: Date.now() } } : {}),
   });
   if (!data?.ok || !data.data) throw new Error("/home/overview: 响应异常");
-  storeHomeOverviewCache(data.data);
   return data.data;
+}
+
+function startHomeOverviewFetch(bypass = false): Promise<HomeOverviewData> {
+  const gen = bypass ? ++homeOverviewFetchGen : homeOverviewFetchGen;
+  const catalogGenerations = {
+    instances: instancesFetchGen,
+    bots: botsFetchGen,
+    plugins: pluginsFetchGen,
+  };
+  let request: Promise<HomeOverviewData>;
+  request = fetchHomeOverviewFromNetwork(bypass)
+    .then((data) => {
+      if (gen === homeOverviewFetchGen) storeHomeOverviewCache(data, catalogGenerations);
+      return data;
+    })
+    .finally(() => {
+      if (homeOverviewInflight === request) homeOverviewInflight = null;
+    });
+  homeOverviewInflight = request;
+  return request;
 }
 
 /** 同步读取上次成功的首页聚合快照（供首屏或静默刷新） */
@@ -2530,31 +2956,26 @@ export async function fetchHomeOverview(opts?: { bypassCache?: boolean }): Promi
   if (!bypass && homeOverviewCache && now - homeOverviewCache.ts < HOME_OVERVIEW_STALE_MS) {
     const snap = homeOverviewCache.data;
     if (!homeOverviewInflight) {
-      homeOverviewInflight = fetchHomeOverviewFromNetwork()
-        .finally(() => {
-          homeOverviewInflight = null;
-        });
+      const request = startHomeOverviewFetch();
+      void request.catch(() => {});
     }
     return snap;
   }
 
   if (bypass) {
-    return fetchHomeOverviewFromNetwork(true);
+    return startHomeOverviewFetch(true);
   }
 
-  if (!homeOverviewInflight) {
-    homeOverviewInflight = fetchHomeOverviewFromNetwork()
-      .finally(() => {
-        homeOverviewInflight = null;
-      });
-  }
-  return homeOverviewInflight;
+  return homeOverviewInflight ?? startHomeOverviewFetch();
 }
 
-function seedCachesFromHomeOverview(data: HomeOverviewData): void {
-  if (data.instances) touchInstancesCache(data.instances);
-  if (data.bots.length) touchBotsCache(data.bots);
-  if (data.plugins.length) touchPluginsCache(data.plugins);
+function seedCachesFromHomeOverview(
+  data: HomeOverviewData,
+  generations: { instances: number; bots: number; plugins: number },
+): void {
+  if (data.instances && generations.instances === instancesFetchGen) touchInstancesCache(data.instances);
+  if (generations.bots === botsFetchGen) touchBotsCache(data.bots);
+  if (generations.plugins === pluginsFetchGen) touchPluginsCache(data.plugins);
   if (data.message_stats) {
     messageStatsCache.set("all", { data: data.message_stats, ts: Date.now() });
   }
@@ -3013,15 +3434,28 @@ export async function deleteDbTableRow(params: {
   );
 }
 
+function startInstancesFetch(gen: number): Promise<InstancesData> {
+  let request: Promise<InstancesData>;
+  request = fetchInstancesFromNetwork()
+    .then((data) => {
+      if (gen === instancesFetchGen) touchInstancesCache(data);
+      return data;
+    })
+    .finally(() => {
+      if (instancesInflight === request) instancesInflight = null;
+    });
+  instancesInflight = request;
+  return request;
+}
+
 export async function fetchInstances(opts?: FetchInstancesOptions): Promise<InstancesData> {
   const bypass = Boolean(opts?.bypassCache);
   const now = Date.now();
 
   if (bypass) {
-    const gen = instancesFetchGen;
-    const d = await fetchInstancesFromNetwork();
-    if (gen === instancesFetchGen) touchInstancesCache(d);
-    return d;
+    const gen = ++instancesFetchGen;
+    invalidateHomeOverviewCache();
+    return startInstancesFetch(gen);
   }
 
   if (instancesInflight) {
@@ -3034,28 +3468,12 @@ export async function fetchInstances(opts?: FetchInstancesOptions): Promise<Inst
       return instancesCache.data;
     }
     const snap = instancesCache.data;
-    const gen = instancesFetchGen;
-    instancesInflight = fetchInstancesFromNetwork()
-      .then((d) => {
-        if (gen === instancesFetchGen) touchInstancesCache(d);
-        return d;
-      })
-      .finally(() => {
-        instancesInflight = null;
-      });
+    const request = startInstancesFetch(instancesFetchGen);
+    void request.catch(() => {});
     return snap;
   }
 
-  const gen = instancesFetchGen;
-  instancesInflight = fetchInstancesFromNetwork()
-    .then((d) => {
-      if (gen === instancesFetchGen) touchInstancesCache(d);
-      return d;
-    })
-    .finally(() => {
-      instancesInflight = null;
-    });
-  return instancesInflight;
+  return startInstancesFetch(instancesFetchGen);
 }
 
 /** 获取好友申请列表 */

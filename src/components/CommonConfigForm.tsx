@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDraftProtection, type DraftNavigation } from "@/components/DraftProtection";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchCommonConfig,
@@ -116,6 +117,7 @@ export default function CommonConfigForm({
   savedMessage = "配置已保存",
   inlineSave = true,
   onSaveState,
+  navigationPanel,
 }: {
   sectionId: string;
   mode?: "form" | "raw";
@@ -123,12 +125,25 @@ export default function CommonConfigForm({
   /** false 时隐藏面板内保存按钮（改由顶栏触发） */
   inlineSave?: boolean;
   onSaveState?: AiConfigSaveStateHandler;
+  navigationPanel?: string;
 }) {
   const qc = useQueryClient();
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [formBaseline, setFormBaseline] = useState("");
+  const [formReady, setFormReady] = useState(false);
   const [raw, setRaw] = useState("");
   const [rawBaseline, setRawBaseline] = useState("");
+  const [rawReady, setRawReady] = useState(false);
+  const fieldValuesRef = useRef(fieldValues);
+  fieldValuesRef.current = fieldValues;
+  const rawRef = useRef(raw);
+  rawRef.current = raw;
+  const formBaselineRef = useRef(formBaseline);
+  formBaselineRef.current = formBaseline;
+  const rawBaselineRef = useRef(rawBaseline);
+  rawBaselineRef.current = rawBaseline;
+  const formSectionRef = useRef("");
+  const rawSectionRef = useRef("");
 
   const cfgQ = useQuery({
     queryKey: ["common-config", sectionId],
@@ -143,24 +158,61 @@ export default function CommonConfigForm({
   useEffect(() => {
     if (!cfgQ.data?.fields) return;
     const next = fieldValuesFromConfig(cfgQ.data.fields);
-    setFieldValues(next);
-    setFormBaseline(JSON.stringify(next));
-  }, [cfgQ.data]);
+    const sectionChanged = formSectionRef.current !== sectionId;
+    if (sectionChanged || !formReady || JSON.stringify(fieldValuesRef.current) === formBaselineRef.current) {
+      const nextBaseline = JSON.stringify(next);
+      formSectionRef.current = sectionId;
+      fieldValuesRef.current = next;
+      formBaselineRef.current = nextBaseline;
+      setFieldValues(next);
+      setFormBaseline(nextBaseline);
+      setFormReady(true);
+    }
+  }, [cfgQ.data, formReady, sectionId]);
 
   useEffect(() => {
     if (rawQ.data == null) return;
-    setRaw(rawQ.data);
-    setRawBaseline(rawQ.data);
-  }, [rawQ.data]);
+    const sectionChanged = rawSectionRef.current !== sectionId;
+    if (sectionChanged || !rawReady || rawRef.current === rawBaselineRef.current) {
+      rawSectionRef.current = sectionId;
+      rawRef.current = rawQ.data;
+      rawBaselineRef.current = rawQ.data;
+      setRaw(rawQ.data);
+      setRawBaseline(rawQ.data);
+      setRawReady(true);
+    }
+  }, [rawQ.data, rawReady, sectionId]);
+
+  const shouldBlockNavigation = useCallback(
+    ({ currentLocation, nextLocation }: DraftNavigation) => {
+      if (currentLocation.pathname !== nextLocation.pathname) return true;
+      if (currentLocation.pathname !== "/ai/config/dialogue") return false;
+      const panelOf = (search: string) => {
+        const panel = new URLSearchParams(search).get("panel") || "form";
+        return ["raw", "session", "memory", "budget", "arknights", "sources", "tools"].includes(panel)
+          ? panel
+          : "form";
+      };
+      const currentPanel = panelOf(currentLocation.search);
+      const nextPanel = panelOf(nextLocation.search);
+      const isEditorPanel = (panel: string) => sectionId === "llm"
+        ? panel === "form" || panel === "raw"
+        : panel === navigationPanel;
+      return isEditorPanel(currentPanel) && !isEditorPanel(nextPanel);
+    },
+    [sectionId, navigationPanel],
+  );
 
   const saveForm = useMutation({
-    mutationFn: () => {
+    mutationFn: (snapshot: Record<string, string>) => {
       const allFields = cfgQ.data?.fields || [];
-      return putCommonConfig(sectionId, collectFieldValues(allFields, fieldValues));
+      return putCommonConfig(sectionId, collectFieldValues(allFields, snapshot));
     },
-    onSuccess: async () => {
+    onSuccess: async (_, snapshot) => {
       pushConsoleToast(savedMessage, "ok");
-      setFormBaseline(JSON.stringify(fieldValues));
+      const nextBaseline = JSON.stringify(snapshot);
+      formBaselineRef.current = nextBaseline;
+      setFormBaseline(nextBaseline);
       await qc.invalidateQueries({ queryKey: ["common-config", sectionId] });
       await qc.invalidateQueries({ queryKey: ["common-config-raw", sectionId] });
     },
@@ -168,10 +220,11 @@ export default function CommonConfigForm({
   });
 
   const saveRaw = useMutation({
-    mutationFn: () => putCommonConfigRaw(sectionId, raw),
-    onSuccess: async () => {
+    mutationFn: (snapshot: string) => putCommonConfigRaw(sectionId, snapshot),
+    onSuccess: async (_, snapshot) => {
       pushConsoleToast(savedMessage, "ok");
-      setRawBaseline(raw);
+      rawBaselineRef.current = snapshot;
+      setRawBaseline(snapshot);
       await qc.invalidateQueries({ queryKey: ["common-config", sectionId] });
       await qc.invalidateQueries({ queryKey: ["common-config-raw", sectionId] });
     },
@@ -179,8 +232,11 @@ export default function CommonConfigForm({
   });
 
   const saving = saveForm.isPending || saveRaw.isPending;
-  const dirty =
-    mode === "raw" ? raw !== rawBaseline : JSON.stringify(fieldValues) !== formBaseline;
+  const formDirty = formReady && JSON.stringify(fieldValues) !== formBaseline;
+  const rawDirty = rawReady && raw !== rawBaseline;
+  const dirty = formDirty || rawDirty;
+  const modeDirty = mode === "raw" ? rawDirty : formDirty;
+  useDraftProtection(dirty, shouldBlockNavigation);
   const fields = cfgQ.data?.fields || [];
   const apiFieldGroups = cfgQ.data?.field_groups;
 
@@ -194,14 +250,14 @@ export default function CommonConfigForm({
   saveRawRef.current = saveRaw;
 
   const save = useCallback(() => {
-    if (mode === "raw") void saveRawRef.current.mutateAsync();
-    else void saveFormRef.current.mutateAsync();
+    if (mode === "raw") void saveRawRef.current.mutateAsync(rawRef.current).catch(() => undefined);
+    else void saveFormRef.current.mutateAsync({ ...fieldValuesRef.current }).catch(() => undefined);
   }, [mode]);
 
   useEffect(() => {
     if (!onSaveState) return;
-    onSaveState({ dirty, saving, save });
-  }, [onSaveState, dirty, saving, save]);
+    onSaveState({ dirty: modeDirty, saving, save });
+  }, [onSaveState, modeDirty, saving, save]);
 
   useEffect(() => {
     if (!onSaveState) return;
@@ -246,7 +302,7 @@ export default function CommonConfigForm({
           )}
           {inlineSave ? (
             <div className="mt-4">
-              <UiButton variant="primary" size="sm" disabled={saving || !dirty} onClick={save}>
+              <UiButton variant="primary" size="sm" disabled={saving || !modeDirty} onClick={save}>
                 {saving ? "保存中…" : "保存"}
               </UiButton>
             </div>
@@ -264,7 +320,7 @@ export default function CommonConfigForm({
           </div>
           {inlineSave ? (
             <div className="mt-3">
-              <UiButton variant="primary" size="sm" disabled={saving || !dirty} onClick={save}>
+              <UiButton variant="primary" size="sm" disabled={saving || !modeDirty} onClick={save}>
                 {saving ? "保存中…" : "保存 TOML"}
               </UiButton>
             </div>

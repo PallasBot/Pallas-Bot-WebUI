@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Boxes, Cpu, FolderOpen, Globe, Puzzle, RefreshCw, Search, Tags, Users } from "lucide-react";
 import {
   fetchCommunityPluginStore,
@@ -39,14 +39,26 @@ import {
 
 export default function PluginsPage() {
   const { name: routeName } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { favorites } = usePluginFavorites();
-  const [q, setQ] = useState("");
-  const [activeCategory, setActiveCategory] = useState<PluginCategory | "all">("all");
+  const queryClient = useQueryClient();
+  const forcePluginFetch = useRef(false);
+  const searchParams = new URLSearchParams(location.search);
+  const q = searchParams.get("q") || "";
+  const rawCategory = searchParams.get("category");
+  const categories = new Set<string>(PLUGIN_LIST_CATEGORY_TABS.map((tab) => tab.id));
+  const activeCategory: PluginCategory | "all" =
+    rawCategory && categories.has(rawCategory as PluginCategory | "all")
+      ? (rawCategory as PluginCategory | "all")
+      : "all";
   const [iconByPlugin, setIconByPlugin] = useState<Record<string, string>>({});
   const [uninstallRow, setUninstallRow] = useState<PluginRow | null>(null);
 
-  const pluginsQ = useQuery<PluginRow[]>({ queryKey: ["plugins"], queryFn: () => fetchPlugins() });
+  const pluginsQ = useQuery<PluginRow[]>({
+    queryKey: ["plugins"],
+    queryFn: () => fetchPlugins({ bypassCache: forcePluginFetch.current }),
+  });
   const officialQ = useQuery<OfficialExtensionRow[]>({
     queryKey: ["official-extensions"],
     queryFn: () => fetchOfficialExtensions(),
@@ -62,6 +74,37 @@ export default function PluginsPage() {
 
   const selectedPluginName = (routeName || "").trim();
   const configDialogOpen = Boolean(selectedPluginName);
+
+  function updateFilter(name: "q" | "category", value: string) {
+    const next = new URLSearchParams(location.search);
+    if (!value || (name === "category" && value === "all")) next.delete(name);
+    else next.set(name, value);
+    const search = next.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: search ? `?${search}` : "",
+        hash: location.hash,
+      },
+      { replace: true },
+    );
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const category = params.get("category");
+    if (category == null || (categories.has(category as PluginCategory | "all") && category !== "all")) return;
+    params.delete("category");
+    const search = params.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: search ? `?${search}` : "",
+        hash: location.hash,
+      },
+      { replace: true },
+    );
+  }, [location.hash, location.pathname, location.search, navigate]);
 
   useEffect(() => {
     const official = officialQ.data || [];
@@ -133,19 +176,36 @@ export default function PluginsPage() {
 
   useEffect(() => {
     if (!selectedPluginName || pluginsQ.isLoading) return;
-    const pool = filtered.length ? filtered : sortedPlugins;
-    if (!pool.some((p) => p.name === selectedPluginName)) {
-      navigate("/plugins", { replace: true });
+    if (!sortedPlugins.some((p) => p.name === selectedPluginName)) {
+      navigate({ pathname: "/plugins", search: location.search, hash: location.hash }, { replace: true });
     }
-  }, [selectedPluginName, filtered, sortedPlugins, pluginsQ.isLoading, navigate]);
+  }, [selectedPluginName, sortedPlugins, pluginsQ.isLoading, location.search, location.hash, navigate]);
 
   function selectPlugin(pluginName: string) {
     if (selectedPluginName === pluginName && configDialogOpen) return;
-    navigate(`/plugins/${encodeURIComponent(pluginName)}`);
+    navigate({ pathname: `/plugins/${encodeURIComponent(pluginName)}`, search: location.search, hash: location.hash });
   }
 
   function closeConfigDialog() {
-    if (selectedPluginName) navigate("/plugins", { replace: true });
+    if (selectedPluginName) {
+      navigate({ pathname: "/plugins", search: location.search, hash: location.hash }, { replace: true });
+    }
+  }
+
+  async function refreshPlugins() {
+    forcePluginFetch.current = true;
+    try {
+      const result = await pluginsQ.refetch();
+      if (result.data) {
+        queryClient.setQueryData(["plugins-catalog"], result.data);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["plugin-row"] }),
+          queryClient.invalidateQueries({ queryKey: ["home-overview"] }),
+        ]);
+      }
+    } finally {
+      forcePluginFetch.current = false;
+    }
   }
 
   return (
@@ -170,13 +230,13 @@ export default function PluginsPage() {
               aria-label="搜索插件"
               autoComplete="off"
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => updateFilter("q", e.target.value)}
             />
           </div>
           <ChromeField label="分类" icon={Tags}>
             <Select
               value={activeCategory}
-              onValueChange={(v) => setActiveCategory(v as PluginCategory | "all")}
+              onValueChange={(v) => updateFilter("category", v)}
             >
               <SelectTrigger
                 className={cn(CHROME_SELECT_TRIGGER, "whitespace-nowrap [&>span]:whitespace-nowrap")}
@@ -218,7 +278,7 @@ export default function PluginsPage() {
               iconMotion="spin"
               iconBusy={pluginsQ.isFetching}
               disabled={pluginsQ.isFetching}
-              onClick={() => void pluginsQ.refetch()}
+              onClick={() => void refreshPlugins()}
             >
               {pluginsQ.isFetching ? "刷新中…" : "刷新"}
             </Button>
@@ -267,6 +327,7 @@ export default function PluginsPage() {
         pluginRow={selectedPluginRow}
         officialExtensions={officialQ.data || []}
         communityPlugins={communityQ.data?.plugins || []}
+        closeHandledByNavigation
         onClose={closeConfigDialog}
       />
 

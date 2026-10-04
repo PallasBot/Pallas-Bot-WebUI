@@ -22,6 +22,7 @@ export type TagsInputHandle = {
 export type TagsInputProps = {
   value: string[];
   onChange: (value: string[]) => void;
+  onPendingChange?: (pending: boolean) => void;
   placeholder?: string;
   disabled?: boolean;
   /** stacked：芯片在上；embedded：单框 +「更多」 */
@@ -30,6 +31,9 @@ export type TagsInputProps = {
   /** 仅展示的历史值；不会回写、复制或作为可选项提交。 */
   readOnlyValues?: string[];
   className?: string;
+  id?: string;
+  ariaLabel?: string;
+  ariaDescribedBy?: string;
   /** 如 QQ/群号：numeric */
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   /** 提交前校验；不匹配则忽略 */
@@ -92,12 +96,16 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
   {
     value,
     onChange,
+    onPendingChange,
     placeholder = "输入后回车添加…",
     disabled = false,
     variant = "stacked",
     options,
     readOnlyValues = [],
     className,
+    id,
+    ariaLabel,
+    ariaDescribedBy,
     inputMode,
     acceptPattern,
     sortable = false,
@@ -179,6 +187,13 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
   function commitDraft() {
     commitTag(draft);
     setDraft("");
+    onPendingChange?.(false);
+  }
+
+  function setSearchDraft(value: string) {
+    setSearchQuery(value);
+    const next = value.trim();
+    onPendingChange?.(Boolean(next && !listRef.current.includes(next)));
   }
 
   function flushPending(): string[] {
@@ -191,6 +206,7 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
       listRef.current = next;
       onChangeRef.current(next);
     }
+    onPendingChange?.(false);
     return next;
   }
 
@@ -251,11 +267,13 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
         commitTag(pending);
         setSearchQuery("");
       }
+      onPendingChange?.(false);
       clearDragState();
     }
     setMoreOpen(open);
     if (open) {
       setSearchQuery("");
+      onPendingChange?.(false);
       window.setTimeout(() => popoverInputRef.current?.focus(), 0);
     }
   }
@@ -322,14 +340,20 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
           </div>
         ) : null}
         <Input
+          id={id}
           className="tags-input__field"
           type="text"
           inputMode={inputMode}
           autoComplete="off"
           value={draft}
           placeholder={placeholder}
+          aria-label={ariaLabel}
+          aria-describedby={ariaDescribedBy}
           disabled={disabled}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            onPendingChange?.(Boolean(e.target.value.trim()));
+          }}
           onBlur={commitDraft}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -446,12 +470,13 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
               value={searchQuery}
               placeholder={canAddFromSearch ? "回车添加" : "搜索已添加…"}
               disabled={disabled}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && canAddFromSearch) {
                   e.preventDefault();
                   commitTag(searchQuery);
                   setSearchQuery("");
+                  onPendingChange?.(false);
                 }
               }}
             />
@@ -563,6 +588,7 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
                           onClick={() => {
                             commitTag(opt);
                             setSearchQuery("");
+                            onPendingChange?.(false);
                           }}
                         >
                           {opt}

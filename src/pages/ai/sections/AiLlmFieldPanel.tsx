@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { collectFieldValues, fieldValuesFromConfig } from "@/utils/pluginConfigFieldModel";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { useDraftProtection, type DraftNavigation } from "@/components/DraftProtection";
 import {
   normalizeProviderGatewayBinding,
   providerGatewayBoundFieldNames,
@@ -61,6 +62,7 @@ export default function AiLlmFieldPanel({
   savedMessage,
   inlineSave = true,
   onSaveState,
+  navigationPanel,
 }: {
   icon: LucideIcon;
   title: string;
@@ -73,10 +75,16 @@ export default function AiLlmFieldPanel({
   /** false 时隐藏面板内保存按钮（改由顶栏触发） */
   inlineSave?: boolean;
   onSaveState?: AiConfigSaveStateHandler;
+  navigationPanel?: string;
 }) {
   const qc = useQueryClient();
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [baseline, setBaseline] = useState("");
+  const [ready, setReady] = useState(false);
+  const fieldValuesRef = useRef(fieldValues);
+  fieldValuesRef.current = fieldValues;
+  const baselineRef = useRef(baseline);
+  baselineRef.current = baseline;
 
   const cfgQ = useQuery({
     queryKey: ["common-config", "llm"],
@@ -86,11 +94,34 @@ export default function AiLlmFieldPanel({
   useEffect(() => {
     if (!cfgQ.data?.fields) return;
     const next = fieldValuesFromConfig(cfgQ.data.fields);
-    setFieldValues(next);
-    setBaseline(JSON.stringify(next));
-  }, [cfgQ.data]);
+    if (!ready || JSON.stringify(fieldValuesRef.current) === baselineRef.current) {
+      const nextBaseline = JSON.stringify(next);
+      fieldValuesRef.current = next;
+      baselineRef.current = nextBaseline;
+      setFieldValues(next);
+      setBaseline(nextBaseline);
+      setReady(true);
+    }
+  }, [cfgQ.data, ready]);
 
-  const dirty = useMemo(() => JSON.stringify(fieldValues) !== baseline, [fieldValues, baseline]);
+  const dirty = ready && JSON.stringify(fieldValues) !== baseline;
+  const shouldBlockNavigation = useCallback(
+    ({ currentLocation, nextLocation }: DraftNavigation) => {
+      if (currentLocation.pathname !== nextLocation.pathname) return true;
+      if (currentLocation.pathname !== "/ai/config/dialogue" || !navigationPanel) return false;
+      const panelOf = (search: string) => {
+        const panel = new URLSearchParams(search).get("panel") || "form";
+        return ["raw", "session", "memory", "budget", "arknights", "sources", "tools"].includes(panel)
+          ? panel
+          : "form";
+      };
+      const currentPanel = panelOf(currentLocation.search);
+      const nextPanel = panelOf(nextLocation.search);
+      return currentPanel === navigationPanel && nextPanel !== navigationPanel;
+    },
+    [navigationPanel],
+  );
+  useDraftProtection(dirty, shouldBlockNavigation);
   const masterOn = masterKey ? boolFromField(fieldValues[masterKey]) : true;
   const showEmbeddingGateway = useMemo(
     () => embeddingRemoteGatewayNeeded(fieldValues),
@@ -134,13 +165,15 @@ export default function AiLlmFieldPanel({
   }, [cfgQ.data?.fields, detailKeys, gatewayHidden]);
 
   const saveMut = useMutation({
-    mutationFn: () => {
+    mutationFn: (snapshot: Record<string, string>) => {
       const allFields = cfgQ.data?.fields || [];
-      return putCommonConfig("llm", collectFieldValues(allFields, fieldValues));
+      return putCommonConfig("llm", collectFieldValues(allFields, snapshot));
     },
-    onSuccess: async () => {
+    onSuccess: async (_, snapshot) => {
       pushConsoleToast(savedMessage, "ok");
-      setBaseline(JSON.stringify(fieldValues));
+      const nextBaseline = JSON.stringify(snapshot);
+      baselineRef.current = nextBaseline;
+      setBaseline(nextBaseline);
       await qc.invalidateQueries({ queryKey: ["common-config", "llm"] });
       await qc.invalidateQueries({ queryKey: ["common-config-raw", "llm"] });
       await qc.invalidateQueries({ queryKey: ["llm-embedding-status"] });
@@ -160,7 +193,7 @@ export default function AiLlmFieldPanel({
   saveMutRef.current = saveMut;
 
   const save = useCallback(() => {
-    void saveMutRef.current.mutateAsync();
+    void saveMutRef.current.mutateAsync({ ...fieldValuesRef.current }).catch(() => undefined);
   }, []);
 
   useEffect(() => {

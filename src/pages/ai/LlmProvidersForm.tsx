@@ -86,6 +86,7 @@ import {
   type TierProviderSlot,
 } from "@/utils/llmTierRouting";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
+import { useDraftProtection } from "@/components/DraftProtection";
 
 type Tab = "upstream" | "tasks" | "runtime" | "routing";
 type TasksViewMode = "tiers" | "all";
@@ -119,6 +120,39 @@ const PROVIDER_TABS: Array<{ id: Tab; label: string; icon: LucideIcon; lead: str
 
 function cloneDoc(doc: LlmProvidersConfig): LlmProvidersConfig {
   return JSON.parse(JSON.stringify(doc)) as LlmProvidersConfig;
+}
+
+function providerEditorSignature(
+  draft: LlmProviderRow,
+  apiKeys: string[],
+  keepStoredApiKey: boolean,
+  useEnvVar: boolean,
+  apiKeyDraftPending: boolean,
+): string {
+  return JSON.stringify([draft, apiKeys, keepStoredApiKey, useEnvVar, apiKeyDraftPending]);
+}
+
+function replaceProviderReferences(
+  routing: LlmProvidersConfig["routing"],
+  oldId: string,
+  newId: string,
+): LlmProvidersConfig["routing"] {
+  const replace = (id: string) => id === oldId ? newId : id;
+  const replaceRecord = (ids: Record<string, string>) =>
+    Object.fromEntries(Object.entries(ids).map(([key, id]) => [key, replace(id)]));
+  return {
+    ...routing,
+    chain_fallback: routing.chain_fallback.map(replace),
+    tasks: replaceRecord(routing.tasks),
+    ...(routing.tier_backups ? {
+      tier_backups: {
+        ...routing.tier_backups,
+        high: routing.tier_backups.high ? replace(routing.tier_backups.high) : undefined,
+        low: routing.tier_backups.low ? replace(routing.tier_backups.low) : undefined,
+      },
+    } : {}),
+    ...(routing.task_backups ? { task_backups: replaceRecord(routing.task_backups) } : {}),
+  };
 }
 
 function emptyDoc(): LlmProvidersConfig {
@@ -305,8 +339,9 @@ export default function LlmProvidersForm() {
   const [tab, setTab] = useState<Tab>("upstream");
   const [tasksViewMode, setTasksViewMode] = useState<TasksViewMode>("tiers");
   const [doc, setDoc] = useState<LlmProvidersConfig>(emptyDoc());
-  const [baseline, setBaseline] = useState("");
+  const [baseline, setBaseline] = useState(() => JSON.stringify(emptyDoc()));
   const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [testBusy, setTestBusy] = useState<string>("");
@@ -323,13 +358,15 @@ export default function LlmProvidersForm() {
   const apiKeysInputRef = useRef<TagsInputHandle>(null);
   const [useEnvVar, setUseEnvVar] = useState(false);
   const [editErr, setEditErr] = useState("");
+  const [editBaseline, setEditBaseline] = useState("");
+  const [apiKeyDraftPending, setApiKeyDraftPending] = useState(false);
   const [registeredModelDraft, setRegisteredModelDraft] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [modelsBusy, setModelsBusy] = useState(false);
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({});
 
   const [localDoc, setLocalDoc] = useState<LlmLocalRoutingConfig>({});
-  const [localBaseline, setLocalBaseline] = useState("");
+  const [localBaseline, setLocalBaseline] = useState(() => JSON.stringify({}));
   const [localSaving, setLocalSaving] = useState(false);
   // chrome 保存按钮包在 useMemo 里，用 ref 避免 localDirty 已为 true 后改模型仍闭包到旧 localDoc
   const localDocRef = useRef(localDoc);
@@ -339,8 +376,19 @@ export default function LlmProvidersForm() {
   const tabRef = useRef(tab);
   tabRef.current = tab;
 
-  const dirty = useMemo(() => JSON.stringify(doc) !== baseline, [doc, baseline]);
-  const localDirty = useMemo(() => JSON.stringify(localDoc) !== localBaseline, [localDoc, localBaseline]);
+  const dirty = useMemo(() => ready && JSON.stringify(doc) !== baseline, [doc, baseline, ready]);
+  const localDirty = useMemo(() => ready && JSON.stringify(localDoc) !== localBaseline, [localDoc, localBaseline, ready]);
+  const currentEditorSignature = providerEditorSignature(
+    draft,
+    draftApiKeys,
+    keepStoredApiKey,
+    useEnvVar,
+    apiKeyDraftPending,
+  );
+  const currentEditorSignatureRef = useRef(currentEditorSignature);
+  currentEditorSignatureRef.current = currentEditorSignature;
+  const providerDraftDirty = editing && currentEditorSignature !== editBaseline;
+  useDraftProtection(dirty || localDirty || providerDraftDirty);
   const providerIds = doc.providers.map((p) => p.id);
   const ollamaModels = useMemo(() => {
     const values = new Set<string>();
@@ -382,6 +430,7 @@ export default function LlmProvidersForm() {
       setErr(detail);
       if (quiet) pushConsoleToast(detail || "刷新失败", "err");
     } finally {
+      setReady(true);
       if (!quiet) setLoading(false);
     }
   }
@@ -415,10 +464,12 @@ export default function LlmProvidersForm() {
 
   async function saveProviders() {
     if (!dirty || saving) return;
+    const snapshot = cloneDoc(docRef.current);
+    const snapshotSignature = JSON.stringify(snapshot);
     setSaving(true);
     setErr("");
     try {
-      const result = await putLlmProvidersConfig(cloneDoc(docRef.current));
+      const result = await putLlmProvidersConfig(snapshot);
       const fileHint = result.providers_file
         ? result.providers_file.replace(/\\/g, "/").split("/").pop() || ""
         : "";
@@ -432,8 +483,12 @@ export default function LlmProvidersForm() {
       // 只静默拉回提供方文档，避免整页 loading，也不误伤 Ollama 分档未保存草稿
       const providers = await fetchLlmProvidersConfig();
       const next = cloneDoc(providers);
-      setDoc(next);
-      setBaseline(JSON.stringify(next));
+      if (JSON.stringify(docRef.current) === snapshotSignature) {
+        setDoc(next);
+        setBaseline(JSON.stringify(next));
+      } else {
+        setBaseline(snapshotSignature);
+      }
     } catch (e) {
       const detail = axiosErrorDetail(e);
       setErr(detail);
@@ -463,8 +518,11 @@ export default function LlmProvidersForm() {
         throw new Error("请先为「复杂」或「中等」档选择模型");
       }
       const saved = await putLlmLocalRoutingConfig(payload);
-      setLocalDoc(saved);
       setLocalBaseline(JSON.stringify(saved));
+      if (JSON.stringify(localDocRef.current) === JSON.stringify(current)) {
+        localDocRef.current = saved;
+        setLocalDoc(saved);
+      }
       pushConsoleToast("已保存 Ollama 分档", "ok");
     } catch (e) {
       const detail = axiosErrorDetail(e);
@@ -475,23 +533,63 @@ export default function LlmProvidersForm() {
     }
   }
 
-  function openAdd() {
-    setEditIndex(null);
-    setEditOriginalId("");
-    setDraft(blankProvider());
-    setDraftApiKeys([]);
-    setKeepStoredApiKey(false);
-    setUseEnvVar(false);
+  async function confirmDiscardProviderDraft() {
+    if (saving) return false;
+    if (!providerDraftDirty) return true;
+    return confirm({
+      title: "放弃提供方草稿？",
+      subtitle: "当前提供方的更改尚未保存。",
+      confirmLabel: "放弃草稿",
+      confirmVariant: "default",
+    });
+  }
+
+  function setProviderEditor(
+    next: LlmProviderRow,
+    index: number | null,
+    originalId: string,
+    keys: string[],
+    keepStored: boolean,
+    envVar: boolean,
+  ) {
+    setEditIndex(index);
+    setEditOriginalId(originalId);
+    setDraft(next);
+    setDraftApiKeys(keys);
+    setKeepStoredApiKey(keepStored);
+    setUseEnvVar(envVar);
+    setEditBaseline(providerEditorSignature(next, keys, keepStored, envVar, false));
+    setApiKeyDraftPending(false);
     setEditErr("");
     setModels([]);
     setEditing(true);
   }
 
-  function duplicateProvider(index: number) {
-    const row = doc.providers[index];
-    if (!row) return;
+  function closeEditor() {
+    setEditing(false);
     setEditIndex(null);
     setEditOriginalId("");
+    setEditBaseline("");
+    setApiKeyDraftPending(false);
+    setEditErr("");
+  }
+
+  async function requestCloseEditor() {
+    if (saving || !(await confirmDiscardProviderDraft())) return;
+    closeEditor();
+  }
+
+  async function openAdd() {
+    if (saving) return;
+    if (!(await confirmDiscardProviderDraft())) return;
+    setProviderEditor(blankProvider(), null, "", [], false, false);
+  }
+
+  async function duplicateProvider(index: number) {
+    if (saving) return;
+    if (!(await confirmDiscardProviderDraft())) return;
+    const row = doc.providers[index];
+    if (!row) return;
     const next = JSON.parse(JSON.stringify(row)) as LlmProviderRow;
     if (!Array.isArray(next.capabilities)) next.capabilities = ["text"];
     if (typeof next.model_effort !== "string") next.model_effort = "";
@@ -499,36 +597,38 @@ export default function LlmProvidersForm() {
     if (!next.model_pricing || typeof next.model_pricing !== "object") next.model_pricing = {};
     next.id = `${row.id}-副本`;
     if (!next.enabled) next.enabled = true;
-    setDraft(next);
     const keys = Array.isArray(row.api_keys) ? row.api_keys.map((k) => String(k || "").trim()).filter(Boolean) : [];
     if (!keys.length && row.api_key?.trim()) keys.push(row.api_key.trim());
-    setDraftApiKeys(keys);
-    setKeepStoredApiKey(Boolean(row.api_key_set) && keys.length === 0);
-    setUseEnvVar(Boolean(row.api_key_env?.trim()) && !row.api_key_set && keys.length === 0);
-    setEditErr("");
-    setModels([]);
-    setEditing(true);
+    setProviderEditor(
+      next,
+      null,
+      "",
+      keys,
+      Boolean(row.api_key_set) && keys.length === 0,
+      Boolean(row.api_key_env?.trim()) && !row.api_key_set && keys.length === 0,
+    );
   }
 
-  function openEdit(index: number) {
+  async function openEdit(index: number) {
+    if (saving) return;
+    if (!(await confirmDiscardProviderDraft())) return;
     const row = doc.providers[index];
     if (!row) return;
-    setEditIndex(index);
-    setEditOriginalId(String(row.id || "").trim());
     const next = JSON.parse(JSON.stringify(row)) as LlmProviderRow;
     if (!Array.isArray(next.capabilities)) next.capabilities = ["text"];
     if (typeof next.model_effort !== "string") next.model_effort = "";
     if (!next.request_method) next.request_method = "chat_completions";
     if (!next.model_pricing || typeof next.model_pricing !== "object") next.model_pricing = {};
-    setDraft(next);
     const keys = Array.isArray(row.api_keys) ? row.api_keys.map((k) => String(k || "").trim()).filter(Boolean) : [];
     if (!keys.length && row.api_key?.trim()) keys.push(row.api_key.trim());
-    setDraftApiKeys(keys);
-    setKeepStoredApiKey(Boolean(row.api_key_set) && keys.length === 0);
-    setUseEnvVar(Boolean(row.api_key_env?.trim()) && !row.api_key_set && keys.length === 0);
-    setEditErr("");
-    setModels([]);
-    setEditing(true);
+    setProviderEditor(
+      next,
+      index,
+      String(row.id || "").trim(),
+      keys,
+      Boolean(row.api_key_set) && keys.length === 0,
+      Boolean(row.api_key_env?.trim()) && !row.api_key_set && keys.length === 0,
+    );
   }
 
   function registerProviderModel(nameRaw: string) {
@@ -696,11 +796,23 @@ export default function LlmProvidersForm() {
       request_method:
         draft.kind === "local" ? "chat_completions" : draft.request_method || "chat_completions",
     };
+    const keepStoredAfterSave = apiKeys.length === 0 && (keepStoredApiKey || Boolean(apiKeyEnv));
+    const submittedEditorSignature = providerEditorSignature(
+      row,
+      apiKeys,
+      keepStoredAfterSave,
+      useEnvVar,
+      false,
+    );
+    const docAtStart = cloneDoc(docRef.current);
+    const baselineAtStart = baseline;
     const nextIndex = wasNew ? doc.providers.length : editIndex!;
     setEditIndex(nextIndex);
     setDraft(row);
     setDraftApiKeys(apiKeys);
-    setKeepStoredApiKey(apiKeys.length === 0 && (keepStoredApiKey || Boolean(apiKeyEnv)));
+    setKeepStoredApiKey(keepStoredAfterSave);
+    setApiKeyDraftPending(false);
+    currentEditorSignatureRef.current = submittedEditorSignature;
     setEditing(true);
     setSaving(true);
     setErr("");
@@ -720,7 +832,41 @@ export default function LlmProvidersForm() {
         providers = await fetchLlmProvidersConfig();
         next = cloneDoc(providers);
       }
-      setDoc(next);
+      let displayedDoc = next;
+      if (JSON.stringify(docAtStart) !== baselineAtStart) {
+        let savedBaseline: LlmProvidersConfig;
+        try {
+          savedBaseline = JSON.parse(baselineAtStart) as LlmProvidersConfig;
+        } catch {
+          savedBaseline = docAtStart;
+        }
+        const locallyDeleted = new Set(
+          savedBaseline.providers
+            .filter((provider) => !docAtStart.providers.some((local) => local.id === provider.id))
+            .map((provider) => provider.id),
+        );
+        const enabledOverrides = new Map(
+          docAtStart.providers.flatMap((provider) => {
+            const saved = savedBaseline.providers.find((item) => item.id === provider.id);
+            return saved && saved.enabled !== provider.enabled ? [[provider.id, provider.enabled] as const] : [];
+          }),
+        );
+        displayedDoc = {
+          ...next,
+          providers: next.providers
+            .filter((provider) => !locallyDeleted.has(provider.id))
+            .map((provider) => {
+              const enabled = enabledOverrides.get(provider.id);
+              return enabled === undefined ? provider : { ...provider, enabled };
+            }),
+          routing: JSON.stringify(docAtStart.routing) !== JSON.stringify(savedBaseline.routing)
+            ? renamed
+              ? replaceProviderReferences(docAtStart.routing, originalId, id)
+              : docAtStart.routing
+            : next.routing,
+        };
+      }
+      setDoc(displayedDoc);
       setBaseline(JSON.stringify(next));
       setEditOriginalId(id);
       const savedRow = next.providers.find((p) => p.id === id);
@@ -729,17 +875,27 @@ export default function LlmProvidersForm() {
           ? savedRow.api_keys.map((k) => String(k || "").trim()).filter(Boolean)
           : [];
         if (!savedKeys.length && savedRow.api_key?.trim()) savedKeys.push(savedRow.api_key.trim());
-        setDraft({
+        const savedDraft = {
           ...row,
           ...savedRow,
           api_key: savedKeys[0] || "",
           api_keys: savedKeys,
           api_key_set: Boolean(savedRow.api_key_set) || savedKeys.length > 0,
           api_keys_count: savedKeys.length || savedRow.api_keys_count || 0,
-        });
-        setDraftApiKeys(savedKeys);
-        setKeepStoredApiKey(Boolean(savedRow.api_key_set) && savedKeys.length === 0);
-        setUseEnvVar(Boolean(String(savedRow.api_key_env || "").trim()) && savedKeys.length === 0);
+        };
+        const savedKeepStored = Boolean(savedRow.api_key_set) && savedKeys.length === 0;
+        const savedUseEnv = Boolean(String(savedRow.api_key_env || "").trim()) && savedKeys.length === 0;
+        const savedSignature = providerEditorSignature(savedDraft, savedKeys, savedKeepStored, savedUseEnv, false);
+        const editedWhileSaving = currentEditorSignatureRef.current !== submittedEditorSignature;
+        setEditBaseline(savedSignature);
+        if (!editedWhileSaving) {
+          setDraft(savedDraft);
+          setDraftApiKeys(savedKeys);
+          setKeepStoredApiKey(savedKeepStored);
+          setUseEnvVar(savedUseEnv);
+          setApiKeyDraftPending(false);
+          currentEditorSignatureRef.current = savedSignature;
+        }
         const idx = next.providers.findIndex((p) => p.id === id);
         if (idx >= 0) setEditIndex(idx);
       }
@@ -757,8 +913,10 @@ export default function LlmProvidersForm() {
   }
 
   async function removeProvider(index: number) {
+    if (saving) return;
     const row = doc.providers[index];
     if (!row) return;
+    if (editing && editIndex === index && !(await confirmDiscardProviderDraft())) return;
     if (
       !(await confirm({
         title: "删除提供方",
@@ -773,9 +931,7 @@ export default function LlmProvidersForm() {
       next.routing = pruneRoutingForProvider(next.routing, row.id);
       return next;
     });
-    setEditing(false);
-    setEditIndex(null);
-    setEditOriginalId("");
+    closeEditor();
     setDraft(blankProvider());
     setDraftApiKeys([]);
     setKeepStoredApiKey(false);
@@ -1122,6 +1278,7 @@ export default function LlmProvidersForm() {
         <ChromeField label="接入分区" icon={Layers}>
           <Select
             value={tab}
+            disabled={saving}
             onValueChange={(v) => {
               preserveShellMainScroll(() => setTab(v as Tab));
             }}
@@ -1179,7 +1336,7 @@ export default function LlmProvidersForm() {
         ) : null}
       </>
     ),
-    [tab, doc.routing.cost_currency, tasksViewMode],
+    [tab, doc.routing.cost_currency, tasksViewMode, saving],
   );
 
   /** 工具条右钉：按当前接入分区标明保存或测试范围。 */
@@ -1237,10 +1394,23 @@ export default function LlmProvidersForm() {
     doc.providers.length,
   ]);
 
-  const chromeRefresh = useCallback(() => {
+  const chromeRefresh = useCallback(async () => {
+    if (saving || localSaving) return;
+    if (
+      (dirty || localDirty || providerDraftDirty) &&
+      !(await confirm({
+        title: "刷新并丢弃未保存草稿？",
+        subtitle: "刷新会重新载入提供方与 Ollama 分档配置。",
+        confirmLabel: "刷新并丢弃",
+        confirmVariant: "default",
+      }))
+    ) {
+      return;
+    }
+    closeEditor();
     void load();
     void qc.invalidateQueries({ queryKey: ["llm-model-admin"] });
-  }, [qc]);
+  }, [qc, saving, localSaving, dirty, localDirty, providerDraftDirty, confirm, closeEditor]);
 
   useRegisterAiConfigChrome({
     middle: chromeMiddle,
@@ -1331,6 +1501,7 @@ export default function LlmProvidersForm() {
                       <Switch
                         checked={p.enabled}
                         aria-label={`${p.id} 启用`}
+                        disabled={saving}
                         onCheckedChange={(checked) => toggleProviderEnabled(index, checked)}
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
@@ -1555,6 +1726,7 @@ export default function LlmProvidersForm() {
                             sortable
                             showPrimaryBadge
                             value={draftApiKeys}
+                            onPendingChange={setApiKeyDraftPending}
                             readOnlyValues={keepStoredApiKey ? draft.api_key_hints : []}
                             onChange={(keys) => {
                               setDraftApiKeys(keys);
@@ -1869,10 +2041,7 @@ export default function LlmProvidersForm() {
                       icon={X}
                       iconMotion="close"
                       onClick={() => {
-                        setEditing(false);
-                        setEditIndex(null);
-                        setEditOriginalId("");
-                        setEditErr("");
+                        void requestCloseEditor();
                       }}
                     >
                       取消

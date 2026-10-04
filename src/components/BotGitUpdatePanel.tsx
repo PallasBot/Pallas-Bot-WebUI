@@ -22,6 +22,7 @@ import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
 import { cn } from "@/lib/utils";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { invalidatePluginCatalogQueries } from "@/utils/catalogQueryInvalidation";
 
 const PB_WEBUI_PLUGIN = "pb_webui";
 const BOT_UPDATE_TRACK = "pallas_bot_update_track";
@@ -172,6 +173,7 @@ export default function BotGitUpdatePanel({
         qc.invalidateQueries({ queryKey: ["bot-git-history"] }),
         qc.invalidateQueries({ queryKey: ["update-check-all"] }),
         qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] }),
+        invalidatePluginCatalogQueries(qc),
       ]);
     } catch (e) {
       const detail = axiosErrorDetail(e) || (e instanceof Error ? e.message : String(e));

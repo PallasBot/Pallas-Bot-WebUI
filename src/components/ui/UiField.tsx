@@ -12,6 +12,8 @@ export default function UiField({
   secret = false,
   hideLabel = false,
   className,
+  labelId,
+  htmlFor,
   labelStart,
   labelEnd,
   meta,
@@ -22,6 +24,8 @@ export default function UiField({
   secret?: boolean;
   hideLabel?: boolean;
   className?: string;
+  labelId?: string;
+  htmlFor?: string;
   labelStart?: ReactNode;
   labelEnd?: ReactNode;
   meta?: ReactNode;
@@ -37,7 +41,7 @@ export default function UiField({
             {labelStart}
             <div className="ui-field__title flex min-w-0 items-center gap-1.5">
               {label ? (
-                <Label className="ui-field__label-text truncate" title={label}>
+                <Label id={labelId} htmlFor={htmlFor} className="ui-field__label-text truncate" title={label}>
                   {label}
                 </Label>
               ) : null}

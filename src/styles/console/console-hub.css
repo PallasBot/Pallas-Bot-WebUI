@@ -1081,6 +1081,24 @@ html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-row > .c
     0 1px 0 color-mix(in srgb, var(--border) 70%, transparent);
 }
 
+@media (max-width: 560px) {
+  :is(.plugins-page, .instances-page, .protocol-page, .database-page, .plugin-config-workspace__chrome)
+    .console-hub-page__chrome-row {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    --chrome-tools-row-gap: 0.5rem;
+  }
+
+  :is(.plugins-page, .instances-page, .protocol-page, .database-page, .plugin-config-workspace__chrome)
+    .console-hub-page__chrome-row > .chrome-tools__trailing {
+    position: static;
+    right: auto;
+    align-self: center;
+    padding-left: 0;
+    box-shadow: none;
+  }
+}
+
 .console-hub-page__chrome-row:hover,
 .console-hub-page__chrome-row:focus-within {
   scrollbar-width: thin;

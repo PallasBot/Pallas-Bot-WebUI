@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteBotConfig, fetchInstances, fetchPlugins } from "@/api/fullConsole";
 import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
 import { accountHasNonebotBot } from "@/utils/botConnection";
@@ -67,6 +67,9 @@ function sortedAdminsList(admins: number[] | undefined | null): number[] {
 export default function InstancesPage() {
   const prefs = useConsolePrefs();
   const { favorites, toggleFavorite } = useBotFavorites();
+  const queryClient = useQueryClient();
+  const forceInstancesFetch = useRef(false);
+  const forcePluginsFetch = useRef(false);
   const [reloadBusy, setReloadBusy] = useState(false);
   const [expNonebot, setExpNonebot] = useState(true);
   const [expDbBots, setExpDbBots] = useState(true);
@@ -85,11 +88,11 @@ export default function InstancesPage() {
 
   const q = useQuery({
     queryKey: ["instances"],
-    queryFn: () => fetchInstances(),
+    queryFn: () => fetchInstances({ bypassCache: forceInstancesFetch.current }),
   });
   const pluginsQ = useQuery({
     queryKey: ["plugins"],
-    queryFn: () => fetchPlugins(),
+    queryFn: () => fetchPlugins({ bypassCache: forcePluginsFetch.current }),
   });
 
   const data = q.data as InstancesData | undefined;
@@ -228,11 +231,24 @@ export default function InstancesPage() {
   async function reloadFromUser() {
     setReloadBusy(true);
     setErr("");
+    forceInstancesFetch.current = true;
+    forcePluginsFetch.current = true;
     try {
-      await Promise.all([q.refetch(), pluginsQ.refetch()]);
+      const [instancesResult, pluginsResult] = await Promise.all([q.refetch(), pluginsQ.refetch()]);
+      if (instancesResult.isError) throw instancesResult.error;
+      if (pluginsResult.isError) throw pluginsResult.error;
+      if (pluginsResult.data) {
+        queryClient.setQueryData(["plugins-catalog"], pluginsResult.data);
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["plugin-row"] }),
+        queryClient.invalidateQueries({ queryKey: ["home-overview"] }),
+      ]);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
+      forceInstancesFetch.current = false;
+      forcePluginsFetch.current = false;
       setReloadBusy(false);
     }
   }

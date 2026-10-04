@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import "@/styles/update-page.css";
@@ -21,10 +21,15 @@ import {
 import BotGitUpdatePanel from "@/components/BotGitUpdatePanel";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
 import { waitForUpdateApplyJob } from "@/utils/updateApplyJobStream";
-import { InstallJobFailedError, InstallJobStreamInterruptedError } from "@/utils/installJobStream";
+import {
+  InstallJobFailedError,
+  InstallJobStreamCancelledError,
+  InstallJobStreamInterruptedError,
+} from "@/utils/installJobStream";
 import { getActiveJob } from "@/utils/activeJobSession";
 import { pallasBotVersionLabel, updateCheckCurrentTagLabel } from "@/utils/versionDisplay";
 import { aiRuntimeUpdateOverview } from "@/utils/updateOverview";
+import { invalidatePluginCatalogQueries } from "@/utils/catalogQueryInvalidation";
 import {
   PALLAS_BOT_DOC,
   PALLAS_BOT_RELEASES,
@@ -249,6 +254,9 @@ export default function UpdatePage() {
   const location = useLocation();
   const { confirm, confirmDialog } = useConsoleConfirm();
   const { favorites } = useBotFavorites();
+  const jobWatchersRef = useRef(new Set<AbortController>());
+  const reloadTimersRef = useRef(new Set<number>());
+  const mountedRef = useRef(true);
   const [applyKind, setApplyKind] = useState<ApplyKind | null>(null);
   const [applyPercent, setApplyPercent] = useState(0);
   const [applyHint, setApplyHint] = useState("");
@@ -289,6 +297,25 @@ export default function UpdatePage() {
   const web = q.data?.webui;
   const bot = q.data?.bot;
   const aiRuntime = aiRuntimeUpdateOverview(aiInstallQ.data || {});
+
+  function schedulePageReload(delayMs: number) {
+    const timer = window.setTimeout(() => {
+      reloadTimersRef.current.delete(timer);
+      if (mountedRef.current) window.location.reload();
+    }, delayMs);
+    reloadTimersRef.current.add(timer);
+  }
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      for (const timer of reloadTimersRef.current) window.clearTimeout(timer);
+      reloadTimersRef.current.clear();
+      for (const watcher of jobWatchersRef.current) watcher.abort();
+      jobWatchersRef.current.clear();
+    };
+  }, []);
 
   const webCurrentDisplay = updateCheckCurrentTagLabel(web?.current_tag);
   const botCurrentDisplay = pallasBotVersionLabel(undefined, bot);
@@ -399,6 +426,7 @@ export default function UpdatePage() {
 
   useEffect(() => {
     let cancelled = false;
+    let watcher: AbortController | null = null;
     const mapKind = (raw: string | undefined): ApplyKind => {
       if (raw === "bot") return "bot";
       if (raw === "webui" || raw === "web") return "web";
@@ -429,35 +457,39 @@ export default function UpdatePage() {
         setApplyPercent(1);
         setApplyHint("正在恢复更新进度…");
       }
+      watcher = new AbortController();
+      jobWatchersRef.current.add(watcher);
       try {
         const done = await waitForUpdateApplyJob(
           jobId,
           openUpdateApplyJobEventSource,
           (p) => {
-            if (cancelled) return;
+            if (cancelled || watcher?.signal.aborted) return;
             setApplyPercent(p.percent);
             if (p.message) setApplyHint(p.message);
           },
           { kind },
+          watcher.signal,
         );
-        if (cancelled) return;
+        if (cancelled || watcher.signal.aborted) return;
         setApplyPercent(100);
         await Promise.all([
           qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] }),
           qc.invalidateQueries({ queryKey: ["update-check-all"] }),
         ]);
+        if (cancelled || watcher.signal.aborted) return;
         const resultMsg = done.result?.message || done.message || "更新完成";
         setMsg(resultMsg);
         pushConsoleToast(resultMsg, "ok");
         if (kind === "web") {
-          window.setTimeout(() => window.location.reload(), 800);
+          schedulePageReload(800);
           return;
         }
         setApplyKind(null);
         setApplyPercent(0);
         setApplyHint("");
       } catch (e) {
-        if (cancelled || e instanceof InstallJobStreamInterruptedError) {
+        if (cancelled || e instanceof InstallJobStreamCancelledError || e instanceof InstallJobStreamInterruptedError) {
           if (!cancelled) {
             setApplyHint((prev) => prev || "更新仍在后台进行，返回本页可续看进度");
           }
@@ -474,11 +506,14 @@ export default function UpdatePage() {
         setApplyKind(null);
         setApplyPercent(0);
         setApplyHint("");
+      } finally {
+        if (watcher) jobWatchersRef.current.delete(watcher);
       }
     };
     void resume();
     return () => {
       cancelled = true;
+      watcher?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -593,6 +628,7 @@ export default function UpdatePage() {
     setGhTokenErr("");
     try {
       await putPluginConfig(PB_PROTOCOL_PLUGIN, { [GITHUB_TOKEN_FIELD]: next });
+      await invalidatePluginCatalogQueries(qc);
       setGhTokenHadValue(true);
       setGhTokenInput("");
       pushConsoleToast("GitHub 令牌已保存；若未立即生效可重启 Bot", "ok");
@@ -618,6 +654,7 @@ export default function UpdatePage() {
     setGhTokenErr("");
     try {
       await putPluginConfig(PB_PROTOCOL_PLUGIN, { [GITHUB_TOKEN_FIELD]: "" });
+      await invalidatePluginCatalogQueries(qc);
       setGhTokenHadValue(false);
       setGhTokenInput("");
       pushConsoleToast("GitHub 令牌已清除；重启 Bot 后生效", "ok");
@@ -651,6 +688,7 @@ export default function UpdatePage() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] }),
         qc.invalidateQueries({ queryKey: ["update-check-all"] }),
+        invalidatePluginCatalogQueries(qc),
       ]);
       const anyOn = next.webui_enabled || next.bot_enabled || next.plugins_enabled;
       pushConsoleToast(
@@ -671,6 +709,8 @@ export default function UpdatePage() {
   }
 
   async function runAutoOnce() {
+    const watcher = new AbortController();
+    jobWatchersRef.current.add(watcher);
     setApplyKind("auto");
     setApplyPercent(1);
     setApplyHint("排队中…");
@@ -680,14 +720,17 @@ export default function UpdatePage() {
       const started = await postWebuiAutoUpdateRunOnce();
       if (!started.job_id) throw new Error("未返回更新任务 ID");
       const done = await waitForUpdateApplyJob(started.job_id, openUpdateApplyJobEventSource, (p) => {
+        if (watcher.signal.aborted || !mountedRef.current) return;
         setApplyPercent(p.percent);
         if (p.message) setApplyHint(p.message);
-      }, { kind: "auto" });
+      }, { kind: "auto" }, watcher.signal);
+      if (watcher.signal.aborted || !mountedRef.current) return;
       setApplyPercent(100);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["webui-auto-update-status"] }),
         qc.invalidateQueries({ queryKey: ["update-check-all"] }),
       ]);
+      if (watcher.signal.aborted || !mountedRef.current) return;
       const tick = done.result?.tick;
       const result = String(tick?.result || "");
       const targetResults = tick?.targets || {};
@@ -699,7 +742,7 @@ export default function UpdatePage() {
         setMsg(label);
         pushConsoleToast(label, "ok");
         if (appliedKinds.includes("webui") || appliedKinds.includes("bot") || appliedKinds.includes("plugins")) {
-          window.setTimeout(() => window.location.reload(), 1500);
+          schedulePageReload(1500);
         } else {
           setApplyKind(null);
           setApplyPercent(0);
@@ -729,6 +772,7 @@ export default function UpdatePage() {
       setApplyPercent(0);
       setApplyHint("");
     } catch (e) {
+      if (e instanceof InstallJobStreamCancelledError || !mountedRef.current) return;
       if (e instanceof InstallJobStreamInterruptedError) {
         setApplyHint((prev) => prev || "更新仍在后台进行，返回本页可续看进度");
         return;
@@ -744,6 +788,8 @@ export default function UpdatePage() {
       setApplyKind(null);
       setApplyPercent(0);
       setApplyHint("");
+    } finally {
+      jobWatchersRef.current.delete(watcher);
     }
   }
 
@@ -785,6 +831,9 @@ export default function UpdatePage() {
       }))
     )
       return;
+    if (!mountedRef.current) return;
+    const watcher = new AbortController();
+    jobWatchersRef.current.add(watcher);
     setApplyKind("web");
     setApplyPercent(1);
     setApplyHint("排队中…");
@@ -794,15 +843,18 @@ export default function UpdatePage() {
       const started = await postUpdateApply();
       if (!started.job_id) throw new Error("未返回更新任务 ID");
       const done = await waitForUpdateApplyJob(started.job_id, openUpdateApplyJobEventSource, (p) => {
+        if (watcher.signal.aborted || !mountedRef.current) return;
         setApplyPercent(p.percent);
         if (p.message) setApplyHint(p.message);
-      }, { kind: "web" });
+      }, { kind: "web" }, watcher.signal);
+      if (watcher.signal.aborted || !mountedRef.current) return;
       setApplyPercent(100);
       const resultMsg = done.result?.message || done.message || "更新成功";
       queueChangelogAfterUpdate("web", web.latest_tag);
       setMsg(`${resultMsg} · 正在刷新页面以载入新版本…`);
-      window.setTimeout(() => window.location.reload(), 800);
+      schedulePageReload(800);
     } catch (e) {
+      if (e instanceof InstallJobStreamCancelledError || !mountedRef.current) return;
       if (e instanceof InstallJobStreamInterruptedError) {
         setApplyHint((prev) => prev || "更新仍在后台进行，返回本页可续看进度");
         return;
@@ -817,6 +869,8 @@ export default function UpdatePage() {
       setApplyKind(null);
       setApplyPercent(0);
       setApplyHint("");
+    } finally {
+      jobWatchersRef.current.delete(watcher);
     }
   }
 
@@ -827,6 +881,8 @@ export default function UpdatePage() {
     strategy: "safe" | "force";
     restart: boolean;
   }) {
+    const watcher = new AbortController();
+    jobWatchersRef.current.add(watcher);
     setApplyKind("bot");
     setApplyPercent(1);
     setApplyHint("排队中…");
@@ -836,9 +892,11 @@ export default function UpdatePage() {
       const started = await postBotGitApply(opts);
       if (!started.job_id) throw new Error("未返回更新任务 ID");
       const done = await waitForUpdateApplyJob(started.job_id, openUpdateApplyJobEventSource, (p) => {
+        if (watcher.signal.aborted || !mountedRef.current) return;
         setApplyPercent(p.percent);
         if (p.message) setApplyHint(p.message);
-      }, { kind: "bot" });
+      }, { kind: "bot" }, watcher.signal);
+      if (watcher.signal.aborted || !mountedRef.current) return;
       setApplyPercent(100);
       setMsg(done.result?.message || done.message || (opts.restart ? "已触发更新与重启。" : "已触发。"));
       const tagHint = String(done.result?.tag || opts.ref || bot?.latest_tag || "").trim();
@@ -853,10 +911,12 @@ export default function UpdatePage() {
           qc.invalidateQueries({ queryKey: ["bot-git-history"] }),
         ]);
       }
+      if (watcher.signal.aborted || !mountedRef.current) return;
       setApplyKind(null);
       setApplyPercent(0);
       setApplyHint("");
     } catch (e) {
+      if (e instanceof InstallJobStreamCancelledError || !mountedRef.current) return;
       if (e instanceof InstallJobStreamInterruptedError) {
         setApplyHint((prev) => prev || "更新仍在后台进行，返回本页可续看进度");
         return;
@@ -871,6 +931,8 @@ export default function UpdatePage() {
       setApplyKind(null);
       setApplyPercent(0);
       setApplyHint("");
+    } finally {
+      jobWatchersRef.current.delete(watcher);
     }
   }
 
