@@ -127,7 +127,7 @@ function renderRoute(entry: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createMemoryRouter(
     [{ path: "*", element: <Suspense fallback={null}><App /></Suspense> }],
-    { initialEntries: [entry], future: { v7_relativeSplatPath: true } },
+    { initialEntries: [entry] },
   );
   const view = render(
     <QueryClientProvider client={client}>

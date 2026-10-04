@@ -13,7 +13,6 @@ it("hydrates observation scope from governance detail query", () => {
   render(
     <MemoryRouter
       initialEntries={["/ai/session?bot=10001&group=20002&scene=group_chat"]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
     >
       <AiObservationScopeProvider>
         <ScopeProbe />
