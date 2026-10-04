@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   protocolApiErrorMessage,
   protocolFetchQrcodeImageBlob,
@@ -36,6 +36,7 @@ export default function ProtocolAccountQrcodeModal({
   const [refreshBusy, setRefreshBusy] = useState(false);
   const [imageErr, setImageErr] = useState(false);
   const [imageObjectUrl, setImageObjectUrl] = useState("");
+  const requestGeneration = useRef(0);
 
   const updatedLabel = useMemo(() => {
     if (!updatedAt) return "";
@@ -59,9 +60,10 @@ export default function ProtocolAccountQrcodeModal({
     });
   }
 
-  async function loadQrcodeImage(ts: number) {
+  async function loadQrcodeImage(ts: number, generation: number) {
     if (!mountUrl || !accountId) return;
     const blob = await protocolFetchQrcodeImageBlob(mountUrl, accountId, ts || undefined);
+    if (generation !== requestGeneration.current) return;
     revokeImageObjectUrl();
     setImageObjectUrl(URL.createObjectURL(blob));
     setImageErr(false);
@@ -70,14 +72,16 @@ export default function ProtocolAccountQrcodeModal({
   async function applyQrcodeMeta(
     meta: Awaited<ReturnType<typeof protocolFetchQrcodeMeta>>,
     bustCache = false,
+    generation: number,
   ) {
     const nowExists = meta.exists === true;
     const ts = meta.updated_at ?? 0;
     const deps = meta.host_deps;
     if (nowExists && (bustCache || ts !== updatedAt)) {
       setUpdatedAt(ts);
-      await loadQrcodeImage(bustCache ? Date.now() : ts);
+      await loadQrcodeImage(bustCache ? Date.now() : ts, generation);
     }
+    if (generation !== requestGeneration.current) return;
     setExists(nowExists);
     if (nowExists) {
       setHint(updatedLabel || "可直接扫码登录");
@@ -88,7 +92,7 @@ export default function ProtocolAccountQrcodeModal({
     }
   }
 
-  async function refreshMeta(pollOnly = false) {
+  async function refreshMeta(pollOnly = false, generation = requestGeneration.current) {
     if (!mountUrl || !accountId || refreshBusy) return;
     if (!pollOnly) {
       setRefreshBusy(true);
@@ -98,16 +102,17 @@ export default function ProtocolAccountQrcodeModal({
       const meta = pollOnly
         ? await protocolFetchQrcodeMeta(mountUrl, accountId)
         : await protocolRefreshAccountQrcode(mountUrl, accountId);
-      await applyQrcodeMeta(meta, !pollOnly);
+      if (generation !== requestGeneration.current) return;
+      await applyQrcodeMeta(meta, !pollOnly, generation);
     } catch (e) {
-      if (!pollOnly) {
+      if (generation === requestGeneration.current && !pollOnly) {
         setExists(false);
         setImageErr(false);
         revokeImageObjectUrl();
         setHint(protocolApiErrorMessage(e, "二维码刷新失败"));
       }
     } finally {
-      if (!pollOnly) setRefreshBusy(false);
+      if (generation === requestGeneration.current && !pollOnly) setRefreshBusy(false);
     }
   }
 
@@ -121,7 +126,9 @@ export default function ProtocolAccountQrcodeModal({
   }, [exists, updatedLabel]);
 
   useEffect(() => {
+    const generation = ++requestGeneration.current;
     if (!open) {
+      setRefreshBusy(false);
       setHint("加载中…");
       setUpdatedAt(0);
       setExists(false);
@@ -135,19 +142,21 @@ export default function ProtocolAccountQrcodeModal({
       try {
         if (mountUrl && accountId) {
           const meta = await protocolFetchQrcodeMeta(mountUrl, accountId);
-          await applyQrcodeMeta(meta, false);
+          if (generation !== requestGeneration.current) return;
+          await applyQrcodeMeta(meta, false, generation);
         }
       } catch {
-        setHint("二维码加载失败");
+        if (generation === requestGeneration.current) setHint("二维码加载失败");
       } finally {
-        setRefreshBusy(false);
+        if (generation === requestGeneration.current) setRefreshBusy(false);
       }
     })();
     pollTimer = setInterval(() => {
-      void refreshMeta(true);
+      void refreshMeta(true, generation);
     }, 3000);
     return () => {
       if (pollTimer) clearInterval(pollTimer);
+      if (requestGeneration.current === generation) requestGeneration.current += 1;
       revokeImageObjectUrl();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when open/target changes

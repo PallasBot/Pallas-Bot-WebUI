@@ -196,6 +196,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     const [qrUpdatedAt, setQrUpdatedAt] = useState(0);
     const [qrRefreshBusy, setQrRefreshBusy] = useState(false);
     const [qrImageUrl, setQrImageUrl] = useState("");
+    const qrRequestGeneration = useRef(0);
     const [followLogTail, setFollowLogTail] = useState(true);
     const again = useConfirmAgain();
 
@@ -386,14 +387,15 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       });
     }
 
-    async function loadQrImage(ts: number) {
+    async function loadQrImage(ts: number, generation: number) {
       if (!mountUrl || !accountId) return;
       const blob = await protocolFetchQrcodeImageBlob(mountUrl, accountId, ts || undefined);
+      if (generation !== qrRequestGeneration.current) return;
       revokeQrUrl();
       setQrImageUrl(URL.createObjectURL(blob));
     }
 
-    async function refreshQrcode(force = false) {
+    async function refreshQrcode(force = false, generation = qrRequestGeneration.current) {
       if (!mountUrl || !accountId || qrRefreshBusy) return;
       if (force) {
         setQrRefreshBusy(true);
@@ -403,6 +405,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         const meta = force
           ? await protocolRefreshAccountQrcode(mountUrl, accountId)
           : await protocolFetchQrcodeMeta(mountUrl, accountId);
+        if (generation !== qrRequestGeneration.current) return;
         if (meta.login_mode === "quick_login") {
           setQrExists(false);
           revokeQrUrl();
@@ -410,6 +413,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
           if (meta.inject_hook) {
             notify("已自动注入 SnowLuma Hook", "ok");
             await loadAccount(false);
+            if (generation !== qrRequestGeneration.current) return;
           } else if (meta.inject_hook_error) {
             notify(meta.inject_hook_error, "warn");
           }
@@ -419,8 +423,9 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         const ts = meta.updated_at ?? 0;
         if (nowExists && (force || ts !== qrUpdatedAt)) {
           setQrUpdatedAt(ts);
-          await loadQrImage(force ? Date.now() : ts);
+          await loadQrImage(force ? Date.now() : ts, generation);
         }
+        if (generation !== qrRequestGeneration.current) return;
         setQrExists(nowExists);
         if (account?.connected) {
           setQrHint("登录成功 · Bot 已连接");
@@ -432,21 +437,23 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
           );
         }
       } catch (e) {
-        if (force) {
+        if (generation === qrRequestGeneration.current && force) {
           setQrExists(false);
           revokeQrUrl();
           setQrHint(protocolApiErrorMessage(e, "恢复登录失败"));
         }
       } finally {
-        if (force) setQrRefreshBusy(false);
+        if (generation === qrRequestGeneration.current && force) setQrRefreshBusy(false);
       }
     }
 
     async function loadAccount(brief = false) {
       if (!mountUrl || !accountId) return;
+      const generation = qrRequestGeneration.current;
       if (!brief) setLoadBusy(true);
       try {
         const row = await protocolFetchAccount(mountUrl, accountId, { brief });
+        if (generation !== qrRequestGeneration.current) return;
         if (!row) throw new Error("账号不存在");
         setAccount(row);
         onAccountLoaded?.(row);
@@ -501,18 +508,21 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
               protocolFetchAccountConfigs(mountUrl, accountId),
               protocolListSnowlumaRuntimes(mountUrl, { lite: true }),
             ]);
+            if (generation !== qrRequestGeneration.current) return;
             const nextBypass = configs.napcat?.bypass_enabled === true;
             setBypassEnabled(nextBypass);
             setSavedBypassEnabled(nextBypass);
             setSnowlumaRuntimes(runtimes);
           } finally {
-            setRuntimesLoading(false);
+            if (generation === qrRequestGeneration.current) setRuntimesLoading(false);
           }
         }
       } catch (e) {
-        notify(protocolApiErrorMessage(e, "加载账号失败"), "err");
+        if (generation === qrRequestGeneration.current) {
+          notify(protocolApiErrorMessage(e, "加载账号失败"), "err");
+        }
       } finally {
-        if (!brief) setLoadBusy(false);
+        if (generation === qrRequestGeneration.current && !brief) setLoadBusy(false);
       }
     }
 
@@ -549,8 +559,10 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
 
     async function loadLogs() {
       if (!mountUrl || !accountId) return;
+      const generation = qrRequestGeneration.current;
       try {
         const next = await protocolFetchAccountLogs(mountUrl, accountId, 120);
+        if (generation !== qrRequestGeneration.current) return;
         setLogs(next);
         scrollLogsToBottom();
       } catch {
@@ -783,7 +795,9 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     }, [system]);
 
     useEffect(() => {
+      const generation = ++qrRequestGeneration.current;
       revokeQrUrl();
+      setQrRefreshBusy(false);
       setAccount(null);
       setLogs([]);
       setFollowLogTail(true);
@@ -794,17 +808,19 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       setLoadBusy(true);
       void (async () => {
         await loadAccount(true);
+        if (generation !== qrRequestGeneration.current) return;
         setLoadBusy(false);
         void loadAccount(false);
-        void refreshQrcode(false);
+        void refreshQrcode(false, generation);
         void loadLogs();
       })();
 
-      const qrPollTimer = setInterval(() => void refreshQrcode(false), 8000);
+      const qrPollTimer = setInterval(() => void refreshQrcode(false, generation), 8000);
       const logsPollTimer = setInterval(() => void loadLogs(), 5000);
       return () => {
         clearInterval(qrPollTimer);
         clearInterval(logsPollTimer);
+        if (qrRequestGeneration.current === generation) qrRequestGeneration.current += 1;
         revokeQrUrl();
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps -- remount on account/mount

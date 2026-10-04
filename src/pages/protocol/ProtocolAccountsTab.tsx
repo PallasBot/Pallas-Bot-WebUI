@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useOutletContext } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { disconnectBotWs } from "@/api/fullConsole";
@@ -247,6 +247,9 @@ export default function ProtocolAccountsTab() {
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchJob, setBatchJob] = useState<ProtocolBatchJobPayload | null>(null);
   const [listRefreshBusy, setListRefreshBusy] = useState(false);
+  const batchWatcherRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => batchWatcherRef.current?.abort(), []);
 
   const accountsQ = useQuery({
     queryKey: ["protocol-accounts", mountUrl],
@@ -502,21 +505,29 @@ export default function ProtocolAccountsTab() {
       pushConsoleToast("协议端未启用", "warn");
       return null;
     }
+    const controller = new AbortController();
+    batchWatcherRef.current = controller;
     setBatchBusy(true);
     setBatchOpen(true);
     setBatchJob(null);
     try {
       const started = await protocolStartAccountBatch(mountUrl, { ...body, mode: "rolling" });
+      if (controller.signal.aborted) return null;
       const job = await waitForProtocolBatchJob(mountUrl, started.job_id, {
         onProgress: (j) => setBatchJob(j),
+        signal: controller.signal,
       });
+      if (controller.signal.aborted) return null;
       setBatchJob(job);
       return job;
     } catch (e) {
-      pushConsoleToast(protocolApiErrorMessage(e, "批量操作失败"), "err");
+      if (!controller.signal.aborted) {
+        pushConsoleToast(protocolApiErrorMessage(e, "批量操作失败"), "err");
+      }
       return null;
     } finally {
-      setBatchBusy(false);
+      if (batchWatcherRef.current === controller) batchWatcherRef.current = null;
+      if (!controller.signal.aborted) setBatchBusy(false);
     }
   }
 
