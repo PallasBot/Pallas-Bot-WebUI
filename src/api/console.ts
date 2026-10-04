@@ -30,6 +30,9 @@ export {
   putCommonConfig,
   fetchCommonConfigRaw,
   putCommonConfigRaw,
+  fetchLlmProvidersConfig,
+  putLlmProvidersConfig,
+  putLlmProvider,
 } from "./consoleApi";
 
 export type {
@@ -604,140 +607,6 @@ export type LlmLocalRoutingConfig = {
   task_models?: Record<string, string>;
   env_file?: string;
 };
-
-export async function fetchLlmProvidersConfig(): Promise<LlmProvidersConfig> {
-  const { data: body } = await http.get("/common-config/llm/providers");
-  const data = envelopeData<LlmProvidersConfig>(body);
-  const routingIn = data?.routing;
-  const routing: LlmProvidersConfig["routing"] = {
-    chain_fallback: Array.isArray(routingIn?.chain_fallback) ? routingIn.chain_fallback : [],
-    tasks: routingIn?.tasks && typeof routingIn.tasks === "object" ? routingIn.tasks : {},
-  };
-  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "tier_backups")) {
-    const raw = routingIn.tier_backups;
-    const tier_backups: { high?: string; low?: string } = {};
-    if (raw && typeof raw === "object") {
-      const high = String((raw as { high?: string }).high || "").trim();
-      const low = String((raw as { low?: string }).low || "").trim();
-      if (high) tier_backups.high = high;
-      if (low) tier_backups.low = low;
-    }
-    routing.tier_backups = tier_backups;
-  }
-  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "tier_backup_models")) {
-    const raw = routingIn.tier_backup_models;
-    const tier_backup_models: { high?: string; low?: string } = {};
-    if (raw && typeof raw === "object") {
-      const high = String((raw as { high?: string }).high || "").trim();
-      const low = String((raw as { low?: string }).low || "").trim();
-      if (high) tier_backup_models.high = high;
-      if (low) tier_backup_models.low = low;
-    }
-    routing.tier_backup_models = tier_backup_models;
-  }
-  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "task_backups")) {
-    const raw = routingIn.task_backups;
-    const task_backups: Record<string, string> = {};
-    if (raw && typeof raw === "object") {
-      for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-        const task = String(key || "").trim();
-        const providerId = String(value || "").trim();
-        if (task && providerId) task_backups[task] = providerId;
-      }
-    }
-    routing.task_backups = task_backups;
-  }
-  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "task_backup_models")) {
-    const raw = routingIn.task_backup_models;
-    const task_backup_models: Record<string, string> = {};
-    if (raw && typeof raw === "object") {
-      for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-        const task = String(key || "").trim();
-        const model = String(value || "").trim();
-        if (task && model) task_backup_models[task] = model;
-      }
-    }
-    routing.task_backup_models = task_backup_models;
-  }
-  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "route_source")) {
-    const raw = String(routingIn.route_source || "").trim();
-    if (raw === "tiers" || raw === "tasks") routing.route_source = raw;
-  }
-  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "cost_currency")) {
-    routing.cost_currency = String(routingIn.cost_currency || "").trim().toUpperCase();
-  }
-  return {
-    providers: Array.isArray(data?.providers) ? data.providers : [],
-    routing,
-    providers_file: data?.providers_file,
-    file_exists: data?.file_exists,
-  };
-}
-
-export async function putLlmProvidersConfig(body: LlmProvidersConfig): Promise<LlmProvidersSaveResult> {
-  const payload = {
-    providers: body.providers.map((row) => {
-      const apiKeys = (Array.isArray(row.api_keys) ? row.api_keys : [])
-        .map((k) => String(k || "").trim())
-        .filter(Boolean);
-      const apiKey = String(row.api_key ?? "").trim() || apiKeys[0] || "";
-      const apiKeyEnv = String(row.api_key_env ?? "").trim();
-      const item: Record<string, unknown> = {
-        id: row.id,
-        kind: row.kind,
-        base_url: row.base_url,
-        api_key_env: apiKeyEnv,
-        default_model: row.default_model,
-        models: Array.isArray(row.models) ? row.models : [],
-        enabled: row.enabled,
-        task_models: row.task_models,
-        capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
-        model_effort: row.model_effort ?? "",
-        request_method: row.request_method || "chat_completions",
-        model_pricing: row.model_pricing && typeof row.model_pricing === "object" ? row.model_pricing : {},
-      };
-      if (apiKeys.length) item.api_keys = apiKeys;
-      if (apiKey) item.api_key = apiKey;
-      return item;
-    }),
-    routing: body.routing,
-  };
-  const { data: res } = await http.put("/common-config/llm/providers", payload, { timeout: 60_000 });
-  return envelopeData<LlmProvidersSaveResult>(res) || {};
-}
-
-/** 只保存单个提供方，避免整表 PUT 误擦其他提供方已存密钥。 */
-export async function putLlmProvider(row: LlmProviderRow): Promise<LlmProvidersSaveResult> {
-  const id = String(row.id || "").trim();
-  if (!id) throw new Error("provider id is required");
-  const apiKeys = (Array.isArray(row.api_keys) ? row.api_keys : [])
-    .map((k) => String(k || "").trim())
-    .filter(Boolean);
-  const apiKey = String(row.api_key ?? "").trim() || apiKeys[0] || "";
-  const apiKeyEnv = String(row.api_key_env ?? "").trim();
-  const payload: Record<string, unknown> = {
-    id,
-    kind: row.kind,
-    base_url: row.base_url,
-    api_key_env: apiKeyEnv,
-    default_model: row.default_model,
-    models: Array.isArray(row.models) ? row.models : [],
-    enabled: row.enabled,
-    task_models: row.task_models,
-    capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
-    model_effort: row.model_effort ?? "",
-    request_method: row.request_method || "chat_completions",
-    model_pricing: row.model_pricing && typeof row.model_pricing === "object" ? row.model_pricing : {},
-  };
-  if (apiKeys.length) payload.api_keys = apiKeys;
-  if (apiKey) payload.api_key = apiKey;
-  const { data: res } = await http.put(
-    `/common-config/llm/providers/${encodeURIComponent(id)}`,
-    payload,
-    { timeout: 60_000 },
-  );
-  return envelopeData<LlmProvidersSaveResult>(res) || {};
-}
 
 /** 改提供方 ID：后端同步更新该行与 routing / 主配置里的引用。 */
 export async function renameLlmProvider(oldId: string, newId: string): Promise<LlmProvidersSaveResult> {

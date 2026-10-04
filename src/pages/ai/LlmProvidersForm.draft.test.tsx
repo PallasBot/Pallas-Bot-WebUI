@@ -190,3 +190,19 @@ it("keeps provider and Ollama drafts independent when the local draft is saved",
   expect(await screen.findByRole("alertdialog")).not.toBeNull();
   expect(screen.getByText("有未保存的配置草稿")).not.toBeNull();
 });
+
+it("keeps the provider draft after a failed save", async () => {
+  const user = userEvent.setup();
+  api.putLlmProvider.mockRejectedValueOnce(new Error("offline"));
+  renderPage();
+  await screen.findByText("openai");
+  await user.click(screen.getByText("openai"));
+  const providerUrl = await screen.findByLabelText("API 基础 URL");
+  await user.clear(providerUrl);
+  await user.type(providerUrl, "https://failed-save.example/v1");
+
+  await user.click(screen.getByRole("button", { name: "保存提供方" }));
+
+  expect(await screen.findByText("offline")).not.toBeNull();
+  expect((screen.getByLabelText("API 基础 URL") as HTMLInputElement).value).toBe("https://failed-save.example/v1");
+});
