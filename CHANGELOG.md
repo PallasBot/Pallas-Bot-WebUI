@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.26] - 2026-10-04
 
 ### 更新公告
 
@@ -50,6 +50,31 @@
 * fix(webui): 移动菜单焦点、连接状态、配置标签与触屏操作体验
 * fix(webui): 插件筛选随地址恢复并避免窄屏配置工具条重叠
 
+### 提交明细
+
+### Fixed
+
+* fix(webui): 移动端日常操作体验完善 ([2728a72](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2728a7251c84718a8dd7bb5169e180588e06f13e))
+* fix(webui): 提供方配置读写统一收口 ([5319054](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/53190541eb7a15fcee2f90091e5b4b0c1e9c97d3))
+* fix(protocol): 任务观看生命周期隔离 ([8dc404a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8dc404a0ce349410c603442802039d62e9e4267b))
+* fix(webui): 窄屏操作与数据库错误提示 ([080f348](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/080f348a21e57fdd700527df0cc8404894f431df))
+* fix(webui): 任务进度观看随页面退出停止 ([1715196](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1715196e25208277938d12a1a90ee7ee2c66812c))
+* fix(webui): 日志流恢复与连接清理 ([421fab5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/421fab5d6313e391af01042f78d2558428852c1a))
+* fix(webui): 插件与实例目录缓存同步 ([afba615](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/afba6158ba463578e5c3240c04e68590d5ebdecf))
+* fix(webui): 配置草稿防止静默丢失 ([7be21f7](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7be21f727e60c1c1b005682500e64a62eb63ae6e))
+* fix(webui): 设置向导限制站内重定向 ([3d51281](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3d5128105ac2944991e4e158d7d92fcd7b371a83))
+
+### Changed
+
+* perf(webui): 字体产物移除冗余 WOFF ([ed88a1f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ed88a1f02b7254d0a51141a3e5dcae9cfa52c9b5))
+* refactor(webui): 控制台配置接入生成契约 ([7fabc40](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7fabc4040c24f00b3c37fff7f6834792c99246f8))
+* chore(deps): 路由与构建依赖安全更新 ([1d5776b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1d5776b4daf5c0c5351612db8385d402a3604e02))
+* chore(deps): 生产依赖升级至兼容安全版本 ([7144491](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7144491ad48762232836b50e29199babad6ec217))
+* test(webui): 测试基线纳入持续集成 ([5a09e6f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5a09e6f5176e0a4f2fd318935933bdf9cc355b2b))
+
+**完整变更**: [`v0.9.25...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.25...HEAD)
+
+
 ## [0.9.25] - 2026-09-20
 
 ### 更新公告
@@ -68,7 +93,6 @@
 * fix(webui): 记忆与后台任务并入低档编排 ([20a9999](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/20a99998b64237fc755e7f240bd7fbac03e87d03))
 
 **完整变更**: [`v0.9.24...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.24...HEAD)
-
 
 ## [0.9.24] - 2026-09-09
 
