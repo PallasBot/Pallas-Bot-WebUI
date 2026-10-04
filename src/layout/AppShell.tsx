@@ -1,4 +1,5 @@
-import { Fragment, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import brandMarkAsset from "@/assets/brand-avatar.png?url";
@@ -237,6 +238,9 @@ export default function AppShell() {
   const isNarrow = useIsShellNarrow();
   const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed());
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuPath = useRef(location.pathname);
+  const currentPath = useRef(location.pathname);
   const [pluginStoreSeenRev, setPluginStoreSeenRev] = useState(0);
   const [navigationNoticeSeenRev, setNavigationNoticeSeenRev] = useState(0);
   const [deferred, setDeferred] = useState(false);
@@ -349,7 +353,13 @@ export default function AppShell() {
       ? "重启全部进程"
       : "重启 Bot";
 
-  useEffect(() => setMobileOpen(false), [location.pathname]);
+  useEffect(() => {
+    currentPath.current = location.pathname;
+    setMobileOpen(false);
+  }, [location.pathname]);
+  useEffect(() => {
+    if (!isNarrow) setMobileOpen(false);
+  }, [isNarrow]);
 
   useEffect(() => {
     const item = MAIN_NAV_ITEMS.find((entry) => isNavActive(location.pathname, entry.to));
@@ -372,9 +382,9 @@ export default function AppShell() {
   }, []);
 
   const healthSettled = querySettled(healthQ);
-  const connOk = Boolean(healthQ.data?.ok);
+  const connOk = Boolean(healthQ.data?.ok) && !healthQ.isError;
   const connPending = !healthSettled;
-  const connText = connPending ? "探测中" : connOk ? "已连接" : "未连接";
+  const connText = connPending ? "探测中" : healthQ.isError ? "状态过期" : connOk ? "已连接" : "未连接";
   const connCls = connOk
     ? "shell__sidebar-conn--ok"
     : connPending
@@ -395,7 +405,6 @@ export default function AppShell() {
   }
 
   async function triggerShellRestart(workersOnly = false) {
-    setMobileOpen(false);
     await restartBot(workersOnly);
   }
 
@@ -409,22 +418,34 @@ export default function AppShell() {
           : "shell__main-inner--hub";
 
   return (
+    <DialogPrimitive.Root
+      open={mobileOpen}
+      onOpenChange={(open) => {
+        if (open) mobileMenuPath.current = location.pathname;
+        else {
+          requestAnimationFrame(() => {
+            const trigger = mobileMenuTriggerRef.current;
+            if (mobileMenuPath.current === currentPath.current && trigger?.isConnected) {
+              trigger.focus({ preventScroll: true });
+            }
+          });
+        }
+        setMobileOpen(open);
+      }}
+    >
     <div className={cn("shell", collapsed && !isNarrow && "shell--sidebar-collapsed")}>
       {restartConfirmDialog}
       <div className="shell__bg" aria-hidden />
 
       {isNarrow ? (
         <div className="shell__mobile-topbar">
-          <button
-            type="button"
-            className="shell__mobile-topbar-btn"
-            aria-label="打开菜单"
-            onClick={() => setMobileOpen(true)}
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M4 7h16M4 12h16M4 17h16" />
-            </svg>
-          </button>
+          <DialogPrimitive.Trigger asChild>
+            <button ref={mobileMenuTriggerRef} type="button" className="shell__mobile-topbar-btn" aria-label="打开菜单">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </button>
+          </DialogPrimitive.Trigger>
           <div className="shell__mobile-topbar-brand">
             <img className="shell__mobile-topbar-mark" src={brandMarkUrl} alt="" width={28} height={28} />
             <div className="shell__brand-title-row shell__mobile-topbar-title-row">
@@ -487,6 +508,7 @@ export default function AppShell() {
                     className="shell__sidebar-conn shell__sidebar-conn--brand"
                     pending={connPending}
                     ok={connOk}
+                    offLabel={connText}
                   />
                   <span className="shell__brand-badge" title="控制台资源版本">
                     {brandVersionDisplay}
@@ -600,9 +622,15 @@ export default function AppShell() {
         </div>
       </aside>
 
-      {isNarrow && mobileOpen ? (
-        <div className="shell-mobile-nav">
-          <aside className="shell-mobile-nav__panel" role="dialog" aria-modal="true" aria-label="主导航">
+      {isNarrow ? (
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="shell-mobile-nav__backdrop" />
+          <DialogPrimitive.Content
+            className="shell-mobile-nav"
+            style={{ pointerEvents: "none" }}
+          >
+            <DialogPrimitive.Title className="sr-only">主导航</DialogPrimitive.Title>
+            <aside className="shell-mobile-nav__panel">
             <div className="shell-mobile-nav__head">
               <div className="shell-mobile-nav__brand-block">
                 <div className="shell__brand-mark-wrap">
@@ -620,16 +648,19 @@ export default function AppShell() {
                       className="shell__sidebar-conn shell__sidebar-conn--brand"
                       pending={connPending}
                       ok={connOk}
+                      offLabel={connText}
                     />
                   </div>
                 </div>
               </div>
-              <button type="button" className="shell-mobile-nav__close" aria-label="关闭菜单" onClick={() => setMobileOpen(false)}>
-                ×
-              </button>
+              <DialogPrimitive.Close asChild>
+                <button type="button" className="shell-mobile-nav__close" aria-label="关闭菜单">
+                  ×
+                </button>
+              </DialogPrimitive.Close>
             </div>
             <nav className="shell-mobile-nav__links" aria-label="主导航">
-              <NavTree mobile onNavigate={() => setMobileOpen(false)} navNotices={navNotices} />
+              <NavTree mobile navNotices={navNotices} />
             </nav>
             <div className="shell-mobile-nav__tools">
               {restartAvailable ? (
@@ -678,9 +709,9 @@ export default function AppShell() {
                 </Fragment>
               ))}
             </nav>
-          </aside>
-          <button type="button" className="shell-mobile-nav__backdrop" aria-label="关闭菜单" onClick={() => setMobileOpen(false)} />
-        </div>
+            </aside>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
       ) : null}
 
       <div className="shell__main">
@@ -693,5 +724,6 @@ export default function AppShell() {
       <ConsoleToastHost />
       <BotRestartProgressDialog />
     </div>
+    </DialogPrimitive.Root>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 import { Braces, Hash, List, TextCursorInput, ToggleLeft } from "lucide-react";
@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { resolveConfigFieldLayout } from "@/utils/pluginConfigFieldModel";
 import { fieldDisplayTitle, fieldHelpDefaultValue } from "@/utils/configFieldDisplay";
+import { tryParseStringMap } from "@/components/config/StringMapField";
 
 function fieldKindIcon(kind: string): LucideIcon {
   if (kind === "bool") return ToggleLeft;
@@ -112,6 +113,12 @@ export default function PluginConfigFieldShell({
   const layout = resolveConfigFieldLayout(field);
   const title = fieldDisplayTitle(field);
   const hasDesc = Boolean(field.description?.trim());
+  const fieldId = useId();
+  const labelId = `${fieldId}-label`;
+  const descriptionId = hasDesc ? `${fieldId}-description` : undefined;
+  const usesCompositeControl =
+    field.name === "llm_persona_output_firewall" ||
+    (field.kind === "json" && tryParseStringMap(modelValue) != null);
   const Icon = fieldKindIcon(field.kind);
 
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -215,6 +222,8 @@ export default function PluginConfigFieldShell({
     <UiField
       className={cn("plugin-config-form-item", `plugin-config-form-item--${layout}`)}
       label={title}
+      labelId={labelId}
+      htmlFor={usesCompositeControl ? undefined : fieldId}
       required={Boolean(field.required)}
       secret={Boolean(field.secret)}
       labelStart={
@@ -244,11 +253,15 @@ export default function PluginConfigFieldShell({
         field={field}
         modelValue={modelValue}
         onValueChange={onValueChange}
+        id={usesCompositeControl ? undefined : fieldId}
+        labelId={usesCompositeControl ? labelId : undefined}
+        ariaDescribedBy={descriptionId}
         showLabel={false}
         showMeta={false}
         showDescription={false}
         inputMaxWidth="100%"
       />
+      {hasDesc ? <span id={descriptionId} className="sr-only">{field.description}</span> : null}
 
       {popoverOpen && typeof document !== "undefined"
         ? createPortal(

@@ -22,6 +22,7 @@ type Props = {
   /** 默认 destructive；重启/停止等用 default */
   confirmVariant?: "destructive" | "default";
   titleId?: string;
+  onCloseAutoFocus?: (event: Event) => void;
   onClose: () => void;
   onConfirm: () => void;
 };
@@ -38,6 +39,7 @@ export default function ConsoleConfirmModal({
   busyLabel,
   confirmVariant = "destructive",
   titleId,
+  onCloseAutoFocus,
   onClose,
   onConfirm,
 }: Props) {
@@ -53,7 +55,7 @@ export default function ConsoleConfirmModal({
         if (!next && !busy) onClose();
       }}
     >
-      <AlertDialogContent className="bg-card">
+      <AlertDialogContent className="bg-card" onCloseAutoFocus={onCloseAutoFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle id={headingId}>{title}</AlertDialogTitle>
           <AlertDialogDescription>{subtitle}</AlertDialogDescription>

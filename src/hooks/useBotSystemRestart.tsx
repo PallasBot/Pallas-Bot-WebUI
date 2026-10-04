@@ -68,6 +68,7 @@ export function useBotSystemRestart(options?: {
   );
   const [restartConfirm, setRestartConfirm] = useState<{ workersOnly: boolean } | null>(null);
   const restartConfirmResolver = useRef<((ok: boolean) => void) | null>(null);
+  const restartConfirmFocusTarget = useRef<HTMLElement | null>(null);
   const shardedRef = useRef<boolean | null>(null);
 
   useEffect(() => {
@@ -116,6 +117,7 @@ export function useBotSystemRestart(options?: {
 
   const restartBot = useCallback(
     async (workersOnly = false): Promise<boolean> => {
+      const active = document.activeElement;
       await ensureRestartContext();
       const availability = options?.botUpdateCheck ?? restartAvailability;
       const available = Boolean(
@@ -123,6 +125,7 @@ export function useBotSystemRestart(options?: {
       );
       if (!available) return false;
       const ok = await new Promise<boolean>((resolve) => {
+        restartConfirmFocusTarget.current = active instanceof HTMLElement ? active : null;
         restartConfirmResolver.current?.(false);
         restartConfirmResolver.current = resolve;
         setRestartConfirm({ workersOnly });
@@ -217,6 +220,14 @@ export function useBotSystemRestart(options?: {
       confirmLabel={restartConfirm?.workersOnly ? "确认重启节点" : "确认重启"}
       onClose={() => finishRestartConfirm(false)}
       onConfirm={() => finishRestartConfirm(true)}
+      onCloseAutoFocus={(event) => {
+        const target = restartConfirmFocusTarget.current;
+        if (target?.isConnected) {
+          event.preventDefault();
+          target.focus({ preventScroll: true });
+        }
+        restartConfirmFocusTarget.current = null;
+      }}
     />
   );
 

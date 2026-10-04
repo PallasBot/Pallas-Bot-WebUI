@@ -31,6 +31,9 @@ export type TagsInputProps = {
   /** 仅展示的历史值；不会回写、复制或作为可选项提交。 */
   readOnlyValues?: string[];
   className?: string;
+  id?: string;
+  ariaLabel?: string;
+  ariaDescribedBy?: string;
   /** 如 QQ/群号：numeric */
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   /** 提交前校验；不匹配则忽略 */
@@ -100,6 +103,9 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
     options,
     readOnlyValues = [],
     className,
+    id,
+    ariaLabel,
+    ariaDescribedBy,
     inputMode,
     acceptPattern,
     sortable = false,
@@ -334,12 +340,15 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
           </div>
         ) : null}
         <Input
+          id={id}
           className="tags-input__field"
           type="text"
           inputMode={inputMode}
           autoComplete="off"
           value={draft}
           placeholder={placeholder}
+          aria-label={ariaLabel}
+          aria-describedby={ariaDescribedBy}
           disabled={disabled}
           onChange={(e) => {
             setDraft(e.target.value);

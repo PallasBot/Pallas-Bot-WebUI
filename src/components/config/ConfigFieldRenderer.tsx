@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bot } from "lucide-react";
 import type { PluginConfigField } from "@/api/console";
@@ -45,6 +45,9 @@ export default function ConfigFieldRenderer({
   field,
   modelValue,
   onValueChange,
+  id,
+  labelId,
+  ariaDescribedBy,
   showLabel = true,
   showMeta = true,
   showDescription = true,
@@ -53,11 +56,22 @@ export default function ConfigFieldRenderer({
   field: PluginConfigField;
   modelValue: string;
   onValueChange: (value: string) => void;
+  id?: string;
+  labelId?: string;
+  ariaDescribedBy?: string;
   showLabel?: boolean;
   showMeta?: boolean;
   showDescription?: boolean;
   inputMaxWidth?: string;
 }) {
+  const generatedId = useId();
+  const controlId = id ?? `config-field-${generatedId}`;
+  const fieldLabelId = labelId ?? `${controlId}-label`;
+  const visibleDescription = showDescription && field.description?.trim() ? field.description : undefined;
+  const descriptionId = visibleDescription ? `${controlId}-description` : undefined;
+  const describedByIds = new Set(ariaDescribedBy?.trim().split(/\s+/).filter(Boolean) ?? []);
+  if (descriptionId) describedByIds.add(descriptionId);
+  const describedBy = [...describedByIds].join(" ") || undefined;
   const choices = fieldChoices(field);
   const fieldWithChoices = { ...field, choices };
   const usesBotId = isBotIdField(field);
@@ -152,16 +166,23 @@ export default function ConfigFieldRenderer({
   }
 
   return (
-    <div className={cn("config-field-renderer form-field", usesBoolSwitch && "config-field-renderer--bool")}>
+    <div
+      className={cn("config-field-renderer form-field", usesBoolSwitch && "config-field-renderer--bool")}
+      role={usesStringMap || usesPersonaOutputFirewall ? "group" : undefined}
+      aria-labelledby={usesStringMap || usesPersonaOutputFirewall ? fieldLabelId : undefined}
+      aria-describedby={usesStringMap || usesPersonaOutputFirewall ? describedBy : undefined}
+    >
       {usesBoolSwitch && showLabel ? (
         <div className="config-field-renderer__bool-head">
-          <div className="config-field-renderer__title form-field__label form-field__label--title">
+          <label id={fieldLabelId} htmlFor={controlId} className="config-field-renderer__title form-field__label form-field__label--title">
             {fieldDisplayTitle(field)}
-          </div>
+          </label>
           <ConsoleSwitch
+            id={controlId}
             checked={boolOn}
             label={boolLabel}
-            ariaLabel={boolLabel}
+            ariaLabel={fieldDisplayTitle(field)}
+            ariaDescribedBy={describedBy}
             onCheckedChange={onBoolChange}
           />
         </div>
@@ -169,21 +190,29 @@ export default function ConfigFieldRenderer({
       {usesBoolSwitch && !showLabel ? (
         <div className="config-field-renderer__bool-only">
           <ConsoleSwitch
+            id={controlId}
             checked={boolOn}
             label={boolLabel}
-            ariaLabel={boolLabel}
+            ariaLabel={fieldDisplayTitle(field)}
+            ariaDescribedBy={describedBy}
             onCheckedChange={onBoolChange}
           />
         </div>
       ) : null}
       {!usesBoolSwitch && showLabel ? (
-        <div className="form-field__label form-field__label--title config-field-renderer__title">
-          {fieldDisplayTitle(field)}
-        </div>
+        usesStringMap || usesPersonaOutputFirewall ? (
+          <div id={fieldLabelId} className="form-field__label form-field__label--title config-field-renderer__title">
+            {fieldDisplayTitle(field)}
+          </div>
+        ) : (
+          <label id={fieldLabelId} htmlFor={controlId} className="form-field__label form-field__label--title config-field-renderer__title">
+            {fieldDisplayTitle(field)}
+          </label>
+        )
       ) : null}
 
-      {showDescription && field.description ? (
-        <div className="muted common-config-field-desc config-field-renderer__desc">{field.description}</div>
+      {visibleDescription ? (
+        <div id={descriptionId} className="muted common-config-field-desc config-field-renderer__desc">{visibleDescription}</div>
       ) : null}
       {showMeta ? (
         <div className="muted config-field-renderer__meta">
@@ -195,6 +224,7 @@ export default function ConfigFieldRenderer({
       {usesBotId ? (
         <div className="form-field__control w-full" style={{ maxWidth: inputMaxWidth }}>
           <BotAccountCombobox
+            id={controlId}
             value={Number(modelValue) > 0 ? String(Math.floor(Number(modelValue))) : BOT_ID_ANY}
             onValueChange={(v) => {
               if (v === BOT_ID_ANY) {
@@ -213,6 +243,7 @@ export default function ConfigFieldRenderer({
             }}
             placeholder="任选在线"
             ariaLabel={fieldDisplayTitle(field)}
+            ariaDescribedBy={describedBy}
             title={
               botSelected
                 ? botSelectDropdownLabel(botSelected.nickname, botSelected.id)
@@ -228,6 +259,7 @@ export default function ConfigFieldRenderer({
       {usesEnumSelect ? (
         <div className="form-field__control w-full" style={{ maxWidth: inputMaxWidth }}>
           <Combobox
+            id={controlId}
             value={modelValue}
             onValueChange={onValueChange}
             options={enumOptions}
@@ -236,6 +268,7 @@ export default function ConfigFieldRenderer({
             emptyText="无匹配选项"
             searchCount={choices.length}
             ariaLabel={fieldDisplayTitle(field)}
+            ariaDescribedBy={describedBy}
             triggerClassName="w-full"
           />
         </div>
@@ -243,6 +276,9 @@ export default function ConfigFieldRenderer({
 
       {usesTags ? (
         <TagsInput
+          id={controlId}
+          ariaLabel={fieldDisplayTitle(field)}
+          ariaDescribedBy={describedBy}
           variant="embedded"
           value={tags}
           onChange={(next) =>
@@ -276,6 +312,8 @@ export default function ConfigFieldRenderer({
       !usesStringMap &&
       !usesStructuredJsonForm ? (
         <textarea
+          id={controlId}
+          aria-describedby={describedBy}
           className="textarea inp form-field__control config-field-renderer__textarea"
           rows={6}
           value={modelValue}
@@ -287,6 +325,8 @@ export default function ConfigFieldRenderer({
 
       {usesSecretInput ? (
         <UiInput
+          id={controlId}
+          aria-describedby={describedBy}
           className="form-field__control"
           type="password"
           revealable
@@ -298,6 +338,8 @@ export default function ConfigFieldRenderer({
 
       {usesNumberInput ? (
         <input
+          id={controlId}
+          aria-describedby={describedBy}
           className="inp form-field__control"
           type="number"
           value={modelValue}
@@ -311,6 +353,8 @@ export default function ConfigFieldRenderer({
 
       {usesMultiline ? (
         <textarea
+          id={controlId}
+          aria-describedby={describedBy}
           className="textarea form-field__control config-field-renderer__textarea"
           rows={4}
           value={modelValue}
@@ -327,7 +371,14 @@ export default function ConfigFieldRenderer({
       !usesSecretInput &&
       !usesNumberInput &&
       !usesMultiline ? (
-        <UiInput className="form-field__control" type="text" value={modelValue} onValueChange={onValueChange} />
+        <UiInput
+          id={controlId}
+          aria-describedby={describedBy}
+          className="form-field__control"
+          type="text"
+          value={modelValue}
+          onValueChange={onValueChange}
+        />
       ) : null}
     </div>
   );

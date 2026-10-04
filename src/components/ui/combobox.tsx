@@ -46,6 +46,7 @@ export type ComboboxProps = {
   triggerClassName?: string;
   contentClassName?: string;
   ariaLabel?: string;
+  ariaDescribedBy?: string;
   title?: string;
   disabled?: boolean;
   id?: string;
@@ -76,6 +77,7 @@ export function Combobox({
   triggerClassName,
   contentClassName,
   ariaLabel,
+  ariaDescribedBy,
   title,
   disabled,
   id,
@@ -132,6 +134,7 @@ export function Combobox({
           aria-expanded={open}
           aria-busy={loading || undefined}
           aria-label={ariaLabel}
+          aria-describedby={ariaDescribedBy}
           title={title}
           disabled={disabled}
           className={cn(COMBOBOX_TRIGGER_CLASS, triggerClassName)}

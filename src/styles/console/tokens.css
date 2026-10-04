@@ -658,6 +658,13 @@ html[data-density="compact"] .card__body {
   }
 }
 
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 560px) {
+  :root {
+    --console-control-font-size: 16px;
+    --ui-ctrl-font: 16px;
+  }
+}
+
 *,
 *::before,
 *::after {

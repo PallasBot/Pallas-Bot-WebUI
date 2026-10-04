@@ -30,6 +30,7 @@ export type BotAccountComboboxProps = {
   triggerClassName?: string;
   contentClassName?: string;
   ariaLabel?: string;
+  ariaDescribedBy?: string;
   title?: string;
   disabled?: boolean;
   id?: string;
@@ -54,6 +55,7 @@ export default function BotAccountCombobox({
   triggerClassName,
   contentClassName,
   ariaLabel = "当前 Bot 账号",
+  ariaDescribedBy,
   title,
   disabled,
   id,
@@ -121,6 +123,7 @@ export default function BotAccountCombobox({
       triggerClassName={resolvedTriggerClassName}
       contentClassName={contentClassName}
       ariaLabel={ariaLabel}
+      ariaDescribedBy={ariaDescribedBy}
       title={resolvedTitle}
       disabled={disabled}
       memoryKey={memoryKey}

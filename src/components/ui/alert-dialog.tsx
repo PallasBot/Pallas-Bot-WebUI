@@ -16,7 +16,7 @@ const AlertDialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-50 ui-surface-dialog-overlay bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-[300] ui-surface-dialog-overlay bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -34,7 +34,7 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        "ui-surface-dialog fixed left-1/2 top-1/2 z-50 grid max-h-[min(90vh,calc(100dvh-32px))] w-[min(28rem,calc(100vw-32px))] max-w-[min(28rem,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-[var(--radius-md,12px)] border bg-background p-4 shadow-lg sm:p-6",
+        "ui-surface-dialog fixed left-1/2 top-1/2 z-[300] grid max-h-[min(90vh,calc(100dvh-32px))] w-[min(28rem,calc(100vw-32px))] max-w-[min(28rem,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-[var(--radius-md,12px)] border bg-background p-4 shadow-lg sm:p-6",
         "duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
       )}
