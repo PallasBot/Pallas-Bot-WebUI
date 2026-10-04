@@ -398,7 +398,9 @@ describe("selected generated console contracts", () => {
 
     renderCommonConfig();
     const field = await screen.findByLabelText("log_level") as HTMLInputElement;
+    await waitFor(() => expect(field.value).toBe("INFO"));
     await user.clear(field);
+    expect(field.value).toBe("");
     await user.type(field, "DEBUG");
     await user.click(await screen.findByRole("button", { name: "保存" }));
 

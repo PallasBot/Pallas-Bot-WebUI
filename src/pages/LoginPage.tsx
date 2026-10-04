@@ -8,7 +8,7 @@ import { applyShellTheme, readPrefs, writePrefs, type ThemeMode } from "@/theme/
 import { PALLAS_BOT_DOC } from "@/utils/pallasExternalLinks";
 
 const LOGIN_REASON_MESSAGES: Record<string, string> = {
-  password_changed: "登录密码已更新，请使用新密码重新登录。",
+  password_changed: "登录密钥已更新，请使用新密钥重新登录。",
 };
 
 function brandAvatarSrc(): string {
@@ -60,7 +60,7 @@ export default function LoginPage() {
     if (busy) return;
     const token = password.trim();
     if (!token) {
-      setError("请输入控制台密码。");
+      setError("请输入控制台密钥。");
       return;
     }
     setBusy(true);
@@ -112,7 +112,7 @@ export default function LoginPage() {
                 </span>
               </div>
               <p className="m-0 mt-0.5 text-[0.8125rem] leading-snug text-[var(--text-muted)]">
-                输入控制台密码以继续。
+                输入控制台密钥以继续。
               </p>
             </div>
           </header>
@@ -130,8 +130,8 @@ export default function LoginPage() {
                 name="password"
                 autoComplete="current-password"
                 autoFocus
-                placeholder="控制台密码"
-                aria-label="控制台密码"
+                placeholder="控制台密钥"
+                aria-label="控制台密钥"
                 value={password}
                 disabled={busy}
                 className="h-10 pr-16"
@@ -151,7 +151,7 @@ export default function LoginPage() {
               {busy ? "登录中…" : "进入"}
             </Button>
             <p className="m-0 text-center text-[0.75rem] leading-snug text-[var(--text-muted)]">
-              忘记密码？见{" "}
+              忘记密钥？见{" "}
               <a
                 className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
                 href={PALLAS_BOT_DOC.faqConsolePassword}

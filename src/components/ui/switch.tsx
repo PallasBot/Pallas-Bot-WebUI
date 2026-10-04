@@ -12,6 +12,7 @@ export type SwitchProps = {
   tone?: "default" | "amber";
   "aria-label"?: string;
   "aria-labelledby"?: string;
+  "aria-describedby"?: string;
   onCheckedChange?: (checked: boolean) => void;
   /** 挂在外层 label 上，便于卡片行内 stopPropagation */
   onClick?: React.MouseEventHandler<HTMLLabelElement>;
@@ -37,6 +38,7 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
       onKeyDown,
       "aria-label": ariaLabel,
       "aria-labelledby": ariaLabelledBy,
+      "aria-describedby": ariaDescribedBy,
     },
     ref,
   ) => {
@@ -74,6 +76,7 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
           disabled={disabled}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
+          aria-describedby={ariaDescribedBy}
           onChange={(e) => {
             const next = e.target.checked;
             if (!isControlled) setUncontrolled(next);

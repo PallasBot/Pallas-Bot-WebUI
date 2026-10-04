@@ -9,6 +9,8 @@ export default function ConsoleSwitch({
   showLabel = true,
   tone = "default",
   ariaLabel,
+  ariaDescribedBy,
+  id,
   className,
   onCheckedChange,
 }: {
@@ -18,16 +20,20 @@ export default function ConsoleSwitch({
   showLabel?: boolean;
   tone?: "default" | "amber";
   ariaLabel?: string;
+  ariaDescribedBy?: string;
+  id?: string;
   className?: string;
   onCheckedChange: (next: boolean) => void;
 }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <Switch
+        id={id}
         checked={checked}
         disabled={disabled}
         tone={tone}
         aria-label={ariaLabel || label}
+        aria-describedby={ariaDescribedBy}
         onCheckedChange={onCheckedChange}
       />
       {showLabel && label ? (

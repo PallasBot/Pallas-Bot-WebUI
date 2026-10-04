@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import type { ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { createMemoryRouter, RouterProvider, useNavigate } from "react-router-dom";
+import { createMemoryRouter, Outlet, RouterProvider, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   fetchPlugins,
@@ -12,8 +12,10 @@ import {
   invalidatePluginsCache,
   peekHomeOverviewCache,
 } from "@/api/consoleApi";
+import type { PluginConfigData } from "@/api/console";
 import type { InstancesData, PluginRow } from "@/api/pallasTypes";
 import PluginConfigWorkspace from "@/components/PluginConfigWorkspace";
+import { DraftProtectionProvider } from "@/components/DraftProtection";
 import HomePage from "@/pages/HomePage";
 import PluginsPage from "@/pages/PluginsPage";
 import InstancesPage from "@/pages/InstancesPage";
@@ -113,7 +115,7 @@ function emptyInstances(): InstancesData {
 
 let pluginRows: PluginRow[] = [catalogRow("before")];
 let instanceData: InstancesData = emptyInstances();
-let configData = {
+let configData: PluginConfigData = {
   plugin: "demo",
   module: "demo",
   fields: [{
@@ -138,6 +140,26 @@ function RouteButtons() {
     <>
       <button type="button" onClick={() => navigate("/")}>前往首页</button>
       <button type="button" onClick={() => navigate("/plugins")}>前往插件管理</button>
+    </>
+  );
+}
+
+function FilterRouteProbe() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return (
+    <>
+      <output data-testid="current-location">{location.pathname}{location.search}{location.hash}</output>
+      <button
+        type="button"
+        onClick={() => navigate({
+          pathname: location.pathname,
+          search: "?keep=yes&q=changed&category=core",
+          hash: location.hash,
+        }, { replace: true })}
+      >
+        更新筛选参数
+      </button>
     </>
   );
 }
@@ -200,6 +222,122 @@ it("PluginsPage refresh bypasses the module snapshot and renders the new directo
 
   await screen.findByRole("heading", { name: "after" });
   expect(network.openapiGet.mock.calls.filter(([url]) => url === "/plugins")).toHaveLength(2);
+});
+
+it("restores plugin filters from the URL and leaves a dirty editor alone on same-path filter changes", async () => {
+  const user = userEvent.setup();
+  pluginRows = [catalogRow("demo", { name: "Demo" })];
+  configData = {
+    plugin: "demo",
+    module: "demo",
+    fields: [{
+      name: "display_name",
+      kind: "string",
+      required: false,
+      description: "",
+      env_key: "DEMO_DISPLAY_NAME",
+      label: "Display name",
+      default: "",
+      current: "before",
+    }],
+  };
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const router = createMemoryRouter(
+    [{
+      path: "/",
+      element: <DraftProtectionProvider><Outlet /></DraftProtectionProvider>,
+      children: [
+        { path: "plugins", element: <><FilterRouteProbe /><PluginsPage /></> },
+        { path: "plugins/:name", element: <><FilterRouteProbe /><PluginsPage /></> },
+        { path: "instances", element: <h1>Instances route</h1> },
+      ],
+    }],
+    { initialEntries: ["/plugins?keep=yes&q=demo&category=core#section"] },
+  );
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+
+  await screen.findByRole("heading", { name: "Demo" });
+  expect((screen.getByRole("searchbox", { name: "搜索插件" }) as HTMLInputElement).value).toBe("demo");
+  expect(screen.getByRole("combobox", { name: "插件分类" }).textContent).toContain("内核");
+
+  await user.clear(screen.getByRole("searchbox", { name: "搜索插件" }));
+  await user.type(screen.getByRole("searchbox", { name: "搜索插件" }), "dem");
+  expect(screen.getByTestId("current-location").textContent).toBe(
+    "/plugins?keep=yes&category=core&q=dem#section",
+  );
+
+  await user.click(screen.getByRole("button", { name: "编辑" }));
+  await screen.findByDisplayValue("before");
+  expect(screen.getByTestId("current-location").textContent).toBe(
+    "/plugins/demo?keep=yes&category=core&q=dem#section",
+  );
+  await user.click(screen.getByRole("button", { name: "关闭" }));
+  await waitFor(() => {
+    expect(screen.getByTestId("current-location").textContent).toBe(
+      "/plugins?keep=yes&category=core&q=dem#section",
+    );
+  });
+
+  await user.click(screen.getByRole("button", { name: "编辑" }));
+  const editor = await screen.findByDisplayValue("before");
+  await user.clear(editor);
+  await user.type(editor, "edited draft");
+
+  void router.navigate({
+    pathname: router.state.location.pathname,
+    search: "?keep=yes&q=changed&category=core",
+    hash: router.state.location.hash,
+  }, { replace: true });
+  await waitFor(() => {
+    expect(screen.getByTestId("current-location").textContent).toContain("q=changed");
+  });
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(screen.getByDisplayValue("edited draft")).toBeTruthy();
+  expect(screen.getByTestId("current-location").textContent).toBe(
+    "/plugins/demo?keep=yes&q=changed&category=core#section",
+  );
+
+  void router.navigate("/instances");
+  const confirm = await screen.findByRole("alertdialog");
+  await user.click(within(confirm).getByRole("button", { name: "取消" }));
+  expect(screen.getByDisplayValue("edited draft")).toBeTruthy();
+  expect(screen.getByTestId("current-location").textContent).toBe(
+    "/plugins/demo?keep=yes&q=changed&category=core#section",
+  );
+
+  void router.navigate("/instances");
+  await user.click(await screen.findByRole("button", { name: "离开页面" }));
+  await screen.findByRole("heading", { name: "Instances route" });
+  await router.navigate(-1);
+  await screen.findByRole("heading", { name: "Demo" });
+  expect(document.querySelector<HTMLInputElement>('input[aria-label="搜索插件"]')?.value).toBe("changed");
+  expect(screen.getByTestId("current-location").textContent).toBe(
+    "/plugins/demo?keep=yes&q=changed&category=core#section",
+  );
+});
+
+it("removes an invalid plugin category without losing other query or hash state", async () => {
+  pluginRows = [catalogRow("demo", { name: "Demo" })];
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const router = createMemoryRouter(
+    [{ path: "*", element: <><FilterRouteProbe /><PluginsPage /></> }],
+    { initialEntries: ["/plugins?keep=yes&q=demo&category=invalid#section"] },
+  );
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+
+  await screen.findByRole("heading", { name: "Demo" });
+  await waitFor(() => {
+    expect(screen.getByTestId("current-location").textContent).toBe("/plugins?keep=yes&q=demo#section");
+  });
+  expect((screen.getByRole("searchbox", { name: "搜索插件" }) as HTMLInputElement).value).toBe("demo");
 });
 
 it("InstancesPage refresh bypasses both catalog snapshots and renders the new instance", async () => {
