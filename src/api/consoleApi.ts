@@ -12,6 +12,11 @@ import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
 import { protocolAccountsSignature } from "@/utils/protocolUi";
 import type { AiExtensionLogKind } from "@/config/aiConstants";
 import type {
+  LlmProviderRow,
+  LlmProvidersConfig,
+  LlmProvidersSaveResult,
+} from "./console";
+import type {
   PluginConfigData as PluginFormConfigData,
   PluginConfigField,
   PluginConfigFieldGroup,
@@ -93,8 +98,6 @@ import type {
   LlmEmbeddingStatus,
   LlmRuntimeOverviewData,
   LlmLocalRoutingConfig,
-  LlmProvidersConfig,
-  LlmProvidersSaveResult,
   LlmProviderModelsResult,
   LlmProviderTestResult,
   LlmHistorySessionDetailData,
@@ -1257,10 +1260,163 @@ export async function postServiceGatewaysConnectivityCheck(
   >("/common-config/service_gateways/connectivity-check", values ? { values } : {})) as PluginConfigCheckResult;
 }
 
+function isLlmProviderModel(value: unknown): boolean {
+  return isRecord(value)
+    && optionalIs(value, "model_id", isString)
+    && optionalIs(value, "name", isString)
+    && optionalIs(value, "capabilities", isStringArray)
+    && optionalIs(value, "model_effort", isString)
+    && optionalIs(value, "pricing_rules", (rules) => Array.isArray(rules) && rules.every(isRecord));
+}
+
+function isLlmModelPricing(value: unknown): boolean {
+  return isRecord(value)
+    && Object.values(value).every((row) => isRecord(row)
+      && ["price_in", "price_out", "cache_price_in", "cache_price_out"]
+        .every((key) => optionalIs(row, key, isNumber)));
+}
+
+function isLlmProviderConfigRow(value: unknown): value is LlmProviderRow {
+  return isRecord(value)
+    && isString(value.id)
+    && Boolean(value.id.trim())
+    && isString(value.kind)
+    && Boolean(value.kind.trim())
+    && ["base_url", "api_key", "api_key_env", "default_model", "model_effort", "request_method"]
+      .every((key) => optionalIs(value, key, isString))
+    && optionalIs(value, "api_keys", isStringArray)
+    && optionalIs(value, "api_key_hints", isStringArray)
+    && optionalIs(value, "api_key_set", isBoolean)
+    && optionalIs(value, "api_keys_count", isNumber)
+    && optionalIs(value, "enabled", isBoolean)
+    && optionalIs(value, "models", (models) => Array.isArray(models) && models.every(isLlmProviderModel))
+    && optionalIs(value, "task_models", isStringRecord)
+    && optionalIs(value, "capabilities", isStringArray)
+    && optionalIs(value, "model_pricing", isLlmModelPricing);
+}
+
+function isTierBackupMap(value: unknown): boolean {
+  return isRecord(value)
+    && ["high", "low"].every((key) => optionalIs(value, key, isString));
+}
+
+function isLlmProvidersRouting(value: unknown): value is Record<string, unknown> {
+  return isRecord(value)
+    && optionalIs(value, "chain_fallback", isStringArray)
+    && optionalIs(value, "tasks", isStringRecord)
+    && optionalIs(value, "tier_backups", isTierBackupMap)
+    && optionalIs(value, "tier_backup_models", isTierBackupMap)
+    && optionalIs(value, "task_backups", isStringRecord)
+    && optionalIs(value, "task_backup_models", isStringRecord)
+    && optionalIs(value, "route_source", isString)
+    && optionalIs(value, "cost_currency", isString);
+}
+
+function normalizeTierBackupMap(value: Record<string, unknown>): Record<string, unknown> {
+  const normalized = { ...value };
+  for (const key of ["high", "low"]) {
+    const item = (value[key] as string | undefined)?.trim();
+    if (item) normalized[key] = item;
+    else delete normalized[key];
+  }
+  return normalized;
+}
+
+function normalizeTaskBackupMap(value: Record<string, string>): Record<string, string> {
+  const normalized: Record<string, string> = {};
+  for (const [key, item] of Object.entries(value)) {
+    const task = key.trim();
+    const target = item.trim();
+    if (task && target) normalized[task] = target;
+  }
+  return normalized;
+}
+
+function parseLlmProvidersConfig(value: unknown): LlmProvidersConfig {
+  if (!isRecord(value)) throw new Error("LLM providers config: 响应异常");
+  const providers = "providers" in value ? value.providers : [];
+  const routingIn = "routing" in value ? value.routing : {};
+  if (!Array.isArray(providers) || !providers.every(isLlmProviderConfigRow) || !isLlmProvidersRouting(routingIn)) {
+    throw new Error("LLM providers config: 响应异常");
+  }
+  if (!optionalIs(value, "providers_file", isString) || !optionalIs(value, "file_exists", isBoolean)) {
+    throw new Error("LLM providers config: 响应异常");
+  }
+
+  const routing: Record<string, unknown> = {
+    ...routingIn,
+    chain_fallback: routingIn.chain_fallback ?? [],
+    tasks: routingIn.tasks ?? {},
+  };
+  for (const key of ["tier_backups", "tier_backup_models"] as const) {
+    if (key in routingIn) routing[key] = normalizeTierBackupMap(routingIn[key] as Record<string, unknown>);
+  }
+  for (const key of ["task_backups", "task_backup_models"] as const) {
+    if (key in routingIn) routing[key] = normalizeTaskBackupMap(routingIn[key] as Record<string, string>);
+  }
+  if ("route_source" in routingIn) {
+    const routeSource = (routingIn.route_source as string).trim();
+    if (routeSource === "tiers" || routeSource === "tasks") routing.route_source = routeSource;
+    else delete routing.route_source;
+  }
+  if ("cost_currency" in routingIn) {
+    routing.cost_currency = (routingIn.cost_currency as string).trim().toUpperCase();
+  }
+
+  return {
+    ...value,
+    providers: providers.map((provider) => ({
+      ...provider,
+      base_url: provider.base_url ?? "",
+      api_key_env: provider.api_key_env ?? "",
+      default_model: provider.default_model ?? "",
+      enabled: provider.enabled ?? false,
+      task_models: provider.task_models ?? {},
+    })),
+    routing,
+  } as LlmProvidersConfig;
+}
+
+function providerWritePayload(row: LlmProviderRow, id = row.id): Record<string, unknown> {
+  if (row.models !== undefined && (!Array.isArray(row.models) || !row.models.every(isLlmProviderModel))) {
+    throw new Error("LLM provider models: 响应异常");
+  }
+  if (row.model_pricing !== undefined && !isLlmModelPricing(row.model_pricing)) {
+    throw new Error("LLM provider pricing: 响应异常");
+  }
+  const apiKeys = (Array.isArray(row.api_keys) ? row.api_keys : [])
+    .map((key) => String(key || "").trim())
+    .filter(Boolean);
+  const apiKey = String(row.api_key ?? "").trim() || apiKeys[0] || "";
+  const payload: Record<string, unknown> = {
+    id,
+    kind: row.kind,
+    base_url: row.base_url,
+    api_key_env: String(row.api_key_env ?? "").trim(),
+    default_model: row.default_model,
+    models: row.models ?? [],
+    enabled: row.enabled,
+    task_models: row.task_models,
+    capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
+    model_effort: row.model_effort ?? "",
+    request_method: row.request_method || "chat_completions",
+    model_pricing: row.model_pricing ?? {},
+  };
+  if (apiKeys.length) payload.api_keys = apiKeys;
+  if (apiKey) payload.api_key = apiKey;
+  return payload;
+}
+
+function parseLlmProvidersSaveResult(value: unknown): LlmProvidersSaveResult {
+  if (!isRecord(value)) throw new Error("LLM providers save: 响应异常");
+  return value as LlmProvidersSaveResult;
+}
+
 export async function fetchLlmProvidersConfig(): Promise<LlmProvidersConfig> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["get"]>(
+  const data: unknown = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["get"]>(
     "/common-config/llm/providers",
-  )) as LlmProvidersConfig;
+  );
+  return parseLlmProvidersConfig(data);
 }
 
 export async function fetchLlmLocalRoutingConfig(): Promise<LlmLocalRoutingConfig> {
@@ -1282,91 +1438,31 @@ export async function putLlmProvidersConfig(
   body: LlmProvidersConfig,
 ): Promise<LlmProvidersSaveResult> {
   const payload = {
-    providers: body.providers.map((row) => {
-      const raw = row as {
-        id: string;
-        kind?: string;
-        base_url?: string;
-        api_key?: string;
-        api_keys?: string[];
-        api_key_env?: string;
-        default_model?: string;
-        enabled?: boolean;
-        task_models?: Record<string, string>;
-        capabilities?: string[];
-        model_effort?: string;
-        request_method?: string;
-      };
-      const apiKeys = (Array.isArray(raw.api_keys) ? raw.api_keys : [])
-        .map((k: string) => String(k || "").trim())
-        .filter(Boolean);
-      const apiKey = String(raw.api_key ?? "").trim() || apiKeys[0] || "";
-      const apiKeyEnv = String(raw.api_key_env ?? "").trim();
-      const item: Record<string, unknown> = {
-        id: raw.id,
-        kind: raw.kind,
-        base_url: raw.base_url,
-        api_key_env: apiKeyEnv,
-        default_model: raw.default_model,
-        enabled: raw.enabled,
-        task_models: raw.task_models,
-        capabilities: Array.isArray(raw.capabilities) ? raw.capabilities : [],
-        model_effort: raw.model_effort ?? "",
-        request_method: raw.request_method || "chat_completions",
-      };
-      // 空密钥不传，避免后端误清空已保存密钥
-      if (apiKeys.length) item.api_keys = apiKeys;
-      if (apiKey) item.api_key = apiKey;
-      return item;
-    }),
+    providers: body.providers.map((row) => providerWritePayload(row)),
     routing: body.routing,
   };
-  return consoleOpenapiPut(
+  const result: unknown = await consoleOpenapiPut<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["put"]
+  >(
     "/common-config/llm/providers",
     payload,
-  ) as Promise<LlmProvidersSaveResult>;
+    { timeout: 60_000 },
+  );
+  return parseLlmProvidersSaveResult(result);
 }
 
 /** 只保存单个提供方，避免整表 PUT 误擦其他提供方已存密钥。 */
-export async function putLlmProvider(row: {
-  id: string;
-  kind?: string;
-  base_url?: string;
-  api_key?: string;
-  api_keys?: string[];
-  api_key_env?: string;
-  default_model?: string;
-  enabled?: boolean;
-  task_models?: Record<string, string>;
-  capabilities?: string[];
-  model_effort?: string;
-  request_method?: string;
-}): Promise<LlmProvidersSaveResult> {
+export async function putLlmProvider(row: LlmProviderRow): Promise<LlmProvidersSaveResult> {
   const id = String(row.id || "").trim();
   if (!id) throw new Error("provider id is required");
-  const apiKeys = (Array.isArray(row.api_keys) ? row.api_keys : [])
-    .map((k: string) => String(k || "").trim())
-    .filter(Boolean);
-  const apiKey = String(row.api_key ?? "").trim() || apiKeys[0] || "";
-  const apiKeyEnv = String(row.api_key_env ?? "").trim();
-  const payload: Record<string, unknown> = {
-    id,
-    kind: row.kind,
-    base_url: row.base_url,
-    api_key_env: apiKeyEnv,
-    default_model: row.default_model,
-    enabled: row.enabled,
-    task_models: row.task_models,
-    capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
-    model_effort: row.model_effort ?? "",
-    request_method: row.request_method || "chat_completions",
-  };
-  if (apiKeys.length) payload.api_keys = apiKeys;
-  if (apiKey) payload.api_key = apiKey;
-  return consoleOpenapiPut(
+  const result: unknown = await consoleOpenapiPut<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers/{provider_id}"]["put"]
+  >(
     `/common-config/llm/providers/${encodeURIComponent(id)}`,
-    payload,
-  ) as Promise<LlmProvidersSaveResult>;
+    providerWritePayload(row, id),
+    { timeout: 60_000 },
+  );
+  return parseLlmProvidersSaveResult(result);
 }
 
 /** Provider 在线模型发现（Bot 直连上游；可传草稿 base_url / api_key）。 */
