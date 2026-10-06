@@ -40,13 +40,13 @@ export default function BtnIco({ icon: Icon, motion = "scale", busy = false, cla
   // 忙碌时勿叠 transition-transform，否则会与 animate-spin 抢插值、看起来发癫
   if (busy) {
     const BusyIcon = motion === "spin" ? Icon : Loader2;
-    return <BusyIcon className={cn("size-3.5 shrink-0 animate-spin", className)} aria-hidden />;
+    return <BusyIcon className={cn("ui-btn__ico size-3.5 shrink-0 animate-spin", className)} aria-hidden />;
   }
 
   return (
     <Icon
       className={cn(
-        "size-3.5 shrink-0 transition-transform duration-200 ease-out",
+        "ui-btn__ico size-3.5 shrink-0 transition-transform duration-200 ease-out",
         MOTION[motion],
         className,
       )}

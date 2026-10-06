@@ -47,6 +47,7 @@ export default function PluginConfigDialog({
   const { confirm, confirmDialog } = useConsoleConfirm();
   const [status, setStatus] = useState<PluginConfigWorkspaceStatus>({
     dirty: false,
+    saveDirty: false,
     saving: false,
     checking: false,
     loading: true,
@@ -58,6 +59,7 @@ export default function PluginConfigDialog({
     setStatus((prev) => {
       if (
         prev.dirty === next.dirty &&
+        prev.saveDirty === next.saveDirty &&
         prev.saving === next.saving &&
         prev.checking === next.checking &&
         prev.loading === next.loading &&
@@ -83,7 +85,8 @@ export default function PluginConfigDialog({
     );
   }, [pluginRow, officialExtensions, communityPlugins]);
 
-  const canSave = status.hasData && !status.loading && !status.saving && !status.checking;
+  const canCheck = status.hasData && !status.loading && !status.saving && !status.checking;
+  const canSave = canCheck && status.saveDirty;
   const busy = status.saving;
 
   async function requestClose() {
@@ -112,7 +115,7 @@ export default function PluginConfigDialog({
             variant="outline"
             size="sm"
             icon={ShieldCheck}
-            disabled={!canSave}
+            disabled={!canCheck}
             onClick={() => void workspaceRef.current?.runConfigCheck()}
           >
             {status.checking ? "检测中…" : AI_ENTRY_PLUGIN_CONFIG_CHECK.label}

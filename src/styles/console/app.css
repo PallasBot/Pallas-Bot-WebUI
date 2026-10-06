@@ -302,6 +302,50 @@ html[data-theme="light"][data-ui-preset="shadcn"][data-surface="glass"] .shell__
   padding: 0 2px;
 }
 
+.shell__quick-nav-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control, 10px);
+  background: color-mix(in srgb, var(--bg-card) 80%, transparent);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+
+.shell__quick-nav-trigger:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--border) 70%, var(--foreground));
+  background: color-mix(in srgb, var(--foreground) 6%, var(--bg-card));
+}
+
+.shell__quick-nav-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.shell__quick-nav-icon {
+  flex-shrink: 0;
+}
+
+.shell__quick-nav-trigger kbd {
+  margin-left: auto;
+  padding: 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
 .shell__sidebar-conn {
   flex-shrink: 0;
 }
@@ -2809,6 +2853,84 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
   animation: shell-mobile-panel-in 0.24s var(--ease) both;
 }
 
+.shell-command-nav__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 450;
+  background: rgb(0 0 0 / 38%);
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  animation: shell-mobile-backdrop-in 0.16s ease-out both;
+}
+
+.shell-command-nav__content {
+  position: fixed;
+  top: min(16vh, 9rem);
+  left: 50%;
+  z-index: 451;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(72dvh, 620px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-elev);
+  box-shadow: var(--shell-chrome-shadow-y);
+  outline: none;
+  transform: translateX(-50%);
+  animation: shell-command-nav-in 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.shell-command-nav__list {
+  max-height: min(56dvh, 440px);
+}
+
+.shell-command-nav__item-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.shell-command-nav__item-section {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.shell-command-nav__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.shell-command-nav__foot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shell-command-nav__foot kbd {
+  min-width: 18px;
+  padding: 1px 4px;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  text-align: center;
+}
+
+@keyframes shell-command-nav-in {
+  from {
+    opacity: 0;
+    margin-top: -6px;
+  }
+}
+
 @keyframes shell-mobile-backdrop-in {
   from {
     opacity: 0;
@@ -3508,7 +3630,8 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
   }
 
   .shell--sidebar-collapsed .shell__sidebar-exit,
-  .shell--sidebar-collapsed .shell__sidebar-restart {
+  .shell--sidebar-collapsed .shell__sidebar-restart,
+  .shell--sidebar-collapsed .shell__quick-nav-trigger {
     width: 36px;
     min-height: 36px;
     max-width: 36px;
@@ -3518,7 +3641,9 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
   }
 
   .shell--sidebar-collapsed .shell__sidebar-exit-label,
-  .shell--sidebar-collapsed .shell__sidebar-restart-label {
+  .shell--sidebar-collapsed .shell__sidebar-restart-label,
+  .shell--sidebar-collapsed .shell__quick-nav-trigger > span,
+  .shell--sidebar-collapsed .shell__quick-nav-trigger > kbd {
     display: none;
   }
 }

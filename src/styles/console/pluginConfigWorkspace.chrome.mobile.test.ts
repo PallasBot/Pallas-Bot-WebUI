@@ -11,14 +11,18 @@ const mobileEnd = consoleHubCss.indexOf("\n}\n", mobileStart);
 const mobileStyles = consoleHubCss.slice(mobileStart, mobileEnd);
 
 describe("插件配置工具条窄屏布局", () => {
-  it("换行并取消右侧标签粘性定位，避免与工作区选择重叠", () => {
+  it("保留单行局部横滚，右侧操作静态显示以避免重叠", () => {
     expect(mobileStart).toBeGreaterThan(-1);
     expect(mobileEnd).toBeGreaterThan(mobileStart);
     expect(mobileStyles).toMatch(
-      /\.plugin-config-workspace__chrome\)\s+\.console-hub-page__chrome-row \{\s+flex-wrap: wrap;\s+overflow-x: visible;/,
+      /\.plugin-config-workspace__chrome\)\s+\.console-hub-page__chrome-row \{\s+flex-wrap: nowrap;\s+overflow-x: auto;/,
     );
     expect(mobileStyles).toMatch(
       /\.plugin-config-workspace__chrome\)\s+\.console-hub-page__chrome-row > \.chrome-tools__trailing \{\s+position: static;/,
     );
+
+    const desktopRow = consoleHubCss.match(/\.console-hub-page__chrome-row \{[^}]+\}/)?.[0];
+    expect(desktopRow).toContain("flex-wrap: nowrap;");
+    expect(desktopRow).toContain("overflow-x: auto;");
   });
 });

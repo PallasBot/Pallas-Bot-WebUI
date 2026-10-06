@@ -903,6 +903,7 @@ export default function AiConfigMediaSection() {
   const singMappingSectionRef = useRef<HTMLDivElement>(null);
   const emptyPluginStatus: PluginConfigWorkspaceStatus = {
     dirty: false,
+    saveDirty: false,
     saving: false,
     checking: false,
     loading: true,
@@ -918,12 +919,13 @@ export default function AiConfigMediaSection() {
     ) => (next: PluginConfigWorkspaceStatus) => {
       setter((prev) => {
         if (
-          prev.dirty === next.dirty
-          && prev.saving === next.saving
-          && prev.checking === next.checking
-          && prev.loading === next.loading
-          && prev.hasData === next.hasData
-          && prev.supportsConfigCheck === next.supportsConfigCheck
+          prev.dirty === next.dirty &&
+          prev.saveDirty === next.saveDirty &&
+          prev.saving === next.saving &&
+          prev.checking === next.checking &&
+          prev.loading === next.loading &&
+          prev.hasData === next.hasData &&
+          prev.supportsConfigCheck === next.supportsConfigCheck
         ) {
           return prev;
         }
@@ -1058,6 +1060,7 @@ export default function AiConfigMediaSection() {
             || drawStatus.loading
             || drawStatus.saving
             || drawStatus.checking
+            || !drawStatus.saveDirty
           }
           onClick={() => void drawWorkspaceRef.current?.save()}
         >

@@ -1,7 +1,8 @@
 import { Fragment, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search } from "lucide-react";
 import brandMarkAsset from "@/assets/brand-avatar.png?url";
 import { fetchHealth } from "@/api/health";
 import {
@@ -36,6 +37,13 @@ import { PALLAS_SHELL_EXTERNAL_LINKS } from "@/utils/pallasExternalLinks";
 import { prefetchConsoleShell } from "@/utils/prefetchConsoleShell";
 import { querySettled } from "@/utils/querySettled";
 import { consoleResourceVersionLabel } from "@/utils/versionDisplay";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 const brandMarkUrl = String(brandMarkAsset);
 const SIDEBAR_GROUPS_KEY = "pallas.react.sidebar.groups.collapsed";
@@ -234,11 +242,16 @@ function NavTree({
 
 export default function AppShell() {
   const location = useLocation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const isNarrow = useIsShellNarrow();
   const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed());
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [quickNavOpen, setQuickNavOpen] = useState(false);
   const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileQuickNavTriggerRef = useRef<HTMLButtonElement>(null);
+  const desktopQuickNavTriggerRef = useRef<HTMLButtonElement>(null);
+  const quickNavReturnFocusRef = useRef<HTMLElement | null>(null);
   const mobileMenuPath = useRef(location.pathname);
   const currentPath = useRef(location.pathname);
   const [pluginStoreSeenRev, setPluginStoreSeenRev] = useState(0);
@@ -362,6 +375,46 @@ export default function AppShell() {
   }, [isNarrow]);
 
   useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.repeat ||
+        event.key.toLowerCase() !== "k" ||
+        (!event.metaKey && !event.ctrlKey) ||
+        event.altKey ||
+        event.shiftKey
+      ) return;
+      if (!quickNavOpen) {
+        const editableSelector = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
+        const target = event.target;
+        const activeElement = document.activeElement;
+        if (
+          (target instanceof Element && target.closest(editableSelector)) ||
+          (activeElement instanceof Element && activeElement.closest(editableSelector)) ||
+          document.querySelector('[role="dialog"]:not(.shell-command-nav__content), [role="alertdialog"]')
+        ) return;
+      }
+      event.preventDefault();
+      if (quickNavOpen) {
+        setQuickNavOpen(false);
+        return;
+      }
+      quickNavReturnFocusRef.current = document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+      if (mobileOpen) {
+        setMobileOpen(false);
+        window.requestAnimationFrame(() => setQuickNavOpen(true));
+      } else {
+        setQuickNavOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [mobileOpen, quickNavOpen]);
+
+  useEffect(() => {
     const item = MAIN_NAV_ITEMS.find((entry) => isNavActive(location.pathname, entry.to));
     if (item?.notice?.seenOn === "route") {
       markNavigationNoticeSeen(item.notice.key, item.notice.revision);
@@ -402,6 +455,16 @@ export default function AppShell() {
     const next = !collapsed;
     setCollapsed(next);
     writeSidebarCollapsed(next);
+  }
+
+  function openQuickNav(trigger: HTMLButtonElement) {
+    quickNavReturnFocusRef.current = trigger;
+    setQuickNavOpen(true);
+  }
+
+  function selectQuickNavItem(to: string) {
+    navigate(to);
+    setQuickNavOpen(false);
   }
 
   async function triggerShellRestart(workersOnly = false) {
@@ -446,6 +509,16 @@ export default function AppShell() {
               </svg>
             </button>
           </DialogPrimitive.Trigger>
+          <button
+            ref={mobileQuickNavTriggerRef}
+            type="button"
+            className="shell__mobile-topbar-btn"
+            aria-label="打开快速导航"
+            title="快速导航 · Ctrl/Cmd+K"
+            onClick={(event) => openQuickNav(event.currentTarget)}
+          >
+            <Search width={19} height={19} aria-hidden />
+          </button>
           <div className="shell__mobile-topbar-brand">
             <img className="shell__mobile-topbar-mark" src={brandMarkUrl} alt="" width={28} height={28} />
             <div className="shell__brand-title-row shell__mobile-topbar-title-row">
@@ -533,6 +606,18 @@ export default function AppShell() {
         </div>
 
         <div className="shell__sidebar-tools">
+          <button
+            ref={desktopQuickNavTriggerRef}
+            type="button"
+            className="shell__quick-nav-trigger"
+            aria-label="打开快速导航"
+            title="快速导航 · Ctrl/Cmd+K"
+            onClick={(event) => openQuickNav(event.currentTarget)}
+          >
+            <Search className="shell__quick-nav-icon" width={16} height={16} aria-hidden />
+            <span>快速导航</span>
+            <kbd aria-hidden>⌘ / Ctrl K</kbd>
+          </button>
           {restartAvailable ? (
             <div className="shell__sidebar-restart-group">
               {shardedRuntime ? (
@@ -724,6 +809,52 @@ export default function AppShell() {
       <ConsoleToastHost />
       <BotRestartProgressDialog />
     </div>
+    <DialogPrimitive.Root open={quickNavOpen} onOpenChange={setQuickNavOpen}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="shell-command-nav__overlay" />
+        <DialogPrimitive.Content
+          className="shell-command-nav__content"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            window.requestAnimationFrame(() => {
+              const target = quickNavReturnFocusRef.current;
+              const fallback = isNarrow ? mobileQuickNavTriggerRef.current : desktopQuickNavTriggerRef.current;
+              const restoreTo = target?.isConnected ? target : fallback;
+              restoreTo?.focus({ preventScroll: true });
+            });
+          }}
+        >
+          <DialogPrimitive.Title className="sr-only">快速导航</DialogPrimitive.Title>
+          <DialogPrimitive.Description className="sr-only">搜索并跳转到控制台页面。</DialogPrimitive.Description>
+          <Command label="搜索页面">
+            <CommandInput placeholder="搜索页面或分组…" autoFocus />
+            <CommandList className="shell-command-nav__list">
+              <CommandEmpty>没有匹配的页面</CommandEmpty>
+              {MAIN_NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <CommandItem
+                    key={item.to}
+                    value={`${item.label} ${item.section} ${item.to}`}
+                    keywords={[item.section, item.to]}
+                    onSelect={() => selectQuickNavItem(item.to)}
+                  >
+                    <Icon className="shell-command-nav__item-icon" aria-hidden />
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    <span className="shell-command-nav__item-section">{item.section}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandList>
+            <div className="shell-command-nav__foot" aria-hidden>
+              <span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
+              <span><kbd>Enter</kbd> 打开</span>
+              <span><kbd>Esc</kbd> 关闭</span>
+            </div>
+          </Command>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
     </DialogPrimitive.Root>
   );
 }

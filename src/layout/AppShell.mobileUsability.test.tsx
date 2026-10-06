@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { PointerEventsCheckLevel } from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -36,6 +36,14 @@ vi.mock("@/utils/prefetchConsoleShell", () => ({ prefetchConsoleShell: vi.fn() }
 let shellNarrow = true;
 const mediaListeners = new Set<(event: MediaQueryListEvent) => void>();
 
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+HTMLElement.prototype.scrollIntoView = vi.fn();
+
 function setShellNarrow(next: boolean) {
   shellNarrow = next;
   for (const listener of mediaListeners) {
@@ -49,6 +57,7 @@ function DirtyPluginsRoute() {
   return (
     <>
       <h1>Plugins route</h1>
+      <input aria-label="原页面输入框" />
       <button type="button" onClick={() => setDirty(true)}>标记草稿</button>
       {dirty ? <output>保留的草稿</output> : null}
     </>
@@ -64,6 +73,7 @@ function renderShell(path = "/plugins") {
       children: [
         { path: "plugins", element: <DirtyPluginsRoute /> },
         { path: "instances", element: <h1>Instances route</h1> },
+        { path: "database", element: <h1>Database route</h1> },
       ],
     }],
     { initialEntries: [path] },
@@ -78,6 +88,7 @@ function renderShell(path = "/plugins") {
 
 beforeEach(() => {
   vi.stubGlobal("__WEBUI_VERSION__", "test-version");
+  vi.stubGlobal("ResizeObserver", ResizeObserverMock);
   shellNarrow = true;
   mediaListeners.clear();
   Object.defineProperty(window, "matchMedia", {
@@ -215,4 +226,111 @@ it("marks stale successful health data as expired after a background failure and
   await queryClient.refetchQueries({ queryKey: ["health"] });
   menu = screen.getByRole("dialog", { name: "主导航" });
   await within(menu).findByText("已连接");
+});
+
+it("opens searchable navigation with Ctrl+K and restores the mobile entry after routing", async () => {
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+  const { router } = renderShell();
+  const trigger = screen.getByRole("button", { name: "打开快速导航" });
+  trigger.focus();
+
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+  const dialog = await screen.findByRole("dialog", { name: "快速导航" });
+  const search = within(dialog).getByRole("combobox", { name: "搜索页面" });
+  await user.type(search, "数据库");
+  await user.keyboard("{ArrowDown}");
+  await user.keyboard("{Enter}");
+
+  await waitFor(() => expect(router.state.location.pathname).toBe("/database"));
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "快速导航" })).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+});
+
+it.each(["input", "textarea", "select", "contenteditable"])(
+  "does not steal Ctrl+K from an editable %s",
+  (kind) => {
+    const { container } = renderShell();
+    let editor: HTMLElement;
+    if (kind === "input") {
+      editor = screen.getByRole("textbox", { name: "原页面输入框" });
+    } else {
+      editor = document.createElement(kind === "textarea" ? "textarea" : kind === "select" ? "select" : "div");
+      if (kind === "contenteditable") editor.setAttribute("contenteditable", "true");
+      container.append(editor);
+    }
+    editor.focus();
+
+    const event = new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true });
+    editor.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(screen.queryByRole("dialog", { name: "快速导航" })).toBeNull();
+  },
+);
+
+it.each(["dialog", "alertdialog"])(
+  "does not steal Ctrl+K while another %s is open with body focus",
+  (role) => {
+    const { container } = renderShell();
+    const otherDialog = document.createElement("div");
+    otherDialog.setAttribute("role", role);
+    otherDialog.setAttribute("aria-modal", "true");
+    container.append(otherDialog);
+    document.body.focus();
+
+    const event = new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true });
+    document.body.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(screen.queryByRole("dialog", { name: "快速导航" })).toBeNull();
+  },
+);
+
+it.each(["Ctrl+K", "Escape"])("restores the original focus target after quick-nav closes with %s", async (closeKey) => {
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+  renderShell();
+  const trigger = screen.getByRole("button", { name: "打开快速导航" });
+  trigger.focus();
+
+  fireEvent.keyDown(trigger, { key: "k", ctrlKey: true });
+  const search = await screen.findByRole("combobox", { name: "搜索页面" });
+  expect(document.activeElement).toBe(search);
+
+  if (closeKey === "Ctrl+K") {
+    fireEvent.keyDown(search, { key: "k", ctrlKey: true });
+  } else {
+    await user.keyboard("{Escape}");
+  }
+
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+  expect(screen.queryByRole("combobox", { name: "搜索页面" })).toBeNull();
+});
+
+it("keeps a dirty config draft behind quick-nav route confirmation", async () => {
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+  const { router } = renderShell();
+  await user.click(screen.getByRole("button", { name: "标记草稿" }));
+
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+  const search = await screen.findByRole("combobox", { name: "搜索页面" });
+  await user.type(search, "数据库");
+  await user.keyboard("{ArrowDown}{Enter}");
+
+  const confirm = await screen.findByRole("alertdialog");
+  expect(router.state.location.pathname).toBe("/plugins");
+  expect(confirm.textContent).toContain("有未保存的配置草稿");
+  await user.click(within(confirm).getByRole("button", { name: "取消" }));
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  expect(router.state.location.pathname).toBe("/plugins");
+  expect(screen.getByText("保留的草稿")).toBeTruthy();
+});
+
+it("offers a visible desktop quick-navigation entry", async () => {
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+  renderShell();
+  act(() => setShellNarrow(false));
+  const trigger = await screen.findByRole("button", { name: "打开快速导航" });
+
+  await user.click(trigger);
+  expect(await screen.findByRole("combobox", { name: "搜索页面" })).not.toBeNull();
 });
