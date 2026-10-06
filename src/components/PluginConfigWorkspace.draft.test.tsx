@@ -15,6 +15,7 @@ const api = vi.hoisted(() => ({
   fetchPluginConfigRaw: vi.fn(),
   putPluginConfig: vi.fn(),
   putPluginConfigRaw: vi.fn(),
+  postPluginConfigCheck: vi.fn(),
 }));
 
 vi.mock("@/api/console", () => api);
@@ -22,7 +23,7 @@ vi.mock("@/api/fullConsole", () => ({
   fetchPluginBundledReadme: vi.fn(),
   fetchPluginStoreReadme: vi.fn(),
   fetchPlugins: vi.fn(async () => []),
-  postPluginConfigCheck: vi.fn(),
+  postPluginConfigCheck: api.postPluginConfigCheck,
 }));
 vi.mock("@/components/config/DynamicConfigPanel", () => ({
   default: ({
@@ -48,6 +49,7 @@ vi.mock("@/components/config/DynamicConfigPanel", () => ({
     </>
   ),
 }));
+vi.mock("@/components/provider/ProviderGatewayPanel", () => ({ default: () => null }));
 
 let serverValue = "server value";
 let serverRaw = "original = true\n";
@@ -80,6 +82,7 @@ function TestRoot() {
       <Routes>
         <Route path="/edit" element={<WorkspacePage />} />
         <Route path="/dialog" element={<DialogPage />} />
+        <Route path="/draw-dialog" element={<DrawDialogPage />} />
         <Route path="/plugins/:name?" element={<RoutedDialogPage />} />
         <Route path="/away" element={<p>away</p>} />
       </Routes>
@@ -96,6 +99,23 @@ function DialogPage() {
         open={open}
         pluginName="draft-test"
         pluginRow={{ name: "draft-test" } as PluginRow}
+        officialExtensions={[]}
+        communityPlugins={[]}
+        onClose={() => setOpen(false)}
+      />
+    </>
+  );
+}
+
+function DrawDialogPage() {
+  const [open, setOpen] = useState(true);
+  return (
+    <>
+      <output aria-label="dialog open">{String(open)}</output>
+      <PluginConfigDialog
+        open={open}
+        pluginName="draw"
+        pluginRow={{ name: "draw" } as PluginRow}
         officialExtensions={[]}
         communityPlugins={[]}
         onClose={() => setOpen(false)}
@@ -142,6 +162,7 @@ beforeEach(() => {
     fields: [{ name: "test_value", kind: "string", current: serverValue }],
   }));
   api.fetchPluginConfigRaw.mockImplementation(async () => serverRaw);
+  api.postPluginConfigCheck.mockResolvedValue({ lines: ["检查通过"] });
   api.putPluginConfig.mockImplementation(async (_name: string, values: Record<string, string>) => {
     serverValue = values.test_value;
   });
@@ -226,7 +247,29 @@ it("keeps the plugin dialog open during a save", async () => {
   expect(screen.queryByRole("alertdialog")).toBeNull();
   expect(screen.getByRole("dialog")).not.toBeNull();
   saveControl.finish?.();
-  await waitFor(() => expect((screen.getByRole("button", { name: "保存" }) as HTMLButtonElement).disabled).toBe(false));
+  await waitFor(() => expect(screen.getByRole("button", { name: "保存" })).toBeTruthy());
+  expect((screen.getByRole("button", { name: "保存" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
+it("disables only clean saves in the dialog while keeping config checks available", async () => {
+  const user = userEvent.setup();
+  renderWorkspace("/draw-dialog");
+
+  const field = await screen.findByLabelText("test_value") as HTMLInputElement;
+  const save = screen.getByRole("button", { name: "保存" }) as HTMLButtonElement;
+  const check = screen.getByRole("button", { name: "插件配置检测" }) as HTMLButtonElement;
+
+  expect(save.disabled).toBe(true);
+  expect(check.disabled).toBe(false);
+  await user.click(check);
+  await waitFor(() => expect(api.postPluginConfigCheck).toHaveBeenCalledOnce());
+  expect(api.putPluginConfig).not.toHaveBeenCalled();
+
+  await user.clear(field);
+  await user.type(field, "changed value");
+  expect(save.disabled).toBe(false);
+  await user.click(save);
+  await waitFor(() => expect(api.putPluginConfig).toHaveBeenCalledOnce());
 });
 
 it("confirms a route-backed plugin dialog close only once", async () => {

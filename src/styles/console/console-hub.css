@@ -1084,8 +1084,8 @@ html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-row > .c
 @media (max-width: 560px) {
   :is(.plugins-page, .instances-page, .protocol-page, .database-page, .plugin-config-workspace__chrome)
     .console-hub-page__chrome-row {
-    flex-wrap: wrap;
-    overflow-x: visible;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     --chrome-tools-row-gap: 0.5rem;
   }
 

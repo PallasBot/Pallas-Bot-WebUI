@@ -16,6 +16,7 @@ export default function AiConfigDrawSection() {
   const workspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
   const [status, setStatus] = useState<PluginConfigWorkspaceStatus>({
     dirty: false,
+    saveDirty: false,
     saving: false,
     checking: false,
     loading: true,
@@ -28,6 +29,7 @@ export default function AiConfigDrawSection() {
       setStatus((prev) => {
         if (
           prev.saving === next.saving &&
+          prev.saveDirty === next.saveDirty &&
           prev.checking === next.checking &&
           prev.loading === next.loading &&
           prev.hasData === next.hasData &&
@@ -43,7 +45,8 @@ export default function AiConfigDrawSection() {
 
   useRegisterAiConfigChrome({});
 
-  const canSave = status.hasData && !status.loading && !status.saving && !status.checking;
+  const canCheck = status.hasData && !status.loading && !status.saving && !status.checking;
+  const canSave = canCheck && status.saveDirty;
 
   return (
     <Card>
@@ -81,7 +84,7 @@ export default function AiConfigDrawSection() {
               size="sm"
               variant="outline"
               icon={ShieldCheck}
-              disabled={!canSave}
+              disabled={!canCheck}
               onClick={() => void workspaceRef.current?.runConfigCheck()}
             >
               {status.checking ? "检测中…" : AI_ENTRY_PLUGIN_CONFIG_CHECK.label}

@@ -469,3 +469,130 @@ html[data-theme="light"] .ui-surface-dialog-overlay {
 html[data-theme="dark"] .ui-surface-dialog-overlay {
   background: rgba(0, 0, 0, 0.55);
 }
+
+.seg-tabs__indicator {
+  position: absolute;
+  z-index: 0;
+  display: block;
+  pointer-events: none;
+  border-radius: max(0px, calc(var(--radius-control, 8px) - 2px));
+  background: var(--control-bg, hsl(var(--ui-background)));
+  box-shadow: var(--control-shadow, none);
+  opacity: 0;
+  transition:
+    left 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    top 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.seg-tabs__indicator[data-ready="true"] {
+  opacity: 1;
+}
+
+.seg-tabs--accent > .seg-tabs__indicator {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+html[data-layout="hub"][data-surface="glass"] .seg-tabs__list > .seg-tabs__indicator,
+html[data-layout="hub"][data-surface="glass"] .seg-tabs__list.seg-tabs--accent > .seg-tabs__indicator {
+  background: var(--control-bg);
+  box-shadow: var(--control-shadow);
+}
+
+html[data-ui-preset="shadcn"][data-surface="solid"] .seg-tabs__list.seg-tabs--accent > .seg-tabs__indicator {
+  background: var(--foreground, var(--text));
+}
+
+.seg-tabs__list > [role="tab"][data-state="active"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+html[data-layout="hub"][data-surface="glass"] .seg-tabs__list > [role="tab"][data-state="active"],
+html[data-layout="hub"][data-surface="solid"] .seg-tabs__list.seg-tabs--accent > [role="tab"][data-state="active"],
+html[data-ui-preset="shadcn"][data-surface="solid"] .seg-tabs__list.seg-tabs--accent > [role="tab"][data-state="active"],
+html[data-theme="light"][data-ui-preset="shadcn"][data-surface="solid"] .seg-tabs__list.seg-tabs--accent > [role="tab"][data-state="active"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.command-list {
+  position: relative;
+  isolation: isolate;
+}
+
+.command-list::before {
+  position: absolute;
+  z-index: 0;
+  top: var(--command-highlight-y, 0px);
+  left: var(--command-highlight-x, 0px);
+  width: var(--command-highlight-width, 0px);
+  height: var(--command-highlight-height, 0px);
+  border-radius: calc(var(--radius-control, 8px) - 2px);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    top 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.command-list[data-command-highlight="true"]::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-surface-dialog-overlay,
+  .ui-surface-dialog,
+  .ui-surface-popover,
+  .shell-mobile-nav__backdrop,
+  .shell-mobile-nav__panel,
+  .shell-command-nav__overlay,
+  .shell-command-nav__content,
+  .console-modal__backdrop,
+  .console-modal__dialog,
+  .ui-dialog__backdrop,
+  .ui-dialog__panel,
+  .shell__main-inner--route-enter,
+  .shell__sidebar,
+  .shell__sidebar-top,
+  .shell__quick-nav-trigger,
+  .shell__mobile-topbar-btn,
+  .seg-tabs__indicator,
+  .command-list::before,
+  .status-tone--pending,
+  .status-tone--pending .status-tone__dot,
+  .pending-value--ready,
+  .ui-btn__ico,
+  .animate-spin,
+  svg[class*="group-hover:translate"],
+  svg[class*="group-hover:-translate"],
+  svg[class*="group-hover:scale"],
+  svg[class*="group-hover:rotate"],
+  svg[class*="group-hover:-rotate"],
+  button[class*="active:scale"] {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .ui-btn__ico[class*="group-hover:"],
+  svg[class*="group-hover:translate"],
+  svg[class*="group-hover:-translate"],
+  svg[class*="group-hover:scale"],
+  svg[class*="group-hover:rotate"],
+  svg[class*="group-hover:-rotate"] {
+    transform: none !important;
+  }
+
+  button[class*="active:scale"]:active {
+    --tw-scale-x: 1 !important;
+    --tw-scale-y: 1 !important;
+  }
+}

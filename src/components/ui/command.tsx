@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Command as CommandPrimitive } from "cmdk";
+import { Command as CommandPrimitive, useCommandState } from "cmdk";
 import { Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -40,13 +40,60 @@ CommandInput.displayName = CommandPrimitive.Input.displayName;
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.List
-    ref={ref}
-    className={cn("max-h-[min(18rem,50vh)] overflow-y-auto overflow-x-hidden", className)}
-    {...props}
-  />
-));
+>(function CommandList({ className, ...props }, ref) {
+  const selectedItemId = useCommandState((state) => state.selectedItemId);
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+  const updateHighlight = React.useCallback(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const selected = selectedItemId ? document.getElementById(selectedItemId) : null;
+    const item = selected && list.contains(selected)
+      ? selected
+      : list.querySelector<HTMLElement>('[data-selected="true"]');
+    if (!item) {
+      delete list.dataset.commandHighlight;
+      return;
+    }
+    const listRect = list.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+    list.dataset.commandHighlight = "true";
+    list.style.setProperty("--command-highlight-x", `${itemRect.left - listRect.left}px`);
+    list.style.setProperty("--command-highlight-y", `${itemRect.top - listRect.top + list.scrollTop}px`);
+    list.style.setProperty("--command-highlight-width", `${itemRect.width}px`);
+    list.style.setProperty("--command-highlight-height", `${itemRect.height}px`);
+  }, [selectedItemId]);
+
+  const setRef = React.useCallback((node: HTMLDivElement | null) => {
+    listRef.current = node;
+    if (typeof ref === "function") ref(node);
+    else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+  }, [ref]);
+
+  React.useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    updateHighlight();
+    const selected = selectedItemId ? document.getElementById(selectedItemId) : null;
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateHighlight);
+    observer?.observe(list);
+    if (selected && list.contains(selected)) observer?.observe(selected);
+    window.addEventListener("resize", updateHighlight);
+    list.addEventListener("scroll", updateHighlight);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", updateHighlight);
+      list.removeEventListener("scroll", updateHighlight);
+    };
+  }, [selectedItemId, updateHighlight]);
+
+  return (
+    <CommandPrimitive.List
+      ref={setRef}
+      className={cn("command-list max-h-[min(18rem,50vh)] overflow-y-auto overflow-x-hidden", className)}
+      {...props}
+    />
+  );
+});
 CommandList.displayName = CommandPrimitive.List.displayName;
 
 const CommandEmpty = React.forwardRef<
@@ -91,7 +138,7 @@ const CommandItem = React.forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center gap-2 rounded-[calc(var(--radius-control,8px)-2px)] px-2 py-1.5 text-xs outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] data-[selected=true]:text-foreground data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+      "relative z-[1] flex cursor-default select-none items-center gap-2 rounded-[calc(var(--radius-control,8px)-2px)] px-2 py-1.5 text-xs outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-transparent data-[selected=true]:text-foreground data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
       className,
     )}
     {...props}

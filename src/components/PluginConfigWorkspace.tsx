@@ -132,6 +132,7 @@ export type PluginConfigWorkspaceHandle = {
   getFieldValue: (fieldName: string) => string;
   setFieldValue: (fieldName: string, value: string) => void;
   dirty: boolean;
+  saveDirty: boolean;
   saving: boolean;
   checking: boolean;
   loading: boolean;
@@ -445,9 +446,10 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const saving = saveForm.isPending || saveRaw.isPending || saveGatewayPatch.isPending;
   const loading = cfgQ.isLoading;
   const hasData = Boolean(cfgQ.data);
-  const dirty =
-    (formReady && JSON.stringify(fieldValues) !== formBaseline) ||
-    (rawReady && raw !== rawBaseline);
+  const formDirty = formReady && JSON.stringify(fieldValues) !== formBaseline;
+  const rawDirty = rawReady && raw !== rawBaseline;
+  const dirty = formDirty || rawDirty;
+  const saveDirty = mode === "raw" ? rawDirty : formDirty;
   useDraftProtection(dirty, shouldBlockNavigation);
   const usesHelpTagOverridesPanel = isHelpPlugin;
   const formFields = (() => {
@@ -488,7 +490,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   }
 
   async function save() {
-    if (!cfgQ.data) return;
+    if (!cfgQ.data || !saveDirty) return;
     try {
       if (mode === "raw") await saveRaw.mutateAsync(rawRef.current);
       else await saveForm.mutateAsync({ ...fieldValuesRef.current });
@@ -510,6 +512,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
       });
     },
     dirty,
+    saveDirty,
     saving,
     checking,
     loading,
@@ -519,8 +522,8 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
   useEffect(() => {
     if (!onStatusChange) return;
-    onStatusChange({ dirty, saving, checking, loading, hasData, supportsConfigCheck });
-  }, [dirty, saving, checking, loading, hasData, supportsConfigCheck, onStatusChange]);
+    onStatusChange({ dirty, saveDirty, saving, checking, loading, hasData, supportsConfigCheck });
+  }, [dirty, saveDirty, saving, checking, loading, hasData, supportsConfigCheck, onStatusChange]);
 
   const tabButtons: Array<{ id: ConfigTab; label: string; show: boolean }> = [
     { id: "governance", label: "治理", show: hasGovernanceTab },
@@ -698,7 +701,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                   ) : null}
                   {!isDialog ? (
                     <div className="mt-4">
-                      <UiButton variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
+                      <UiButton variant="primary" size="sm" disabled={saving || !saveDirty} onClick={() => void save()}>
                         {saving ? "保存中…" : "保存配置"}
                       </UiButton>
                     </div>
@@ -721,7 +724,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
               />
               {!isDialog ? (
                 <div className="mt-3">
-                  <UiButton variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
+                  <UiButton variant="primary" size="sm" disabled={saving || !saveDirty} onClick={() => void save()}>
                     {saving ? "保存中…" : "保存 TOML"}
                   </UiButton>
                 </div>

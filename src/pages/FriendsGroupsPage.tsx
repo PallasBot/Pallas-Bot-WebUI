@@ -267,13 +267,23 @@ export default function FriendsGroupsPage() {
   );
 
   useEffect(() => {
+    setPickedFriendKeys(new Set());
+    setPickedGroupKeys(new Set());
     setPageFriendReq(1);
     setPageGroupReq(1);
     setPageFriends(1);
     setPageGroups(1);
-    setPickedFriendKeys(new Set());
-    setPickedGroupKeys(new Set());
-  }, [selfIdStr, friendListQ, groupListQ, prefs.tablePageSize]);
+  }, [selfIdStr]);
+
+  useEffect(() => {
+    setPageFriendReq(1);
+    setPageGroupReq(1);
+    setPageFriends(1);
+    setPageGroups(1);
+  }, [prefs.tablePageSize]);
+
+  useEffect(() => setPageFriends(1), [friendListQ]);
+  useEffect(() => setPageGroups(1), [groupListQ]);
 
   useEffect(() => {
     const allowed = new Set(requestRows.map(friendReqKey));
@@ -744,84 +754,91 @@ export default function FriendsGroupsPage() {
               ) : !requestRows.length ? (
                 <p className="muted">暂无待处理申请。</p>
               ) : (
-                <div className="table-wrap">
-                  <table className="data console-data-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: 44 }}>
-                          <input
-                            type="checkbox"
-                            title="全选当前筛选下的全部好友申请"
-                            checked={allFriendsPicked}
-                            ref={(el) => {
-                              if (el) el.indeterminate = someFriendsPicked;
-                            }}
-                            disabled={!requestRows.length || busy}
-                            onChange={(e) =>
-                              setPickedFriendKeys(
-                                e.target.checked ? new Set(allFriendKeys) : new Set(),
-                              )
-                            }
-                          />
-                        </th>
-                        <th>用户 QQ</th>
-                        <th>用户昵称</th>
-                        <th>来源</th>
-                        <th style={{ minWidth: 108, width: "1%" }}>操作</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pagedRequestRows.map((row) => (
-                        <tr key={friendReqKey(row)}>
-                          <td>
+                <>
+                  <p className="muted mb-2 text-xs" aria-live="polite">
+                    全选范围：当前 Bot 的全部好友申请（共 {requestRows.length} 条，含其他分页）；已选 {pickedFriendKeys.size} 条。
+                  </p>
+                  <div className="table-wrap">
+                    <table className="data console-data-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: 44 }}>
                             <input
                               type="checkbox"
-                              checked={pickedFriendKeys.has(friendReqKey(row))}
-                              disabled={busy}
-                              onChange={(e) => {
-                                const k = friendReqKey(row);
-                                setPickedFriendKeys((prev) => {
-                                  const ns = new Set(prev);
-                                  if (e.target.checked) ns.add(k);
-                                  else ns.delete(k);
-                                  return ns;
-                                });
+                              aria-label="全选当前 Bot 全部好友申请"
+                              title="全选当前 Bot 全部好友申请（含其他分页）"
+                              checked={allFriendsPicked}
+                              ref={(el) => {
+                                if (el) el.indeterminate = someFriendsPicked;
                               }}
+                              disabled={!requestRows.length || busy}
+                              onChange={(e) =>
+                                setPickedFriendKeys(
+                                  e.target.checked ? new Set(allFriendKeys) : new Set(),
+                                )
+                              }
                             />
-                          </td>
-                          <td>{row.user_id}</td>
-                          <td>{displayFriendReqNickname(row)}</td>
-                          <td>{friendSourceLabel(row.source)}</td>
-                          <td>
-                            <div className="friends-req-actions">
-                              <Button
-                                type="button"
-                                size="sm"
-                                icon={Check}
-                                iconMotion="scale"
-                                disabled={busy}
-                                onClick={() => void actFriend(row.self_id, row.user_id, "approve", row.source)}
-                              >
-                                同意
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                icon={X}
-                                iconMotion="close"
-                                disabled={busy}
-                                onClick={() => void actFriend(row.self_id, row.user_id, "reject", row.source)}
-                              >
-                                拒绝
-                              </Button>
-                            </div>
-                          </td>
+                          </th>
+                          <th>用户 QQ</th>
+                          <th>用户昵称</th>
+                          <th>来源</th>
+                          <th style={{ minWidth: 108, width: "1%" }}>操作</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {pagedRequestRows.map((row) => (
+                          <tr key={friendReqKey(row)}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                aria-label={`选择${friendSourceLabel(row.source)}好友申请 ${row.user_id}`}
+                                checked={pickedFriendKeys.has(friendReqKey(row))}
+                                disabled={busy}
+                                onChange={(e) => {
+                                  const k = friendReqKey(row);
+                                  setPickedFriendKeys((prev) => {
+                                    const ns = new Set(prev);
+                                    if (e.target.checked) ns.add(k);
+                                    else ns.delete(k);
+                                    return ns;
+                                  });
+                                }}
+                              />
+                            </td>
+                            <td>{row.user_id}</td>
+                            <td>{displayFriendReqNickname(row)}</td>
+                            <td>{friendSourceLabel(row.source)}</td>
+                            <td>
+                              <div className="friends-req-actions">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  icon={Check}
+                                  iconMotion="scale"
+                                  disabled={busy}
+                                  onClick={() => void actFriend(row.self_id, row.user_id, "approve", row.source)}
+                                >
+                                  同意
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  icon={X}
+                                  iconMotion="close"
+                                  disabled={busy}
+                                  onClick={() => void actFriend(row.self_id, row.user_id, "reject", row.source)}
+                                >
+                                  拒绝
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
               {requestRows.length > 0 ? (
                 <ConsolePagerBar
@@ -954,84 +971,91 @@ export default function FriendsGroupsPage() {
               ) : !groupRequestRows.length ? (
                 <p className="muted">暂无待处理入群请求。</p>
               ) : (
-                <div className="table-wrap">
-                  <table className="data console-data-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: 44 }}>
-                          <input
-                            type="checkbox"
-                            title="全选当前筛选下的全部入群请求"
-                            checked={allGroupsPicked}
-                            ref={(el) => {
-                              if (el) el.indeterminate = someGroupsPicked;
-                            }}
-                            disabled={!groupRequestRows.length || busy}
-                            onChange={(e) =>
-                              setPickedGroupKeys(e.target.checked ? new Set(allGroupKeys) : new Set())
-                            }
-                          />
-                        </th>
-                        <th>群号</th>
-                        <th>用户 QQ</th>
-                        <th>类型</th>
-                        <th>备注</th>
-                        <th style={{ minWidth: 108, width: "1%" }}>操作</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pagedGroupRequestRows.map((row) => (
-                        <tr key={groupReqKey(row)}>
-                          <td>
+                <>
+                  <p className="muted mb-2 text-xs" aria-live="polite">
+                    全选范围：当前 Bot 的全部入群请求（共 {groupRequestRows.length} 条，含其他分页）；已选 {pickedGroupKeys.size} 条。
+                  </p>
+                  <div className="table-wrap">
+                    <table className="data console-data-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: 44 }}>
                             <input
                               type="checkbox"
-                              checked={pickedGroupKeys.has(groupReqKey(row))}
-                              disabled={busy}
-                              onChange={(e) => {
-                                const k = groupReqKey(row);
-                                setPickedGroupKeys((prev) => {
-                                  const ns = new Set(prev);
-                                  if (e.target.checked) ns.add(k);
-                                  else ns.delete(k);
-                                  return ns;
-                                });
+                              aria-label="全选当前 Bot 全部入群请求"
+                              title="全选当前 Bot 全部入群请求（含其他分页）"
+                              checked={allGroupsPicked}
+                              ref={(el) => {
+                                if (el) el.indeterminate = someGroupsPicked;
                               }}
+                              disabled={!groupRequestRows.length || busy}
+                              onChange={(e) =>
+                                setPickedGroupKeys(e.target.checked ? new Set(allGroupKeys) : new Set())
+                              }
                             />
-                          </td>
-                          <td>{row.group_id}</td>
-                          <td>{row.user_id}</td>
-                          <td className="muted">{groupRequestSubTypeLabel(row.sub_type)}</td>
-                          <td className="muted">{row.comment}</td>
-                          <td>
-                            <div className="friends-req-actions">
-                              <Button
-                                type="button"
-                                size="sm"
-                                icon={Check}
-                                iconMotion="scale"
-                                disabled={busy}
-                                onClick={() => void actGroup(row.self_id, row.user_id, row.group_id, "approve")}
-                              >
-                                同意
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                icon={X}
-                                iconMotion="close"
-                                disabled={busy}
-                                onClick={() => void actGroup(row.self_id, row.user_id, row.group_id, "reject")}
-                              >
-                                拒绝
-                              </Button>
-                            </div>
-                          </td>
+                          </th>
+                          <th>群号</th>
+                          <th>用户 QQ</th>
+                          <th>类型</th>
+                          <th>备注</th>
+                          <th style={{ minWidth: 108, width: "1%" }}>操作</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {pagedGroupRequestRows.map((row) => (
+                          <tr key={groupReqKey(row)}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                aria-label={`选择入群请求 ${row.group_id} / ${row.user_id}`}
+                                checked={pickedGroupKeys.has(groupReqKey(row))}
+                                disabled={busy}
+                                onChange={(e) => {
+                                  const k = groupReqKey(row);
+                                  setPickedGroupKeys((prev) => {
+                                    const ns = new Set(prev);
+                                    if (e.target.checked) ns.add(k);
+                                    else ns.delete(k);
+                                    return ns;
+                                  });
+                                }}
+                              />
+                            </td>
+                            <td>{row.group_id}</td>
+                            <td>{row.user_id}</td>
+                            <td className="muted">{groupRequestSubTypeLabel(row.sub_type)}</td>
+                            <td className="muted">{row.comment}</td>
+                            <td>
+                              <div className="friends-req-actions">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  icon={Check}
+                                  iconMotion="scale"
+                                  disabled={busy}
+                                  onClick={() => void actGroup(row.self_id, row.user_id, row.group_id, "approve")}
+                                >
+                                  同意
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  icon={X}
+                                  iconMotion="close"
+                                  disabled={busy}
+                                  onClick={() => void actGroup(row.self_id, row.user_id, row.group_id, "reject")}
+                                >
+                                  拒绝
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
               {groupRequestRows.length > 0 ? (
                 <ConsolePagerBar

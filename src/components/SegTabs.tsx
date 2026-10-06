@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,39 @@ export default function SegTabs({
   tone = "muted",
 }: Props) {
   const toolbar = size === "toolbar";
+  const listRef = useRef<HTMLDivElement>(null);
+  const indicatorRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const list = listRef.current;
+    const indicator = indicatorRef.current;
+    if (!list || !indicator) return;
+
+    const updateIndicator = () => {
+      const active = list.querySelector<HTMLElement>('[role="tab"][data-state="active"]');
+      if (!active) {
+        delete indicator.dataset.ready;
+        return;
+      }
+      const listRect = list.getBoundingClientRect();
+      const activeRect = active.getBoundingClientRect();
+      indicator.style.left = `${activeRect.left - listRect.left}px`;
+      indicator.style.top = `${activeRect.top - listRect.top}px`;
+      indicator.style.width = `${activeRect.width}px`;
+      indicator.style.height = `${activeRect.height}px`;
+      indicator.dataset.ready = "true";
+    };
+
+    updateIndicator();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateIndicator);
+    observer?.observe(list);
+    list.querySelectorAll<HTMLElement>('[role="tab"]').forEach((tab) => observer?.observe(tab));
+    window.addEventListener("resize", updateIndicator);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", updateIndicator);
+    };
+  }, [options, value]);
 
   return (
     <Tabs
@@ -53,19 +87,22 @@ export default function SegTabs({
     >
       <TabsList
         aria-label={ariaLabel}
+        ref={listRef}
         className={cn(
+          "seg-tabs__list relative",
           tone === "accent" && "seg-tabs--accent",
           toolbar && "h-9 p-0.5",
           full && (toolbar ? "flex h-9 w-full" : "flex h-10 w-full"),
           listClassName,
         )}
       >
+        <span ref={indicatorRef} className="seg-tabs__indicator" aria-hidden />
         {options.map((opt) => (
           <TabsTrigger
             key={opt.value}
             value={opt.value}
             disabled={disabled}
-            className={cn(full && "flex-1", toolbar && "px-2.5 py-1", opt.className)}
+            className={cn("relative z-[1]", full && "flex-1", toolbar && "px-2.5 py-1", opt.className)}
           >
             {opt.label}
           </TabsTrigger>

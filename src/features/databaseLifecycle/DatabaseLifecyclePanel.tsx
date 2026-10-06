@@ -115,7 +115,6 @@ export default function DatabaseLifecyclePanel() {
       const detail = axiosErrorDetail(cause) || "保存失败";
       setError(detail);
       pushConsoleToast(detail, "err");
-      throw cause;
     } finally {
       setSaving(false);
     }
@@ -126,10 +125,11 @@ export default function DatabaseLifecyclePanel() {
     setPreviewing(true);
     setError("");
     try {
-      await savePolicy();
       setPreview(await previewDbLifecycle(selected.dataset_id, draft));
-    } catch {
-      // savePolicy has already exposed a meaningful response error.
+    } catch (cause) {
+      const detail = axiosErrorDetail(cause) || "预估失败";
+      setError(detail);
+      pushConsoleToast(detail, "err");
     } finally {
       setPreviewing(false);
     }
@@ -266,7 +266,11 @@ export default function DatabaseLifecyclePanel() {
             <div className="database-lifecycle__form min-h-0 overflow-y-auto px-4 py-3">
               <label className="database-lifecycle__switch-row">
                 <span><strong>自动维护</strong><small>每天 04:45 在维护进程检查此策略。</small></span>
-                <Switch checked={draft.enabled} onCheckedChange={(enabled) => setDraft({ ...draft, enabled })} />
+                <Switch
+                  checked={draft.enabled}
+                  onCheckedChange={(enabled) => setDraft({ ...draft, enabled })}
+                  disabled={saving || previewing}
+                />
               </label>
               <label>
                 <span>保留天数 {!selected.supports_retention ? <small>该数据集仅清理已过期记录。</small> : null}</span>
@@ -278,7 +282,7 @@ export default function DatabaseLifecyclePanel() {
                   value={draft.retention_days ?? ""}
                   onChange={(event) => setDraft({ ...draft, retention_days: numberOrNull(event.target.value) })}
                   placeholder={selected.supports_retention ? "不按天数清理" : "不适用"}
-                  disabled={!selected.supports_retention}
+                  disabled={!selected.supports_retention || saving || previewing}
                 />
               </label>
               <label>
@@ -299,7 +303,7 @@ export default function DatabaseLifecyclePanel() {
                     });
                   }}
                   placeholder={selected.supports_max_bytes ? "不按容量清理" : "不适用"}
-                  disabled={!selected.supports_max_bytes}
+                  disabled={!selected.supports_max_bytes || saving || previewing}
                 />
               </label>
               {selected.errors.length ? <p className="alert alert--err m-0">{selected.errors.join("；")}</p> : null}
@@ -328,6 +332,7 @@ export default function DatabaseLifecyclePanel() {
         title={`确认维护${selected ? `：${selected.label}` : ""}`}
         subtitle={preview ? `预计清理 ${formatRows(preview.candidate_rows)} ${selected?.dataset_id === "image_cache_files" ? "个孤儿文件" : "条记录"}，预计释放 ${formatLifecycleBytes(preview.candidate_bytes)}。操作不可逆。` : ""}
         warnings={["该操作会删除符合当前生命周期策略的数据。请确认策略和预估影响。"]}
+        error={error}
         confirmLabel="开始维护"
         busy={previewing}
         busyLabel="正在启动…"
