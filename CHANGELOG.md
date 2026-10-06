@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.27] - 2026-10-06
 
 ### 更新公告
 
@@ -15,6 +15,15 @@
 - 明确好友与入群申请的跨页全选范围
 - 数据库维护预估不再自动保存策略，失败提示更清晰
 - 手机端页面工具条统一保持单行，超宽时横向滑动
+
+### 提交明细
+
+### Added
+
+* feat(webui): 控制台交互体验完善 ([a6458b6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a6458b6c8dbd1dbf63b6e1add790b85bb541a7a2))
+
+**完整变更**: [`v0.9.26...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.26...HEAD)
+
 
 ## [0.9.26] - 2026-10-04
 
@@ -85,7 +94,6 @@
 * test(webui): 测试基线纳入持续集成 ([5a09e6f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5a09e6f5176e0a4f2fd318935933bdf9cc355b2b))
 
 **完整变更**: [`v0.9.25...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.25...HEAD)
-
 
 ## [0.9.25] - 2026-09-20
 
