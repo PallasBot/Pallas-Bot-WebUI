@@ -11905,6 +11905,14 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card {
   margin-top: 4px;
   overflow: hidden;
 }
+.plugin-store-card__meta-row--versions {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.plugin-store-card__meta-row--versions .plugin-store-card__meta-link--version {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .plugin-store-card__title {
   margin: 0;
   font-size: 1rem;

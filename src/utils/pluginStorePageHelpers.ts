@@ -99,6 +99,15 @@ export function communityInstalled(row: CommunityPluginRow): boolean {
   return Boolean(row.loaded || row.local_installed || row.status === "loaded" || row.status === "installed");
 }
 
+export function communityVersionDisplay(row: CommunityPluginRow): { installed: string; index: string } {
+  const installed = communityInstalled(row)
+    ? row.installed_version?.trim()
+      || (row.installed_ref?.trim() ? `提交 ${row.installed_ref.trim()}` : "未知")
+    : "";
+  const index = row.index_version?.trim() || "";
+  return { installed, index };
+}
+
 export function resultNeedsRestart(result: Parameters<typeof extensionResultNeedsRestart>[0]): boolean {
   return extensionResultNeedsRestart(result);
 }

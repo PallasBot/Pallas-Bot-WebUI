@@ -103,7 +103,7 @@ import {
   StoreTab,
   communityActivationHint,
   communityInstalled,
-  communityInstalledVersionLabel,
+  communityVersionDisplay,
   communityRowAvatarUrl,
   communityRowIconUrl,
   communityUpdateEnabled,
@@ -501,6 +501,11 @@ export default function PluginStorePage() {
         skipAssets: !force,
       });
       setCommunityStore(data);
+      setDetailTarget((current) => {
+        if (current?.kind !== "community") return current;
+        const refreshed = data.plugins.find((row) => row.plugin_id === current.id);
+        return refreshed ? { ...current, community: refreshed } : current;
+      });
       qc.setQueryData(["plugins-community-store", "nav-notice"], data);
     },
     [qc],
@@ -1370,6 +1375,10 @@ export default function PluginStorePage() {
     </div>
   );
 
+  const detailCommunityVersions = detailTarget?.kind === "community" && detailTarget.community
+    ? communityVersionDisplay(detailTarget.community)
+    : null;
+
   return (
     <div className="console-hub-page plugin-store-page plugin-store-page--hub">
       <PageMasthead title="插件商店" description={pageLead} actions={mastheadActions} />
@@ -1609,6 +1618,7 @@ export default function PluginStorePage() {
           <div className="plugin-store-page__grid">
             {filteredCommunityRows.map((row) => {
               const result = communityActionState[row.plugin_id] ?? null;
+              const versions = communityVersionDisplay(row);
               return (
                 <PluginStoreCard
                   key={row.plugin_id}
@@ -1632,7 +1642,9 @@ export default function PluginStorePage() {
                   updateDisabled={!communityUpdateEnabled(row, result)}
                   updateLabel={communityUpdateLabel(result)}
                   latestLabel={resultNeedsRestart(result) ? "待重启" : updateLatestLabel(row)}
-                  installedVersionLabel={communityInstalledVersionLabel(row, result)}
+                  installedVersionLabel={versions.installed}
+                  indexVersionLabel={versions.index}
+                  versionLabels
                   progressPercent={cardProgress?.key === row.plugin_id ? cardProgress.percent : null}
                   progressMessage={cardProgress?.key === row.plugin_id ? cardProgress.message : ""}
                   showNotice={visitNewIds.has(`community:${row.plugin_id}`) || row.has_update === true}
@@ -1708,9 +1720,12 @@ export default function PluginStorePage() {
                   </p>
                 ) : null}
                 {detailTarget?.kind === "community" && detailTarget.community ? (
-                  <p className="plugin-store-page__detail-activation mt-1.5">
-                    {communityActivationHint(detailTarget.community)}
-                  </p>
+                  <>
+                    <p className="mt-1 text-xs text-muted-foreground">已安装：{detailCommunityVersions?.installed || "未安装"}{detailCommunityVersions?.index ? ` · 索引：${detailCommunityVersions.index}` : ""}</p>
+                    <p className="plugin-store-page__detail-activation mt-1.5">
+                      {communityActivationHint(detailTarget.community)}
+                    </p>
+                  </>
                 ) : null}
               </div>
             </DialogDescription>
