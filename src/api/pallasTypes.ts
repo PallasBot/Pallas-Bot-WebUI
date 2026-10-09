@@ -528,6 +528,10 @@ export interface CommunityPluginRow {
   can_update?: boolean;
   /** 版本快照判定：是否有新版本；null/undefined 表示尚未检查 */
   has_update?: boolean | null;
+  /** 远端索引声明的版本 */
+  index_version?: string | null;
+  /** 本地实际安装的版本 */
+  installed_version?: string | null;
   /** 已安装 commit（短哈希） */
   installed_ref?: string | null;
   /** 远端最新 commit（短哈希） */

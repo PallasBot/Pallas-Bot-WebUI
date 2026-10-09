@@ -103,7 +103,7 @@ import {
   StoreTab,
   communityActivationHint,
   communityInstalled,
-  communityInstalledVersionLabel,
+  communityVersionDisplay,
   communityRowAvatarUrl,
   communityRowIconUrl,
   communityUpdateEnabled,
@@ -215,6 +215,7 @@ export default function PluginStorePage() {
   const installUpdateQueueDeferredRestartRef = useRef(false);
   const jobWatchersRef = useRef(new Set<AbortController>());
   const mountedRef = useRef(true);
+  const communityStoreRequestRef = useRef(0);
 
   const syncInstallUpdateQueue = useCallback((next: InstallUpdateQueueEntry[]) => {
     installUpdateQueueRef.current = next;
@@ -261,6 +262,7 @@ export default function PluginStorePage() {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      communityStoreRequestRef.current += 1;
       for (const controller of jobWatchersRef.current) controller.abort();
       jobWatchersRef.current.clear();
     };
@@ -495,13 +497,26 @@ export default function PluginStorePage() {
 
   const refreshCommunityStore = useCallback(
     async (force = false) => {
-      const data = await fetchCommunityPluginStore({
-        refresh: force,
-        // 常规进页跳过资源快照；强制刷新时走完整拉资源
-        skipAssets: !force,
-      });
-      setCommunityStore(data);
-      qc.setQueryData(["plugins-community-store", "nav-notice"], data);
+      const requestId = ++communityStoreRequestRef.current;
+      try {
+        const data = await fetchCommunityPluginStore({
+          refresh: force,
+          // 常规进页跳过资源快照；强制刷新时走完整拉资源
+          skipAssets: !force,
+        });
+        if (!mountedRef.current || requestId !== communityStoreRequestRef.current) return;
+        await qc.cancelQueries({ queryKey: ["plugins-community-store", "nav-notice"], exact: true });
+        if (!mountedRef.current || requestId !== communityStoreRequestRef.current) return;
+        setCommunityStore(data);
+        setDetailTarget((current) => {
+          if (current?.kind !== "community") return current;
+          const refreshed = (data.plugins ?? []).find((row) => row.plugin_id === current.id);
+          return refreshed ? { ...current, community: refreshed } : current;
+        });
+        qc.setQueryData(["plugins-community-store", "nav-notice"], data);
+      } catch (error) {
+        if (mountedRef.current && requestId === communityStoreRequestRef.current) throw error;
+      }
     },
     [qc],
   );
@@ -1370,6 +1385,10 @@ export default function PluginStorePage() {
     </div>
   );
 
+  const detailCommunityVersions = detailTarget?.kind === "community" && detailTarget.community
+    ? communityVersionDisplay(detailTarget.community)
+    : null;
+
   return (
     <div className="console-hub-page plugin-store-page plugin-store-page--hub">
       <PageMasthead title="插件商店" description={pageLead} actions={mastheadActions} />
@@ -1609,6 +1628,7 @@ export default function PluginStorePage() {
           <div className="plugin-store-page__grid">
             {filteredCommunityRows.map((row) => {
               const result = communityActionState[row.plugin_id] ?? null;
+              const versions = communityVersionDisplay(row);
               return (
                 <PluginStoreCard
                   key={row.plugin_id}
@@ -1632,7 +1652,9 @@ export default function PluginStorePage() {
                   updateDisabled={!communityUpdateEnabled(row, result)}
                   updateLabel={communityUpdateLabel(result)}
                   latestLabel={resultNeedsRestart(result) ? "待重启" : updateLatestLabel(row)}
-                  installedVersionLabel={communityInstalledVersionLabel(row, result)}
+                  installedVersionLabel={versions.installed}
+                  indexVersionLabel={versions.index}
+                  versionLabels
                   progressPercent={cardProgress?.key === row.plugin_id ? cardProgress.percent : null}
                   progressMessage={cardProgress?.key === row.plugin_id ? cardProgress.message : ""}
                   showNotice={visitNewIds.has(`community:${row.plugin_id}`) || row.has_update === true}
@@ -1708,9 +1730,12 @@ export default function PluginStorePage() {
                   </p>
                 ) : null}
                 {detailTarget?.kind === "community" && detailTarget.community ? (
-                  <p className="plugin-store-page__detail-activation mt-1.5">
-                    {communityActivationHint(detailTarget.community)}
-                  </p>
+                  <>
+                    <p className="mt-1 text-xs text-muted-foreground">已安装：{detailCommunityVersions?.installed || "未安装"}{detailCommunityVersions?.index ? ` · 索引：${detailCommunityVersions.index}` : ""}</p>
+                    <p className="plugin-store-page__detail-activation mt-1.5">
+                      {communityActivationHint(detailTarget.community)}
+                    </p>
+                  </>
                 ) : null}
               </div>
             </DialogDescription>

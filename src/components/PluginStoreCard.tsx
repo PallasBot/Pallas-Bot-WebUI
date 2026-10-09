@@ -45,6 +45,8 @@ type Props = {
   metaLinkLabel?: string;
   metaLinkUrl?: string | null;
   installedVersionLabel?: string;
+  indexVersionLabel?: string;
+  versionLabels?: boolean;
   progressPercent?: number | null;
   progressMessage?: string;
   /** 上新 / 可更新提醒圆点（标题旁） */
@@ -86,6 +88,8 @@ export default function PluginStoreCard({
   metaLinkLabel = "",
   metaLinkUrl = null,
   installedVersionLabel = "",
+  indexVersionLabel = "",
+  versionLabels = false,
   progressPercent = null,
   progressMessage = "",
   showNotice = false,
@@ -115,11 +119,13 @@ export default function PluginStoreCard({
   const hasMenu = menuItems.some((item) => !item.disabled);
   const hasMetaLink = Boolean((metaLinkLabel || "").trim() && (metaLinkUrl || "").trim());
   const versionChips = useMemo(() => {
-    const chips: Array<{ key: string; value: string }> = [];
+    const chips: Array<{ key: string; value: string; label: string }> = [];
     const installedVer = (installedVersionLabel || "").trim();
-    if (installedVer) chips.push({ key: "installed", value: installedVer });
+    const indexVer = (indexVersionLabel || "").trim();
+    if (installedVer) chips.push({ key: "installed", value: installedVer, label: versionLabels ? "已安装：" : "" });
+    if (indexVer) chips.push({ key: "index", value: indexVer, label: "索引：" });
     return chips;
-  }, [installedVersionLabel]);
+  }, [installedVersionLabel, indexVersionLabel, versionLabels]);
 
   useEffect(() => {
     setAvatarImageFailed(false);
@@ -226,7 +232,7 @@ export default function PluginStoreCard({
               </p>
             ) : null}
             {hasMetaLink || versionChips.length ? (
-              <div className="plugin-store-card__meta-row">
+              <div className={cn("plugin-store-card__meta-row", versionLabels && "plugin-store-card__meta-row--versions")}>
                 {hasMetaLink ? (
                   <a
                     className="plugin-store-card__meta-link"
@@ -244,7 +250,9 @@ export default function PluginStoreCard({
                     className="plugin-store-card__meta-link plugin-store-card__meta-link--version"
                     title={chip.value}
                   >
-                    {shortPluginVersionLabel(chip.value)}
+                    {chip.label}{versionLabels && (chip.value === "未知" || chip.value.startsWith("提交 "))
+                      ? chip.value
+                      : shortPluginVersionLabel(chip.value)}
                   </span>
                 ))}
               </div>
