@@ -215,6 +215,7 @@ export default function PluginStorePage() {
   const installUpdateQueueDeferredRestartRef = useRef(false);
   const jobWatchersRef = useRef(new Set<AbortController>());
   const mountedRef = useRef(true);
+  const communityStoreRequestRef = useRef(0);
 
   const syncInstallUpdateQueue = useCallback((next: InstallUpdateQueueEntry[]) => {
     installUpdateQueueRef.current = next;
@@ -261,6 +262,7 @@ export default function PluginStorePage() {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      communityStoreRequestRef.current += 1;
       for (const controller of jobWatchersRef.current) controller.abort();
       jobWatchersRef.current.clear();
     };
@@ -495,18 +497,26 @@ export default function PluginStorePage() {
 
   const refreshCommunityStore = useCallback(
     async (force = false) => {
-      const data = await fetchCommunityPluginStore({
-        refresh: force,
-        // 常规进页跳过资源快照；强制刷新时走完整拉资源
-        skipAssets: !force,
-      });
-      setCommunityStore(data);
-      setDetailTarget((current) => {
-        if (current?.kind !== "community") return current;
-        const refreshed = data.plugins.find((row) => row.plugin_id === current.id);
-        return refreshed ? { ...current, community: refreshed } : current;
-      });
-      qc.setQueryData(["plugins-community-store", "nav-notice"], data);
+      const requestId = ++communityStoreRequestRef.current;
+      try {
+        const data = await fetchCommunityPluginStore({
+          refresh: force,
+          // 常规进页跳过资源快照；强制刷新时走完整拉资源
+          skipAssets: !force,
+        });
+        if (!mountedRef.current || requestId !== communityStoreRequestRef.current) return;
+        await qc.cancelQueries({ queryKey: ["plugins-community-store", "nav-notice"], exact: true });
+        if (!mountedRef.current || requestId !== communityStoreRequestRef.current) return;
+        setCommunityStore(data);
+        setDetailTarget((current) => {
+          if (current?.kind !== "community") return current;
+          const refreshed = (data.plugins ?? []).find((row) => row.plugin_id === current.id);
+          return refreshed ? { ...current, community: refreshed } : current;
+        });
+        qc.setQueryData(["plugins-community-store", "nav-notice"], data);
+      } catch (error) {
+        if (mountedRef.current && requestId === communityStoreRequestRef.current) throw error;
+      }
     },
     [qc],
   );
