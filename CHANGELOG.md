@@ -4,6 +4,15 @@
 
 <!-- entries -->
 
+## [0.9.28] - 2026-10-09
+
+### Fixed
+
+* fix(plugin-store): 社区插件版本来源区分 (#130) ([fbf0692](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fbf069261610bfc446f5be1e9f7d4f5af5a6087d))
+
+**完整变更**: [`v0.9.27...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.27...HEAD)
+
+
 ## [0.9.27] - 2026-10-06
 
 ### 更新公告
