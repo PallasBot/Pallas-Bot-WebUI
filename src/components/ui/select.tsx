@@ -229,11 +229,9 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
       )}
       {...(props as React.ComponentPropsWithoutRef<typeof ListBox.Item>)}
     >
-      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-        <ListBox.ItemIndicator>
-          <Check className="h-4 w-4 text-[var(--accent)]" />
-        </ListBox.ItemIndicator>
-      </span>
+      <ListBox.ItemIndicator className="start-2 end-auto">
+        <Check className="h-4 w-4 text-[var(--accent)]" />
+      </ListBox.ItemIndicator>
       {children}
     </ListBox.Item>
   ),

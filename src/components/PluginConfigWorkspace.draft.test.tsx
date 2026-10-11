@@ -177,6 +177,8 @@ it("keeps independent form/raw drafts on refetch and exposes their combined dirt
   const user = userEvent.setup();
   renderWorkspace();
   const field = await screen.findByLabelText("test_value") as HTMLInputElement;
+  const modeTabs = screen.getByRole("tablist", { name: "配置编辑模式" });
+  expect(modeTabs.closest(".plugin-config-workspace__mode-tabs")).not.toBeNull();
   await user.clear(field);
   await user.type(field, "form draft");
   expect(screen.getByLabelText("dirty state").textContent).toBe("true");

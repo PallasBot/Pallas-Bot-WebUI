@@ -571,6 +571,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
             <div className={CHROME_TOOLS_TRAILING}>
               <SegTabs
                 size="toolbar"
+                className="plugin-config-workspace__mode-tabs"
                 ariaLabel="配置编辑模式"
                 value={mode}
                 onValueChange={(v) => setMode(v === "raw" ? "raw" : "form")}

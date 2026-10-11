@@ -612,6 +612,12 @@ html[data-theme="light"] .plugin-config-form-item .config-field-renderer__step {
   color: var(--text-muted);
 }
 
+/* 配置编辑模式只有两项；让横向工具条滚动，而不是把 Tabs 内容挤进内部滚动箭头。 */
+.plugin-config-workspace__mode-tabs .tabs__list-container {
+  inline-size: max-content;
+  max-inline-size: none;
+}
+
 /* ── 治理面板：与 plugin-config-group-card 层次 / 间距 / 轻控件一致 ── */
 .plugin-governance-panel {
   gap: 16px;

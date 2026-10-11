@@ -78,6 +78,30 @@ describe("Select scroll contracts", () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it("keeps the selection mark in the option's own leading gutter", async () => {
+    const user = userEvent.setup();
+    render(<Select aria-label="Fruit" defaultValue="fruit-0">
+      <SelectTrigger aria-label="Fruit choices"><SelectValue placeholder="Choose fruit" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="fruit-0">Fruit 0</SelectItem>
+        <SelectItem value="fruit-1">Fruit 1</SelectItem>
+      </SelectContent>
+    </Select>);
+
+    await user.click(screen.getByRole("button", { name: /Fruit choices/ }));
+    const [selected, unselected] = await screen.findAllByRole("option");
+    const indicator = selected.querySelector(".list-box-item__indicator");
+    const unselectedIndicator = unselected.querySelector(".list-box-item__indicator");
+
+    expect(selected.getAttribute("aria-selected")).toBe("true");
+    expect(unselected.getAttribute("aria-selected")).toBe("false");
+    expect(indicator?.parentElement).toBe(selected);
+    expect(indicator?.className).toContain("start-2");
+    expect(indicator?.className).toContain("end-auto");
+    expect(indicator?.getAttribute("data-visible")).toBe("true");
+    expect(unselectedIndicator?.getAttribute("data-visible")).not.toBe("true");
+  });
+
   it("lets the list use HeroUI's available popover height in a short viewport", async () => {
     const originalDocumentHeight = Object.getOwnPropertyDescriptor(document.documentElement, "clientHeight");
     const originalWindowHeight = Object.getOwnPropertyDescriptor(window, "innerHeight");
