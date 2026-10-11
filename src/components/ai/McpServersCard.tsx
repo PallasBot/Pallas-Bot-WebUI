@@ -87,15 +87,15 @@ function McpStatusNote({ policy }: { policy?: LlmToolCatalogPolicy | null }) {
     <div className="space-y-1 text-xs leading-relaxed text-muted-foreground">
       <p>
         当前已注册 MCP 工具{" "}
-        <span className="tabular-nums text-foreground">{registered}</span> 个
+        <span className="tabular-nums text-pallas-foreground">{registered}</span> 个
         {Array.isArray(mcp.servers) ? (
           <>
-            ；配置服务器 <span className="tabular-nums text-foreground">{mcp.servers.length}</span> 个
+            ；配置服务器 <span className="tabular-nums text-pallas-foreground">{mcp.servers.length}</span> 个
           </>
         ) : null}
         {sessions.length ? (
           <>
-            ；常驻连接 <span className="tabular-nums text-foreground">{live}</span>/{sessions.length}
+            ；常驻连接 <span className="tabular-nums text-pallas-foreground">{live}</span>/{sessions.length}
           </>
         ) : null}
       </p>
@@ -223,7 +223,7 @@ export default function McpServersCard({ policy }: { policy?: LlmToolCatalogPoli
           {servers.map((server, index) => (
             <li
               key={`mcp-${index}`}
-              className="space-y-3 rounded-[var(--radius-control,8px)] border bg-muted/20 p-3 max-[560px]:p-2.5"
+              className="space-y-3 rounded-[var(--radius-control,8px)] border bg-pallas-muted/20 p-3 max-[560px]:p-2.5"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-medium text-muted-foreground">服务器 {index + 1}</span>

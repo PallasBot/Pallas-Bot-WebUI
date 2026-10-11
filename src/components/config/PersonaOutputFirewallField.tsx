@@ -39,7 +39,7 @@ export default function PersonaOutputFirewallField({
     FIREWALL_STRATEGY_OPTIONS.find((item) => item.value === policy.strategy)?.hint || "";
 
   return (
-    <div className="space-y-3 rounded-lg border border-border/70 bg-muted/10 p-3">
+    <div className="space-y-3 rounded-pallas-lg border border-pallas-border/70 bg-pallas-muted/10 p-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium">检查回复是否人设崩了</p>

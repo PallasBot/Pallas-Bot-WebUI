@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
@@ -210,19 +210,44 @@ it("asks before Escape closes a dirty plugin dialog", async () => {
   await user.clear(field);
   await user.type(field, "dialog draft");
 
-  fireEvent.pointerDown(document.body);
+  const backdrop = document.querySelector<HTMLElement>('[data-slot="modal-backdrop"]');
+  if (!backdrop) throw new Error("Plugin dialog backdrop was not rendered");
+  const outerDialog = screen.getByRole("dialog");
+  await user.click(backdrop);
   expect(await screen.findByRole("alertdialog")).not.toBeNull();
   await user.click(screen.getByRole("button", { name: "取消" }));
   expect(screen.getByRole("dialog")).not.toBeNull();
+  expect(outerDialog.contains(document.activeElement)).toBe(true);
 
   await user.keyboard("{Escape}");
   expect(await screen.findByRole("alertdialog")).not.toBeNull();
   await user.click(screen.getByRole("button", { name: "取消" }));
   expect(screen.getByRole("dialog")).not.toBeNull();
+  expect(outerDialog.contains(document.activeElement)).toBe(true);
 
   await user.keyboard("{Escape}");
   await user.click(await screen.findByRole("button", { name: "放弃草稿" }));
   await waitFor(() => expect(screen.getByLabelText("dialog open").textContent).toBe("false"));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+
+it("returns Escape-confirm focus to the edited field and prompts again", async () => {
+  const user = userEvent.setup();
+  renderWorkspace("/dialog");
+  const field = await screen.findByLabelText("test_value") as HTMLInputElement;
+  await user.clear(field);
+  await user.type(field, "dialog draft");
+
+  await user.keyboard("{Escape}");
+  expect(await screen.findByRole("alertdialog")).not.toBeNull();
+  await user.click(screen.getByRole("button", { name: "取消" }));
+  expect(document.activeElement).toBe(field);
+
+  await user.keyboard("{Escape}");
+  expect(await screen.findByRole("alertdialog")).not.toBeNull();
+  await user.click(screen.getByRole("button", { name: "放弃草稿" }));
+  await waitFor(() => expect(screen.getByLabelText("dialog open").textContent).toBe("false"));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });
 
 it("keeps the plugin dialog open during a save", async () => {
@@ -282,6 +307,10 @@ it("confirms a route-backed plugin dialog close only once", async () => {
   await user.keyboard("{Escape}");
   const cancelDialog = await screen.findByRole("alertdialog");
   expect(cancelDialog.textContent).toContain("有未保存的配置草稿");
+  expect(within(cancelDialog).getByRole("heading", { name: "有未保存的配置草稿" })).not.toBeNull();
+  expect(within(cancelDialog).getByText("离开将丢弃尚未保存的更改。")).not.toBeNull();
+  expect(within(cancelDialog).getByRole("button", { name: "取消" })).not.toBeNull();
+  expect(within(cancelDialog).getByRole("button", { name: "离开页面" })).not.toBeNull();
   expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
   await user.click(screen.getByRole("button", { name: "取消" }));
   expect(router.state.location.pathname).toBe("/plugins/draft-test");
@@ -290,6 +319,8 @@ it("confirms a route-backed plugin dialog close only once", async () => {
   await user.keyboard("{Escape}");
   const closeDialog = await screen.findByRole("alertdialog");
   expect(closeDialog.textContent).toContain("有未保存的配置草稿");
+  expect(within(closeDialog).getByRole("heading", { name: "有未保存的配置草稿" })).not.toBeNull();
+  expect(within(closeDialog).getByText("离开将丢弃尚未保存的更改。")).not.toBeNull();
   expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
   await user.click(screen.getByRole("button", { name: "离开页面" }));
   await waitFor(() => expect(router.state.location.pathname).toBe("/plugins"));

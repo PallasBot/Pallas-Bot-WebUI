@@ -65,6 +65,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import UiInput from "@/components/ui/UiInput";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { botSelectDropdownLabel } from "@/utils/botDisplay";
@@ -1427,7 +1428,7 @@ export default function UpdatePage() {
                 {autoDraft.schedule_mode === "interval" ? (
                   <label className="update-page__auto-field">
                     <span className="update-page__auto-field-label">间隔（小时）</span>
-                    <UiInput
+                    <Input
                       type="number"
                       min={1}
                       max={168}
@@ -1438,8 +1439,8 @@ export default function UpdatePage() {
                         busy ||
                         !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
                       }
-                      onValueChange={(v) => {
-                        const n = Math.max(1, Math.min(168, Number(v) || 6));
+                      onChange={(e) => {
+                        const n = Math.max(1, Math.min(168, Number(e.target.value) || 6));
                         setAutoDraft((prev) => ({ ...prev, interval_hours: n }));
                       }}
                       onBlur={() => {
@@ -1452,7 +1453,7 @@ export default function UpdatePage() {
                   <label className="update-page__auto-field">
                     <span className="update-page__auto-field-label">每天时刻</span>
                     <div className="update-page__auto-cron">
-                      <UiInput
+                      <Input
                         type="number"
                         min={0}
                         max={23}
@@ -1463,8 +1464,8 @@ export default function UpdatePage() {
                           busy ||
                           !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
                         }
-                        onValueChange={(v) => {
-                          const n = Math.max(0, Math.min(23, Number(v) || 0));
+                        onChange={(e) => {
+                          const n = Math.max(0, Math.min(23, Number(e.target.value) || 0));
                           setAutoDraft((prev) => ({ ...prev, cron_hour: n }));
                         }}
                         onBlur={() => {
@@ -1473,7 +1474,7 @@ export default function UpdatePage() {
                         }}
                       />
                       <span className="muted">:</span>
-                      <UiInput
+                      <Input
                         type="number"
                         min={0}
                         max={59}
@@ -1484,8 +1485,8 @@ export default function UpdatePage() {
                           busy ||
                           !(autoDraft.webui_enabled || autoDraft.bot_enabled || autoDraft.plugins_enabled)
                         }
-                        onValueChange={(v) => {
-                          const n = Math.max(0, Math.min(59, Number(v) || 0));
+                        onChange={(e) => {
+                          const n = Math.max(0, Math.min(59, Number(e.target.value) || 0));
                           setAutoDraft((prev) => ({ ...prev, cron_minute: n }));
                         }}
                         onBlur={() => {

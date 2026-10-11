@@ -1,19 +1,18 @@
 import * as React from "react";
+import { TextArea as HeroTextArea } from "@heroui/react";
 
 import { cn } from "@/lib/utils";
-import { controlFocusClass } from "@/components/ui/input";
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(({ className, ...props }, ref) => {
   return (
-    <textarea
+    <HeroTextArea
       className={cn(
-        "flex min-h-[80px] w-full rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-[var(--control-bg,hsl(var(--ui-background)))] px-3 py-2 text-[length:var(--console-control-font-size,14px)] font-normal text-[var(--text)] shadow-[var(--control-shadow)] placeholder:text-[length:var(--console-control-font-size,14px)] placeholder:font-normal placeholder:text-[var(--console-placeholder-color)]",
-        controlFocusClass,
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        "w-full min-h-[var(--ui-textarea-min-height,80px)]",
         className,
       )}
+      data-heroui-skin="true"
       ref={ref}
       {...props}
     />

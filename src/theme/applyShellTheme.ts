@@ -178,6 +178,7 @@ function applyRadiusCssVars(el: HTMLElement, controlPx: number): void {
   el.style.setProperty("--radius-shell", `${shell}px`);
   el.style.setProperty("--radius-textarea", `${sm}px`);
   el.style.setProperty("--radius", `${r}px`);
+  el.style.setProperty("--radius-3xl", `${Math.min(32, r * 2.4)}px`);
 }
 
 /** 黑白预设：Tailwind `text-primary` / Switch 等走 --ui-*，须跟前景中性灰，勿留彩色 accent。 */
@@ -231,6 +232,28 @@ export function applyShellTheme(): void {
   el.classList.toggle("dark", theme === "dark");
   el.classList.toggle("light", theme === "light");
   el.style.colorScheme = theme;
+  Object.entries({
+    "--background": "var(--bg-deep)",
+    "--foreground": "var(--text)",
+    "--muted": "var(--text-muted)",
+    "--surface": "var(--bg-card)",
+    "--surface-foreground": "var(--text)",
+    "--surface-secondary": "var(--bg-muted)",
+    "--surface-secondary-foreground": "var(--text)",
+    "--surface-tertiary": "var(--bg-elev)",
+    "--surface-tertiary-foreground": "var(--text)",
+    "--overlay": "var(--bg-card)",
+    "--overlay-foreground": "var(--text)",
+    "--default": "var(--bg-elev)",
+    "--default-foreground": "var(--text)",
+    "--accent-foreground": "var(--accent-contrast)",
+    "--focus": "var(--accent)",
+    "--warning": "var(--warn)",
+    "--field-background": "var(--control-bg)",
+    "--field-foreground": "var(--text)",
+    "--field-placeholder": "var(--text-muted)",
+    "--field-border": "var(--control-border)",
+  }).forEach(([name, value]) => el.style.setProperty(name, value));
   applyRadiusCssVars(el, prefs.controlRadius);
   applyShadcnAccentVars(el, prefs.accentPreset, theme, prefs.uiPreset);
   const blur = prefs.glassBlur;

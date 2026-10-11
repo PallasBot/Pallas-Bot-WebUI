@@ -115,7 +115,7 @@ export default function AiConfigBehaviorSection() {
 
         {panel === "samples" ? (
           <StateBlock loading={runsQ.isLoading} error={runsQ.error} empty={!runsQ.data?.items?.length}>
-            <pre className="max-h-48 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
+            <pre className="max-h-48 overflow-auto rounded-pallas-md border bg-pallas-muted/30 p-2 text-xs">
               {JSON.stringify(runsQ.data?.items || [], null, 2)}
             </pre>
           </StateBlock>
@@ -126,7 +126,7 @@ export default function AiConfigBehaviorSection() {
             {(patternsQ.data?.items || []).map((row) => {
               const pid = String(row.pattern_id || row.id || "");
               return (
-                <div key={pid} className="flex items-start justify-between gap-2 rounded-md border p-2 text-xs">
+                <div key={pid} className="flex items-start justify-between gap-2 rounded-pallas-md border p-2 text-xs">
                   <pre className="min-w-0 flex-1">{JSON.stringify(row, null, 2)}</pre>
                   {pid ? (
                     <Button
@@ -147,7 +147,7 @@ export default function AiConfigBehaviorSection() {
         ) : null}
 
         {panel === "repeater" ? (
-          <section aria-label="语义风格" className="space-y-2 rounded-md border p-3">
+          <section aria-label="语义风格" className="space-y-2 rounded-pallas-md border p-3">
             <h3 className="text-sm font-medium">群表达已迁移</h3>
             <p className="text-sm text-muted-foreground">
               群画像、语义样例、质量评价和重建操作统一在 AI 治理中维护。
@@ -160,7 +160,7 @@ export default function AiConfigBehaviorSection() {
 
         {panel === "persona" ? (
           <StateBlock loading={personaQ.isLoading} error={personaQ.error}>
-            <pre className="max-h-48 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
+            <pre className="max-h-48 overflow-auto rounded-pallas-md border bg-pallas-muted/30 p-2 text-xs">
               {JSON.stringify(personaQ.data, null, 2)}
             </pre>
           </StateBlock>
@@ -204,7 +204,7 @@ export default function AiConfigBehaviorSection() {
             </Button>
           </div>
           {debugOut ? (
-            <pre className="max-h-64 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
+            <pre className="max-h-64 overflow-auto rounded-pallas-md border bg-pallas-muted/30 p-2 text-xs">
               {JSON.stringify(debugOut, null, 2)}
             </pre>
           ) : null}

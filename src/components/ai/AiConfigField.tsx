@@ -151,8 +151,8 @@ export function AiModelSelect({
         key={model}
         type="button"
         className={cn(
-          "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
-          selected && "bg-accent",
+          "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-pallas-accent hover:text-pallas-accent-foreground",
+          selected && "bg-pallas-accent",
         )}
         onClick={() => commit(model)}
       >
@@ -257,8 +257,8 @@ export function AiModelSelect({
               <button
                 type="button"
                 className={cn(
-                  "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-                  !safeValue && "bg-accent text-accent-foreground",
+                  "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-pallas-accent hover:text-pallas-accent-foreground",
+                  !safeValue && "bg-pallas-accent text-pallas-accent-foreground",
                 )}
                 onClick={() => commit("")}
               >

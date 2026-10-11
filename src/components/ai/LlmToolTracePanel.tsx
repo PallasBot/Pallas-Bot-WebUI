@@ -80,11 +80,11 @@ function TraceBody({
     <div className="space-y-2 text-left">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
         <span>
-          下发 <span className="tabular-nums text-foreground">{schemaCount}</span> 个 schema
+          下发 <span className="tabular-nums text-pallas-foreground">{schemaCount}</span> 个 schema
         </span>
         <span aria-hidden>·</span>
         <span>
-          调用 <span className="tabular-nums text-foreground">{callCount}</span> 次
+          调用 <span className="tabular-nums text-pallas-foreground">{callCount}</span> 次
         </span>
         {selective ? (
           <>

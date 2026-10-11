@@ -28,7 +28,7 @@
   gap: 2px;
   padding: 3px;
   border-radius: calc(var(--radius) - 2px);
-  background: color-mix(in srgb, var(--muted, var(--text)) 12%, transparent);
+  background: color-mix(in srgb, var(--pallas-muted, var(--text)) 12%, transparent);
 }
 
 .protocol-account-workspace__section {

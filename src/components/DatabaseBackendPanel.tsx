@@ -302,7 +302,7 @@ export default function DatabaseBackendPanel({ onMessage }: Props) {
               }
             />
           </Field>
-          <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 sm:col-span-2">
+          <div className="flex items-center justify-between gap-3 rounded-pallas-md border px-3 py-2 sm:col-span-2">
             <div>
               <div className="text-sm font-medium">自动建库</div>
               <p className="text-xs text-muted-foreground">仅本地开发；生产或 Compose 请关闭</p>

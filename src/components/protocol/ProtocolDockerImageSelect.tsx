@@ -161,7 +161,11 @@ export default function ProtocolDockerImageSelect({
         align="start"
         side="bottom"
         className="flex w-[var(--radix-popover-trigger-width)] min-w-[min(22rem,calc(100vw-2rem))] flex-col gap-0 overflow-hidden p-0"
-        onOpenAutoFocus={(e) => e.preventDefault()}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          inputRef.current?.focus();
+          inputRef.current?.select();
+        }}
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
@@ -225,8 +229,8 @@ export default function ProtocolDockerImageSelect({
                     key={name}
                     type="button"
                     className={cn(
-                      "flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
-                      selected && "bg-accent",
+                      "flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-pallas-accent hover:text-pallas-accent-foreground",
+                      selected && "bg-pallas-accent",
                     )}
                     onClick={() => commit(name)}
                   >

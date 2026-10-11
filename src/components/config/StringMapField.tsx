@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import TagsInput from "@/components/config/TagsInput";
 import { Button } from "@/components/ui/button";
-import UiInput from "@/components/ui/UiInput";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 /** 一组：一个 Speaker id ← 多个中文/别名 */
@@ -129,14 +129,14 @@ export default function StringMapField({
           {groups.map((group, index) => (
             <li key={`${baseId}-${index}`} className="string-map-field__group">
               <div className="string-map-field__group-head">
-                <UiInput
+                <Input
                   className="string-map-field__speaker"
                   type="text"
                   autoComplete="off"
                   placeholder={speakerPlaceholder}
                   aria-label={`第 ${index + 1} 组 Speaker id`}
                   value={group.speakerId}
-                  onValueChange={(v) => updateGroup(index, { speakerId: v })}
+                  onChange={(e) => updateGroup(index, { speakerId: e.target.value })}
                 />
                 <Button
                   type="button"

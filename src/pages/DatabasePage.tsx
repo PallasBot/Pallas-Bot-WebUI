@@ -57,7 +57,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import UiInput from "@/components/ui/UiInput";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { DATABASE_LIFECYCLE_NOTICE } from "@/config/navigationNotices";
 import { Code2, ChevronDown, Database, DatabaseZap, Eye, Layers, Play, Plus, Search, Table2, Users } from "lucide-react";
@@ -896,6 +895,8 @@ export default function DatabasePage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-0 w-max">
               <DropdownMenuItem
+                id="social-select-page"
+                textValue={socialPageAllSelected ? "取消全选" : "全选本页"}
                 disabled={
                   activeSection === "group"
                     ? pagedGroupIds.length === 0
@@ -909,6 +910,8 @@ export default function DatabasePage() {
                 {socialPageAllSelected ? "取消全选" : "全选本页"}
               </DropdownMenuItem>
               <DropdownMenuItem
+                id="social-clear-selection"
+                textValue="清除选择"
                 disabled={socialSelectedCount === 0}
                 onSelect={() => {
                   if (activeSection === "group") setSelectedGroupIds(new Set());
@@ -919,6 +922,8 @@ export default function DatabasePage() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                id="social-delete-selected"
+                textValue="删除选中"
                 className="text-destructive focus:text-destructive"
                 disabled={socialSelectedCount === 0 || deleteBusy}
                 onSelect={() => {
@@ -1094,7 +1099,7 @@ export default function DatabasePage() {
                   添加后可设置全局封禁（与私聊「牛牛拉黑」相同）。仅本群拉黑请到「群配置」里设置；「最近操作」显示最后一次拉黑或解禁的操作者与时间。
                 </p>
                 <div className="row-actions database-user-config-add__row">
-                  <UiInput
+                  <Input
                     className="database-user-config-add__inp"
                     type="text"
                     inputMode="numeric"
@@ -1102,7 +1107,7 @@ export default function DatabasePage() {
                     placeholder="QQ 号"
                     value={addUserInput}
                     disabled={socialConfigsBusy}
-                    onValueChange={setAddUserInput}
+                    onChange={(e) => setAddUserInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -1394,7 +1399,7 @@ export default function DatabasePage() {
                   />
                 ) : (
                   <div style={{ maxWidth: 360, width: "100%" }}>
-                    <UiInput placeholder="集合名" value={collection} onValueChange={setCollection} />
+                    <Input placeholder="集合名" value={collection} onChange={(e) => setCollection(e.target.value)} />
                   </div>
                 )}
               </div>

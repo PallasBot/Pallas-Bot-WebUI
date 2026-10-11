@@ -247,7 +247,7 @@ function CostDetailTable({
   const palette = fixedChartPalette(Math.max(rows.length, 8));
   return (
     <Card className={className}>
-      <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+      <CardHeader className="space-y-1.5 border-b border-pallas-border/60 p-3 sm:p-6">
         <CardTitle className="text-base">{title}</CardTitle>
         <CardDescription>仅显示有费用的项</CardDescription>
       </CardHeader>
@@ -285,7 +285,7 @@ function CostDetailTable({
                     ? Math.round((volume / totalVolume) * 1000) / 10
                     : 0;
                 return (
-                  <tr key={row.key} className="border-t border-border/60">
+                  <tr key={row.key} className="border-t border-pallas-border/60">
                     <td className="py-2 pr-3">
                       <div
                         className="truncate font-mono text-xs"
@@ -340,7 +340,7 @@ function DrawBreakdownTable({
 }) {
   return (
     <Card className={className}>
-      <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+      <CardHeader className="space-y-1.5 border-b border-pallas-border/60 p-3 sm:p-6">
         <CardTitle className="flex items-center gap-1.5 text-base">
           <PanelTitleIcon icon={Boxes} />
           {title}
@@ -373,7 +373,7 @@ function DrawBreakdownTable({
                       ? Math.round((1000 * row.okCount) / attempts) / 10
                       : null;
                   return (
-                    <tr key={row.key} className="border-t border-border/60">
+                    <tr key={row.key} className="border-t border-pallas-border/60">
                       <td className="max-w-0 py-2 pr-2">
                         <div
                           className="truncate font-mono text-xs"
@@ -461,7 +461,7 @@ function CallBreakdownTable({
   const shown = rows.slice(0, limit);
   return (
     <Card>
-      <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+      <CardHeader className="space-y-1.5 border-b border-pallas-border/60 p-3 sm:p-6">
         <CardTitle className="flex items-center gap-1.5 text-base">
           <PanelTitleIcon icon={Icon} />
           {title}
@@ -497,7 +497,7 @@ function CallBreakdownTable({
                       ? Math.round((1000 * row.succeeded) / row.requests) / 10
                       : null;
                   return (
-                    <tr key={row.key} className="border-t border-border/60">
+                    <tr key={row.key} className="border-t border-pallas-border/60">
                       <td className="max-w-0 py-2 pr-2">
                         <div
                           className="truncate font-mono text-xs"
@@ -1067,10 +1067,10 @@ export default function AiStatisticsPage() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-0 w-max">
-          <DropdownMenuItem onSelect={() => onExportBilling()}>
+          <DropdownMenuItem id="export-range-summary" textValue="区间汇总（CSV）" onSelect={() => onExportBilling()}>
             区间汇总（CSV）
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void onExportUsageDetail()}>
+          <DropdownMenuItem id="export-usage-detail" textValue="调用明细（CSV）" onSelect={() => void onExportUsageDetail()}>
             调用明细（CSV）
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -1293,7 +1293,7 @@ export default function AiStatisticsPage() {
             <StatsSectionLabel>结果占比</StatsSectionLabel>
             <div className="console-panel-grid grid-cols-1 lg:grid-cols-2">
               <Card>
-                <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+                <CardHeader className="space-y-1.5 border-b border-pallas-border/60 p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
                     <PanelTitleIcon icon={CheckCircle2} />
                     AI 结果
@@ -1315,7 +1315,7 @@ export default function AiStatisticsPage() {
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+                <CardHeader className="space-y-1.5 border-b border-pallas-border/60 p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
                     <PanelTitleIcon icon={Filter} />
                     门控结果
@@ -1333,7 +1333,7 @@ export default function AiStatisticsPage() {
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+                <CardHeader className="space-y-1.5 border-b border-pallas-border/60 p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
                     <PanelTitleIcon icon={Coins} />
                     {AI_TOKEN_METRIC_LABELS.cacheHitShare}
@@ -1358,7 +1358,7 @@ export default function AiStatisticsPage() {
             <StatsSectionLabel>发言与工具</StatsSectionLabel>
             <div className="console-panel-grid grid-cols-1 lg:grid-cols-2">
               <Card>
-                <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+                <CardHeader className="space-y-1.5 border-b border-pallas-border/60 p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
                     <PanelTitleIcon icon={MessageCircle} />
                     发言感知
@@ -1378,7 +1378,7 @@ export default function AiStatisticsPage() {
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+                <CardHeader className="space-y-1.5 border-b border-pallas-border/60 p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
                     <PanelTitleIcon icon={Wrench} />
                     工具调用
@@ -1400,7 +1400,7 @@ export default function AiStatisticsPage() {
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+                <CardHeader className="space-y-1.5 border-b border-pallas-border/60 p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
                     <PanelTitleIcon icon={Wrench} />
                     工具会话
@@ -1958,7 +1958,7 @@ export default function AiStatisticsPage() {
             <StatsSectionLabel>检索结果</StatsSectionLabel>
             <div className="console-panel-grid grid-cols-1 lg:grid-cols-2">
               <Card>
-                <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+                <CardHeader className="space-y-1.5 border-b border-pallas-border/60 p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
                     <PanelTitleIcon icon={Library} />
                     知识库检索
@@ -1976,7 +1976,7 @@ export default function AiStatisticsPage() {
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader className="space-y-1.5 border-b border-border/60 p-3 sm:p-6">
+                <CardHeader className="space-y-1.5 border-b border-pallas-border/60 p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
                     <PanelTitleIcon icon={Library} />
                     记忆检索
@@ -2081,7 +2081,7 @@ export default function AiStatisticsPage() {
                           {selectedRagDocs.slice(0, 8).map((row) => (
                             <tr
                               key={row.key}
-                              className="border-t border-border/60"
+                              className="border-t border-pallas-border/60"
                             >
                               <td
                                 className="max-w-[14rem] truncate py-1.5 pr-3"
@@ -2291,7 +2291,7 @@ export default function AiStatisticsPage() {
                             </thead>
                             <tbody>
                               {stickerLabel.recent_errors.map((row) => (
-                                <tr key={row.job_id} className="border-t border-border/60">
+                                <tr key={row.job_id} className="border-t border-pallas-border/60">
                                   <td className="truncate py-2 pr-2 font-mono text-xs" title={row.job_id}>
                                     {row.job_id}
                                   </td>
@@ -2412,7 +2412,7 @@ export default function AiStatisticsPage() {
                                 {stickerVisionData.recent.map((row) => (
                                   <tr
                                     key={row.job_id}
-                                    className="border-t border-border/60"
+                                    className="border-t border-pallas-border/60"
                                   >
                                     <td
                                       className="truncate py-2 pr-2 font-mono text-xs"

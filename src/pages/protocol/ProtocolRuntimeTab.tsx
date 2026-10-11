@@ -399,26 +399,32 @@ export default function ProtocolRuntimeTab() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-0 w-max">
             <DropdownMenuItem
+              id="runtime-select-page"
+              textValue={pageAllSelected ? "取消全选" : "全选本页"}
               disabled={!pagedRuntimeIds.length || actionsBusy}
               onSelect={() => toggleSelectPage()}
             >
               {pageAllSelected ? "取消全选" : "全选本页"}
             </DropdownMenuItem>
             <DropdownMenuItem
+              id="runtime-select-empty"
+              textValue={`选择空闲${emptyRuntimeIds.length ? `（${emptyRuntimeIds.length}）` : ""}`}
               disabled={!emptyRuntimeIds.length || actionsBusy}
               onSelect={() => selectEmptyRuntimes()}
             >
               选择空闲{emptyRuntimeIds.length ? `（${emptyRuntimeIds.length}）` : ""}
             </DropdownMenuItem>
-            <DropdownMenuItem disabled={selected.size === 0 || actionsBusy} onSelect={() => clearSelection()}>
+            <DropdownMenuItem id="runtime-clear-selection" textValue="清除选择" disabled={selected.size === 0 || actionsBusy} onSelect={() => clearSelection()}>
               清除选择
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled={!snowlumaRuntimes.length || actionsBusy} onSelect={() => setImageSwitchOpen(true)}>
+            <DropdownMenuItem id="runtime-batch-switch-image" textValue="批量切换镜像" disabled={!snowlumaRuntimes.length || actionsBusy} onSelect={() => setImageSwitchOpen(true)}>
               批量切换镜像
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
+              id="runtime-delete-selected"
+              textValue={batchBusy ? "删除中…" : "删除选中"}
               className="text-destructive focus:text-destructive"
               disabled={selected.size === 0 || actionsBusy}
               onSelect={() => void deleteSelectedRuntimes()}

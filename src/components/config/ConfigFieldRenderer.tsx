@@ -11,6 +11,7 @@ import TagsInput from "@/components/config/TagsInput";
 import { ChromeOptionLabel } from "@/components/ChromeField";
 import UiInput from "@/components/ui/UiInput";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { Input } from "@/components/ui/input";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { cn } from "@/lib/utils";
 import { botSelectDropdownLabel } from "@/utils/botDisplay";
@@ -371,13 +372,13 @@ export default function ConfigFieldRenderer({
       !usesSecretInput &&
       !usesNumberInput &&
       !usesMultiline ? (
-        <UiInput
+        <Input
           id={controlId}
           aria-describedby={describedBy}
           className="form-field__control"
           type="text"
           value={modelValue}
-          onValueChange={onValueChange}
+          onChange={(e) => onValueChange(e.target.value)}
         />
       ) : null}
     </div>

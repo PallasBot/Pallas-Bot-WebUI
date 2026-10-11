@@ -272,12 +272,17 @@ export default function FileManagerPage() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="file-manager__crumb-menu">
           {children === undefined ? (
-            <DropdownMenuItem disabled>加载中…</DropdownMenuItem>
+            <DropdownMenuItem id={`directory-loading:${segment.path}`} textValue="加载中…" disabled>加载中…</DropdownMenuItem>
           ) : children.length === 0 ? (
-            <DropdownMenuItem disabled>无子目录</DropdownMenuItem>
+            <DropdownMenuItem id={`directory-empty:${segment.path}`} textValue="无子目录" disabled>无子目录</DropdownMenuItem>
           ) : (
             children.map((name) => (
-              <DropdownMenuItem key={name} onSelect={() => enterDir(joinPath(segment.path, name))}>
+              <DropdownMenuItem
+                key={name}
+                id={`directory:${joinPath(segment.path, name)}`}
+                textValue={name}
+                onSelect={() => enterDir(joinPath(segment.path, name))}
+              >
                 <Folder aria-hidden="true" className="file-manager__crumb-menu-icon" />
                 <span className="file-manager__crumb-menu-name">{name}</span>
               </DropdownMenuItem>

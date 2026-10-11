@@ -1,49 +1,55 @@
-import * as React from "react";
+import { Calendar as HeroCalendar } from "@heroui/react";
+import type { CalendarDate } from "@internationalized/date";
+import { CalendarDate as makeCalendarDate } from "@internationalized/date";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
-import "react-day-picker/dist/style.css";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>;
-
-const defaultClassNames = {
-  months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-  month: "space-y-4",
-  caption: "flex justify-center pt-1 relative items-center",
-  caption_label: "text-sm font-medium",
-  nav: "space-x-1 flex items-center",
-  nav_button: cn(buttonVariants({ variant: "outline" }), "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"),
-  nav_button_previous: "absolute left-1",
-  nav_button_next: "absolute right-1",
-  table: "w-full border-collapse space-y-1",
-  head_row: "flex",
-  head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-  row: "flex w-full mt-2",
-  cell: "h-9 w-9 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
-  day: cn(buttonVariants({ variant: "ghost" }), "h-9 w-9 p-0 font-normal aria-selected:opacity-100"),
-  day_selected:
-    "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-  day_today: "bg-accent text-accent-foreground",
-  day_outside: "day-outside text-muted-foreground opacity-50",
-  day_disabled: "text-muted-foreground opacity-50",
-  day_hidden: "invisible",
+export type CalendarProps = {
+  className?: string;
+  selected?: Date;
+  defaultMonth?: Date;
+  disabled?: (date: Date) => boolean;
+  onSelect?: (date: Date | undefined) => void;
+  initialFocus?: boolean;
 };
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+function toCalendarDate(date?: Date): CalendarDate | undefined {
+  return date && Number.isFinite(date.getTime())
+    ? new makeCalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate())
+    : undefined;
+}
+
+function toLocalDate(date: CalendarDate): Date {
+  const result = new Date(0);
+  result.setFullYear(date.year, date.month - 1, date.day);
+  result.setHours(12, 0, 0, 0);
+  return result;
+}
+
+function Calendar({ className, selected, defaultMonth, disabled, onSelect }: CalendarProps) {
+  const selectedDate = toCalendarDate(selected);
+  const initialDate = selectedDate ?? toCalendarDate(defaultMonth);
   return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
+    <HeroCalendar
+      aria-label="选择日期"
+      value={selectedDate}
+      defaultValue={initialDate}
+      isDateUnavailable={disabled ? (date) => disabled(toLocalDate(date as CalendarDate)) : undefined}
+      onChange={(date) => onSelect?.(toLocalDate(date))}
       className={cn("p-3", className)}
-      classNames={{ ...defaultClassNames, ...classNames }}
-      components={{
-        IconLeft: () => <ChevronLeft className="h-4 w-4" />,
-        IconRight: () => <ChevronRight className="h-4 w-4" />,
-      }}
-      {...props}
-    />
+    >
+      <HeroCalendar.Header className="flex items-center justify-between gap-2">
+        <HeroCalendar.NavButton slot="previous" aria-label="上个月"><ChevronLeft className="size-4" /></HeroCalendar.NavButton>
+        <HeroCalendar.Heading />
+        <HeroCalendar.NavButton slot="next" aria-label="下个月"><ChevronRight className="size-4" /></HeroCalendar.NavButton>
+      </HeroCalendar.Header>
+      <HeroCalendar.Grid>
+        <HeroCalendar.GridHeader>{(day) => <HeroCalendar.HeaderCell>{day}</HeroCalendar.HeaderCell>}</HeroCalendar.GridHeader>
+        <HeroCalendar.GridBody>{(date) => <HeroCalendar.Cell date={date} />}</HeroCalendar.GridBody>
+      </HeroCalendar.Grid>
+    </HeroCalendar>
   );
 }
-Calendar.displayName = "Calendar";
 
-export { Calendar };
+Calendar.displayName = "Calendar";
+export { Calendar, toCalendarDate, toLocalDate };
