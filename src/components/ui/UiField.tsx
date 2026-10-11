@@ -3,7 +3,7 @@
  * 本壳保留 Vue 期字段标签行结构。
  */
 import type { ReactNode } from "react";
-import { Label } from "@/components/ui/label";
+import { Label as HeroLabel } from "@heroui/react";
 import { cn } from "@/lib/utils";
 
 export default function UiField({
@@ -41,9 +41,14 @@ export default function UiField({
             {labelStart}
             <div className="ui-field__title flex min-w-0 items-center gap-1.5">
               {label ? (
-                <Label id={labelId} htmlFor={htmlFor} className="ui-field__label-text truncate" title={label}>
+                <HeroLabel.Root
+                  id={labelId}
+                  htmlFor={htmlFor}
+                  className="leading-none ui-field__label-text truncate"
+                  title={label}
+                >
                   {label}
-                </Label>
+                </HeroLabel.Root>
               ) : null}
               {labelEnd}
             </div>
@@ -53,7 +58,7 @@ export default function UiField({
               </span>
             ) : null}
             {secret ? (
-              <span className="shrink-0 rounded-[var(--radius-control,6px)] bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <span className="shrink-0 rounded-[var(--radius-control,6px)] bg-pallas-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                 密钥
               </span>
             ) : null}

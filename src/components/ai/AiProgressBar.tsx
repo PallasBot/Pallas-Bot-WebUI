@@ -17,7 +17,7 @@ export default function AiProgressBar({
   const width = Math.min(100, Math.max(percent, percent > 0 ? 1.5 : 0));
   return (
     <div
-      className={cn("h-2.5 overflow-hidden rounded-full border border-border/80 bg-muted", className)}
+      className={cn("h-2.5 overflow-hidden rounded-full border border-pallas-border/80 bg-pallas-muted", className)}
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}

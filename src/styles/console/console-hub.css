@@ -233,11 +233,11 @@ html[data-layout="hub"] .panel__hd {
 }
 
 /* Card 标题底部分割、表行分割：减轻割裂感 */
-html[data-layout="hub"][data-theme="light"] .border-border\/60 {
+html[data-layout="hub"][data-theme="light"] .border-pallas-border\/60 {
   border-color: var(--surface-divider, rgba(15, 23, 42, 0.035));
 }
 
-html[data-layout="hub"][data-theme="light"] .border-border\/40 {
+html[data-layout="hub"][data-theme="light"] .border-pallas-border\/40 {
   border-color: color-mix(in srgb, var(--surface-divider, rgba(15, 23, 42, 0.035)) 85%, transparent);
 }
 
@@ -368,9 +368,9 @@ html[data-layout="hub"] .sel {
   box-shadow: none;
 }
 
-html[data-layout="hub"] .textarea,
-html[data-layout="hub"] textarea.inp,
-html[data-layout="hub"] textarea.textarea {
+html[data-layout="hub"] .textarea:not([data-heroui-skin]),
+html[data-layout="hub"] textarea.inp:not([data-heroui-skin]),
+html[data-layout="hub"] textarea.textarea:not([data-heroui-skin]) {
   min-height: var(--ui-ctrl-height);
   border-radius: var(--radius-textarea);
   font-size: 14px;
@@ -380,14 +380,14 @@ html[data-layout="hub"] textarea.textarea {
 
 html[data-layout="hub"][data-theme="light"] .inp,
 html[data-layout="hub"][data-theme="light"] .sel,
-html[data-layout="hub"][data-theme="light"] .textarea {
+html[data-layout="hub"][data-theme="light"] .textarea:not([data-heroui-skin]) {
   background: var(--surface-control);
   border-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 html[data-layout="hub"] .inp:focus,
 html[data-layout="hub"] .sel:focus,
-html[data-layout="hub"] .textarea:focus {
+html[data-layout="hub"] .textarea:not([data-heroui-skin]):focus {
   border-color: color-mix(in srgb, var(--accent) 16%, var(--control-border));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent);
 }
@@ -405,9 +405,9 @@ html[data-layout="hub"] .friends-groups-list-hd-actions > .friends-groups-list-s
 }
 
 html[data-layout="hub"] .inp::placeholder,
-html[data-layout="hub"] .textarea::placeholder,
-html[data-layout="hub"] input::placeholder,
-html[data-layout="hub"] textarea::placeholder {
+html[data-layout="hub"] .textarea:not([data-heroui-skin])::placeholder,
+html[data-layout="hub"] input:not([data-heroui-skin])::placeholder,
+html[data-layout="hub"] textarea:not([data-heroui-skin])::placeholder {
   color: var(--console-placeholder-color, color-mix(in srgb, var(--text-muted) 60%, transparent));
   font-weight: 400;
 }
@@ -1960,7 +1960,7 @@ html[data-layout="hub"] .grid-stats {
   gap: 12px;
 }
 
-html[data-layout="hub"] .card,
+html[data-layout="hub"] .card:not(.pallas-card-frame),
 html[data-layout="hub"] .stat-card {
   border-radius: var(--hub-radius);
   box-shadow: var(--hub-shadow);
@@ -2301,7 +2301,6 @@ html[data-layout="hub"][data-radius="round"] .plugins-page__plugin-tab-btn {
   border-radius: 999px;
 }
 
-html[data-layout="hub"] .card,
 html[data-layout="hub"] .stat-card,
 html[data-layout="hub"] .stat-trend-card,
 html[data-layout="hub"] .plugin-store-card {

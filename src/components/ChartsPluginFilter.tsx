@@ -43,13 +43,13 @@ export default function ChartsPluginFilter({
       className={cn(
         "charts-plugin-filter",
         embedded
-          ? "rounded-md bg-muted/25"
-          : "rounded-md border border-border/70 bg-muted/20",
+          ? "rounded-pallas-md bg-pallas-muted/25"
+          : "rounded-pallas-md border border-pallas-border/70 bg-pallas-muted/20",
       )}
     >
       <button
         type="button"
-        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs font-medium text-foreground"
+        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs font-medium text-pallas-foreground"
         aria-expanded={open}
         onClick={() => onOpenChange(!open)}
       >
@@ -61,7 +61,7 @@ export default function ChartsPluginFilter({
         />
       </button>
       {open ? (
-        <div className="space-y-2 border-t border-border/50 px-2.5 py-2">
+        <div className="space-y-2 border-t border-pallas-border/50 px-2.5 py-2">
           <div className="flex flex-wrap gap-1.5">
             <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" icon={ListFilter} iconMotion="scale" onClick={() => onSelectTop(6)}>
               Top 6
@@ -81,7 +81,7 @@ export default function ChartsPluginFilter({
                 <li key={opt.id} className="min-w-0">
                   <label
                     htmlFor={inputId}
-                    className="flex min-w-0 cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted/60"
+                    className="flex min-w-0 cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-pallas-muted/60"
                     title={opt.label}
                   >
                     <Checkbox

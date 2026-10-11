@@ -41,7 +41,7 @@
   --primary-foreground: var(--accent-contrast);
   --secondary: color-mix(in srgb, var(--text) 6%, var(--bg-card));
   --secondary-foreground: var(--text);
-  --muted: color-mix(in srgb, var(--text-muted) 14%, var(--bg-card));
+  --pallas-muted: color-mix(in srgb, var(--text-muted) 14%, var(--bg-card));
   --muted-foreground: var(--text-muted);
   --destructive: #f87171;
   --destructive-foreground: #ffffff;
@@ -59,6 +59,7 @@
   --success: #4ade80;
   --warn: #fbbf24;
   --danger: #f87171;
+  --danger-foreground: #141416;
   /* 圆角约 10px 基准；胶囊仅 Switch/Chip（--radius-pill） */
   --radius-lg: 12px;
   --radius-md: 10px;
@@ -162,6 +163,8 @@
   --ui-btn-font: 13px;
   --ui-btn-weight: 500;
   --ui-ctrl-font: 14px;
+  --ui-button-min-height: 36px;
+  --ui-textarea-min-height: 80px;
   /* 控件高度 h-9 */
   --ui-ctrl-height: 36px;
   --ui-ctrl-pad-y: 6px;
@@ -560,12 +563,13 @@ html[data-theme="light"] {
   --success: #15803d;
   --warn: #b45309;
   --danger: #b91c1c;
+  --danger-foreground: #ffffff;
   --shadow-card: 0 2px 6px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity))),
     0 8px 20px -4px rgb(15 23 42 / calc(0.07 * var(--shadow-intensity)));
   --shadow-sm: 0 1px 2px rgb(15 23 42 / calc(0.05 * var(--shadow-intensity)));
   --shadow-md: 0 2px 6px rgb(15 23 42 / calc(0.05 * var(--shadow-intensity))),
     0 8px 20px -4px rgb(15 23 42 / calc(0.07 * var(--shadow-intensity)));
-  --muted: rgba(15, 23, 42, 0.05);
+  --pallas-muted: rgba(15, 23, 42, 0.05);
   --secondary: rgba(15, 23, 42, 0.05);
   --destructive: #b91c1c;
   --ring: color-mix(in srgb, var(--accent) 42%, transparent);
@@ -623,13 +627,15 @@ html[data-theme="light"] .alert--ok {
   background: rgba(74, 222, 128, 0.12);
 }
 
-html[data-density="compact"] {
+html[data-layout="hub"][data-density="compact"] {
   --ui-btn-pad-y: 6px;
   --ui-btn-pad-x: 11px;
+  --ui-button-min-height: 28px;
   --ui-ctrl-height: 32px;
   --ui-ctrl-font: 13px;
   --ui-ctrl-pad-y: 6px;
   --ui-ctrl-pad-x: 10px;
+  --ui-textarea-min-height: 64px;
   --ui-sel-min-h: var(--ui-ctrl-height);
   --ui-sel-arrow-pad: 30px;
 }
@@ -696,11 +702,13 @@ body {
   flex-direction: column;
 }
 
-a {
-  color: var(--accent);
-  text-decoration: none;
-  transition: color 0.15s var(--ease);
-}
-a:hover {
-  color: color-mix(in srgb, var(--accent) 80%, var(--text));
+@layer base {
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color 0.15s var(--ease);
+  }
+  a:hover {
+    color: color-mix(in srgb, var(--accent) 80%, var(--text));
+  }
 }

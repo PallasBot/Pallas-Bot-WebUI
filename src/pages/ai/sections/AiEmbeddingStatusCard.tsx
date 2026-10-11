@@ -45,7 +45,7 @@ export default function AiEmbeddingStatusCard() {
   return (
     <section
       aria-label="Embedding 诊断"
-      className="rounded-lg border border-border/70 bg-muted/20 px-3 py-3 sm:px-4"
+      className="rounded-pallas-lg border border-pallas-border/70 bg-pallas-muted/20 px-3 py-3 sm:px-4"
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
@@ -78,11 +78,11 @@ export default function AiEmbeddingStatusCard() {
         </div>
         <dl className="mt-3 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
           <div>
-            <dt className="inline text-foreground/80">实际模型 </dt>
+            <dt className="inline text-pallas-foreground/80">实际模型 </dt>
             <dd className="inline">{data?.resolved_model || data?.embedding_model || "—"}</dd>
           </div>
           <div>
-            <dt className="inline text-foreground/80">Trigger 缓存 </dt>
+            <dt className="inline text-pallas-foreground/80">Trigger 缓存 </dt>
             <dd className="inline">{data?.trigger_cache_count ?? 0} 条</dd>
           </div>
           {provider === "openai" && data?.endpoint_configured === false ? (
@@ -92,7 +92,7 @@ export default function AiEmbeddingStatusCard() {
           ) : null}
           {data?.endpoint_provider_id ? (
             <div>
-              <dt className="inline text-foreground/80">实际线路 </dt>
+              <dt className="inline text-pallas-foreground/80">实际线路 </dt>
               <dd className="inline">{data.endpoint_provider_id}</dd>
             </div>
           ) : null}
@@ -104,7 +104,7 @@ export default function AiEmbeddingStatusCard() {
           ) : null}
           {data?.probe_ms != null ? (
             <div>
-              <dt className="inline text-foreground/80">最近探测 </dt>
+              <dt className="inline text-pallas-foreground/80">最近探测 </dt>
               <dd className="inline">
                 {data.probe_ok ? "成功" : "失败"}
                 {data.probe_dims != null ? ` · ${data.probe_dims} 维` : ""}

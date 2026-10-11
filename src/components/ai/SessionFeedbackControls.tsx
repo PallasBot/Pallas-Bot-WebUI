@@ -28,7 +28,7 @@ export function SessionTurnFeedbackControls({
   className?: string;
 }) {
   return (
-    <div className={cn("mt-2 space-y-2 rounded-xl border bg-background/70 p-2.5 text-xs", className)}>
+    <div className={cn("mt-2 space-y-2 rounded-pallas-xl border bg-pallas-background/70 p-2.5 text-xs", className)}>
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge variant={entry?.eligible_for_bias ? "success" : entry ? "secondary" : "outline"}>
           {!entry ? "未收录纠错" : entry.eligible_for_bias ? "参与学习" : "已排除"}
@@ -136,7 +136,7 @@ export function SessionFeedbackCard({
 }) {
   const key = feedbackEntryKey(item);
   return (
-    <article key={key} className="space-y-2 rounded-lg border p-3 text-sm">
+    <article key={key} className="space-y-2 rounded-pallas-lg border p-3 text-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="min-w-0 flex-1 whitespace-pre-wrap break-words font-medium leading-relaxed">
           {item.reply_text || "—"}
@@ -163,7 +163,7 @@ export function SessionFeedbackCard({
         ) : null}
       </div>
       {item.corrected_reply_text ? (
-        <p className="rounded-md bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">
+        <p className="rounded-pallas-md bg-pallas-muted/50 px-2 py-1.5 text-xs text-muted-foreground">
           期望：{item.corrected_reply_text}
         </p>
       ) : null}

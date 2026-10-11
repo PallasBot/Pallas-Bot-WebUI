@@ -262,7 +262,7 @@ it("restores plugin filters from the URL and leaves a dirty editor alone on same
 
   await screen.findByRole("heading", { name: "Demo" });
   expect((screen.getByRole("searchbox", { name: "搜索插件" }) as HTMLInputElement).value).toBe("demo");
-  expect(screen.getByRole("combobox", { name: "插件分类" }).textContent).toContain("内核");
+  expect(screen.getByRole("button", { name: "内核" }).textContent).toContain("内核");
 
   await user.clear(screen.getByRole("searchbox", { name: "搜索插件" }));
   await user.type(screen.getByRole("searchbox", { name: "搜索插件" }), "dem");
@@ -392,7 +392,7 @@ it("BotConfigModal save reloads the real instances query with the saved config",
   const queryClient = renderPage("/instances", <InstancesPage />);
   await user.click(await screen.findByRole("button", { name: "BOT" }));
   const dialog = await screen.findByRole("dialog");
-  await user.click(within(dialog).getByRole("checkbox", { name: /安全模式/ }));
+  await user.click(within(dialog).getByRole("switch", { name: /安全模式/ }));
   await user.click(screen.getByRole("button", { name: "保存" }));
 
   await screen.findByText("开启");

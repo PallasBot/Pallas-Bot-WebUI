@@ -88,7 +88,7 @@ function Kv({ label, title, children }: { label: string; title?: string; childre
     <div className="flex min-w-0 items-baseline gap-2 text-sm">
       <span className="shrink-0 text-muted-foreground">{label}</span>
       <span
-        className="min-w-0 truncate tabular-nums text-foreground/90"
+        className="min-w-0 truncate tabular-nums text-pallas-foreground/90"
         title={title ?? (typeof children === "string" ? children : undefined)}
       >
         {children}
@@ -106,7 +106,7 @@ function DistList({ slices }: { slices: DistSlice[] }) {
           <span className="w-14 shrink-0 truncate text-muted-foreground" title={slice.label}>
             {slice.label}
           </span>
-          <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+          <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-pallas-muted">
             <div className="h-full rounded-full bg-primary/70" style={{ width: `${Math.round(slice.ratio * 100)}%` }} />
           </div>
           <span className="shrink-0 tabular-nums">{slice.value}</span>
@@ -283,25 +283,27 @@ function SemanticStyleControls({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem
+              id="semantic-rollback-v2"
+              textValue="回滚 v2 读管线"
               disabled={busy}
-              onClick={() => onAction({ action: "rollback_v2" })}
+              onSelect={() => onAction({ action: "rollback_v2" })}
             >
               <RefreshCw className="size-4" /> 回滚 v2 读管线
             </DropdownMenuItem>
-            <DropdownMenuItem disabled={busy} onClick={() => onAction({ action: "quality" })}>
+            <DropdownMenuItem id="semantic-quality" textValue="质量评价" disabled={busy} onSelect={() => onAction({ action: "quality" })}>
               <Gauge className="size-4" /> 质量评价
             </DropdownMenuItem>
-            <DropdownMenuItem disabled={busy} onClick={() => onAction({ action: "enable" })}>
+            <DropdownMenuItem id="semantic-enable-all" textValue="全部启用" disabled={busy} onSelect={() => onAction({ action: "enable" })}>
               <CircleCheck className="size-4" /> 全部启用
             </DropdownMenuItem>
-            <DropdownMenuItem disabled={busy} className="text-destructive focus:text-destructive" onClick={() => onAction({ action: "disable" })}>
+            <DropdownMenuItem id="semantic-disable-all" textValue="全部停用" disabled={busy} className="text-destructive focus:text-destructive" onSelect={() => onAction({ action: "disable" })}>
               <Ban className="size-4" /> 全部停用
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
       {qualityData ? (
-        <div className="space-y-2 rounded-md border p-3">
+        <div className="space-y-2 rounded-pallas-md border p-3">
           <div className="flex items-center justify-between gap-2">
             <h4 className="text-sm font-medium">质量评价结果</h4>
             <Button size="icon" variant="ghost" aria-label="关闭质量评价结果" onClick={onCloseQuality}>
@@ -344,7 +346,7 @@ function SemanticStyleExamplesView({
             const relations = item.label.semantic_relations ?? [];
             const forms = item.label.forms ?? [];
             return (
-              <article key={item.example_id} className="min-w-0 rounded-md border bg-muted/10 p-3">
+              <article key={item.example_id} className="min-w-0 rounded-pallas-md border bg-pallas-muted/10 p-3">
                 <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                   <Badge variant="secondary">{item.pair_relation === "quoted" ? "引用接话" : "相邻接话"}</Badge>
                   {item.learning_type === "self_reflection" ? (
@@ -361,7 +363,7 @@ function SemanticStyleExamplesView({
                   </div>
                   <div className="min-w-0">
                     <span className="mr-2 text-xs text-muted-foreground">接话</span>
-                    <span className="break-words font-medium text-foreground">{item.reply_text}</span>
+                    <span className="break-words font-medium text-pallas-foreground">{item.reply_text}</span>
                   </div>
                 </div>
                 {(actions.length || relations.length || forms.length) ? (
@@ -374,7 +376,7 @@ function SemanticStyleExamplesView({
                 ) : null}
                 {strategy ? (
                   <div className="mt-2 break-words border-t pt-2 text-xs leading-5 text-muted-foreground">
-                    <span className="mr-2 font-medium text-foreground/80">策略</span>
+                    <span className="mr-2 font-medium text-pallas-foreground/80">策略</span>
                     {strategy.scene ? <span>{strategy.scene}</span> : null}
                     {strategy.action ? <span>：{strategy.action}</span> : null}
                     {strategy.outcome ? <span>，结果：{strategy.outcome}</span> : null}
@@ -399,26 +401,26 @@ function GroupExpressionViewCard({
     : "";
   return (
     <div className="space-y-3">
-      <div className="rounded-md border bg-muted/20 p-3 text-sm leading-6">
+      <div className="rounded-pallas-md border bg-pallas-muted/20 p-3 text-sm leading-6">
         <p>
           当前群的回复倾向<strong>{data.summary.length}</strong>，{data.summary.rhythm}；{data.summary.sample}。
           这些内容会作为措辞参考，不会覆盖 Bot 人设和本轮回复策略。
         </p>
         {data.lowSample ? <p className="mt-1 text-xs text-muted-foreground">样本较少，画像仅供参考。</p> : null}
       </div>
-      <details className="rounded-md border px-3 py-2 text-sm">
+      <details className="rounded-pallas-md border px-3 py-2 text-sm">
         <summary className="cursor-pointer select-none font-medium">查看整理依据</summary>
         <p className="mt-2 text-xs text-muted-foreground">
           统计窗口：近 {data.meta.windowHours} · 更新于 {data.meta.updatedAt}
         </p>
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          <section className="space-y-2 rounded-md bg-muted/20 p-3" aria-label="样本与活跃">
+          <section className="space-y-2 rounded-pallas-md bg-pallas-muted/20 p-3" aria-label="样本与活跃">
             <h4 className="text-sm font-medium">样本与活跃</h4>
             <div className="grid gap-1">
               {data.sampleGroup.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
             </div>
           </section>
-          <section className="space-y-2 rounded-md bg-muted/20 p-3" aria-label="回复形态">
+          <section className="space-y-2 rounded-pallas-md bg-pallas-muted/20 p-3" aria-label="回复形态">
             <h4 className="text-sm font-medium">回复形态</h4>
             <div className="grid gap-1">
               {data.replyShape.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
@@ -430,13 +432,13 @@ function GroupExpressionViewCard({
               </div>
             ) : null}
           </section>
-          <section className="space-y-2 rounded-md bg-muted/20 p-3" aria-label="质量与过滤">
+          <section className="space-y-2 rounded-pallas-md bg-pallas-muted/20 p-3" aria-label="质量与过滤">
             <h4 className="text-sm font-medium">质量与过滤</h4>
             <div className="grid gap-1">
               {data.qualityGroup.map(([label, value]) => <Kv key={label} label={label}>{value}</Kv>)}
             </div>
           </section>
-          <section className="space-y-2 rounded-md bg-muted/20 p-3" aria-label="语义样例摘要">
+          <section className="space-y-2 rounded-pallas-md bg-pallas-muted/20 p-3" aria-label="语义样例摘要">
             <h4 className="text-sm font-medium">语义样例摘要</h4>
             {sceneLabel ? <Kv label="场景">{sceneLabel}</Kv> : null}
             <div className="grid gap-1">
@@ -486,13 +488,13 @@ function StickerLabelCard({
 
   return (
     <div className="space-y-3">
-      <div className="space-y-2 rounded-md border p-3">
+      <div className="space-y-2 rounded-pallas-md border p-3">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span className="text-xl font-semibold leading-none tabular-nums">{fmtInt(total)}</span>
           <span className="text-sm text-muted-foreground">已标注</span>
           <span className="ml-auto text-sm text-muted-foreground tabular-nums">表情占 {stickerPct}%</span>
         </div>
-        <div className="flex h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+        <div className="flex h-1.5 overflow-hidden rounded-full bg-pallas-muted" aria-hidden="true">
           <div className="bg-primary" style={{ width: `${stickerPct}%` }} />
           <div className="bg-muted-foreground/40" style={{ width: `${Math.max(100 - stickerPct, 0)}%` }} />
         </div>
@@ -507,7 +509,7 @@ function StickerLabelCard({
           {!hasIssue ? <span className="text-xs text-muted-foreground">无低置信、待处理与失败任务</span> : null}
         </div>
       </div>
-      <details className="rounded-md border px-3 py-2 text-sm">
+      <details className="rounded-pallas-md border px-3 py-2 text-sm">
         <summary className="cursor-pointer select-none text-muted-foreground">详细统计</summary>
         <div className="mt-2 grid gap-x-5 gap-y-3 sm:grid-cols-3">
           <div className="space-y-1">
@@ -527,7 +529,7 @@ function StickerLabelCard({
             </Kv>
             {vlmDenom > 0 ? (
               <>
-                <div className="flex h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                <div className="flex h-1.5 overflow-hidden rounded-full bg-pallas-muted" aria-hidden="true">
                   <div className="bg-primary" style={{ width: `${vlmAvoidPct}%` }} />
                   <div className="bg-muted-foreground/40" style={{ width: `${100 - vlmAvoidPct}%` }} />
                 </div>
@@ -547,11 +549,11 @@ function StickerLabelCard({
         </Button>
       </div>
       {jobs.recent_errors?.length ? (
-        <details className="rounded-md border border-destructive/30 px-3 py-2 text-sm">
+        <details className="rounded-pallas-md border border-destructive/30 px-3 py-2 text-sm">
           <summary className="cursor-pointer select-none text-destructive">最近失败：{jobs.recent_errors.length} 条</summary>
           <div className="mt-2 space-y-1.5">
             {jobs.recent_errors.slice(0, 3).map((error) => (
-              <div key={error.job_id} className="rounded-md bg-muted/30 px-2.5 py-1.5">
+              <div key={error.job_id} className="rounded-pallas-md bg-pallas-muted/30 px-2.5 py-1.5">
                 <div className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
                   <span className="min-w-0 truncate">{error.job_id}</span>
                   <span className="shrink-0 tabular-nums">{fmtTime(error.created_at)}</span>
@@ -571,7 +573,7 @@ function PromptSection({ title, body }: { title: string; body?: string }) {
   const text = (body || "").trim();
   if (!text) return null;
   return (
-    <div className="group flex h-full min-w-0 flex-col gap-2 rounded-md border px-3 py-2.5">
+    <div className="group flex h-full min-w-0 flex-col gap-2 rounded-pallas-md border px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 truncate text-sm font-medium">{title}</div>
         <CopyIconButton
@@ -641,7 +643,7 @@ function ExportCard({
             <PromptSection title="群表达" body={String(sections?.group_expression || "")} />
           </div>
           {meta ? (
-            <div className="space-y-1 rounded-md border p-3 text-sm">
+            <div className="space-y-1 rounded-pallas-md border p-3 text-sm">
               <div className="font-medium">元数据</div>
               <div className="grid gap-1 sm:grid-cols-2">
                 <Kv label="版本">{String(meta.version ?? "—")}</Kv>
@@ -650,7 +652,7 @@ function ExportCard({
               </div>
             </div>
           ) : null}
-          <details className="rounded-md border px-3 py-2 text-sm">
+          <details className="rounded-pallas-md border px-3 py-2 text-sm">
             <summary className="cursor-pointer select-none text-muted-foreground">查看原始 JSON</summary>
             <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all font-mono text-xs">
               {JSON.stringify(bundle, null, 2)}

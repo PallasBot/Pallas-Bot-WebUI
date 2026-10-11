@@ -11,7 +11,7 @@ describe("AI 观测占比条", () => {
   it("将截图中的轨道样式收敛为共享组件", () => {
     expect(existsSync(progressPath)).toBe(true);
     const progress = readFileSync(progressPath, "utf8");
-    expect(progress).toContain('"h-2.5 overflow-hidden rounded-full border border-border/80 bg-muted"');
+  expect(progress).toContain('"h-2.5 overflow-hidden rounded-full border border-pallas-border/80 bg-pallas-muted"');
     expect(progress).toContain('transition-[width]');
     expect(progress).toContain('role="progressbar"');
   });

@@ -233,7 +233,7 @@ export default function AiLlmFieldPanel({
         emptyText="暂无可编辑字段"
       >
         {masterKey && !masterOn ? (
-          <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/20 p-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 rounded-pallas-lg border border-pallas-border/40 bg-pallas-muted/20 p-4 text-sm text-muted-foreground">
             <ChevronRight className="size-4 shrink-0" aria-hidden />
             <span>{disabledHint || "已关闭；开启后可调整下方参数。"}</span>
           </div>

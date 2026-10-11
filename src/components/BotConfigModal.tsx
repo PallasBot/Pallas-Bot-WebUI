@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
+import { Slider, Switch } from "@heroui/react";
 import { Save, Undo2 } from "lucide-react";
 import type { AccountPersonaAxis, AccountPersonaProfile, BotConfigPublic, PluginRow } from "@/api/pallasTypes";
 import { readManualAccountPersonaProfile } from "@/api/pallasTypes";
@@ -132,11 +132,13 @@ function BoolSwitchField({
           {hint ? <ConfigFieldHelp title={label} description={hint} /> : null}
         </span>
         <div className="prefs-switch-row__control">
-          <Switch
-            checked={checked}
-            onCheckedChange={onChange}
-            aria-labelledby={labelId}
-          />
+          <Switch.Root isSelected={checked} onChange={onChange} aria-labelledby={labelId}>
+            <Switch.Content className={cn("console-bool-switch", checked && "console-bool-switch--on")}>
+              <Switch.Control className="console-bool-switch__track" aria-hidden="true">
+                <Switch.Thumb className="console-bool-switch__thumb" />
+              </Switch.Control>
+            </Switch.Content>
+          </Switch.Root>
           <span className="prefs-switch-row__state" aria-hidden="true">
             {checked ? "开" : "关"}
           </span>
@@ -270,11 +272,11 @@ export default function BotConfigModal({
     >
       <DialogContent
         className="plugin-config-dialog bot-config-dialog flex max-h-[min(800px,calc(100dvh-32px))] w-[min(720px,calc(100vw-32px))] max-w-[min(720px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
-        onEscapeKeyDown={(e) => {
-          if (saveBusy) e.preventDefault();
+        onEscapeKeyDown={(event) => {
+          if (saveBusy) event.preventDefault();
         }}
-        onPointerDownOutside={(e) => {
-          if (saveBusy) e.preventDefault();
+        onPointerDownOutside={(event) => {
+          if (saveBusy) event.preventDefault();
         }}
       >
         <DialogHeader className="plugin-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left sm:text-left">
@@ -384,20 +386,26 @@ export default function BotConfigModal({
                         return (
                           <div key={meta.axis} className="bot-config-persona-axis">
                             <div className="bot-config-persona-axis__head">
-                              <label htmlFor={inputId}>{meta.label}</label>
+                              <label id={`${inputId}-label`}>{meta.label}</label>
                               <output htmlFor={inputId}>{draft.accountProfile[meta.axis].toFixed(1)}</output>
                             </div>
-                            <input
+                            <Slider
                               id={inputId}
-                              type="range"
-                              min="-1"
-                              max="1"
-                              step="0.1"
-                              value={draft.accountProfile[meta.axis]}
-                              disabled={locked}
+                              aria-labelledby={`${inputId}-label`}
                               aria-describedby={`${inputId}-ends`}
-                              onChange={(event) => setAccountPersonaAxis(meta.axis, Number(event.target.value))}
-                            />
+                              minValue={-1}
+                              maxValue={1}
+                              step={0.1}
+                              value={[draft.accountProfile[meta.axis]]}
+                              isDisabled={locked}
+                              onChange={(value) => setAccountPersonaAxis(meta.axis, Array.isArray(value) ? value[0] : value)}
+                              className="min-h-8 w-full"
+                            >
+                              <Slider.Track>
+                                <Slider.Fill />
+                                <Slider.Thumb />
+                              </Slider.Track>
+                            </Slider>
                             <div id={`${inputId}-ends`} className="bot-config-persona-axis__ends">
                               <span>{meta.low} -1</span>
                               <span>{meta.high} 1</span>

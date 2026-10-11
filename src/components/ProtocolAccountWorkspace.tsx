@@ -46,8 +46,8 @@ import FormSectionDivider from "@/components/config/FormSectionDivider";
 import SettingsFormField from "@/components/config/SettingsFormField";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import SegTabs from "@/components/SegTabs";
-import UiInput from "@/components/ui/UiInput";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -1326,11 +1326,11 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                   <div className="protocol-account-workspace__form-grid">
                     <SettingsFormField label="实例名" hint="控制台与列表中的展示称呼。">
                       <div className="flex min-w-0 items-center gap-2">
-                        <UiInput
+                        <Input
                           type="text"
                           autoComplete="off"
                           value={displayName}
-                          onValueChange={setDisplayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
                         />
                         <Button
                           type="button"
@@ -1350,12 +1350,12 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                       label="原生 WebUI 端口"
                       hint="协议端自带 Web 控制台监听端口。"
                     >
-                      <UiInput
+                      <Input
                         type="number"
                         min={1}
                         max={65535}
                         value={webuiPort}
-                        onValueChange={setWebuiPort}
+                        onChange={(e) => setWebuiPort(e.target.value)}
                       />
                     </SettingsFormField>
                   </div>
@@ -1475,20 +1475,20 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                       label="WS 连接地址"
                       hint="Bot 连接 OneBot WebSocket 的完整地址。"
                     >
-                      <UiInput
+                      <Input
                         type="text"
                         autoComplete="off"
                         placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
                         value={wsUrl}
-                        onValueChange={setWsUrl}
+                        onChange={(e) => setWsUrl(e.target.value)}
                       />
                     </SettingsFormField>
                     <SettingsFormField label="连接名" hint="实例列表里显示的连接标识。">
-                      <UiInput
+                      <Input
                         type="text"
                         autoComplete="off"
                         value={wsName}
-                        onValueChange={setWsName}
+                        onChange={(e) => setWsName(e.target.value)}
                       />
                     </SettingsFormField>
                     <SettingsFormField
@@ -1496,11 +1496,11 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                       hint="须与协议端鉴权配置一致。"
                       secret
                     >
-                      <UiInput
+                      <Input
                         type="password"
                         autoComplete="off"
                         value={wsToken}
-                        onValueChange={setWsToken}
+                        onChange={(e) => setWsToken(e.target.value)}
                       />
                     </SettingsFormField>
                   </div>
@@ -1520,11 +1520,11 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                   <div className="panel__bd protocol-account-workspace__form-grid">
                     <SettingsFormField label="实例名" hint="控制台与列表中的展示称呼。">
                       <div className="flex min-w-0 items-center gap-2">
-                        <UiInput
+                        <Input
                           type="text"
                           autoComplete="off"
                           value={displayName}
-                          onValueChange={setDisplayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
                         />
                         <Button
                           type="button"
@@ -1544,12 +1544,12 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                       label="原生 WebUI 端口"
                       hint="协议端自带 Web 控制台监听端口。"
                     >
-                      <UiInput
+                      <Input
                         type="number"
                         min={1}
                         max={65535}
                         value={webuiPort}
-                        onValueChange={setWebuiPort}
+                        onChange={(e) => setWebuiPort(e.target.value)}
                       />
                     </SettingsFormField>
                     <div className="field field--full protocol-account-workspace__runtime-heading">
@@ -1660,20 +1660,20 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                       label="WS 连接地址"
                       hint="Bot 连接 OneBot WebSocket 的完整地址。"
                     >
-                      <UiInput
+                      <Input
                         type="text"
                         autoComplete="off"
                         placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
                         value={wsUrl}
-                        onValueChange={setWsUrl}
+                        onChange={(e) => setWsUrl(e.target.value)}
                       />
                     </SettingsFormField>
                     <SettingsFormField label="连接名" hint="实例列表里显示的连接标识。">
-                      <UiInput
+                      <Input
                         type="text"
                         autoComplete="off"
                         value={wsName}
-                        onValueChange={setWsName}
+                        onChange={(e) => setWsName(e.target.value)}
                       />
                     </SettingsFormField>
                     <SettingsFormField
@@ -1681,11 +1681,11 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                       hint="须与协议端鉴权配置一致。"
                       secret
                     >
-                      <UiInput
+                      <Input
                         type="password"
                         autoComplete="off"
                         value={wsToken}
-                        onValueChange={setWsToken}
+                        onChange={(e) => setWsToken(e.target.value)}
                       />
                     </SettingsFormField>
                     <div className="field field--full protocol-account-workspace__save-row">

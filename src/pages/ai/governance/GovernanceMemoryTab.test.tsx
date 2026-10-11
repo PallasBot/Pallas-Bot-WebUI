@@ -173,6 +173,17 @@ describe("GovernanceMemoryTab", () => {
     expect(await screen.findByTestId("memory-force-graph")).not.toBeNull();
   });
 
+  it("uses the HeroUI indicator for both governance tab strips", async () => {
+    renderRoute(fullScope);
+
+    const governanceTabs = await screen.findByRole("tablist", { name: "AI 治理分类" });
+    const memoryTabs = await screen.findByRole("tablist", { name: "记忆分类" });
+    expect(governanceTabs.querySelectorAll('[data-slot="tabs-indicator"]')).toHaveLength(1);
+    expect(memoryTabs.querySelectorAll('[data-slot="tabs-indicator"]')).toHaveLength(1);
+    expect(governanceTabs.querySelector('[data-slot="tabs-indicator"]')?.parentElement?.getAttribute("role")).toBe("tab");
+    expect(memoryTabs.querySelector('[data-slot="tabs-indicator"]')?.parentElement?.getAttribute("role")).toBe("tab");
+  });
+
   it("writes a memory episode and clears the draft", async () => {
     const user = userEvent.setup();
     renderRoute(fullScope);

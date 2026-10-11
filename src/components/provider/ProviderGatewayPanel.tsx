@@ -483,7 +483,7 @@ export default function ProviderGatewayPanel({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-medium text-foreground">网关列表</p>
+          <p className="text-xs font-medium text-pallas-foreground">网关列表</p>
           <p className="text-[11px] text-muted-foreground">最上为主线</p>
         </div>
 
@@ -503,11 +503,11 @@ export default function ProviderGatewayPanel({
                   aria-disabled={busy}
                   title="拖动手柄调序；点击编辑"
                   className={cn(
-                    "group flex min-w-0 cursor-pointer items-stretch gap-2 rounded-xl border px-2 py-2.5 transition-colors sm:gap-3 sm:px-3",
+                    "group flex min-w-0 cursor-pointer items-stretch gap-2 rounded-pallas-xl border px-2 py-2.5 transition-colors sm:gap-3 sm:px-3",
                     configured
-                      ? "border-border/70 bg-background/80 hover:bg-accent/40"
-                      : "border-dashed border-border/55 bg-muted/15 text-muted-foreground hover:bg-muted/30",
-                    selected && "border-primary/50 bg-accent/50",
+                      ? "border-pallas-border/70 bg-pallas-background/80 hover:bg-pallas-accent/40"
+                      : "border-dashed border-pallas-border/55 bg-pallas-muted/15 text-muted-foreground hover:bg-pallas-muted/30",
+                    selected && "border-primary/50 bg-pallas-accent/50",
                     dragFrom === index && "opacity-55",
                     dragOver === index && dragFrom !== index && "border-primary ring-1 ring-primary/40",
                     busy && "cursor-wait opacity-70",
@@ -543,7 +543,7 @@ export default function ProviderGatewayPanel({
                       >
                         {row.role === "primary" ? "主线" : `备线 ${Math.max(idx, 0) + 1}`}
                       </Badge>
-                      <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                      <span className="min-w-0 truncate text-sm font-medium text-pallas-foreground">
                         {label}
                       </span>
                       <span className="shrink-0 text-[11px] text-muted-foreground">
@@ -561,7 +561,7 @@ export default function ProviderGatewayPanel({
                     <button
                       type="button"
                       draggable={false}
-                      className="shrink-0 self-center rounded-md p-1.5 text-muted-foreground opacity-70 hover:bg-destructive/15 hover:text-destructive group-hover:opacity-100"
+                      className="shrink-0 self-center rounded-pallas-md p-1.5 text-muted-foreground opacity-70 hover:bg-destructive/15 hover:text-destructive group-hover:opacity-100"
                       aria-label={row.role === "primary" ? "清空主网关" : "删除备线"}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => void removeRow(row, e)}
@@ -688,7 +688,7 @@ export default function ProviderGatewayPanel({
                     />
                   </AiConfigField>
                   {selectedProvider ? (
-                    <div className="space-y-1 rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+                    <div className="space-y-1 rounded-pallas-md border border-pallas-border/50 bg-pallas-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
                       <p className="font-mono break-all">{selectedProvider.base_url || "（无地址）"}</p>
                       <p>
                         {selectedProvider.api_key_set || selectedProvider.api_key

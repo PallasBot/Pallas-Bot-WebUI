@@ -123,6 +123,9 @@ it("traps menu focus, closes on Escape/backdrop, restores focus and releases mod
 
   await user.click(trigger);
   const menu = await screen.findByRole("dialog", { name: "主导航" });
+  const closeButton = within(menu).getByRole("button", { name: "关闭菜单" });
+  expect(closeButton.className).toContain("forced-colors:focus-visible:outline-solid");
+  expect(closeButton.className).toContain("forced-colors:focus-visible:outline-[Highlight]");
   expect(menu.contains(document.activeElement)).toBe(true);
   for (let i = 0; i < 20; i++) {
     await user.tab();
@@ -304,6 +307,23 @@ it.each(["Ctrl+K", "Escape"])("restores the original focus target after quick-na
 
   await waitFor(() => expect(document.activeElement).toBe(trigger));
   expect(screen.queryByRole("combobox", { name: "搜索页面" })).toBeNull();
+});
+
+it("uses the current quick-navigation trigger if its original focus target disappears", async () => {
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+  renderShell();
+  const mobileTrigger = screen.getByRole("button", { name: "打开快速导航" });
+  mobileTrigger.focus();
+
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+  await screen.findByRole("combobox", { name: "搜索页面" });
+  act(() => setShellNarrow(false));
+  const desktopTrigger = document.querySelector<HTMLButtonElement>(".shell__quick-nav-trigger");
+  if (!desktopTrigger) throw new Error("Desktop quick-navigation trigger was not rendered");
+  expect(mobileTrigger.isConnected).toBe(false);
+
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(document.activeElement).toBe(desktopTrigger));
 });
 
 it("keeps a dirty config draft behind quick-nav route confirmation", async () => {

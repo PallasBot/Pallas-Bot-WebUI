@@ -101,9 +101,8 @@ function renderPage() {
 }
 
 async function selectTab(user: ReturnType<typeof userEvent.setup>, label: RegExp) {
-  const trigger = screen.getAllByRole("combobox")[0] as HTMLElement;
-  trigger.focus();
-  await user.keyboard("{Enter}");
+  const trigger = screen.getByRole("button", { name: /^(提供方|任务编排|Ollama 运行|Ollama 分档)$/ });
+  await user.click(trigger);
   await user.click(await screen.findByRole("option", { name: label }));
 }
 
@@ -180,7 +179,7 @@ it("keeps provider and Ollama drafts independent when the local draft is saved",
   await user.type(providerUrl, "https://provider-draft.example/v1");
 
   await selectTab(user, /Ollama 分档/);
-  await user.click(screen.getByRole("checkbox", { name: "启用 Ollama 多模型" }));
+  await user.click(screen.getByRole("switch", { name: "启用 Ollama 多模型" }));
   await user.click(screen.getByRole("button", { name: "保存 Ollama 分档" }));
   await waitFor(() => expect(api.putLlmLocalRoutingConfig).toHaveBeenCalledTimes(1));
 

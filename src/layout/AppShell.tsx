@@ -1,5 +1,5 @@
 import { Fragment, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Modal } from "@heroui/react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search } from "lucide-react";
@@ -252,6 +252,7 @@ export default function AppShell() {
   const mobileQuickNavTriggerRef = useRef<HTMLButtonElement>(null);
   const desktopQuickNavTriggerRef = useRef<HTMLButtonElement>(null);
   const quickNavReturnFocusRef = useRef<HTMLElement | null>(null);
+  const quickNavWasOpenRef = useRef(false);
   const mobileMenuPath = useRef(location.pathname);
   const currentPath = useRef(location.pathname);
   const [pluginStoreSeenRev, setPluginStoreSeenRev] = useState(0);
@@ -375,6 +376,18 @@ export default function AppShell() {
   }, [isNarrow]);
 
   useEffect(() => {
+    if (quickNavWasOpenRef.current && !quickNavOpen) {
+      window.requestAnimationFrame(() => {
+        const target = quickNavReturnFocusRef.current;
+        const fallback = isNarrow ? mobileQuickNavTriggerRef.current : desktopQuickNavTriggerRef.current;
+        const restoreTo = target?.isConnected ? target : fallback;
+        restoreTo?.focus({ preventScroll: true });
+      });
+    }
+    quickNavWasOpenRef.current = quickNavOpen;
+  }, [isNarrow, quickNavOpen]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (
         event.defaultPrevented ||
@@ -481,34 +494,29 @@ export default function AppShell() {
           : "shell__main-inner--hub";
 
   return (
-    <DialogPrimitive.Root
-      open={mobileOpen}
-      onOpenChange={(open) => {
-        if (open) mobileMenuPath.current = location.pathname;
-        else {
-          requestAnimationFrame(() => {
-            const trigger = mobileMenuTriggerRef.current;
-            if (mobileMenuPath.current === currentPath.current && trigger?.isConnected) {
-              trigger.focus({ preventScroll: true });
-            }
-          });
-        }
-        setMobileOpen(open);
-      }}
-    >
+    <>
     <div className={cn("shell", collapsed && !isNarrow && "shell--sidebar-collapsed")}>
       {restartConfirmDialog}
       <div className="shell__bg" aria-hidden />
 
       {isNarrow ? (
         <div className="shell__mobile-topbar">
-          <DialogPrimitive.Trigger asChild>
-            <button ref={mobileMenuTriggerRef} type="button" className="shell__mobile-topbar-btn" aria-label="打开菜单">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                <path d="M4 7h16M4 12h16M4 17h16" />
-              </svg>
-            </button>
-          </DialogPrimitive.Trigger>
+          <button
+            ref={mobileMenuTriggerRef}
+            type="button"
+            className="shell__mobile-topbar-btn"
+            aria-label="打开菜单"
+            aria-haspopup="dialog"
+            aria-expanded={mobileOpen}
+            onClick={() => {
+              mobileMenuPath.current = location.pathname;
+              setMobileOpen(true);
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
           <button
             ref={mobileQuickNavTriggerRef}
             type="button"
@@ -708,14 +716,34 @@ export default function AppShell() {
       </aside>
 
       {isNarrow ? (
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="shell-mobile-nav__backdrop" />
-          <DialogPrimitive.Content
-            className="shell-mobile-nav"
-            style={{ pointerEvents: "none" }}
+        <Modal.Backdrop
+          className="shell-mobile-nav__backdrop"
+          variant="transparent"
+          isOpen={mobileOpen}
+          onOpenChange={(open) => {
+            if (open) mobileMenuPath.current = location.pathname;
+            else {
+              requestAnimationFrame(() => {
+                const trigger = mobileMenuTriggerRef.current;
+                if (mobileMenuPath.current === currentPath.current && trigger?.isConnected) {
+                  trigger.focus({ preventScroll: true });
+                }
+              });
+            }
+            setMobileOpen(open);
+          }}
+          isDismissable
+        >
+          <Modal.Container
+            placement="center"
+            className="!fixed !inset-0 !m-0 !block !h-full !max-h-none !w-full !max-w-none !p-0 !bg-transparent !shadow-none !pointer-events-none"
           >
-            <DialogPrimitive.Title className="sr-only">主导航</DialogPrimitive.Title>
-            <aside className="shell-mobile-nav__panel">
+            <Modal.Dialog
+              className="shell-mobile-nav !h-full !w-full !max-h-none !max-w-none !flex-row !rounded-none !border-0 !p-0 !bg-transparent !shadow-none"
+              style={{ pointerEvents: "none" }}
+            >
+              <Modal.Heading className="sr-only">主导航</Modal.Heading>
+              <aside className="shell-mobile-nav__panel">
             <div className="shell-mobile-nav__head">
               <div className="shell-mobile-nav__brand-block">
                 <div className="shell__brand-mark-wrap">
@@ -738,11 +766,12 @@ export default function AppShell() {
                   </div>
                 </div>
               </div>
-              <DialogPrimitive.Close asChild>
-                <button type="button" className="shell-mobile-nav__close" aria-label="关闭菜单">
-                  ×
-                </button>
-              </DialogPrimitive.Close>
+              <Modal.CloseTrigger
+                className="shell-mobile-nav__close !static !inset-auto !transform-none forced-colors:focus-visible:outline-solid forced-colors:focus-visible:outline-2 forced-colors:focus-visible:outline-offset-2 forced-colors:focus-visible:outline-[Highlight]"
+                aria-label="关闭菜单"
+              >
+                ×
+              </Modal.CloseTrigger>
             </div>
             <nav className="shell-mobile-nav__links" aria-label="主导航">
               <NavTree mobile navNotices={navNotices} />
@@ -794,9 +823,10 @@ export default function AppShell() {
                 </Fragment>
               ))}
             </nav>
-            </aside>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
+              </aside>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
       ) : null}
 
       <div className="shell__main">
@@ -809,23 +839,22 @@ export default function AppShell() {
       <ConsoleToastHost />
       <BotRestartProgressDialog />
     </div>
-    <DialogPrimitive.Root open={quickNavOpen} onOpenChange={setQuickNavOpen}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="shell-command-nav__overlay" />
-        <DialogPrimitive.Content
-          className="shell-command-nav__content"
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            window.requestAnimationFrame(() => {
-              const target = quickNavReturnFocusRef.current;
-              const fallback = isNarrow ? mobileQuickNavTriggerRef.current : desktopQuickNavTriggerRef.current;
-              const restoreTo = target?.isConnected ? target : fallback;
-              restoreTo?.focus({ preventScroll: true });
-            });
-          }}
+    <Modal.Backdrop
+      className="shell-command-nav__overlay"
+      isOpen={quickNavOpen}
+      onOpenChange={setQuickNavOpen}
+      isDismissable
+    >
+      <Modal.Container
+        placement="center"
+        className="!fixed !inset-0 !m-0 !block !h-full !max-h-none !w-full !max-w-none !p-0 !bg-transparent !shadow-none"
+      >
+        <Modal.Dialog
+          className="shell-command-nav__content !max-w-none !p-0 !flex-col !bg-[var(--bg-elev)]"
+          aria-describedby="shell-command-nav-description"
         >
-          <DialogPrimitive.Title className="sr-only">快速导航</DialogPrimitive.Title>
-          <DialogPrimitive.Description className="sr-only">搜索并跳转到控制台页面。</DialogPrimitive.Description>
+          <Modal.Heading className="sr-only">快速导航</Modal.Heading>
+          <p id="shell-command-nav-description" className="sr-only">搜索并跳转到控制台页面。</p>
           <Command label="搜索页面">
             <CommandInput placeholder="搜索页面或分组…" autoFocus />
             <CommandList className="shell-command-nav__list">
@@ -852,9 +881,9 @@ export default function AppShell() {
               <span><kbd>Esc</kbd> 关闭</span>
             </div>
           </Command>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
-    </DialogPrimitive.Root>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
+    </>
   );
 }

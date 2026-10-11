@@ -210,7 +210,7 @@ export default function MemoryForceGraph({
           <span className="w-10 text-center text-xs text-muted-foreground">{Math.round(zoom * 100)}%</span>
         </div>
       </div>
-      <div className="relative overflow-hidden rounded-lg border bg-muted/20">
+      <div className="relative overflow-hidden rounded-pallas-lg border bg-pallas-muted/20">
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="h-[min(22rem,55vh)] w-full"
@@ -231,7 +231,7 @@ export default function MemoryForceGraph({
                   x2={b.x}
                   y2={b.y}
                   stroke="currentColor"
-                  className={cn("text-border", lit ? "opacity-80" : "opacity-20")}
+                  className={cn("text-pallas-border", lit ? "opacity-80" : "opacity-20")}
                   strokeWidth={lit ? 1.6 : 1}
                 />
               );
@@ -270,7 +270,7 @@ export default function MemoryForceGraph({
                     x={p.x}
                     y={p.y + 24}
                     textAnchor="middle"
-                    className="fill-foreground text-[10px]"
+                    className="fill-pallas-foreground text-[10px]"
                     opacity={lit ? 1 : 0.25}
                   >
                     {(node.label || node.id).slice(0, 8)}
@@ -282,7 +282,7 @@ export default function MemoryForceGraph({
         </svg>
       </div>
       {activeNode ? (
-        <div className="rounded-md border px-3 py-2 text-sm">
+        <div className="rounded-pallas-md border px-3 py-2 text-sm">
           <div className="font-medium">{activeNode.label}</div>
           <div className="text-xs text-muted-foreground">
             {activeNode.kind}

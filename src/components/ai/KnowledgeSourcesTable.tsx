@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableContent, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import StateBlock from "@/components/StateBlock";
 
 const ORIGIN_LABEL: Record<string, string> = {
@@ -135,7 +135,7 @@ function KnowledgeSourceProbe({
               <span>通用语料检索当前未启用。</span>
             ) : (
               <>
-                命中 <span className="tabular-nums text-foreground">{result.count ?? hits.length}</span> 条
+                命中 <span className="tabular-nums text-pallas-foreground">{result.count ?? hits.length}</span> 条
                 {result.min_score != null && result.min_score > 0 ? (
                   <>
                     {" "}
@@ -202,10 +202,10 @@ function KnowledgeSourceDetailBody({ detail }: { detail: KnowledgeSourceDetail }
 
       <div className="space-y-2 border-t pt-4">
         <div className="text-sm text-muted-foreground">
-          共 <span className="tabular-nums text-foreground">{detail.chunk_count ?? 0}</span> 条
+          共 <span className="tabular-nums text-pallas-foreground">{detail.chunk_count ?? 0}</span> 条
           {chunks.length ? (
             <>
-              ，预览前 <span className="tabular-nums text-foreground">{chunks.length}</span> 条
+              ，预览前 <span className="tabular-nums text-pallas-foreground">{chunks.length}</span> 条
             </>
           ) : null}
           {detail.chunks_preview_truncated ? "（已截断）" : null}
@@ -261,16 +261,16 @@ export default function KnowledgeSourcesTable({
   return (
     <div className="space-y-3">
       <div className="text-sm text-muted-foreground">
-        共 <span className="tabular-nums text-foreground">{rows.length}</span> 个已登记语料源
+        共 <span className="tabular-nums text-pallas-foreground">{rows.length}</span> 个已登记语料源
         <span className="ml-1 text-xs">· 点击查看条目预览与检索试探</span>
       </div>
 
-      <ul className="hidden max-[560px]:flex max-[560px]:flex-col max-[560px]:gap-2.5" aria-label="语料源列表">
+      <ul className="hidden max-[561px]:flex max-[561px]:flex-col max-[561px]:gap-2.5" aria-label="语料源列表">
         {rows.map((row) => (
           <li key={row.source_id}>
             <button
               type="button"
-              className="w-full rounded-[var(--radius-control,8px)] border p-3 text-left transition-colors hover:bg-muted/40"
+              className="w-full rounded-[var(--radius-control,8px)] border p-3 text-left transition-colors hover:bg-pallas-muted/40"
               onClick={() => setSelectedId(row.source_id)}
             >
               <div className="flex items-start justify-between gap-2">
@@ -305,59 +305,61 @@ export default function KnowledgeSourcesTable({
         ))}
       </ul>
 
-      <div className="max-[560px]:hidden">
-        <Table className="min-w-[40rem]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>标题</TableHead>
-              <TableHead>ID</TableHead>
-              <TableHead>来源</TableHead>
-              <TableHead>插件</TableHead>
-              <TableHead>作用域</TableHead>
-              <TableHead>检索</TableHead>
-              <TableHead className="text-right">条目</TableHead>
-              <TableHead>默认</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow
-                key={row.source_id}
-                className="cursor-pointer"
-                onClick={() => setSelectedId(row.source_id)}
-              >
-                <TableCell className="max-w-[12rem]">
-                  <div className="truncate font-medium" title={row.title}>
-                    {row.title}
-                  </div>
-                  {row.description ? (
-                    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground" title={row.description}>
-                      {row.description}
+      <div className="max-[561px]:hidden">
+        <Table>
+          <TableContent aria-label="语料源列表" className="min-w-[40rem]">
+            <TableHeader>
+              <TableHead id="title" isRowHeader>标题</TableHead>
+              <TableHead id="source-id">ID</TableHead>
+              <TableHead id="origin">来源</TableHead>
+              <TableHead id="plugin">插件</TableHead>
+              <TableHead id="scope">作用域</TableHead>
+              <TableHead id="retrieval">检索</TableHead>
+              <TableHead id="chunks" className="text-right">条目</TableHead>
+              <TableHead id="default">默认</TableHead>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow
+                  key={row.source_id}
+                  id={row.source_id}
+                  textValue={row.title}
+                  className="cursor-pointer"
+                  onAction={() => setSelectedId(row.source_id)}
+                >
+                  <TableCell className="max-w-[12rem]">
+                    <div className="truncate font-medium" title={row.title}>
+                      {row.title}
                     </div>
-                  ) : null}
-                </TableCell>
-                <TableCell className="max-w-[10rem]">
-                  <span className="block truncate font-mono text-xs text-muted-foreground" title={row.source_id}>
-                    {row.source_id}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <OriginBadge origin={row.origin} />
-                </TableCell>
-                <TableCell className="max-w-[8rem]">
-                  <span className="block truncate" title={row.plugin_title || row.plugin_name || undefined}>
-                    {row.plugin_title || row.plugin_name || "—"}
-                  </span>
-                </TableCell>
-                <TableCell>{labelOf(SCOPE_LABEL, row.scope)}</TableCell>
-                <TableCell>{labelOf(RETRIEVAL_LABEL, row.retrieval_mode)}</TableCell>
-                <TableCell className="text-right tabular-nums">{row.chunk_count ?? 0}</TableCell>
-                <TableCell>
-                  {row.default ? <Badge variant="success">是</Badge> : <span className="text-muted-foreground">—</span>}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+                    {row.description ? (
+                      <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground" title={row.description}>
+                        {row.description}
+                      </div>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="max-w-[10rem]">
+                    <span className="block truncate font-mono text-xs text-muted-foreground" title={row.source_id}>
+                      {row.source_id}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <OriginBadge origin={row.origin} />
+                  </TableCell>
+                  <TableCell className="max-w-[8rem]">
+                    <span className="block truncate" title={row.plugin_title || row.plugin_name || undefined}>
+                      {row.plugin_title || row.plugin_name || "—"}
+                    </span>
+                  </TableCell>
+                  <TableCell>{labelOf(SCOPE_LABEL, row.scope)}</TableCell>
+                  <TableCell>{labelOf(RETRIEVAL_LABEL, row.retrieval_mode)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{row.chunk_count ?? 0}</TableCell>
+                  <TableCell>
+                    {row.default ? <Badge variant="success">是</Badge> : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </TableContent>
         </Table>
       </div>
 

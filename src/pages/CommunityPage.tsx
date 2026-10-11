@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as SelectPrimitive from "@radix-ui/react-select";
 import { fetchPluginConfig, putPluginConfig } from "@/api/console";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -36,13 +37,6 @@ import UiBadge from "@/components/ui/UiBadge";
 import UiButton from "@/components/ui/UiButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { freezeShellMainScroll, preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import { querySettled } from "@/utils/querySettled";
@@ -51,6 +45,8 @@ import type { ReactNode } from "react";
 import {
   Activity,
   Bot,
+  Check,
+  ChevronDown,
   Database,
   ExternalLink,
   Flame,
@@ -67,6 +63,7 @@ import {
 } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import BtnIco from "@/components/BtnIco";
+import { cn } from "@/lib/utils";
 import NoticeDot from "@/components/NoticeDot";
 import { COMMUNITY_FEDERATION_NOTICE } from "@/config/navigationNotices";
 import {
@@ -514,30 +511,53 @@ export default function CommunityPage() {
 
       <ChromeTools>
         <ChromeField label="选择" icon={Layers} className="shrink-0">
-          <Select
+          <SelectPrimitive.Root
             value={section}
             onValueChange={(v) => selectSection(v as CommunitySectionId)}
             onOpenChange={(open) => {
               if (open) freezeShellMainScroll(160);
             }}
           >
-            <SelectTrigger className={CHROME_SELECT_TRIGGER} aria-label="面板分类">
-              <SelectValue placeholder="选择面板" />
-            </SelectTrigger>
-            <SelectContent
-              align="start"
-              onCloseAutoFocus={(e) => e.preventDefault()}
+            <SelectPrimitive.Trigger
+              className={cn(
+                "flex h-9 min-h-[var(--ui-ctrl-height,36px)] w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-[var(--control-bg,hsl(var(--ui-background)))] px-3 py-0 text-[length:var(--console-control-font-size,14px)] font-normal leading-none text-[var(--text)] shadow-[var(--control-shadow)] placeholder:text-[length:var(--console-control-font-size,14px)] placeholder:font-normal placeholder:text-[var(--console-placeholder-color)] data-[placeholder]:text-[length:var(--console-control-font-size,14px)] data-[placeholder]:font-normal data-[placeholder]:text-[var(--console-placeholder-color)] focus:outline-none focus:border-[color-mix(in_srgb,var(--accent)_16%,var(--control-border))] focus:ring-0 focus:ring-offset-0 focus:shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_8%,transparent)] data-[state=open]:border-[color-mix(in_srgb,var(--accent)_16%,var(--control-border))] data-[state=open]:shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_8%,transparent)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:flex [&>span]:h-full [&>span]:min-w-0 [&>span]:flex-1 [&>span]:items-center [&>span]:overflow-x-hidden [&>span]:overflow-y-visible [&>span]:text-left [&>span]:leading-[1.25] [&>span]:whitespace-nowrap [&>span]:text-ellipsis [&>span>*]:min-w-0 [&>span>*]:overflow-x-hidden [&>span>*]:overflow-y-visible [&>span>*]:text-ellipsis [&>span>*]:whitespace-nowrap [&>svg]:shrink-0 [&>svg]:self-center",
+                CHROME_SELECT_TRIGGER,
+              )}
+              aria-label="面板分类"
             >
-              {COMMUNITY_SECTIONS.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  <span className="inline-flex min-w-0 items-center">
-                    <ChromeOptionLabel icon={s.icon}>{s.label}</ChromeOptionLabel>
-                    {s.id === "federation" && federationNoticeUnseen ? <NoticeDot title={COMMUNITY_FEDERATION_NOTICE.label} /> : null}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+              <SelectPrimitive.Value placeholder="选择面板" />
+              <SelectPrimitive.Icon asChild><ChevronDown className="h-4 w-4 opacity-50" /></SelectPrimitive.Icon>
+            </SelectPrimitive.Trigger>
+            <SelectPrimitive.Portal>
+              <SelectPrimitive.Content
+                position="popper"
+                align="start"
+                sideOffset={4}
+                onCloseAutoFocus={(event) => event.preventDefault()}
+                className="ui-surface-popover relative z-[500] max-h-96 min-w-[8rem] overflow-hidden rounded-[var(--radius-control,8px)] border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1"
+              >
+                <SelectPrimitive.Viewport className="h-[var(--radix-select-trigger-height)] max-h-96 w-full min-w-[var(--radix-select-trigger-width)] p-1">
+                  {COMMUNITY_SECTIONS.map((s) => (
+                    <SelectPrimitive.Item
+                      key={s.id}
+                      value={s.id}
+                      className="relative flex w-full cursor-default select-none items-center rounded-[calc(var(--radius-control,8px)-2px)] py-1.5 pl-8 pr-2 text-xs outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] focus:text-foreground data-[highlighted]:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] data-[highlighted]:text-foreground"
+                    >
+                      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                        <SelectPrimitive.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></SelectPrimitive.ItemIndicator>
+                      </span>
+                      <SelectPrimitive.ItemText>
+                        <span className="inline-flex min-w-0 items-center">
+                          <ChromeOptionLabel icon={s.icon}>{s.label}</ChromeOptionLabel>
+                          {s.id === "federation" && federationNoticeUnseen ? <NoticeDot title={COMMUNITY_FEDERATION_NOTICE.label} /> : null}
+                        </span>
+                      </SelectPrimitive.ItemText>
+                    </SelectPrimitive.Item>
+                  ))}
+                </SelectPrimitive.Viewport>
+              </SelectPrimitive.Content>
+            </SelectPrimitive.Portal>
+          </SelectPrimitive.Root>
         </ChromeField>
 
         {section === "hot" ? (

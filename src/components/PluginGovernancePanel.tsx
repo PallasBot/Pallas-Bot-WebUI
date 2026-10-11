@@ -20,7 +20,7 @@ import {
 } from "@/components/config/pluginGovernancePatch";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
-import UiInput from "@/components/ui/UiInput";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -396,12 +396,14 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
                       {cmd.trigger_condition || cmd.command_id}
                     </div>
                   </div>
-                  <UiInput
-                    wrapClassName="plugin-governance-panel__cmd-control"
+                  <Input
+                    className="plugin-governance-panel__cmd-control"
                     type="number"
                     value={limitSelections[cmd.command_id] ?? String(cmd.effective_cd_sec)}
                     disabled={saveGov.isPending}
-                    onValueChange={(v) => setLimitSelections((prev) => ({ ...prev, [cmd.command_id]: v }))}
+                    onChange={(e) =>
+                      setLimitSelections((prev) => ({ ...prev, [cmd.command_id]: e.target.value }))
+                    }
                     onBlur={() => void saveGov.mutateAsync({ action: { kind: "limits" } })}
                   />
                 </div>

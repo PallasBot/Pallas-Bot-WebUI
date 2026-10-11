@@ -135,7 +135,7 @@ export default function BasePromptGovernanceSection() {
 
             <div className="grid gap-2 sm:grid-cols-2">
               {(["append", "replace"] as const).map((value) => (
-                <label key={value} className="flex min-h-10 items-center justify-between gap-2 rounded-md border px-3 text-sm">
+                <label key={value} className="flex min-h-10 items-center justify-between gap-2 rounded-pallas-md border px-3 text-sm">
                   <span>{value === "append" ? "追加到内置基线后" : "完整替换内置基线"}</span>
                   <input
                     type="radio"
@@ -155,7 +155,7 @@ export default function BasePromptGovernanceSection() {
               className="min-h-52 font-mono text-xs leading-relaxed"
               placeholder={mode === "append" ? "追加给模型的规则" : "完整的 system prompt"}
             />
-            <div className="rounded-md border bg-muted/30 p-3">
+            <div className="rounded-pallas-md border bg-pallas-muted/30 p-3">
               <div className="mb-1.5 text-xs font-medium text-muted-foreground">编译顺序预览</div>
               <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">{renderedPreview}</pre>
             </div>
@@ -185,7 +185,7 @@ export default function BasePromptGovernanceSection() {
                 <div className="flex items-center gap-2 text-sm font-medium"><History className="size-4" />历史版本</div>
                 <div className="space-y-2">
                   {versions.map((version) => (
-                    <div key={version.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                    <div key={version.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-pallas-md border px-3 py-2 text-sm">
                       <div className="min-w-0">
                         <div className="truncate">{version.mode === "append" ? "追加" : "替换"} · {formatUpdatedAt(version.updated_at)}</div>
                         <div className="truncate text-xs text-muted-foreground">{version.text}</div>

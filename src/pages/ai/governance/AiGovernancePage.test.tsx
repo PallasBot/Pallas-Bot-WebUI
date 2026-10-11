@@ -49,7 +49,7 @@ function renderRoute(entry: string) {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
-  return { ...view, client };
+  return { ...view, client, router };
 }
 
 describe("AiGovernancePage route", () => {
@@ -59,10 +59,14 @@ describe("AiGovernancePage route", () => {
   });
 
   it("defaults to the pipeline tab and exposes no reply profile tab", async () => {
-    renderRoute("/ai/governance");
+    const { router } = renderRoute("/ai/governance");
 
     expect(await screen.findByText("回复流水线", {}, { timeout: 5000 })).not.toBeNull();
     expect(screen.queryByRole("tab", { name: "回复画像" })).toBeNull();
+    const tabList = screen.getByRole("tablist", { name: "AI 治理分类" });
+    expect(tabList.querySelectorAll('[data-slot="tabs-indicator"]')).toHaveLength(1);
+    await userEvent.setup().click(screen.getByRole("tab", { name: /群风格与语义/ }));
+    await waitFor(() => expect(router.state.location.search).toContain("tab=style"));
   });
 
   it("builds a scoped prompt preview and removes only the local preview section", async () => {
