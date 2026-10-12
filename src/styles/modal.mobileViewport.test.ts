@@ -13,6 +13,8 @@ it("fills the mobile visual viewport for dialogs and the navigation drawer only"
   expect(mobileModalRules).toContain(".ui-dialog.console-modal");
   expect(mobileModalRules).toContain(".shell-command-nav__content");
   expect(mobileModalRules).toContain("var(--visual-viewport-height, 100dvh)");
+  expect(mobileModalRules).toContain("--tw-translate-x: 0 !important");
+  expect(mobileModalRules).toContain("--tw-translate-y: 0 !important");
   expect(mobileModalRules).toContain("env(safe-area-inset-bottom)");
   expect(mobileModalRules).not.toContain(".ui-surface-popover");
 

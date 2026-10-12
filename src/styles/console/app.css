@@ -4764,6 +4764,10 @@ html[data-theme="light"] .bot-config-edit {
   scrollbar-gutter: stable;
 }
 
+.bot-config-dialog .plugin-config-dialog__bd {
+  padding: 12px 16px;
+}
+
 .bot-config-edit--modal > .alert {
   margin-bottom: 0;
 }
@@ -12265,6 +12269,11 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card {
   flex-direction: column;
 }
 
+.ui-surface-dialog.bot-config-dialog {
+  width: min(720px, calc(100vw - 32px));
+  max-width: min(720px, calc(100vw - 32px));
+}
+
 .plugin-config-dialog__bd {
   flex: 1;
   overflow: auto;
@@ -13829,6 +13838,10 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
     width: min(calc(100vw - 32px), 960px);
     max-width: calc(100vw - 32px);
     max-height: calc(100dvh - 32px);
+  }
+
+  .bot-config-dialog .plugin-config-dialog__bd {
+    padding: 0;
   }
 
   .plugin-store-page__detail-bd {
