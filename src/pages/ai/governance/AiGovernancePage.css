@@ -7,7 +7,19 @@
 
 .ai-governance-page__tabs .ai-memory-page__tabs-scroll {
   background: color-mix(in srgb, var(--foreground) 4%, var(--background));
-  border-radius: var(--radius-control, 10px);
+  border-radius: 999px;
+}
+
+.ai-governance-page__tab-list {
+  border-radius: 999px;
+}
+
+.ai-governance-page__tab-list [role="tab"] {
+  border-radius: 999px;
+}
+
+.ai-governance-page__tab-list .tabs__indicator {
+  border-radius: 999px;
 }
 
 .ai-governance-card__heading {

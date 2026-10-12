@@ -183,7 +183,7 @@ it("keeps independent form/raw drafts on refetch and exposes their combined dirt
   await user.type(field, "form draft");
   expect(screen.getByLabelText("dirty state").textContent).toBe("true");
 
-  await user.click(screen.getByRole("tab", { name: "Raw TOML" }));
+  await user.click(screen.getByRole("tab", { name: "TOML" }));
   const raw = await screen.findByRole("textbox") as HTMLTextAreaElement;
   await user.clear(raw);
   await user.type(raw, "raw draft = true");
@@ -196,7 +196,7 @@ it("keeps independent form/raw drafts on refetch and exposes their combined dirt
   expect((screen.getByLabelText("test_value") as HTMLInputElement).value).toBe("form draft");
   expect(screen.getByLabelText("dirty state").textContent).toBe("true");
 
-  await user.click(screen.getByRole("tab", { name: "Raw TOML" }));
+  await user.click(screen.getByRole("tab", { name: "TOML" }));
   expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("raw draft = true");
   serverRaw = "remote = true\n";
   const rawFetchesBeforeRefresh = api.fetchPluginConfigRaw.mock.calls.length;

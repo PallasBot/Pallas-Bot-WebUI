@@ -991,6 +991,7 @@ export default function AiStatisticsPage() {
     () => (
       <DateModeFilter
         size="toolbar"
+        className="ai-observation-statistics-date-filter"
         start={start}
         end={end}
         onStartChange={setStart}
@@ -1117,6 +1118,7 @@ export default function AiStatisticsPage() {
           options={TAB_OPTIONS}
           ariaLabel="AI 统计分类"
           tone="accent"
+          className="ai-observation-statistics-tabs"
           listClassName="min-w-max"
         />
       </div>

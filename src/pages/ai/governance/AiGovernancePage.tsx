@@ -72,7 +72,7 @@ function GovernanceWorkspace() {
       <div className="ai-governance-page__tabs">
         <Tabs selectedKey={active} onSelectionChange={(key) => onTabChange(String(key))} className="w-full">
           <Tabs.ListContainer className="ai-memory-page__tabs-scroll">
-            <Tabs.List aria-label="AI 治理分类" className="whitespace-nowrap">
+            <Tabs.List aria-label="AI 治理分类" className="ai-governance-page__tab-list whitespace-nowrap">
               <Tabs.Tab id="pipeline" className="gap-1">
                 <GitBranch className="size-3.5" /> 回复流水线
                 <Tabs.Indicator />

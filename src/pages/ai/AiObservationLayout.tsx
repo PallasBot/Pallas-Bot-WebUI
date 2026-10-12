@@ -60,6 +60,7 @@ export default function AiObservationLayout() {
         <div data-ui-zone="ai-observe" className="console-hub-page w-full">
           <PageMasthead title="AI 观测" description={meta.lead} />
           <AiObservationChromeTools
+            className={`ai-observation-layout__tools ai-observation-layout__tools--${section}`}
             section={section}
             onSectionChange={onSectionChange}
             onRefresh={() => void onRefresh()}

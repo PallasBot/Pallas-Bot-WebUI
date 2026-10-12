@@ -577,7 +577,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                 onValueChange={(v) => setMode(v === "raw" ? "raw" : "form")}
                 options={[
                   { value: "form", label: "表单" },
-                  { value: "raw", label: "Raw TOML" },
+                  { value: "raw", label: "TOML" },
                 ]}
               />
             </div>

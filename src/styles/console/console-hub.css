@@ -3894,6 +3894,60 @@ html[data-theme="light"][data-ui-preset="shadcn"][data-surface="solid"] .seg-tab
   border-color: transparent !important;
 }
 
+/* AI 观测统计的内容分段：保留 HeroUI 交互，只补齐连续轨道与圆润选中态。 */
+.ai-observation-statistics-tabs .tabs__list {
+  gap: 2px;
+  border: 1px solid var(--surface-edge, var(--border));
+  border-radius: 999px;
+  background: var(--bg-card);
+  padding: 3px;
+}
+
+.ai-observation-statistics-tabs .tabs__tab {
+  border-radius: 999px;
+}
+
+.ai-observation-statistics-tabs .tabs__indicator {
+  border-radius: 999px;
+}
+
+.ai-observation-layout__tools .chrome-tools__trailing {
+  flex-wrap: nowrap;
+}
+
+.ai-observation-layout__tools .chrome-tools__trailing > button {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 560px) {
+  .ai-observation-statistics-date-filter {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex-wrap: wrap !important;
+  }
+
+  .ai-observation-layout__tools--statistics .console-hub-page__chrome-row {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .ai-observation-layout__tools--statistics .console-hub-page__chrome-row > .chrome-tools__trailing {
+    position: static;
+    right: auto;
+    width: 100%;
+    justify-content: flex-end;
+    align-self: center;
+    margin-left: 0;
+    padding-left: 0;
+    box-shadow: none;
+  }
+}
+
 /* 遗留 console-view-toggle 轨道 */
 html[data-layout="hub"][data-surface="glass"] .console-view-toggle {
   background: color-mix(in srgb, var(--foreground) 7%, transparent);
