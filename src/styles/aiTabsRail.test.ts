@@ -17,5 +17,6 @@ it("shows a muted rail on the three scoped tab groups", () => {
   expect(governanceCss).toContain("max-width: 100%;");
   expect(governanceCss).toContain("flex: 0 0 auto;");
   expect(parityCss).toMatch(/\.plugin-config-workspace__mode-tabs \.tabs__list\s*\{[^}]*background:/);
+  expect(parityCss).toMatch(/\.plugin-config-workspace__mode-tabs \.tabs__list\s*\{[^}]*border-radius:\s*999px;/);
   expect(parityCss).toContain(rail);
 });
