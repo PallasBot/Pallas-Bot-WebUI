@@ -6,19 +6,25 @@
 }
 
 .ai-governance-page__tabs .ai-memory-page__tabs-scroll {
+  width: max-content;
+  max-width: 100%;
   background: color-mix(in srgb, var(--foreground) 4%, var(--background));
   border-radius: 999px;
 }
 
-.ai-governance-page__tab-list {
+.ai-governance-page__tabs .ai-governance-page__tab-list {
+  width: max-content;
+  min-width: 0;
   border-radius: 999px;
 }
 
-.ai-governance-page__tab-list [role="tab"] {
+.ai-governance-page__tabs .ai-governance-page__tab-list [role="tab"] {
+  width: auto;
+  flex: 0 0 auto;
   border-radius: 999px;
 }
 
-.ai-governance-page__tab-list .tabs__indicator {
+.ai-governance-page__tabs .ai-governance-page__tab-list .tabs__indicator {
   border-radius: 999px;
 }
 

@@ -622,6 +622,7 @@ html[data-theme="light"] .plugin-config-form-item .config-field-renderer__step {
   height: 44px !important;
   min-height: 44px !important;
   padding: 3px;
+  background: color-mix(in srgb, var(--foreground) 4%, var(--background));
 }
 
 .plugin-config-workspace__mode-tabs .tabs__tab {

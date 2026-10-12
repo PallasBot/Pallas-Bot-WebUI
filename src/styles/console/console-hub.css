@@ -3899,7 +3899,7 @@ html[data-theme="light"][data-ui-preset="shadcn"][data-surface="solid"] .seg-tab
   gap: 2px;
   border: 1px solid var(--surface-edge, var(--border));
   border-radius: 999px;
-  background: var(--bg-card);
+  background: color-mix(in srgb, var(--foreground) 4%, var(--background));
   padding: 3px;
 }
 
