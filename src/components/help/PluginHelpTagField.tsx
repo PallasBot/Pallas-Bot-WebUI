@@ -29,6 +29,7 @@ type Props = {
   /** help 插件配置页同步表单里的 JSON 字段，避免整页保存覆盖 */
   onOverridesSynced?: (serialized: string) => void;
   className?: string;
+  selectClassName?: string;
 };
 
 function pickOverride(overrides: Record<string, string>, keys: string[]): string {
@@ -45,6 +46,7 @@ export default function PluginHelpTagField({
   metadataExtra,
   onOverridesSynced,
   className,
+  selectClassName,
 }: Props) {
   const qc = useQueryClient();
   const id = pluginId.trim();
@@ -115,6 +117,7 @@ export default function PluginHelpTagField({
         }
       >
         <HelpTagSelect
+          className={selectClassName}
           value={currentOverride}
           extraTags={extraTags}
           allowEmpty

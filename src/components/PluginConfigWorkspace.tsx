@@ -632,6 +632,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
               {pluginResolvedId && !compact ? (
                 <PluginHelpTagField
                   className="mb-4"
+                  selectClassName={isDialog ? "plugin-config-dialog__help-tag-select" : undefined}
                   pluginId={pluginResolvedId}
                   aliasIds={[
                     name,

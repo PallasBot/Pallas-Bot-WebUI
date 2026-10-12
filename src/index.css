@@ -475,6 +475,18 @@ html[data-theme="light"][data-surface="glass"] [data-radix-select-content] {
   display: inline-flex;
 }
 
+.plugin-config-dialog__help-tag-select:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-width: 0px;
+}
+
+.plugin-config-dialog__help-tag-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 html[data-theme="dark"] .ui-surface-dialog {
   box-shadow:
     0 2px 10px rgba(0, 0, 0, 0.22),
@@ -487,6 +499,26 @@ html[data-theme="light"] .ui-surface-dialog-overlay {
 
 html[data-theme="dark"] .ui-surface-dialog-overlay {
   background: rgba(0, 0, 0, 0.55);
+}
+
+.plugin-config-dialog .plugin-config-dialog__help-tag-select {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.plugin-config-dialog .plugin-config-dialog__help-tag-select > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-right: 0.5rem;
+  text-align: center;
+}
+
+.plugin-config-dialog .plugin-config-dialog__help-tag-select > svg {
+  flex: 0 0 auto;
+  margin: 0;
 }
 
 @media (max-width: 560px) {
@@ -507,6 +539,40 @@ html[data-theme="dark"] .ui-surface-dialog-overlay {
     --tw-translate-y: 0 !important;
     border-radius: 0;
     padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .ui-surface-dialog[role="dialog"].plugin-config-dialog,
+  .ui-surface-dialog[role="dialog"].bot-config-dialog {
+    inset: auto;
+    top: calc(var(--visual-viewport-height, 100dvh) / 2);
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    width: min(960px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    height: auto;
+    max-height: calc(var(--visual-viewport-height, 100dvh) - max(24px, env(safe-area-inset-top)) - max(24px, env(safe-area-inset-bottom)));
+    transform: translate(-50%, -50%);
+    translate: none;
+    --tw-translate-x: 0 !important;
+    --tw-translate-y: 0 !important;
+    border-radius: var(--radius-md, 12px);
+    padding: 0;
+  }
+
+  .ui-surface-dialog[role="dialog"].plugin-config-dialog .ui-surface-dialog__close,
+  .ui-surface-dialog[role="dialog"].bot-config-dialog .ui-surface-dialog__close {
+    position: absolute;
+    top: max(0.75rem, env(safe-area-inset-top));
+    right: max(0.75rem, env(safe-area-inset-right));
+  }
+
+  .ui-surface-dialog[role="dialog"].plugin-config-dialog > .plugin-config-dialog__bd,
+  .ui-surface-dialog[role="dialog"].bot-config-dialog > .plugin-config-dialog__bd {
+    flex-shrink: 1;
+    min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
