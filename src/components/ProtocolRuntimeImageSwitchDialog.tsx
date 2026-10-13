@@ -273,7 +273,7 @@ export default function ProtocolRuntimeImageSwitchDialog({
             {job ? (
               <section className="protocol-runtime-image-switch-progress" aria-live="polite">
                 <div className="protocol-runtime-image-switch-progress__head"><span>{job.message || "正在处理…"}</span><span>{progressLabel}</span></div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary transition-all" style={{ width: `${total ? Math.min(100, (progressCompleted / total) * 100) : 0}%` }} /></div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-pallas-muted"><div className="h-full bg-primary transition-all" style={{ width: `${total ? Math.min(100, (progressCompleted / total) * 100) : 0}%` }} /></div>
                 {isRunning(job) && job.message ? <p className="mt-2 break-all text-xs text-muted-foreground">{job.message}</p> : null}
                 {!isRunning(job) ? <p className="mt-2 text-xs text-muted-foreground">{failed.length ? `失败 ${failed.length} 项` : "已完成"}{nextStartCount ? `；${nextStartCount} 项等待下次启动` : ""}</p> : null}
                 {failed.length ? <ul className="mt-2 space-y-1 text-xs text-destructive">{failed.map((result) => <li key={result.id} className="break-all">{result.id}：{result.error}</li>)}</ul> : null}

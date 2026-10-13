@@ -120,11 +120,11 @@ export default function DatabaseMigratePanel({ onMessage }: Props) {
         ) : null}
       </ConsoleHint>
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+        <label className="flex items-center justify-between gap-3 rounded-pallas-md border px-3 py-2">
           <Label className="text-sm">仅预演（不写库）</Label>
           <Switch checked={dryRun} onCheckedChange={setDryRun} disabled={busy || running} />
         </label>
-        <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+        <label className="flex items-center justify-between gap-3 rounded-pallas-md border px-3 py-2">
           <Label className="text-sm">清空续传游标</Label>
           <Switch
             checked={restartCursor}
@@ -132,7 +132,7 @@ export default function DatabaseMigratePanel({ onMessage }: Props) {
             disabled={busy || running}
           />
         </label>
-        <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+        <label className="flex items-center justify-between gap-3 rounded-pallas-md border px-3 py-2">
           <Label className="text-sm">完成后切到 PostgreSQL</Label>
           <Switch
             checked={switchBackend}
@@ -140,7 +140,7 @@ export default function DatabaseMigratePanel({ onMessage }: Props) {
             disabled={busy || running || dryRun}
           />
         </label>
-        <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+        <label className="flex items-center justify-between gap-3 rounded-pallas-md border px-3 py-2">
           <Label className="text-sm">尝试热切换</Label>
           <Switch
             checked={tryHotRebind}
@@ -158,7 +158,7 @@ export default function DatabaseMigratePanel({ onMessage }: Props) {
         ) : null}
       </div>
       {job ? (
-        <div className="rounded-md border px-3 py-2">
+        <div className="rounded-pallas-md border px-3 py-2">
           <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
             <span>
               状态：<strong>{job.status}</strong>

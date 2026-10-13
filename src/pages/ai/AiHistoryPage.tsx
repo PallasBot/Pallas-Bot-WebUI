@@ -219,7 +219,7 @@ function PeerPlaceholderAvatar({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-2xl bg-muted text-muted-foreground",
+        "flex shrink-0 items-center justify-center rounded-pallas-2xl bg-pallas-muted text-muted-foreground",
         className,
       )}
       aria-hidden
@@ -692,7 +692,7 @@ export default function AiHistoryPage() {
                     isBot ? "flex-row-reverse" : "flex-row",
                   )}
                 >
-                  <span className={cn("font-medium", isBot ? "text-emerald-600" : "text-foreground/70")}>
+                  <span className={cn("font-medium", isBot ? "text-emerald-600" : "text-pallas-foreground/70")}>
                     {labelRole(t.role)}
                   </span>
                   <span className="tabular-nums">{formatTs(t.created_at)}</span>
@@ -712,10 +712,10 @@ export default function AiHistoryPage() {
                 </div>
                 <div
                   className={cn(
-                    "max-w-[min(100%,36rem)] rounded-2xl px-3 py-2 text-sm leading-relaxed",
+                    "max-w-[min(100%,36rem)] rounded-pallas-2xl px-3 py-2 text-sm leading-relaxed",
                     isBot
-                      ? "rounded-tr-md bg-primary/12 text-foreground"
-                      : "rounded-tl-md bg-muted/60 text-foreground",
+                      ? "rounded-tr-pallas-md bg-primary/12 text-pallas-foreground"
+                      : "rounded-tl-pallas-md bg-pallas-muted/60 text-pallas-foreground",
                   )}
                 >
                   <p className="whitespace-pre-wrap break-words">{t.content || ""}</p>
@@ -773,7 +773,7 @@ export default function AiHistoryPage() {
                       </Button>
                     </div>
                     {toolExpanded ? (
-                      <div className="mt-2 rounded-lg border bg-muted/20 p-2.5 text-left">
+                      <div className="mt-2 rounded-pallas-lg border bg-pallas-muted/20 p-2.5 text-left">
                         <LlmToolTracePanel
                           agentTrace={agentTrace}
                           requestId={requestId || null}
@@ -804,7 +804,7 @@ export default function AiHistoryPage() {
       </StateBlock>
     ) : detailTab === "annotate" ? (
       <div className="space-y-3">
-        <div className="rounded-lg border bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+        <div className="rounded-pallas-lg border bg-pallas-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
           <p>
             评价回复表现，用于优化 LLM 对话；也可管理行为规则。
           </p>
@@ -829,7 +829,7 @@ export default function AiHistoryPage() {
         >
           <div className="space-y-2">
             {sessionBehaviorRuns.map((run) => (
-              <div key={run.request_id} className="rounded-lg border p-3 text-sm">
+              <div key={run.request_id} className="rounded-pallas-lg border p-3 text-sm">
                 <div className="text-xs text-muted-foreground">
                   {labelScene(run.scene)}
                   {run.final_outcome ? ` · ${labelOutcome(run.final_outcome)}` : null}
@@ -879,11 +879,11 @@ export default function AiHistoryPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="flex h-[min(72vh,42rem)] min-h-[22rem] overflow-hidden rounded-lg border bg-card">
+      <div className="flex h-[min(72vh,42rem)] min-h-[22rem] overflow-hidden rounded-pallas-lg border bg-card">
         {/* 左栏：会话列表（窄栏） */}
         <div
           className={cn(
-            "flex min-h-0 w-full shrink-0 flex-col border-border/40 sm:w-60 sm:border-r md:w-64 lg:w-72",
+            "flex min-h-0 w-full shrink-0 flex-col border-pallas-border/40 sm:w-60 sm:border-r md:w-64 lg:w-72",
             selectedKey ? "hidden sm:flex" : "flex",
           )}
         >
@@ -906,7 +906,7 @@ export default function AiHistoryPage() {
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[color-mix(in_srgb,var(--muted)_28%,transparent)] p-1.5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[color-mix(in_srgb,var(--pallas-muted)_28%,transparent)] p-1.5">
             <StateBlock
               loading={q.isLoading}
               error={q.error}
@@ -922,10 +922,10 @@ export default function AiHistoryPage() {
                       type="button"
                       title={sessionFullTitle(s)}
                       className={cn(
-                        "relative w-full rounded-2xl px-2.5 py-2.5 text-left transition-all",
-                        "hover:bg-background/80",
+                        "relative w-full rounded-pallas-2xl px-2.5 py-2.5 text-left transition-all",
+                        "hover:bg-pallas-background/80",
                         active
-                          ? "bg-background shadow-sm ring-1 ring-primary/20"
+                          ? "bg-pallas-background shadow-sm ring-1 ring-primary/20"
                           : "bg-transparent",
                       )}
                       onClick={() => selectSession(s.session_key)}
@@ -941,11 +941,11 @@ export default function AiHistoryPage() {
                               {relativeTime(s.last_created_at)}
                             </span>
                           </div>
-                          <p className="mt-1.5 truncate text-[12.5px] leading-snug text-foreground/80">
+                          <p className="mt-1.5 truncate text-[12.5px] leading-snug text-pallas-foreground/80">
                             {sessionPreview(s)}
                           </p>
                           <div className="mt-1.5 flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
-                            <span className="rounded-full bg-muted/80 px-1.5 py-px">
+                            <span className="rounded-full bg-pallas-muted/80 px-1.5 py-px">
                               {sessionPlaceLabel(s)}
                             </span>
                             <span className="tabular-nums">{s.turn_count ?? 0} 轮</span>
@@ -987,7 +987,7 @@ export default function AiHistoryPage() {
                       <span className="truncate text-sm font-semibold tracking-tight">
                         {sessionTitle(selected)}
                       </span>
-                      <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground">
+                      <span className="rounded-full bg-pallas-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground">
                         {selected.group_id ? "群聊" : "私聊"}
                       </span>
                     </div>
@@ -1036,8 +1036,8 @@ export default function AiHistoryPage() {
                           "relative shrink-0 px-2.5 pb-2 pt-1 text-xs font-medium transition-colors",
                           "after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:content-['']",
                           active
-                            ? "text-foreground after:bg-primary"
-                            : "text-muted-foreground after:bg-transparent hover:text-foreground",
+                            ? "text-pallas-foreground after:bg-primary"
+                            : "text-muted-foreground after:bg-transparent hover:text-pallas-foreground",
                         )}
                         onClick={() => {
                           setDetailTab(tab.value);
@@ -1048,8 +1048,8 @@ export default function AiHistoryPage() {
                           {tab.count != null ? (
                             <span
                               className={cn(
-                                "rounded-md px-1 py-px text-[10px] tabular-nums",
-                                active ? "bg-primary/12 text-foreground" : "bg-muted text-muted-foreground",
+                                "rounded-pallas-md px-1 py-px text-[10px] tabular-nums",
+                                active ? "bg-primary/12 text-pallas-foreground" : "bg-pallas-muted text-muted-foreground",
                               )}
                             >
                               {tab.count}
@@ -1168,12 +1168,12 @@ export default function AiHistoryPage() {
                 />
               </label>
             </div>
-            <details className="rounded-md border px-3 py-2 text-xs">
+            <details className="rounded-pallas-md border px-3 py-2 text-xs">
               <summary className="cursor-pointer select-none text-muted-foreground">
                 触发特征（可选，JSON，一般不用改）
               </summary>
               <textarea
-                className="mt-2 min-h-[4rem] w-full rounded-md border bg-background p-2 font-mono text-xs"
+                className="mt-2 min-h-[4rem] w-full rounded-pallas-md border bg-pallas-background p-2 font-mono text-xs"
                 placeholder='[]'
                 value={triggerFeaturesText}
                 onChange={(e) => {
@@ -1225,7 +1225,7 @@ export default function AiHistoryPage() {
                   <button
                     key={item.pattern_id}
                     type="button"
-                    className="flex w-full items-center justify-between gap-2 rounded border px-2 py-1.5 text-left hover:bg-muted/40"
+                    className="flex w-full items-center justify-between gap-2 rounded border px-2 py-1.5 text-left hover:bg-pallas-muted/40"
                     onClick={() => openPattern(item)}
                   >
                     <span className="min-w-0 truncate">{item.pattern_id}</span>

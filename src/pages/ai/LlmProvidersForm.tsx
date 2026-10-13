@@ -306,7 +306,7 @@ function DailyRangesEditor({ ranges, onChange }: { ranges: [string, string][]; o
             {s}~{e}
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-pallas-foreground"
               aria-label={`删除时段 ${s}~${e}`}
               onClick={() => onChange(ranges.filter((_, idx) => idx !== i))}
             >
@@ -1460,10 +1460,10 @@ export default function LlmProvidersForm() {
                   role="button"
                   tabIndex={0}
                   className={cn(
-                    "min-w-0 cursor-pointer overflow-hidden rounded-lg border-2 p-4 text-left transition-all",
+                    "min-w-0 cursor-pointer overflow-hidden rounded-pallas-lg border-2 p-4 text-left transition-all",
                     editIndex === index && editing
                       ? "border-primary bg-primary/10"
-                      : "border-border hover:border-primary/50",
+                      : "border-pallas-border hover:border-primary/50",
                   )}
                   onClick={() => openEdit(index)}
                   onKeyDown={(e) => {
@@ -1543,10 +1543,10 @@ export default function LlmProvidersForm() {
               <button
                 type="button"
                 className={cn(
-                  "p-4 rounded-lg border-2 border-dashed transition-all text-left",
+                  "p-4 rounded-pallas-lg border-2 border-dashed transition-all text-left",
                   editing && editIndex === null
                     ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50",
+                    : "border-pallas-border hover:border-primary/50",
                 )}
                 onClick={openAdd}
               >
@@ -1791,7 +1791,7 @@ export default function LlmProvidersForm() {
                       {(draft.models || []).map((model) => {
                         const modelKey = model.model_id || model.name;
                         const collapsed = collapsedModels[modelKey] !== false;
-                        return <div key={modelKey} className="space-y-1.5 rounded border border-border/70 px-2.5 py-2">
+                        return <div key={modelKey} className="space-y-1.5 rounded border border-pallas-border/70 px-2.5 py-2">
                           <div className="flex items-center justify-between gap-2">
                             <span className="min-w-0 truncate font-mono text-xs">{model.name}</span>
                             <div className="flex shrink-0 items-center gap-1">
@@ -1844,7 +1844,7 @@ export default function LlmProvidersForm() {
                               )}
                             </div>
                           ) : <>
-                          <div className="grid gap-3 rounded bg-muted/20 p-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(180px,0.8fr)]">
+                          <div className="grid gap-3 rounded bg-pallas-muted/20 p-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(180px,0.8fr)]">
                             <div className="space-y-2">
                               <Label className="text-xs font-semibold">模型支持能力</Label>
                               <div className="flex flex-wrap gap-1.5">
@@ -1886,7 +1886,7 @@ export default function LlmProvidersForm() {
                             </div>
                           </div>
                           {(model.pricing_rules || []).map((rule) => (
-                            <div key={rule.id} className="space-y-2 rounded bg-muted/20 p-2 text-xs text-muted-foreground">
+                            <div key={rule.id} className="space-y-2 rounded bg-pallas-muted/20 p-2 text-xs text-muted-foreground">
                               <div className="flex items-center justify-between gap-2">
                                 <Select value={rule.kind} onValueChange={(value) => setPricingRuleKind(model.name, rule.id, value as LlmProviderPricingRule["kind"])}>
                                   <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import os from "node:os";
 import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react-swc";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, loadEnv } from "vite";
 import { fontsourceWoff2Only } from "./src/build/fontsourceWoff2Only";
 
@@ -62,6 +63,7 @@ export default defineConfig(({ mode }) => {
           return transformed === null ? null : { code: transformed, map: null };
         },
       },
+      tailwindcss(),
       react(),
     ],
     resolve: {

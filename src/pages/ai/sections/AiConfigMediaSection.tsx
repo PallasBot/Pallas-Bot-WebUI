@@ -1341,7 +1341,7 @@ export default function AiConfigMediaSection() {
                 </div>
               </>
             ) : (
-              <pre className="whitespace-pre-wrap rounded-[var(--radius-control,8px)] border bg-muted/30 p-3 text-[11px] leading-relaxed text-muted-foreground">
+              <pre className="whitespace-pre-wrap rounded-[var(--radius-control,8px)] border bg-pallas-muted/30 p-3 text-[11px] leading-relaxed text-muted-foreground">
                 {dockerOrRemoteHint || "当前无法在此安装或启停，请改用连接配置。"}
               </pre>
             )}
@@ -1658,7 +1658,7 @@ export default function AiConfigMediaSection() {
                   {(singQ.data?.speakers.speakers || []).map((row) => (
                     <li
                       key={row.id}
-                      className="flex min-w-0 flex-col gap-2 rounded-[var(--radius-control,8px)] border bg-muted/20 px-3 py-2.5"
+                      className="flex min-w-0 flex-col gap-2 rounded-[var(--radius-control,8px)] border bg-pallas-muted/20 px-3 py-2.5"
                     >
                       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
                         <span className="font-mono font-medium">{row.id}</span>
@@ -2040,11 +2040,11 @@ export default function AiConfigMediaSection() {
               ) : null}
             </div>
             {statusQ.data ? (
-              <details className="rounded-[var(--radius-control,8px)] border bg-muted/20">
+              <details className="rounded-[var(--radius-control,8px)] border bg-pallas-muted/20">
                 <summary className="cursor-pointer select-none px-3 py-2 text-xs text-muted-foreground">
                   查看原始状态
                 </summary>
-                <pre className="max-h-48 overflow-auto border-t bg-muted/30 p-2 text-xs">
+                <pre className="max-h-48 overflow-auto border-t bg-pallas-muted/30 p-2 text-xs">
                   {JSON.stringify(statusQ.data, null, 2)}
                 </pre>
               </details>

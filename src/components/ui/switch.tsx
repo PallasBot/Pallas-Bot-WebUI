@@ -1,4 +1,7 @@
 import * as React from "react";
+import { Switch as HeroSwitch } from "@heroui/react";
+import type { SwitchButtonRenderProps } from "@heroui/react";
+import type { DOMRenderFunction } from "react-aria-components";
 import { cn } from "@/lib/utils";
 
 export type SwitchProps = {
@@ -45,48 +48,76 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
     const isControlled = checked !== undefined;
     const [uncontrolled, setUncontrolled] = React.useState(Boolean(defaultChecked));
     const on = isControlled ? Boolean(checked) : uncontrolled;
-
-    return (
-      <label
-        className={cn(
-          "console-bool-switch",
-          on && "console-bool-switch--on",
-          tone === "amber" && "console-bool-switch--amber",
-          disabled && "pointer-events-none",
-          className,
-        )}
-        data-state={on ? "checked" : "unchecked"}
-        onClick={onClick}
-        onKeyDown={onKeyDown}
-        onMouseDown={(e) => {
-          if (disabled) return;
-          // 避免 Dialog 内 focus scrollIntoView 把内容顶出可视区
-          e.preventDefault();
-          const input = e.currentTarget.querySelector<HTMLInputElement>("input");
-          input?.focus({ preventScroll: true });
-        }}
-      >
-        <input
-          ref={ref}
-          id={id}
-          name={name}
-          type="checkbox"
-          className="console-bool-switch__input"
-          checked={on}
-          disabled={disabled}
-          aria-label={ariaLabel}
-          aria-labelledby={ariaLabelledBy}
-          aria-describedby={ariaDescribedBy}
-          onChange={(e) => {
-            const next = e.target.checked;
-            if (!isControlled) setUncontrolled(next);
-            onCheckedChange?.(next);
+    const contentProps: React.ComponentProps<typeof HeroSwitch.Content> & {
+      render: DOMRenderFunction<"label", SwitchButtonRenderProps>;
+    } = {
+      className: cn(
+        "console-bool-switch",
+        on && "console-bool-switch--on",
+        tone === "amber" && "console-bool-switch--amber",
+        disabled && "pointer-events-none",
+        className,
+      ),
+      onMouseDown: (event) => {
+        if (disabled) return;
+        event.preventDefault();
+        const input = event.currentTarget.querySelector<HTMLInputElement>("input");
+        input?.focus({ preventScroll: true });
+      },
+      children: ({ isFocusVisible, isDisabled }) => (
+        <HeroSwitch.Control
+          className={cn(
+            "console-bool-switch__track",
+            isFocusVisible && "outline-2 outline-offset-2 outline-[var(--accent)] forced-colors:outline-hidden",
+            isDisabled && "opacity-[0.55]",
+          )}
+          aria-hidden="true"
+        >
+          <HeroSwitch.Thumb className="console-bool-switch__thumb" />
+        </HeroSwitch.Control>
+      ),
+      render: (domProps) => (
+        <label
+          {...domProps}
+          data-state={on ? "checked" : "unchecked"}
+          onClick={(event) => {
+            domProps.onClick?.(event);
+            onClick?.(event);
+          }}
+          onKeyDown={(event) => {
+            domProps.onKeyDown?.(event);
+            onKeyDown?.(event);
           }}
         />
-        <span className="console-bool-switch__track" aria-hidden="true">
-          <span className="console-bool-switch__thumb" />
-        </span>
-      </label>
+      ),
+    };
+
+    return (
+      <HeroSwitch.Root
+        className="contents"
+        inputRef={ref}
+        id={id}
+        name={name}
+        isSelected={isControlled ? Boolean(checked) : undefined}
+        defaultSelected={isControlled ? undefined : Boolean(defaultChecked)}
+        isDisabled={disabled}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
+        onPressStart={
+          onKeyDown
+            ? (event) => {
+                if (event.pointerType === "keyboard") event.continuePropagation();
+              }
+            : undefined
+        }
+        onChange={(next) => {
+          if (!isControlled) setUncontrolled(next);
+          onCheckedChange?.(next);
+        }}
+      >
+        <HeroSwitch.Content {...contentProps} />
+      </HeroSwitch.Root>
     );
   },
 );

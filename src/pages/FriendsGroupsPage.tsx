@@ -30,27 +30,25 @@ import BotAccountCombobox from "@/components/BotAccountCombobox";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
+import { Card, Chip, Input, ListBox, Select as HeroSelect } from "@heroui/react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Bot, Check, ClipboardCheck, Layers, Search, UserPlus, Users, X } from "lucide-react";
+import { renderSelectTrigger } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { Bot, Check, ChevronDown, ClipboardCheck, Layers, Search, UserPlus, Users, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 
-const FG_PANEL = "friends-groups-page__panel flex flex-col overflow-hidden shadow-none";
+const FG_PANEL = "friends-groups-page__panel flex flex-col overflow-hidden";
 const FG_PANEL_HD =
   "panel__hd panel__hd--split flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const FG_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
 const FG_SECTION_SEL = "chrome-section-compact-sel h-9 w-auto shrink-0";
+const PALLAS_CARD = "pallas-card-frame block static gap-0 p-0";
+const PALLAS_CARD_HEADER = "flex flex-col space-y-1.5 p-5 gap-0";
+const PALLAS_CARD_CONTENT = "pallas-card-content block gap-0 p-5 pt-0";
+const PALLAS_INPUT_BASE = "flex h-9 min-h-[var(--ui-ctrl-height,36px)] w-full";
+const PALLAS_SELECT_TRIGGER = "min-h-[var(--ui-ctrl-height,36px)] min-w-0 overflow-hidden [&>span]:min-w-0 [&>span]:overflow-hidden [&>span]:text-ellipsis [&>span>*]:min-w-0 [&>span>*]:overflow-hidden [&>span>*]:text-ellipsis";
 
 const FG_LIST_SKEL_ROWS = 8;
 
@@ -551,20 +549,37 @@ export default function FriendsGroupsPage() {
 
       <ChromeTools sticky>
         <ChromeField label="选择" icon={Layers} className="shrink-0">
-          <Select value={section} onValueChange={(v) => selectSection(v as FgSectionId)}>
-            <SelectTrigger className={FG_SECTION_SEL} aria-label="好友或群聊">
-              <SelectValue placeholder="选择">
+          <HeroSelect.Root value={section} aria-label="好友或群聊" placeholder="选择" onChange={(key) => selectSection((key == null ? "" : String(key)) as FgSectionId)}>
+            <HeroSelect.Trigger
+              className={cn(PALLAS_SELECT_TRIGGER, FG_SECTION_SEL)}
+              render={renderSelectTrigger()}
+            >
+              <HeroSelect.Value>
                 <ChromeOptionLabel icon={sectionMeta.icon}>{sectionMeta.label}</ChromeOptionLabel>
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent align="start">
+              </HeroSelect.Value>
+              <HeroSelect.Indicator>
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </HeroSelect.Indicator>
+            </HeroSelect.Trigger>
+            <HeroSelect.Popover
+              placement="bottom start"
+              offset={4}
+              className="ui-surface-popover relative z-[500] flex min-h-0 min-w-[8rem] flex-col overflow-hidden rounded-[var(--radius-control,8px)] border bg-popover text-popover-foreground shadow-md data-[entering]:animate-in data-[exiting]:animate-out data-[exiting]:fade-out-0 data-[entering]:fade-in-0 data-[exiting]:zoom-out-95 data-[entering]:zoom-in-95 data-[placement=bottom]:slide-in-from-top-2 data-[placement=left]:slide-in-from-right-2 data-[placement=right]:slide-in-from-left-2 data-[placement=top]:slide-in-from-bottom-2"
+            >
+              <ListBox className="min-h-0 flex-1 overflow-auto p-1">
               {FG_SECTIONS.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
+                <ListBox.Item key={s.id} id={s.id} textValue={s.label} className="relative flex w-full cursor-default select-none items-center rounded-[calc(var(--radius-control,8px)-2px)] py-1.5 pl-8 pr-2 text-xs outline-hidden data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[focused=true]:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] data-[focused=true]:text-pallas-foreground data-[selected=true]:text-pallas-foreground">
+                  <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                    <ListBox.ItemIndicator>
+                      <Check className="h-4 w-4 text-[var(--accent)]" />
+                    </ListBox.ItemIndicator>
+                  </span>
                   <ChromeOptionLabel icon={s.icon}>{s.label}</ChromeOptionLabel>
-                </SelectItem>
+                </ListBox.Item>
               ))}
-            </SelectContent>
-          </Select>
+              </ListBox>
+            </HeroSelect.Popover>
+          </HeroSelect.Root>
         </ChromeField>
 
         <div className="relative min-w-[8rem] flex-1 basis-[8rem]">
@@ -575,7 +590,8 @@ export default function FriendsGroupsPage() {
           />
           <Input
             type="search"
-            className={CHROME_SEARCH_INPUT}
+            className={cn(PALLAS_INPUT_BASE, CHROME_SEARCH_INPUT)}
+            data-heroui-skin="true"
             placeholder={listSearch.placeholder}
             title={listSearch.title}
             aria-label={listSearch.placeholder}
@@ -588,36 +604,46 @@ export default function FriendsGroupsPage() {
 
         <div className={CHROME_TOOLS_TRAILING}>
           <ChromeField label="审批" icon={ClipboardCheck} className="shrink-0">
-            <Select
+            <HeroSelect.Root
               key={approveSelectKey}
-              onValueChange={(v) => {
-                runApproveAction(v as FgApproveAction);
+              aria-label="审批操作"
+              placeholder={pickedApproveCount > 0 ? `审批（${pickedApproveCount}）` : "审批操作"}
+              onChange={(key) => {
+                runApproveAction((key == null ? "" : String(key)) as FgApproveAction);
                 setApproveSelectKey((k) => k + 1);
               }}
             >
-              <SelectTrigger
-                className={CHROME_SELECT_TRIGGER}
-                aria-label="审批操作"
-                disabled={busy || !selfIdStr.trim()}
+              <HeroSelect.Trigger
+                className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER)}
+                isDisabled={busy || !selfIdStr.trim()}
+                render={renderSelectTrigger()}
               >
-                <SelectValue
-                  placeholder={
-                    pickedApproveCount > 0 ? `审批（${pickedApproveCount}）` : "审批操作"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent align="end">
-                <SelectItem value="approve-selected" disabled={pickedApproveCount === 0 || busy}>
+                <HeroSelect.Value />
+                <HeroSelect.Indicator>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </HeroSelect.Indicator>
+              </HeroSelect.Trigger>
+              <HeroSelect.Popover
+                placement="bottom end"
+                offset={4}
+                className="ui-surface-popover relative z-[500] flex min-h-0 min-w-[8rem] flex-col overflow-hidden rounded-[var(--radius-control,8px)] border bg-popover text-popover-foreground shadow-md data-[entering]:animate-in data-[exiting]:animate-out data-[exiting]:fade-out-0 data-[entering]:fade-in-0 data-[exiting]:zoom-out-95 data-[entering]:zoom-in-95 data-[placement=bottom]:slide-in-from-top-2 data-[placement=left]:slide-in-from-right-2 data-[placement=right]:slide-in-from-left-2 data-[placement=top]:slide-in-from-bottom-2"
+              >
+              <ListBox className="min-h-0 flex-1 overflow-auto p-1">
+                <ListBox.Item id="approve-selected" textValue="同意所选" isDisabled={pickedApproveCount === 0 || busy} className="relative flex w-full cursor-default select-none items-center rounded-[calc(var(--radius-control,8px)-2px)] py-1.5 pl-8 pr-2 text-xs outline-hidden data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[focused=true]:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] data-[focused=true]:text-pallas-foreground data-[selected=true]:text-pallas-foreground">
+                  <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center"><ListBox.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></ListBox.ItemIndicator></span>
                   同意所选
-                </SelectItem>
-                <SelectItem value="reject-selected" disabled={pickedApproveCount === 0 || busy}>
+                </ListBox.Item>
+                <ListBox.Item id="reject-selected" textValue="拒绝所选" isDisabled={pickedApproveCount === 0 || busy} className="relative flex w-full cursor-default select-none items-center rounded-[calc(var(--radius-control,8px)-2px)] py-1.5 pl-8 pr-2 text-xs outline-hidden data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[focused=true]:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] data-[focused=true]:text-pallas-foreground data-[selected=true]:text-pallas-foreground">
+                  <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center"><ListBox.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></ListBox.ItemIndicator></span>
                   拒绝所选
-                </SelectItem>
-                <SelectItem value="approve-all" disabled={approveRowCount === 0 || busy}>
+                </ListBox.Item>
+                <ListBox.Item id="approve-all" textValue="全部同意" isDisabled={approveRowCount === 0 || busy} className="relative flex w-full cursor-default select-none items-center rounded-[calc(var(--radius-control,8px)-2px)] py-1.5 pl-8 pr-2 text-xs outline-hidden data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[focused=true]:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] data-[focused=true]:text-pallas-foreground data-[selected=true]:text-pallas-foreground">
+                  <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center"><ListBox.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></ListBox.ItemIndicator></span>
                   全部同意
-                </SelectItem>
-              </SelectContent>
-            </Select>
+                </ListBox.Item>
+              </ListBox>
+              </HeroSelect.Popover>
+            </HeroSelect.Root>
           </ChromeField>
           <RefreshIconButton
             busy={pageRefreshBusy}
@@ -630,19 +656,19 @@ export default function FriendsGroupsPage() {
 
       {section === "friends" ? (
         <>
-          <Card id="fg-friends" className={FG_PANEL}>
-            <CardHeader className={FG_PANEL_HD}>
-              <CardTitle className="panel__title flex items-center gap-1.5">
+          <Card id="fg-friends" className={cn(PALLAS_CARD, FG_PANEL)}>
+            <Card.Header className={cn(PALLAS_CARD_HEADER, FG_PANEL_HD)}>
+              <Card.Title className="flex items-center gap-1.5">
                 <PanelTitleIcon icon={Users} />
                 好友列表
                 {selfIdStr && listsBusy ? (
                   <span className="muted text-xs font-normal">列表加载中…</span>
                 ) : friends?.truncated ? (
-                  <Badge variant="secondary">已截断</Badge>
+                  <Chip className="chip--md chip--default chip--soft"><Chip.Label>已截断</Chip.Label></Chip>
                 ) : null}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className={FG_PANEL_BD}>
+              </Card.Title>
+            </Card.Header>
+              <Card.Content className={cn(PALLAS_CARD_CONTENT, FG_PANEL_BD)}>
               {!selfIdStr.trim() ? (
                 <p className="muted m-0">请选择 Bot 后加载好友列表。</p>
               ) : fgListsSkeleton ? (
@@ -727,22 +753,22 @@ export default function FriendsGroupsPage() {
                   onPageSizeChange={prefs.setTablePageSize}
                 />
               ) : null}
-            </CardContent>
+            </Card.Content>
           </Card>
 
-          <Card id="friends-groups-friend-requests" className={FG_PANEL}>
-            <CardHeader className={FG_PANEL_HD}>
-              <CardTitle className="panel__title flex items-center gap-1.5">
+          <Card id="friends-groups-friend-requests" className={cn(PALLAS_CARD, FG_PANEL)}>
+            <Card.Header className={cn(PALLAS_CARD_HEADER, FG_PANEL_HD)}>
+              <Card.Title className="flex items-center gap-1.5">
                 <PanelTitleIcon icon={UserPlus} />
                 好友申请
                 {reqsBusy ? (
                   <span className="muted text-xs font-normal">审批数据加载中…</span>
                 ) : requestRows.length ? (
-                  <Badge variant="secondary">{requestRows.length} 条</Badge>
+                  <Chip className="chip--md chip--default chip--soft"><Chip.Label>{requestRows.length} 条</Chip.Label></Chip>
                 ) : null}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className={FG_PANEL_BD}>
+              </Card.Title>
+            </Card.Header>
+            <Card.Content className={cn(PALLAS_CARD_CONTENT, FG_PANEL_BD)}>
               {reqsBusy || (Boolean(selfIdStr.trim()) && !reqQ.isFetched) ? (
                 <p className="muted">
                   {listsBusy
@@ -849,24 +875,24 @@ export default function FriendsGroupsPage() {
                   onPageSizeChange={prefs.setTablePageSize}
                 />
               ) : null}
-            </CardContent>
+            </Card.Content>
           </Card>
         </>
       ) : (
         <>
-          <Card id="fg-groups" className={FG_PANEL}>
-            <CardHeader className={FG_PANEL_HD}>
-              <CardTitle className="panel__title flex items-center gap-1.5">
+          <Card id="fg-groups" className={cn(PALLAS_CARD, FG_PANEL)}>
+            <Card.Header className={cn(PALLAS_CARD_HEADER, FG_PANEL_HD)}>
+              <Card.Title className="flex items-center gap-1.5">
                 <PanelTitleIcon icon={Users} />
                 群聊列表
                 {selfIdStr && listsBusy ? (
                   <span className="muted text-xs font-normal">列表加载中…</span>
                 ) : groups?.truncated ? (
-                  <Badge variant="secondary">已截断 · limit {groups?.limit}</Badge>
+                  <Chip className="chip--md chip--default chip--soft"><Chip.Label>已截断 · limit {groups?.limit}</Chip.Label></Chip>
                 ) : null}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className={FG_PANEL_BD}>
+              </Card.Title>
+            </Card.Header>
+            <Card.Content className={cn(PALLAS_CARD_CONTENT, FG_PANEL_BD)}>
               {!selfIdStr.trim() ? (
                 <p className="muted m-0">请选择 Bot 后加载群聊列表。</p>
               ) : fgListsSkeleton ? (
@@ -948,22 +974,22 @@ export default function FriendsGroupsPage() {
                   onPageSizeChange={prefs.setTablePageSize}
                 />
               ) : null}
-            </CardContent>
+            </Card.Content>
           </Card>
 
-          <Card id="friends-groups-group-requests" className={FG_PANEL}>
-            <CardHeader className={FG_PANEL_HD}>
-              <CardTitle className="panel__title flex items-center gap-1.5">
+          <Card id="friends-groups-group-requests" className={cn(PALLAS_CARD, FG_PANEL)}>
+            <Card.Header className={cn(PALLAS_CARD_HEADER, FG_PANEL_HD)}>
+              <Card.Title className="flex items-center gap-1.5">
                 <PanelTitleIcon icon={UserPlus} />
                 入群请求
                 {reqsBusy ? (
                   <span className="muted text-xs font-normal">审批数据加载中…</span>
                 ) : groupRequestRows.length ? (
-                  <Badge variant="secondary">{groupRequestRows.length} 条</Badge>
+                  <Chip className="chip--md chip--default chip--soft"><Chip.Label>{groupRequestRows.length} 条</Chip.Label></Chip>
                 ) : null}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className={FG_PANEL_BD}>
+              </Card.Title>
+            </Card.Header>
+            <Card.Content className={cn(PALLAS_CARD_CONTENT, FG_PANEL_BD)}>
               {reqsBusy || (Boolean(selfIdStr.trim()) && !reqQ.isFetched) ? (
                 <p className="muted">正在拉取入群审批与概览，请稍候；也可点击工具条刷新重试。</p>
               ) : !selfIdStr.trim() ? (
@@ -1066,7 +1092,7 @@ export default function FriendsGroupsPage() {
                   onPageSizeChange={prefs.setTablePageSize}
                 />
               ) : null}
-            </CardContent>
+            </Card.Content>
           </Card>
         </>
       )}

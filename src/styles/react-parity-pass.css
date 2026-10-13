@@ -612,6 +612,42 @@ html[data-theme="light"] .plugin-config-form-item .config-field-renderer__step {
   color: var(--text-muted);
 }
 
+/* 配置编辑模式只有两项；让横向工具条滚动，而不是把 Tabs 内容挤进内部滚动箭头。 */
+.plugin-config-workspace__mode-tabs .tabs__list-container {
+  inline-size: max-content;
+  max-inline-size: none;
+}
+
+.plugin-config-workspace__mode-tabs .tabs__list {
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 4%, var(--background));
+}
+
+.plugin-config-workspace__mode-tabs .tabs__tab {
+  min-height: 38px !important;
+  padding-inline: 0.875rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .plugin-config-workspace__chrome .console-hub-page__chrome-row {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .plugin-config-workspace__chrome .console-hub-page__chrome-row > .chrome-tools__trailing {
+    position: static;
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
+    padding-left: 0;
+    box-shadow: none;
+  }
+}
+
 /* ── 治理面板：与 plugin-config-group-card 层次 / 间距 / 轻控件一致 ── */
 .plugin-governance-panel {
   gap: 16px;

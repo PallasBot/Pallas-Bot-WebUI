@@ -117,7 +117,7 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  background: var(--muted);
+  background: var(--pallas-muted);
   font-size: 1.05rem;
 }
 

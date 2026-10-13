@@ -128,7 +128,7 @@ export default function AiTasksPage() {
                   ["未完成", overview?.open_tasks],
                 ] as Array<[string, unknown]>
               ).map(([label, value]) => (
-                <div key={label} className="rounded-md border p-3">
+                <div key={label} className="rounded-pallas-md border p-3">
                   <div className="text-xs text-muted-foreground">{label}</div>
                   <div className="mt-1 text-lg font-semibold">{String(value ?? "—")}</div>
                 </div>
@@ -168,7 +168,7 @@ export default function AiTasksPage() {
         </CardHeader>
         <CardContent>
           <StateBlock loading={tasksQuery.isLoading} error={tasksQuery.error}>
-            <ul className="max-h-[min(22rem,50vh)] divide-y overflow-y-auto overscroll-contain rounded-md border">
+            <ul className="max-h-[min(22rem,50vh)] divide-y overflow-y-auto overscroll-contain rounded-pallas-md border">
               {filteredTasks.map((item) => {
                 const status = String(item.status || "");
                 const summary = taskPayloadSummary(item);

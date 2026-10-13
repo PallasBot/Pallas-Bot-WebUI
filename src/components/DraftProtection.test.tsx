@@ -100,7 +100,11 @@ it("does not block in-place filters; cancel preserves draft and URL, confirm nav
 
   await user.type(screen.getByLabelText("draft two"), "keep me");
   await user.click(screen.getByRole("link", { name: "leave" }));
-  expect(await screen.findByRole("alertdialog")).not.toBeNull();
+  const confirm = await screen.findByRole("alertdialog");
+  expect(confirm.querySelector("h2")?.textContent).toBe("有未保存的配置草稿");
+  expect(confirm.textContent).toContain("离开将丢弃尚未保存的更改。");
+  expect(screen.getByRole("button", { name: "取消" })).not.toBeNull();
+  expect(screen.getByRole("button", { name: "离开页面" })).not.toBeNull();
   expect(router.state.location.pathname).toBe("/edit");
   await user.click(screen.getByRole("button", { name: "取消" }));
   expect(router.state.location.pathname).toBe("/edit");

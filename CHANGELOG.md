@@ -4,6 +4,19 @@
 
 <!-- entries -->
 
+## [Unreleased]
+
+### Changed
+
+* refactor(webui): 迁移 HeroUI v3 控件体系并升级 React 19 与 Tailwind CSS 4
+* style(webui): 统一控件外观，优化移动端浮层与配置模式切换轨道
+* refactor(webui): 保留键盘焦点提示并适配减少动态效果设置
+
+### Fixed
+
+* fix(config): 修正协议选项、实例配置边距与移动端配置弹窗布局
+* fix(config): 让分组选择文字与展开箭头保持同行
+
 ## [0.9.28] - 2026-10-09
 
 ### Fixed

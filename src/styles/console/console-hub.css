@@ -233,11 +233,11 @@ html[data-layout="hub"] .panel__hd {
 }
 
 /* Card 标题底部分割、表行分割：减轻割裂感 */
-html[data-layout="hub"][data-theme="light"] .border-border\/60 {
+html[data-layout="hub"][data-theme="light"] .border-pallas-border\/60 {
   border-color: var(--surface-divider, rgba(15, 23, 42, 0.035));
 }
 
-html[data-layout="hub"][data-theme="light"] .border-border\/40 {
+html[data-layout="hub"][data-theme="light"] .border-pallas-border\/40 {
   border-color: color-mix(in srgb, var(--surface-divider, rgba(15, 23, 42, 0.035)) 85%, transparent);
 }
 
@@ -368,9 +368,9 @@ html[data-layout="hub"] .sel {
   box-shadow: none;
 }
 
-html[data-layout="hub"] .textarea,
-html[data-layout="hub"] textarea.inp,
-html[data-layout="hub"] textarea.textarea {
+html[data-layout="hub"] .textarea:not([data-heroui-skin]),
+html[data-layout="hub"] textarea.inp:not([data-heroui-skin]),
+html[data-layout="hub"] textarea.textarea:not([data-heroui-skin]) {
   min-height: var(--ui-ctrl-height);
   border-radius: var(--radius-textarea);
   font-size: 14px;
@@ -380,14 +380,14 @@ html[data-layout="hub"] textarea.textarea {
 
 html[data-layout="hub"][data-theme="light"] .inp,
 html[data-layout="hub"][data-theme="light"] .sel,
-html[data-layout="hub"][data-theme="light"] .textarea {
+html[data-layout="hub"][data-theme="light"] .textarea:not([data-heroui-skin]) {
   background: var(--surface-control);
   border-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 html[data-layout="hub"] .inp:focus,
 html[data-layout="hub"] .sel:focus,
-html[data-layout="hub"] .textarea:focus {
+html[data-layout="hub"] .textarea:not([data-heroui-skin]):focus {
   border-color: color-mix(in srgb, var(--accent) 16%, var(--control-border));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent);
 }
@@ -405,9 +405,9 @@ html[data-layout="hub"] .friends-groups-list-hd-actions > .friends-groups-list-s
 }
 
 html[data-layout="hub"] .inp::placeholder,
-html[data-layout="hub"] .textarea::placeholder,
-html[data-layout="hub"] input::placeholder,
-html[data-layout="hub"] textarea::placeholder {
+html[data-layout="hub"] .textarea:not([data-heroui-skin])::placeholder,
+html[data-layout="hub"] input:not([data-heroui-skin])::placeholder,
+html[data-layout="hub"] textarea:not([data-heroui-skin])::placeholder {
   color: var(--console-placeholder-color, color-mix(in srgb, var(--text-muted) 60%, transparent));
   font-weight: 400;
 }
@@ -1960,7 +1960,7 @@ html[data-layout="hub"] .grid-stats {
   gap: 12px;
 }
 
-html[data-layout="hub"] .card,
+html[data-layout="hub"] .card:not(.pallas-card-frame),
 html[data-layout="hub"] .stat-card {
   border-radius: var(--hub-radius);
   box-shadow: var(--hub-shadow);
@@ -2301,7 +2301,6 @@ html[data-layout="hub"][data-radius="round"] .plugins-page__plugin-tab-btn {
   border-radius: 999px;
 }
 
-html[data-layout="hub"] .card,
 html[data-layout="hub"] .stat-card,
 html[data-layout="hub"] .stat-trend-card,
 html[data-layout="hub"] .plugin-store-card {
@@ -3893,6 +3892,60 @@ html[data-theme="light"][data-ui-preset="shadcn"][data-surface="solid"] .seg-tab
   background-color: var(--foreground, var(--text)) !important;
   color: var(--accent-contrast, var(--bg-card, #fff)) !important;
   border-color: transparent !important;
+}
+
+/* AI 观测统计的内容分段：保留 HeroUI 交互，只补齐连续轨道与圆润选中态。 */
+.ai-observation-statistics-tabs .tabs__list {
+  gap: 2px;
+  border: 1px solid var(--surface-edge, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 4%, var(--background));
+  padding: 3px;
+}
+
+.ai-observation-statistics-tabs .tabs__tab {
+  border-radius: 999px;
+}
+
+.ai-observation-statistics-tabs .tabs__indicator {
+  border-radius: 999px;
+}
+
+.ai-observation-layout__tools .chrome-tools__trailing {
+  flex-wrap: nowrap;
+}
+
+.ai-observation-layout__tools .chrome-tools__trailing > button {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 560px) {
+  .ai-observation-statistics-date-filter {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex-wrap: wrap !important;
+  }
+
+  .ai-observation-layout__tools--statistics .console-hub-page__chrome-row {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .ai-observation-layout__tools--statistics .console-hub-page__chrome-row > .chrome-tools__trailing {
+    position: static;
+    right: auto;
+    width: 100%;
+    justify-content: flex-end;
+    align-self: center;
+    margin-left: 0;
+    padding-left: 0;
+    box-shadow: none;
+  }
 }
 
 /* 遗留 console-view-toggle 轨道 */

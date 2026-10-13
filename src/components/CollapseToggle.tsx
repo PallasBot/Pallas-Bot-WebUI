@@ -17,7 +17,7 @@ export default function CollapseToggle({
       onClick={onToggle}
       aria-expanded={open}
       aria-label={`${open ? "收起" : "展开"}${label}`}
-      className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+      className="flex size-8 shrink-0 items-center justify-center rounded-pallas-md text-muted-foreground transition-colors hover:bg-pallas-muted/40 hover:text-pallas-foreground"
     >
       <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
     </button>

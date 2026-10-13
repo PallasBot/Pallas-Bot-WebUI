@@ -33,7 +33,7 @@ export default function PageMasthead({
       )}
     >
       <div className="min-w-0 flex-1 space-y-1">
-        <h1 className="flex items-center gap-1.5 text-[length:var(--console-page-title-size,1.15rem)] font-semibold tracking-tight text-foreground">
+        <h1 className="flex items-center gap-1.5 text-[length:var(--console-page-title-size,1.15rem)] font-semibold tracking-tight text-pallas-foreground">
           {NavIcon ? (
             <NavIcon className="panel__title-ico size-[1.15em] shrink-0 opacity-80" aria-hidden strokeWidth={2} />
           ) : null}
