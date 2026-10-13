@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.29] - 2026-10-13
 
 ### 更新公告
 
@@ -24,6 +24,16 @@
 * fix(config): 修正协议选项、实例配置边距与移动端配置弹窗布局
 * fix(config): 让分组选择文字与展开箭头保持同行
 
+### 提交明细
+
+### Changed
+
+* docs(webui): 整理 v0.9.29 更新公告 ([a3e8c10](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a3e8c10ffcd80757eb13e01d5639fb871ee78815))
+* refactor(webui): 迁移 HeroUI v3 控件体系 (#131) ([f4e42a1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f4e42a17b0f525a213c20785aaa31eb38a2d1fce))
+
+**完整变更**: [`v0.9.28...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.28...HEAD)
+
+
 ## [0.9.28] - 2026-10-09
 
 ### Fixed
@@ -31,7 +41,6 @@
 * fix(plugin-store): 社区插件版本来源区分 (#130) ([fbf0692](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fbf069261610bfc446f5be1e9f7d4f5af5a6087d))
 
 **完整变更**: [`v0.9.27...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.27...HEAD)
-
 
 ## [0.9.27] - 2026-10-06
 
@@ -52,7 +61,6 @@
 * feat(webui): 控制台交互体验完善 ([a6458b6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a6458b6c8dbd1dbf63b6e1add790b85bb541a7a2))
 
 **完整变更**: [`v0.9.26...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.26...HEAD)
-
 
 ## [0.9.26] - 2026-10-04
 
