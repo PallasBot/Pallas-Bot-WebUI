@@ -35,7 +35,7 @@ describe("Select", () => {
       const [value, setValue] = React.useState("apple");
       return (
         <Select aria-label="Fruit" value={value} onValueChange={(next) => { onValueChange(next); setValue(next); }} onOpenChange={(open) => openChanges.push(open)}>
-          <SelectTrigger aria-label="Fruit choices" title="Fruit selection"><SelectValue /></SelectTrigger>
+          <SelectTrigger title="Fruit selection"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="apple">Apple</SelectItem>
             <SelectItem value="pear">Pear</SelectItem>
@@ -45,7 +45,7 @@ describe("Select", () => {
     }
     render(<ControlledSelect />);
 
-    const trigger = screen.getByRole("button", { name: /Fruit choices/ });
+    const trigger = screen.getByRole("button", { name: "Fruit" });
     expect(trigger.getAttribute("title")).toBe("Fruit selection");
     trigger.focus();
     await user.keyboard("{ArrowDown}");
@@ -54,7 +54,10 @@ describe("Select", () => {
 
     await waitFor(() => expect(onValueChange).toHaveBeenCalledWith("pear"));
     expect(openChanges).toEqual([true, false]);
-    expect(document.activeElement).toBe(trigger);
+    expect(screen.getByRole("button", { name: "Fruit" }).textContent).toContain("Pear");
+    // react-aria restores focus to the trigger inside a requestAnimationFrame on close,
+    // so the saved node (still the same DOM element) may only regain focus a frame later.
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 });
 

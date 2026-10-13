@@ -23,6 +23,7 @@ import PageFill from "@/components/layout/PageFill";
 import PagePinned from "@/components/layout/PagePinned";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import { Button } from "@/components/ui/button";
+import { renderSelectTrigger } from "@/components/ui/select";
 import { Chip, Input, ListBox, Select } from "@heroui/react";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
 
@@ -161,14 +162,14 @@ export default function LogErrorsPage() {
         <ChromeTools>
           {shardedLogErrors ? (
             <ChromeField label="来源" icon={Radio} className="shrink-0">
-              <Select value={logSource} onChange={(v) => setLogSource(String(v ?? ""))}>
+              <Select value={logSource} aria-label="报错来源" onChange={(v) => setLogSource(String(v ?? ""))}>
                 <Select.Trigger
                   className={cn(
                     "min-h-[var(--ui-ctrl-height,36px)] w-full min-w-0 overflow-hidden [&>span]:flex [&>span]:h-full [&>span]:min-w-0 [&>span]:flex-1 [&>span]:items-center [&>span]:overflow-x-hidden [&>span]:overflow-y-visible [&>span]:text-left [&>span]:leading-[1.25] [&>span]:whitespace-nowrap [&>span]:text-ellipsis [&>span>*]:min-w-0 [&>span>*]:overflow-x-hidden [&>span>*]:overflow-y-visible [&>span>*]:text-ellipsis [&>span>*]:whitespace-nowrap [&>svg]:shrink-0 [&>svg]:self-center",
                     CHROME_SELECT_TRIGGER,
                     "min-w-[9rem] whitespace-nowrap",
                   )}
-                  aria-label="报错来源"
+                  render={renderSelectTrigger()}
                 >
                   <Select.Value>{({ selectedText }) => selectedText}</Select.Value>
                   <Select.Indicator>

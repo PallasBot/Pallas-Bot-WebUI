@@ -22,6 +22,7 @@ import LogVirtualFeed, { type LogVirtualFeedHandle } from "@/components/LogVirtu
 import PageFill from "@/components/layout/PageFill";
 import PagePinned from "@/components/layout/PagePinned";
 import { Button } from "@/components/ui/button";
+import { renderSelectTrigger } from "@/components/ui/select";
 import { Card, Chip, Input, ListBox, Select } from "@heroui/react";
 import {
   LOG_ENTRY_LEVELS,
@@ -694,8 +695,11 @@ export default function LogsPage() {
             advancedOpen ? (
               <>
                 <ChromeField label="范围" icon={FolderOpen}>
-                  <Select value={scope} onChange={(v) => setScope(String(v ?? "") as LogScope)}>
-                    <Select.Trigger className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER)} aria-label="日志范围">
+                  <Select value={scope} aria-label="日志范围" onChange={(v) => setScope(String(v ?? "") as LogScope)}>
+                    <Select.Trigger
+                      className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER)}
+                      render={renderSelectTrigger()}
+                    >
                       <Select.Value>{({ selectedText }) => selectedText}</Select.Value>
                       <Select.Indicator><ChevronDown className="h-4 w-4 opacity-50" /></Select.Indicator>
                     </Select.Trigger>
@@ -723,8 +727,11 @@ export default function LogsPage() {
                 </ChromeField>
                 {payload?.sharded_logs || logSources.length > 1 ? (
                   <ChromeField label="来源" icon={Radio}>
-                    <Select value={logSource} onChange={(v) => setLogSource(String(v ?? ""))}>
-                    <Select.Trigger className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER)} aria-label="日志来源">
+                    <Select value={logSource} aria-label="日志来源" onChange={(v) => setLogSource(String(v ?? ""))}>
+                    <Select.Trigger
+                      className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER)}
+                      render={renderSelectTrigger()}
+                    >
                       <Select.Value>{({ selectedText }) => selectedText}</Select.Value>
                       <Select.Indicator><ChevronDown className="h-4 w-4 opacity-50" /></Select.Indicator>
                     </Select.Trigger>
@@ -799,10 +806,10 @@ export default function LogsPage() {
             />
           </div>
           <ChromeField label="视图" icon={Eye}>
-            <Select value={view} onChange={(v) => setView(v === "raw" ? "raw" : "feed")}>
+            <Select value={view} aria-label="日志视图" onChange={(v) => setView(v === "raw" ? "raw" : "feed")}>
               <Select.Trigger
                 className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER, "min-w-[6.5rem] max-w-[9rem]")}
-                aria-label="日志视图"
+                render={renderSelectTrigger()}
               >
                 <Select.Value>{({ selectedText }) => selectedText}</Select.Value>
                 <Select.Indicator><ChevronDown className="h-4 w-4 opacity-50" /></Select.Indicator>
@@ -824,15 +831,13 @@ export default function LogsPage() {
           <ChromeField label="运行级别" icon={Layers}>
             <Select
               value={runLevel}
+              aria-label="运行级别"
               isDisabled={runLevelSaving}
               onChange={(v) => void changeRunLevel(String(v ?? ""))}
             >
               <Select.Trigger
                 className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER, "min-w-[6.5rem] max-w-[9rem]")}
-                aria-label="运行级别"
-                render={(triggerProps) => (
-                  <button {...triggerProps} title="修改日志输出级别，保存后即时生效" />
-                )}
+                render={renderSelectTrigger({ title: "修改日志输出级别，保存后即时生效" })}
               >
                 <Select.Value>{({ selectedText }) => selectedText}</Select.Value>
                 <Select.Indicator><ChevronDown className="h-4 w-4 opacity-50" /></Select.Indicator>

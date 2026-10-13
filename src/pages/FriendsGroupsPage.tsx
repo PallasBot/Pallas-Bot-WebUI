@@ -32,6 +32,7 @@ import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
 import { Card, Chip, Input, ListBox, Select as HeroSelect } from "@heroui/react";
 import { Button } from "@/components/ui/button";
+import { renderSelectTrigger } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Bot, Check, ChevronDown, ClipboardCheck, Layers, Search, UserPlus, Users, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -548,8 +549,11 @@ export default function FriendsGroupsPage() {
 
       <ChromeTools sticky>
         <ChromeField label="选择" icon={Layers} className="shrink-0">
-          <HeroSelect.Root value={section} placeholder="选择" onChange={(key) => selectSection((key == null ? "" : String(key)) as FgSectionId)}>
-            <HeroSelect.Trigger className={cn(PALLAS_SELECT_TRIGGER, FG_SECTION_SEL)} aria-label="好友或群聊">
+          <HeroSelect.Root value={section} aria-label="好友或群聊" placeholder="选择" onChange={(key) => selectSection((key == null ? "" : String(key)) as FgSectionId)}>
+            <HeroSelect.Trigger
+              className={cn(PALLAS_SELECT_TRIGGER, FG_SECTION_SEL)}
+              render={renderSelectTrigger()}
+            >
               <HeroSelect.Value>
                 <ChromeOptionLabel icon={sectionMeta.icon}>{sectionMeta.label}</ChromeOptionLabel>
               </HeroSelect.Value>
@@ -602,6 +606,7 @@ export default function FriendsGroupsPage() {
           <ChromeField label="审批" icon={ClipboardCheck} className="shrink-0">
             <HeroSelect.Root
               key={approveSelectKey}
+              aria-label="审批操作"
               placeholder={pickedApproveCount > 0 ? `审批（${pickedApproveCount}）` : "审批操作"}
               onChange={(key) => {
                 runApproveAction((key == null ? "" : String(key)) as FgApproveAction);
@@ -610,8 +615,8 @@ export default function FriendsGroupsPage() {
             >
               <HeroSelect.Trigger
                 className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER)}
-                aria-label="审批操作"
                 isDisabled={busy || !selfIdStr.trim()}
+                render={renderSelectTrigger()}
               >
                 <HeroSelect.Value />
                 <HeroSelect.Indicator>

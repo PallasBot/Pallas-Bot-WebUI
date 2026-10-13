@@ -128,6 +128,18 @@ type PointerOutsideEvent = Parameters<NonNullable<DialogContentProps["onPointerD
 type FocusOutsideEvent = Parameters<NonNullable<DialogContentProps["onFocusOutside"]>>[0];
 type OutsideRequest = { target: EventTarget | null; prevented: boolean };
 
+// 明确固定根节点、由内部 body 滚动的模式（Plugin/Bot config 弹窗）。
+const pinnedDialogClassPattern = /(?:^|\s)(?:plugin-config-dialog|bot-config-dialog)(?:\s|$)/;
+
+// 窄屏（≤560px）时通用 dialog 变成整屏滚动容器，根节点滚动须保留，否则表单无法滚到操作按钮。
+// 无 matchMedia（如 jsdom）时按桌面处理，保留旧归零保护。
+const narrowDialogViewportQuery = "(max-width: 560px)";
+
+function isNarrowDialogViewport(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  return window.matchMedia(narrowDialogViewportQuery).matches;
+}
+
 export function scheduleAfterFocusRestore(callback: () => void) {
   let finished = false;
   let timeout = 0;
@@ -224,6 +236,10 @@ const DialogContent = React.forwardRef<HTMLElement, DialogContentProps>(
     void _forceMount;
     const state = React.useContext(DialogContext);
     if (!state) throw new Error("DialogContent must be used within Dialog");
+
+    // 桌面任意 dialog 与窄屏固定根节点的配置弹窗保留根节点归零保护；
+    // 窄屏通用整屏滚动 dialog 则允许根节点滚动。
+    const pinnedSurface = pinnedDialogClassPattern.test(className ?? "");
 
     const contentRef = React.useRef<HTMLElement | null>(null);
     const backdropRef = React.useRef<HTMLDivElement | null>(null);
@@ -403,8 +419,11 @@ const DialogContent = React.forwardRef<HTMLElement, DialogContentProps>(
                 }}
                 onBlurCapture={handleFocusOutside}
                 onScroll={(event) => {
-                  if (event.currentTarget.scrollTop !== 0) event.currentTarget.scrollTop = 0;
-                  if (event.currentTarget.scrollLeft !== 0) event.currentTarget.scrollLeft = 0;
+                  const resetRootScroll = pinnedSurface || !isNarrowDialogViewport();
+                  if (resetRootScroll) {
+                    if (event.currentTarget.scrollTop !== 0) event.currentTarget.scrollTop = 0;
+                    if (event.currentTarget.scrollLeft !== 0) event.currentTarget.scrollLeft = 0;
+                  }
                   onScroll?.(event);
                 }}
               >

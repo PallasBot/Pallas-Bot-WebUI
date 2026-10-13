@@ -52,6 +52,72 @@ describe("nested Popover portal dismissal", () => {
     expect(screen.getByText("Parent details")).toBeTruthy();
   });
 
+  it("closes only the innermost popover on Escape, then the parent on the next Escape", async () => {
+    const user = userEvent.setup();
+    render(<NestedPopoverDemo />);
+
+    const parentTrigger = screen.getByRole("button", { name: "Open parent" });
+
+    await user.click(parentTrigger);
+    const childTrigger = screen.getByRole("button", { name: "Open nested" });
+    await user.click(childTrigger);
+    expect(screen.getByText("Nested details")).toBeTruthy();
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByText("Nested details")).toBeNull());
+    expect(screen.getByText("Parent details")).toBeTruthy();
+    expect(parentTrigger.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(childTrigger);
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByText("Parent details")).toBeNull());
+    expect(parentTrigger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(parentTrigger);
+  });
+
+  it("dismisses only the topmost layer and restores its trigger when focus left every panel before Escape", async () => {
+    const user = userEvent.setup();
+    render(<NestedPopoverDemo />);
+
+    const parentTrigger = screen.getByRole("button", { name: "Open parent" });
+
+    await user.click(parentTrigger);
+    const childTrigger = screen.getByRole("button", { name: "Open nested" });
+    await user.click(childTrigger);
+    expect(screen.getByText("Nested details")).toBeTruthy();
+
+    // Focus on <body> (no related target) leaves both panels open; each layer must not close on its own.
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.activeElement).toBe(document.body);
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByText("Nested details")).toBeNull());
+    expect(screen.getByText("Parent details")).toBeTruthy();
+    expect(parentTrigger.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(childTrigger);
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByText("Parent details")).toBeNull());
+    expect(parentTrigger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(parentTrigger);
+  });
+
+  it("leaves a closed popover unaffected by Escape", async () => {
+    const user = userEvent.setup();
+    render(<NestedPopoverDemo />);
+
+    const parentTrigger = screen.getByRole("button", { name: "Open parent" });
+    await user.keyboard("{Escape}");
+
+    expect(parentTrigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Parent details")).toBeNull();
+    expect(screen.queryByText("Nested details")).toBeNull();
+  });
+
   it("still closes the parent on a true outside pointer click", async () => {
     const user = userEvent.setup();
     render(<NestedPopoverDemo />);

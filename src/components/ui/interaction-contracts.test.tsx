@@ -46,11 +46,12 @@ describe("Select", () => {
     }
     render(<ControlledSelect />);
 
-    await user.click(screen.getByRole("button", { name: /Apple/ }));
+    await user.click(screen.getByRole("button", { name: "Fruit" }));
     await user.click(await screen.findByRole("option", { name: "Pear" }));
 
     expect(onValueChange).toHaveBeenCalledWith("pear");
-    expect(screen.getByRole("button", { name: /Pear/ }).textContent).toContain("Pear");
+    const trigger = screen.getByRole("button", { name: "Fruit" });
+    expect(trigger.textContent).toContain("Pear");
   });
 });
 

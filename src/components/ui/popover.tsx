@@ -124,6 +124,13 @@ const PopoverContent = React.forwardRef<HTMLElement, PopoverContentProps>(
         (element) => element.getAttribute("data-pallas-popover-trigger") === triggerId,
       );
     }, [triggerId]);
+    // Any open popover whose ancestry lists this layer is a nested descendant that owns dismissal.
+    const hasOpenDescendant = React.useCallback(() => {
+      const ownerDocument = contentRef.current?.ownerDocument ?? document;
+      return [...ownerDocument.querySelectorAll<HTMLElement>("[data-pallas-popover-content]")].some((element) =>
+        element.dataset.pallasPopoverAncestors?.split(/\s+/).includes(triggerId),
+      );
+    }, [triggerId]);
     const renderWithId: NonNullable<PopoverContentProps["render"]> = (elementProps, renderProps) => {
       const propsWithId = { ...elementProps, id };
       return render ? render(propsWithId, renderProps) : <div {...propsWithId} />;
@@ -159,6 +166,8 @@ const PopoverContent = React.forwardRef<HTMLElement, PopoverContentProps>(
 
       const onKeyDown = (event: KeyboardEvent) => {
         if (event.key !== "Escape") return;
+        // Only the topmost layer handles Escape; a nested open popover owns this key press.
+        if (hasOpenDescendant()) return;
         const focusWasInContent = contentRef.current?.contains(document.activeElement) ?? false;
         queueMicrotask(() => {
           const trigger = findTrigger();
@@ -168,7 +177,8 @@ const PopoverContent = React.forwardRef<HTMLElement, PopoverContentProps>(
             }
             return;
           }
-          if (focusWasInContent) trigger?.focus({ preventScroll: true });
+          // Manual dismiss always hands focus back to the trigger, even when focus sat on <body>.
+          trigger?.focus({ preventScroll: true });
           close();
         });
       };
@@ -189,7 +199,7 @@ const PopoverContent = React.forwardRef<HTMLElement, PopoverContentProps>(
         document.removeEventListener("keydown", onKeyDown, true);
         document.removeEventListener("pointerdown", onPointerDown);
       };
-    }, [close, findTrigger, modal, open]);
+    }, [close, findTrigger, hasOpenDescendant, modal, open]);
 
     // PreviewTrigger supplies dialog semantics while the wrapper handles nonmodal focus and dismissal.
     return (

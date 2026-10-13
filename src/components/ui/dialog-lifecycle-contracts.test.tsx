@@ -419,13 +419,63 @@ it("fires close autofocus on direct unmount and before a replacement modal resto
   expect(screen.getByRole("dialog", { name: "Second" })).toBeTruthy();
 });
 
-it("forwards the content ref and resets scroll before notifying onScroll", () => {
+function mockDialogViewport(matches: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: (query: string) => ({
+      matches: query.includes("max-width") ? matches : false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
+
+it("resets root scroll for desktop dialogs before notifying onScroll", () => {
+  mockDialogViewport(false);
   const ref = React.createRef<HTMLElement>();
   const onScroll = vi.fn();
   render(<Dialog open>
     <DialogContent ref={ref} onScroll={onScroll}><DialogTitle>Settings</DialogTitle></DialogContent>
   </Dialog>);
   expect(ref.current?.getAttribute("role")).toBe("dialog");
+  if (!ref.current) throw new Error("DialogContent ref was not assigned");
+  ref.current.scrollTop = 18;
+  ref.current.scrollLeft = 7;
+  fireEvent.scroll(ref.current);
+  expect(ref.current.scrollTop).toBe(0);
+  expect(ref.current.scrollLeft).toBe(0);
+  expect(onScroll).toHaveBeenCalledOnce();
+});
+
+it("keeps root scroll for scroll-enabled dialogs on narrow viewports so the mobile surface can reach its footer", () => {
+  mockDialogViewport(true);
+  const ref = React.createRef<HTMLElement>();
+  const onScroll = vi.fn();
+  render(<Dialog open>
+    <DialogContent ref={ref} onScroll={onScroll}><DialogTitle>Settings</DialogTitle></DialogContent>
+  </Dialog>);
+  if (!ref.current) throw new Error("DialogContent ref was not assigned");
+  ref.current.scrollTop = 18;
+  ref.current.scrollLeft = 7;
+  fireEvent.scroll(ref.current);
+  expect(ref.current.scrollTop).toBe(18);
+  expect(ref.current.scrollLeft).toBe(7);
+  expect(onScroll).toHaveBeenCalledOnce();
+});
+
+it("still resets root scroll for pinned config dialogs on narrow viewports before notifying onScroll", () => {
+  mockDialogViewport(true);
+  const ref = React.createRef<HTMLElement>();
+  const onScroll = vi.fn();
+  render(<Dialog open>
+    <DialogContent ref={ref} className="plugin-config-dialog" onScroll={onScroll}><DialogTitle>Settings</DialogTitle></DialogContent>
+  </Dialog>);
   if (!ref.current) throw new Error("DialogContent ref was not assigned");
   ref.current.scrollTop = 18;
   ref.current.scrollLeft = 7;

@@ -13,6 +13,27 @@ type SelectRootProps = Omit<React.ComponentPropsWithoutRef<typeof SelectPrimitiv
 type SelectCloseAutoFocusHandler = NonNullable<React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>["onCloseAutoFocus"]>;
 const SelectCloseAutoFocusContext = React.createContext<React.MutableRefObject<SelectCloseAutoFocusHandler | undefined> | null>(null);
 
+// react-aria 把 SelectValue 的 id 置于 trigger aria-labelledby 首位，并在只有 aria-label 时
+// 追加 trigger 自身 id；两者都会把动态选中值或自引用混进可访问名称。这里只保留调用方显式引用的
+// 字段 id，让 aria-label、关联宿主 <label htmlFor> 或显式 aria-labelledby 决定名称。
+function selectTriggerLabelledBy(labelledBy: string | undefined, triggerId: string | undefined): string | undefined {
+  const ids = (labelledBy ?? "").split(/\s+/).filter(Boolean);
+  const fieldIds = ids.slice(1).filter((id) => id !== triggerId);
+  return fieldIds.length > 0 ? fieldIds.join(" ") : undefined;
+}
+
+// 把 Trigger 上的显式 aria-label 绑到 Select 根：react-aria 依据根上的字段名
+// 生成可访问名称并校验「无可见 label」，放在 Trigger 上会被选中值引用压过。
+function selectTriggerLabel(children: React.ReactNode): string | undefined {
+  let label: string | undefined;
+  React.Children.forEach(children, (child) => {
+    if (label !== undefined || !React.isValidElement(child) || child.type !== SelectTrigger) return;
+    const ariaLabel = (child.props as { "aria-label"?: unknown })["aria-label"];
+    if (typeof ariaLabel === "string") label = ariaLabel;
+  });
+  return label;
+}
+
 function Select({
   value,
   defaultValue,
@@ -42,9 +63,12 @@ function Select({
     wasOpen.current = isOpen;
   }, [isOpen]);
 
+  const label = selectTriggerLabel(children) ?? (props as { "aria-label"?: string })["aria-label"];
+
   return (
     <HeroSelect.Root
       {...props}
+      aria-label={label}
       value={value}
       defaultValue={defaultValue}
       onChange={(key) => onValueChange?.(key == null ? "" : String(key))}
@@ -74,6 +98,24 @@ const SelectViewportContext = React.createContext<{
   canScrollDown: boolean;
 } | null>(null);
 
+type SelectTriggerButtonProps = React.ComponentPropsWithoutRef<"button">;
+
+/**
+ * 直接使用 HeroUI `Select.Trigger` 的调用点复用：react-aria 会把当前选中值写进
+ * `aria-labelledby` 并优先于显式 `aria-label`；这里在渲染时清掉该引用与自引用 token，
+ * 让显式字段名（`aria-label` / 外部 `<label htmlFor>` / 调用方显式 `aria-labelledby`）成为
+ * 可访问名称，选中值不再取代名称。
+ */
+export function renderSelectTrigger(extra?: SelectTriggerButtonProps) {
+  return (triggerProps: SelectTriggerButtonProps) => (
+    <button
+      {...triggerProps}
+      aria-labelledby={selectTriggerLabelledBy(triggerProps["aria-labelledby"], triggerProps.id)}
+      {...extra}
+    />
+  );
+}
+
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof HeroSelect.Trigger>,
   Omit<React.ComponentPropsWithoutRef<typeof HeroSelect.Trigger>, "isDisabled" | "children"> & {
@@ -81,11 +123,26 @@ const SelectTrigger = React.forwardRef<
     title?: string;
     children?: React.ReactNode;
   }
->(({ className, children, disabled, title, ...props }, ref) => (
+>(({ className, children, disabled, title, "aria-label": ariaLabel, "aria-labelledby": ariaLabelledBy, ...props }, ref) => (
   <HeroSelect.Trigger
     ref={ref}
     isDisabled={disabled}
-    render={(triggerProps) => <button {...triggerProps} data-heroui-skin="true" title={title} />}
+    {...(ariaLabel !== undefined ? { "aria-label": ariaLabel } : null)}
+    {...(ariaLabelledBy !== undefined ? { "aria-labelledby": ariaLabelledBy } : null)}
+    render={(triggerProps) => {
+      const buttonProps = triggerProps as SelectTriggerButtonProps;
+      const labelledBy = ariaLabelledBy !== undefined
+        ? ariaLabelledBy
+        : selectTriggerLabelledBy(buttonProps["aria-labelledby"], buttonProps.id);
+      return (
+        <button
+          {...buttonProps}
+          data-heroui-skin="true"
+          title={title}
+          aria-labelledby={labelledBy}
+        />
+      );
+    }}
     className={cn(
       "min-h-[var(--ui-ctrl-height,36px)] w-full min-w-0 overflow-hidden [&>span]:flex [&>span]:h-full [&>span]:min-w-0 [&>span]:flex-1 [&>span]:items-center [&>span]:overflow-x-hidden [&>span]:overflow-y-visible [&>span]:text-left [&>span]:leading-[1.25] [&>span]:whitespace-nowrap [&>span]:text-ellipsis [&>span>*]:min-w-0 [&>span>*]:overflow-x-hidden [&>span>*]:overflow-y-visible [&>span>*]:text-ellipsis [&>span>*]:whitespace-nowrap [&>svg]:shrink-0 [&>svg]:self-center",
       className,

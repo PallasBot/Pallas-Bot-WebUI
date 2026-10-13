@@ -587,6 +587,11 @@ html[data-theme="dark"] .ui-surface-dialog-overlay {
     flex-shrink: 0;
   }
 
+  /* 直接表单/内容自身承担滚动的子级（min-h-0）允许收缩，小屏空间不足时在内部滚到操作按钮。 */
+  .ui-surface-dialog[role="dialog"] > .min-h-0 {
+    flex-shrink: 1;
+  }
+
   .ui-dialog.console-modal {
     height: var(--visual-viewport-height, 100dvh);
     padding: 0;
