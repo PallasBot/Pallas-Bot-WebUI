@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+### 更新公告
+
+- 需要 Bot commit `8cd3adfb4a24ebc128b89769c0cbe33d47470f5a` 及以上；请勿只升级控制台
+- 统一配置控件外观，优化移动端配置弹窗、下拉浮层与模式切换轨道
+- 修复窄屏弹窗滚动、分组按钮对齐及下拉字段名称播报
+- 保留键盘焦点提示，并适配减少动态效果设置
+
 ### Changed
 
 * refactor(webui): 迁移 HeroUI v3 控件体系并升级 React 19 与 Tailwind CSS 4
