@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.30] - 2026-10-19
 
 ### 更新公告
 
@@ -14,6 +14,19 @@
 ### Fixed
 
 * fix(webui): 移动端侧栏与遮罩完整覆盖视口
+
+### 提交明细
+
+### Fixed
+
+* fix(webui): 移动端侧栏与遮罩完整覆盖视口 (#132) ([b7846ab](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b7846ab2558854bdc90a5cc0cbc1c7462dbeaf88))
+
+### Changed
+
+* docs(webui): 整理 v0.9.30 更新公告 ([9555b95](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9555b95a73b3a5f6d7f30b280c77a59c41b03327))
+
+**完整变更**: [`v0.9.29...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.29...HEAD)
+
 
 ## [0.9.29] - 2026-10-13
 
@@ -43,7 +56,6 @@
 * refactor(webui): 迁移 HeroUI v3 控件体系 (#131) ([f4e42a1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f4e42a17b0f525a213c20785aaa31eb38a2d1fce))
 
 **完整变更**: [`v0.9.28...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.28...HEAD)
-
 
 ## [0.9.28] - 2026-10-09
 
