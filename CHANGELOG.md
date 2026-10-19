@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+### 更新公告
+
+- 需要 Bot commit `8cd3adfb4a24ebc128b89769c0cbe33d47470f5a` 及以上，兼容要求不变
+- 修复 Safari 下移动端侧栏及遮罩高度不足、底部内容裸露的问题
+
 ### Fixed
 
 * fix(webui): 移动端侧栏与遮罩完整覆盖视口
