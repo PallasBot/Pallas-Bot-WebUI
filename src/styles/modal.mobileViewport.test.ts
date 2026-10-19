@@ -30,8 +30,14 @@ it("fills the mobile visual viewport for dialogs and the navigation drawer only"
 
   expect(appCss).toContain(".shell-mobile-nav__backdrop");
   expect(appCss).toContain(".shell-mobile-nav__panel");
-  expect(appCss).toContain("height: var(--visual-viewport-height, 100dvh)");
-  expect(appCss).toContain("@media (max-width: 860px) {");
+  const mobileNavRules = appCss.match(/\.shell-mobile-nav__backdrop\s*\{([^}]+)\}/)?.[1] ?? "";
+  expect(mobileNavRules).toContain("inset: 0;");
+  expect(mobileNavRules).toContain("height: auto;");
+  expect(mobileNavRules).not.toContain("height: var(--visual-viewport-height, 100dvh);");
+  const mobileNavPanel = appCss.match(/\.shell-mobile-nav__panel\s*\{([^}]+)\}/)?.[1] ?? "";
+  expect(mobileNavPanel).toContain("height: 100%;");
+  expect(mobileNavPanel).toContain("max-height: 100%;");
+  expect(appCss).not.toContain("height: var(--visual-viewport-height, 100dvh) !important;");
 });
 
 it("limits the config-dialog group control focus treatment to that modal", () => {

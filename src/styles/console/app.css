@@ -2844,7 +2844,7 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
 .shell-mobile-nav__backdrop {
   position: fixed;
   inset: 0;
-  height: var(--visual-viewport-height, 100dvh);
+  height: auto;
   z-index: 50;
   background: color-mix(in srgb, var(--bg, #0a0a0a) 42%, transparent);
   backdrop-filter: blur(var(--surface-blur, 16px)) saturate(var(--glass-saturate, 1.15));
@@ -2854,8 +2854,8 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
 
 .shell-mobile-nav__panel {
   width: min(300px, 88vw);
-  height: var(--visual-viewport-height, 100dvh);
-  max-height: var(--visual-viewport-height, 100dvh);
+  height: 100%;
+  max-height: 100%;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -3046,13 +3046,6 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
   gap: 4px;
   padding: 12px;
   overflow-y: auto;
-}
-
-@media (max-width: 860px) {
-  .shell-mobile-nav {
-    height: var(--visual-viewport-height, 100dvh) !important;
-    max-height: var(--visual-viewport-height, 100dvh) !important;
-  }
 }
 
 .shell-mobile-nav__prefs-link {
