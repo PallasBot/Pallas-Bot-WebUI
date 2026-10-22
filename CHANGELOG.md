@@ -4,6 +4,12 @@
 
 <!-- entries -->
 
+## [Unreleased]
+
+### Changed
+
+* chore(webui): 升级 Vite 与 Vitest 工具链，清除开发依赖安全告警
+
 ## [0.9.30] - 2026-10-19
 
 ### 更新公告
