@@ -97,7 +97,7 @@ export default function HelpTagOverridesPanel({ fieldValues, onFieldChange, clas
             {rows.map(([plugin, tag]) => (
               <li
                 key={plugin}
-                className="flex flex-col gap-2 rounded-md border border-border/70 bg-muted/20 p-3 sm:flex-row sm:items-center"
+                className="flex flex-col gap-2 rounded-pallas-md border border-pallas-border/70 bg-pallas-muted/20 p-3 sm:flex-row sm:items-center"
               >
                 <div className="min-w-0 flex-1 break-all font-mono text-sm">{plugin}</div>
                 <div className="w-full min-w-0 sm:max-w-[240px] sm:flex-1">
@@ -123,7 +123,7 @@ export default function HelpTagOverridesPanel({ fieldValues, onFieldChange, clas
           </ul>
         )}
 
-        <div className="space-y-3 rounded-md border border-dashed border-border/80 p-3">
+        <div className="space-y-3 rounded-pallas-md border border-dashed border-pallas-border/80 p-3">
           <HelpField label="插件">
             <HelpPluginSelect
               value={draftPlugin}

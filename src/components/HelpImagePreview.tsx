@@ -118,7 +118,7 @@ export default function HelpImagePreview({ embedded = false, defaultPlugin = "he
 
   return (
     <section
-      className={embedded ? "space-y-3" : "space-y-3 rounded-lg border p-3"}
+      className={embedded ? "space-y-3" : "space-y-3 rounded-pallas-lg border p-3"}
       aria-label="帮助图预览"
     >
       <div className="flex flex-wrap items-end gap-2">
@@ -235,7 +235,7 @@ export default function HelpImagePreview({ embedded = false, defaultPlugin = "he
         <p className="text-sm text-muted-foreground">插件列表加载失败：{axiosErrorDetail(pluginsQ.error)}</p>
       ) : null}
 
-      <div className="flex min-h-[10rem] items-center justify-center rounded-lg border bg-muted/30 p-3">
+      <div className="flex min-h-[10rem] items-center justify-center rounded-pallas-lg border bg-pallas-muted/30 p-3">
         {previewLoading && !previewUrl ? (
           <p className="text-sm text-muted-foreground">正在生成预览…</p>
         ) : previewErr ? (

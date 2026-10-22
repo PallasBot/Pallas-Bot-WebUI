@@ -69,7 +69,7 @@ import { Button } from "@/components/ui/button";
 import CopyIconButton from "@/components/CopyIconButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs } from "@heroui/react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -93,6 +93,9 @@ type TabId =
   | "import"
   | "scopes"
   | "preferences";
+
+const TAB_PANEL_FOCUS_RING =
+  "ring-offset-pallas-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 function relativeTimeAgo(raw: string | number | null | undefined): string {
   if (!raw) return "";
@@ -488,46 +491,57 @@ export default function GovernanceMemoryTab() {
         </div>
       ) : null}
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="space-y-3">
-        <div className="ai-memory-page__tabs-scroll">
-          <TabsList className="seg-tabs--accent h-auto min-w-max flex-nowrap justify-start">
-            <TabsTrigger value="overview" className="gap-1">
+      <Tabs selectedKey={tab} onSelectionChange={(key) => setTab(String(key) as TabId)} className="space-y-3">
+        <Tabs.ListContainer className="ai-memory-page__tabs-scroll">
+          <Tabs.List aria-label="记忆分类" className="whitespace-nowrap">
+            <Tabs.Tab id="overview" className="gap-1">
               <Brain className="size-3.5" /> 总览
-            </TabsTrigger>
-            <TabsTrigger value="graph" className="gap-1">
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="graph" className="gap-1">
               <Network className="size-3.5" /> 图谱
-            </TabsTrigger>
-            <TabsTrigger value="search" className="gap-1">
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="search" className="gap-1">
               <Search className="size-3.5" /> 搜索
-            </TabsTrigger>
-            <TabsTrigger value="episodes" className="gap-1">
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="episodes" className="gap-1">
               <MessageSquare className="size-3.5" /> 条目
-            </TabsTrigger>
-            <TabsTrigger value="entities" className="gap-1">
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="entities" className="gap-1">
               <FolderTree className="size-3.5" /> 实体
-            </TabsTrigger>
-            <TabsTrigger value="edges" className="gap-1">
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="edges" className="gap-1">
               <GitBranch className="size-3.5" /> 关系
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="gap-1">
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="categories" className="gap-1">
               <Layers className="size-3.5" /> 分类
-            </TabsTrigger>
-            <TabsTrigger value="trash" className="gap-1">
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="trash" className="gap-1">
               <Trash2 className="size-3.5" /> 回收站
-            </TabsTrigger>
-            <TabsTrigger value="import" className="gap-1">
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="import" className="gap-1">
               <Upload className="size-3.5" /> 导入
-            </TabsTrigger>
-            <TabsTrigger value="scopes" className="gap-1">
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="scopes" className="gap-1">
               <Globe className="size-3.5" /> 作用域
-            </TabsTrigger>
-            <TabsTrigger value="preferences" className="gap-1">
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="preferences" className="gap-1">
               <ListChecks className="size-3.5" /> 偏好
-            </TabsTrigger>
-          </TabsList>
-        </div>
+              <Tabs.Indicator />
+            </Tabs.Tab>
+          </Tabs.List>
+        </Tabs.ListContainer>
 
-        <TabsContent value="overview" className="space-y-3">
+        <Tabs.Panel id="overview" className={`space-y-3 ${TAB_PANEL_FOCUS_RING}`}>
           <StateBlock loading={statsQ.isLoading} error={statsQ.error}>
             <div className="console-panel-grid grid-cols-2 lg:grid-cols-5">
               <IconStatCard
@@ -592,15 +606,15 @@ export default function GovernanceMemoryTab() {
             <CardContent>
               <StateBlock loading={hierQ.isLoading} error={hierQ.error}>
                 <div className="grid gap-2 text-sm sm:grid-cols-3">
-                  <div className="rounded-md border px-3 py-2">
+                  <div className="rounded-pallas-md border px-3 py-2">
                     <div className="text-xs text-muted-foreground">最大层</div>
                     <div className="font-medium">{num(hierQ.data?.max_layer)}</div>
                   </div>
-                  <div className="rounded-md border px-3 py-2">
+                  <div className="rounded-pallas-md border px-3 py-2">
                     <div className="text-xs text-muted-foreground">上次重建</div>
                     <div className="font-medium">{formatTs(hierQ.data?.last_rebuild_at)}</div>
                   </div>
-                  <div className="rounded-md border px-3 py-2 sm:col-span-1">
+                  <div className="rounded-pallas-md border px-3 py-2 sm:col-span-1">
                     <div className="text-xs text-muted-foreground">摘要</div>
                     <div className="font-medium">
                       {hierQ.data?.group_summary?.trim() || "—"}
@@ -630,9 +644,9 @@ export default function GovernanceMemoryTab() {
               </StateBlock>
             </CardContent>
           </Card>
-        </TabsContent>
+        </Tabs.Panel>
 
-        <TabsContent value="graph">
+        <Tabs.Panel id="graph" className={TAB_PANEL_FOCUS_RING}>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">知识图谱</CardTitle>
@@ -651,9 +665,9 @@ export default function GovernanceMemoryTab() {
               </StateBlock>
             </CardContent>
           </Card>
-        </TabsContent>
+        </Tabs.Panel>
 
-        <TabsContent value="search" className="space-y-3">
+        <Tabs.Panel id="search" className={`space-y-3 ${TAB_PANEL_FOCUS_RING}`}>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">记忆搜索</CardTitle>
@@ -684,7 +698,7 @@ export default function GovernanceMemoryTab() {
                     <div className="mb-1 text-xs text-muted-foreground">记忆条目</div>
                     {searchHits.episodes.length ? (
                       searchHits.episodes.map((e) => (
-                        <div key={e.id} className="rounded-md border px-2 py-1.5">
+                        <div key={e.id} className="rounded-pallas-md border px-2 py-1.5">
                           <TruncatedText text={e.content} lines={2} />
                         </div>
                       ))
@@ -696,7 +710,7 @@ export default function GovernanceMemoryTab() {
                     <div className="mb-1 text-xs text-muted-foreground">实体</div>
                     {searchHits.entities.length ? (
                       searchHits.entities.map((e) => (
-                        <div key={e.id} className="rounded-md border px-2 py-1.5">
+                        <div key={e.id} className="rounded-pallas-md border px-2 py-1.5">
                           {e.name}
                           {e.summary ? (
                             <span className="text-muted-foreground"> · {e.summary}</span>
@@ -711,7 +725,7 @@ export default function GovernanceMemoryTab() {
                     <div className="mb-1 text-xs text-muted-foreground">关系</div>
                     {searchHits.edges.length ? (
                       searchHits.edges.map((e) => (
-                        <div key={e.id} className="rounded-md border px-2 py-1.5">
+                        <div key={e.id} className="rounded-pallas-md border px-2 py-1.5">
                           <TruncatedText text={e.fact} />
                         </div>
                       ))
@@ -723,9 +737,9 @@ export default function GovernanceMemoryTab() {
               ) : null}
             </CardContent>
           </Card>
-        </TabsContent>
+        </Tabs.Panel>
 
-        <TabsContent value="episodes" className="space-y-3">
+        <Tabs.Panel id="episodes" className={`space-y-3 ${TAB_PANEL_FOCUS_RING}`}>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">写入记忆</CardTitle>
@@ -784,7 +798,7 @@ export default function GovernanceMemoryTab() {
               <StateBlock loading={episodesQ.isLoading} error={episodesQ.error}>
                 <div className="max-h-[28rem] space-y-2 overflow-auto">
                   {episodes.map((item) => (
-                    <div key={item.id} className="rounded-md border px-3 py-2 text-sm">
+                    <div key={item.id} className="rounded-pallas-md border px-3 py-2 text-sm">
                       <p className="min-w-0">
                         <TruncatedText text={item.content} lines={2} />
                       </p>
@@ -862,9 +876,9 @@ export default function GovernanceMemoryTab() {
               </StateBlock>
             </CardContent>
           </Card>
-        </TabsContent>
+        </Tabs.Panel>
 
-        <TabsContent value="entities" className="space-y-3">
+        <Tabs.Panel id="entities" className={`space-y-3 ${TAB_PANEL_FOCUS_RING}`}>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">新建实体</CardTitle>
@@ -902,7 +916,7 @@ export default function GovernanceMemoryTab() {
               <StateBlock loading={entitiesQ.isLoading} error={entitiesQ.error}>
                 <div className="console-panel-grid grid-cols-2 lg:grid-cols-3">
                   {entities.map((ent) => (
-                    <div key={ent.id} className="rounded-md border p-3 text-sm">
+                    <div key={ent.id} className="rounded-pallas-md border p-3 text-sm">
                       <div className="font-medium">{ent.name}</div>
                       <div className="text-xs text-muted-foreground">
                         {ent.kind || "concept"}
@@ -931,9 +945,9 @@ export default function GovernanceMemoryTab() {
               </StateBlock>
             </CardContent>
           </Card>
-        </TabsContent>
+        </Tabs.Panel>
 
-        <TabsContent value="edges" className="space-y-3">
+        <Tabs.Panel id="edges" className={`space-y-3 ${TAB_PANEL_FOCUS_RING}`}>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">新建关系</CardTitle>
@@ -1008,7 +1022,7 @@ export default function GovernanceMemoryTab() {
                     return (
                       <div
                         key={edge.id}
-                        className={`rounded-md border px-3 py-2 text-sm ${invalid ? "opacity-60" : ""}`}
+                        className={`rounded-pallas-md border px-3 py-2 text-sm ${invalid ? "opacity-60" : ""}`}
                       >
                         <div className="text-xs text-muted-foreground">
                           {src || edge.source_entity_id} → {tgt || edge.target_entity_id}
@@ -1050,9 +1064,9 @@ export default function GovernanceMemoryTab() {
               </StateBlock>
             </CardContent>
           </Card>
-        </TabsContent>
+        </Tabs.Panel>
 
-        <TabsContent value="categories" className="space-y-3">
+        <Tabs.Panel id="categories" className={`space-y-3 ${TAB_PANEL_FOCUS_RING}`}>
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0">
               <div>
@@ -1117,7 +1131,7 @@ export default function GovernanceMemoryTab() {
                       </div>
                       <div className="space-y-2">
                         {items.map((cat) => (
-                          <div key={cat.id} className="rounded-md border px-3 py-2 text-sm">
+                          <div key={cat.id} className="rounded-pallas-md border px-3 py-2 text-sm">
                             <div className="font-medium">{cat.name}</div>
                             <div className="text-xs text-muted-foreground">
                               id {cat.id}
@@ -1153,9 +1167,9 @@ export default function GovernanceMemoryTab() {
               </StateBlock>
             </CardContent>
           </Card>
-        </TabsContent>
+        </Tabs.Panel>
 
-        <TabsContent value="trash" className="space-y-3">
+        <Tabs.Panel id="trash" className={`space-y-3 ${TAB_PANEL_FOCUS_RING}`}>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">回收站</CardTitle>
@@ -1172,7 +1186,7 @@ export default function GovernanceMemoryTab() {
                       {(trash?.entities ?? []).map((ent) => (
                         <div
                           key={ent.id}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-pallas-md border px-3 py-2"
                         >
                           <div className="min-w-0">
                             <div className="font-medium">{ent.name}</div>
@@ -1218,7 +1232,7 @@ export default function GovernanceMemoryTab() {
                       {(trash?.edges ?? []).map((edge) => (
                         <div
                           key={edge.id}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-pallas-md border px-3 py-2"
                         >
                           <div className="min-w-0">
                             <TruncatedText text={edge.fact} lines={2} />
@@ -1252,7 +1266,7 @@ export default function GovernanceMemoryTab() {
                       {(trash?.categories ?? []).map((cat) => (
                         <div
                           key={cat.id}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-pallas-md border px-3 py-2"
                         >
                           <div className="min-w-0">
                             <div className="font-medium">{cat.name}</div>
@@ -1300,9 +1314,9 @@ export default function GovernanceMemoryTab() {
               </StateBlock>
             </CardContent>
           </Card>
-        </TabsContent>
+        </Tabs.Panel>
 
-        <TabsContent value="import" className="space-y-3">
+        <Tabs.Panel id="import" className={`space-y-3 ${TAB_PANEL_FOCUS_RING}`}>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">导入 JSON</CardTitle>
@@ -1410,9 +1424,9 @@ export default function GovernanceMemoryTab() {
               ) : null}
             </CardContent>
           </Card>
-        </TabsContent>
+        </Tabs.Panel>
 
-        <TabsContent value="scopes">
+        <Tabs.Panel id="scopes" className={TAB_PANEL_FOCUS_RING}>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">作用域</CardTitle>
@@ -1424,7 +1438,7 @@ export default function GovernanceMemoryTab() {
                   {(scopesQ.data?.items ?? []).map((s) => (
                     <div
                       key={s.scope_key}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-pallas-md border px-3 py-2 text-sm"
                     >
                       <div className="min-w-0">
                         <div className="font-mono text-xs">{s.scope_key}</div>
@@ -1457,9 +1471,9 @@ export default function GovernanceMemoryTab() {
               </StateBlock>
             </CardContent>
           </Card>
-        </TabsContent>
+        </Tabs.Panel>
 
-        <TabsContent value="preferences" className="space-y-3">
+        <Tabs.Panel id="preferences" className={`space-y-3 ${TAB_PANEL_FOCUS_RING}`}>
           <div className="console-panel-grid lg:grid-cols-2">
             <Card>
               <CardHeader>
@@ -1489,7 +1503,7 @@ export default function GovernanceMemoryTab() {
                 </Button>
                 <div className="max-h-48 space-y-2 overflow-auto text-sm">
                   {prefs.map((item) => (
-                    <div key={String(item.id)} className="rounded-md border px-2 py-1.5">
+                    <div key={String(item.id)} className="rounded-pallas-md border px-2 py-1.5">
                       <span className="text-xs text-muted-foreground">{String(item.polarity)}</span>{" "}
                       {String(item.rule || "")}
                     </div>
@@ -1508,7 +1522,7 @@ export default function GovernanceMemoryTab() {
                     {midItems.map((item, idx) => (
                       <div
                         key={`${item.user_id}-${item.created_at}-${idx}`}
-                        className="rounded-md border px-2 py-1.5"
+                        className="rounded-pallas-md border px-2 py-1.5"
                       >
                         <p className="text-xs text-muted-foreground">
                           用户 {String(item.user_id)} · 群 {String(item.group_id)}
@@ -1524,7 +1538,7 @@ export default function GovernanceMemoryTab() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        </Tabs.Panel>
       </Tabs>
       {confirmDialog}
     </div>

@@ -6,7 +6,7 @@ import type { LlmToolCatalogItem, LlmToolCatalogPolicy, LlmToolOverridePatch } f
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableContent, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -153,7 +153,7 @@ function IntentPreviewBox() {
         <div className="space-y-1 text-xs text-muted-foreground">
           <p>
             命中域：
-            <span className="text-foreground">
+            <span className="text-pallas-foreground">
               {(preview.domains || []).join(", ") || (preview.selective_empty ? "（空，不注入工具）" : "—")}
             </span>
           </p>
@@ -198,7 +198,7 @@ function ToolOverrideEditor({
   });
 
   return (
-    <div className="mt-2 space-y-2 rounded-[var(--radius-control,8px)] border border-dashed bg-muted/20 p-2.5">
+    <div className="mt-2 space-y-2 rounded-[var(--radius-control,8px)] border border-dashed bg-pallas-muted/20 p-2.5">
       <div className="space-y-1">
         <label className="text-[11px] text-muted-foreground">描述覆盖（留空保持原描述）</label>
         <Input
@@ -294,10 +294,10 @@ export default function LlmToolsTable({
     <div className="space-y-3">
       <div className="space-y-1.5">
         <div className="text-sm text-muted-foreground">
-          共 <span className="tabular-nums text-foreground">{rows.length}</span> 个已注册工具
+          共 <span className="tabular-nums text-pallas-foreground">{rows.length}</span> 个已注册工具
           {rows.length ? (
             <>
-              ，其中 <span className="tabular-nums text-foreground">{eligibleCount}</span> 个当前可调用
+              ，其中 <span className="tabular-nums text-pallas-foreground">{eligibleCount}</span> 个当前可调用
             </>
           ) : null}
         </div>
@@ -306,7 +306,7 @@ export default function LlmToolsTable({
 
       <IntentPreviewBox />
 
-      <ul className="hidden max-[560px]:flex max-[560px]:flex-col max-[560px]:gap-2.5" aria-label="工具列表">
+      <ul className="hidden max-[561px]:flex max-[561px]:flex-col max-[561px]:gap-2.5" aria-label="工具列表">
         {rows.map((row) => (
           <li key={row.name} className="rounded-[var(--radius-control,8px)] border p-3">
             <div className="flex items-start justify-between gap-2">
@@ -355,93 +355,93 @@ export default function LlmToolsTable({
         ))}
       </ul>
 
-      <div className="max-[560px]:hidden">
-        <Table className="min-w-[52rem]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>名称</TableHead>
-              <TableHead>来源</TableHead>
-              <TableHead>领域</TableHead>
-              <TableHead>触发 / 何时带上</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead className="w-[5rem]">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <Fragment key={row.name}>
-                <TableRow>
-                  <TableCell className="max-w-[16rem]">
-                    <div className="truncate font-mono text-sm font-medium" title={row.name}>
-                      {row.name}
-                    </div>
-                    {row.description ? (
-                      <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground" title={row.description}>
-                        {row.description}
+      <div className="max-[561px]:hidden">
+        <Table>
+          <TableContent aria-label="工具列表" className="min-w-[52rem]">
+            <TableHeader>
+              <TableHead id="name" isRowHeader>名称</TableHead>
+              <TableHead id="source">来源</TableHead>
+              <TableHead id="domains">领域</TableHead>
+              <TableHead id="hints">触发 / 何时带上</TableHead>
+              <TableHead id="status">状态</TableHead>
+              <TableHead id="actions" className="w-[5rem]">操作</TableHead>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <Fragment key={row.name}>
+                  <TableRow id={row.name} textValue={row.name}>
+                    <TableCell className="max-w-[16rem]">
+                      <div className="truncate font-mono text-sm font-medium" title={row.name}>
+                        {row.name}
                       </div>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>
-                    <SourceBadge source={row.source} />
-                  </TableCell>
-                  <TableCell className="max-w-[9rem]">
-                    <span className="block truncate" title={(row.domains || []).join(", ")}>
-                      {(row.domains || []).join(", ") || "—"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="max-w-[14rem]">
-                    <div className="text-xs">
-                      <span
-                        className="text-muted-foreground"
-                        title={
-                          row.visibility === "deferred"
-                            ? VISIBILITY_OPTION_LABEL.deferred
-                            : VISIBILITY_OPTION_LABEL.visible
-                        }
-                      >
-                        {visibilityShort(row.visibility)}
-                      </span>
-                      {(row.effective_hints || []).length ? (
-                        <div className="mt-0.5 line-clamp-2" title={(row.effective_hints || []).join("、")}>
-                          {(row.effective_hints || []).join("、")}
+                      {row.description ? (
+                        <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground" title={row.description}>
+                          {row.description}
                         </div>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>
+                      <SourceBadge source={row.source} />
+                    </TableCell>
+                    <TableCell className="max-w-[9rem]">
+                      <span className="block truncate" title={(row.domains || []).join(", ")}>
+                        {(row.domains || []).join(", ") || "—"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="max-w-[14rem]">
+                      <div className="text-xs">
+                        <span
+                          className="text-muted-foreground"
+                          title={
+                            row.visibility === "deferred"
+                              ? VISIBILITY_OPTION_LABEL.deferred
+                              : VISIBILITY_OPTION_LABEL.visible
+                          }
+                        >
+                          {visibilityShort(row.visibility)}
+                        </span>
+                        {(row.effective_hints || []).length ? (
+                          <div className="mt-0.5 line-clamp-2" title={(row.effective_hints || []).join("、")}>
+                            {(row.effective_hints || []).join("、")}
+                          </div>
+                        ) : (
+                          <div className="mt-0.5 text-muted-foreground">无触发说法</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {row.eligible ? (
+                        <Badge variant="success">可调用</Badge>
                       ) : (
-                        <div className="mt-0.5 text-muted-foreground">无触发说法</div>
+                        <Badge variant="outline">
+                          {labelOf(DISABLED_REASON_LABEL, row.disabled_reason || undefined, "不可用")}
+                        </Badge>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {row.eligible ? (
-                      <Badge variant="success">可调用</Badge>
-                    ) : (
-                      <Badge variant="outline">
-                        {labelOf(DISABLED_REASON_LABEL, row.disabled_reason || undefined, "不可用")}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      icon={editing === row.name ? Eye : Pencil}
-                      onClick={() => setEditing((cur) => (cur === row.name ? null : row.name))}
-                    >
-                      {editing === row.name ? "收起" : "覆盖"}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-                {editing === row.name ? (
-                  <TableRow>
-                    <TableCell colSpan={6}>
-                      <ToolOverrideEditor row={row} onSaved={refresh} />
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        icon={editing === row.name ? Eye : Pencil}
+                        onClick={() => setEditing((cur) => (cur === row.name ? null : row.name))}
+                      >
+                        {editing === row.name ? "收起" : "覆盖"}
+                      </Button>
                     </TableCell>
                   </TableRow>
-                ) : null}
-              </Fragment>
-            ))}
-          </TableBody>
+                  {editing === row.name ? (
+                    <TableRow id={`${row.name}-override`} textValue={`${row.name} 覆盖编辑`}>
+                      <TableCell colSpan={6}>
+                        <ToolOverrideEditor row={row} onSaved={refresh} />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </Fragment>
+              ))}
+            </TableBody>
+          </TableContent>
         </Table>
       </div>
     </div>

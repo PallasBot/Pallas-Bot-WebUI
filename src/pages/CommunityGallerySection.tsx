@@ -11,10 +11,7 @@ import type { BotRow } from "@/api/pallasTypes";
 import BotAccountCombobox from "@/components/BotAccountCombobox";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button as HeroButton, Card, Input, Label, TextArea } from "@heroui/react";
 import { cn } from "@/lib/utils";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsoleConfirm } from "@/hooks/useConsoleConfirm";
@@ -24,6 +21,13 @@ import { Images, ImageOff, List, Send, Trash2 } from "lucide-react";
 import type { CommunityGalleryPost } from "@/api/consoleApi";
 
 const GALLERY_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const LEGACY_CARD_ROOT = "pallas-card-frame block static gap-0 overflow-visible p-0";
+const LEGACY_CARD_HEADER = "flex flex-col space-y-1.5 p-5";
+const LEGACY_CARD_CONTENT = "block gap-0 p-5 pt-0";
+const LEGACY_CARD_FOOTER = "flex items-center p-5 pt-0";
+const LEGACY_LABEL = "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70";
+const LEGACY_INPUT = "w-full min-h-[var(--ui-ctrl-height,36px)]";
+const LEGACY_TEXTAREA = "w-full min-h-[80px]";
 
 function shortPostTime(unix: number): string {
   if (!unix) return "";
@@ -175,21 +179,21 @@ export default function CommunityGallerySection() {
 
   return (
     <section id="community-gallery" className="community-page__section flex flex-col gap-4">
-      <Card onPaste={onPasteImage}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-1.5">
+      <Card className={LEGACY_CARD_ROOT} onPaste={onPasteImage}>
+        <Card.Header className={LEGACY_CARD_HEADER}>
+          <Card.Title className="flex items-center gap-1.5">
             <PanelTitleIcon icon={Images} />
             社区投稿
-          </CardTitle>
-          <CardDescription>
+          </Card.Title>
+          <Card.Description>
             可选 Bot 账号以带上头像昵称（社区主站渲染发言卡）；不指定账号的带图投稿在社区主站直接展示截图。截图可能含群名或
             QQ，提交即公开展示。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </Card.Description>
+        </Card.Header>
+        <Card.Content className={cn(LEGACY_CARD_CONTENT, "space-y-4")}>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="gallery-bot">账号</Label>
+              <Label className={LEGACY_LABEL} htmlFor="gallery-bot">账号</Label>
               <BotAccountCombobox
                 id="gallery-bot"
                 value={selfIdStr || "__none__"}
@@ -212,9 +216,11 @@ export default function CommunityGallerySection() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="gallery-nick">展示昵称</Label>
+              <Label className={LEGACY_LABEL} htmlFor="gallery-nick">展示昵称</Label>
               <Input
                 id="gallery-nick"
+                className={cn(LEGACY_INPUT)}
+                data-heroui-skin="true"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 placeholder="可选；默认 牛牛 / 资料昵称"
@@ -223,10 +229,11 @@ export default function CommunityGallerySection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="gallery-text">正文</Label>
-            <Textarea
+            <Label className={LEGACY_LABEL} htmlFor="gallery-text">正文</Label>
+            <TextArea
               id="gallery-text"
-              className="min-h-[96px]"
+              className={cn(LEGACY_TEXTAREA, "min-h-[96px]")}
+              data-heroui-skin="true"
               value={text}
               maxLength={500}
               onChange={(e) => setText(e.target.value)}
@@ -235,14 +242,14 @@ export default function CommunityGallerySection() {
           </div>
 
           <div className="space-y-2">
-            <Label>图片（可选）</Label>
+            <Label className={LEGACY_LABEL}>图片（可选）</Label>
             <label
               tabIndex={0}
               className={cn(
                 "flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-2",
                 "rounded-[var(--radius-control,8px)] border border-dashed border-[var(--control-edge)]",
-                "bg-muted/40 px-3 py-4 text-sm text-muted-foreground",
-                "outline-none focus-visible:border-[color-mix(in_srgb,var(--accent)_16%,var(--control-border))]",
+                "bg-pallas-muted/40 px-3 py-4 text-sm text-muted-foreground",
+                "outline-none focus-visible:outline-hidden focus-visible:border-[color-mix(in_srgb,var(--accent)_16%,var(--control-border))]",
                 "focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_8%,transparent)]",
                 imagePreviewUrl && "items-stretch",
               )}
@@ -280,22 +287,22 @@ export default function CommunityGallerySection() {
               </Button>
             ) : null}
           </div>
-        </CardContent>
-        <CardFooter className="justify-end">
+        </Card.Content>
+        <Card.Footer className={cn(LEGACY_CARD_FOOTER, "justify-end")}>
           <Button type="button" icon={Send} iconMotion="forward" disabled={busy} onClick={() => void onSubmit()}>
             {busy ? "提交中…" : "投稿到社区中心"}
           </Button>
-        </CardFooter>
+        </Card.Footer>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-1.5">
+      <Card className={LEGACY_CARD_ROOT}>
+        <Card.Header className={LEGACY_CARD_HEADER}>
+          <Card.Title className="flex items-center gap-1.5">
             <PanelTitleIcon icon={List} />
             本部署已投稿
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </Card.Title>
+        </Card.Header>
+        <Card.Content className={LEGACY_CARD_CONTENT}>
           {!mineQ.data?.posts?.length ? (
             <p className="text-sm text-muted-foreground">暂无记录</p>
           ) : (
@@ -306,7 +313,7 @@ export default function CommunityGallerySection() {
                   return (
                     <li
                       key={post.id}
-                      className="relative overflow-hidden rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-muted/30"
+                      className="relative overflow-hidden rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-pallas-muted/30"
                     >
                       <a
                         href={post.image_url!}
@@ -326,17 +333,17 @@ export default function CommunityGallerySection() {
                         <span className="rounded px-1.5 py-0.5 text-[11px] text-white/90">
                           {shortPostTime(post.created_unix) || "截图"}
                         </span>
-                        <Button
+                        <HeroButton
                           type="button"
                           variant="secondary"
-                          size="icon"
-                          className="size-8 shrink-0 bg-background/90"
-                          disabled={busy}
+                          isIconOnly
+                          className="size-8 shrink-0 bg-pallas-background/90"
+                          isDisabled={busy}
                           aria-label="撤下"
-                          onClick={() => void onDelete(post.id)}
+                          onPress={() => void onDelete(post.id)}
                         >
                           <Trash2 className="size-4" />
-                        </Button>
+                        </HeroButton>
                       </div>
                       {post.text ? (
                         <p className="border-t border-[var(--control-edge)] px-2.5 py-1.5 text-xs text-muted-foreground [overflow-wrap:anywhere]">
@@ -350,7 +357,7 @@ export default function CommunityGallerySection() {
                 return (
                   <li
                     key={post.id}
-                    className="flex flex-col gap-2 rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-muted/20 p-3"
+                    className="flex flex-col gap-2 rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-pallas-muted/20 p-3"
                   >
                     <div className="flex items-start gap-2">
                       {post.avatar_url ? (
@@ -374,20 +381,20 @@ export default function CommunityGallerySection() {
                           {shortPostTime(post.created_unix)}
                         </div>
                       </div>
-                      <Button
+                      <HeroButton
                         type="button"
                         variant="ghost"
-                        size="icon"
+                        isIconOnly
                         className="size-8 shrink-0"
-                        disabled={busy}
+                        isDisabled={busy}
                         aria-label="撤下"
-                        onClick={() => void onDelete(post.id)}
+                        onPress={() => void onDelete(post.id)}
                       >
                         <Trash2 className="size-4" />
-                      </Button>
+                      </HeroButton>
                     </div>
                     {post.text ? (
-                      <p className="rounded-[4px_10px_10px_10px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-2.5 py-1.5 text-xs leading-snug text-foreground [overflow-wrap:anywhere]">
+                      <p className="rounded-[4px_10px_10px_10px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-2.5 py-1.5 text-xs leading-snug text-pallas-foreground [overflow-wrap:anywhere]">
                         {post.text}
                       </p>
                     ) : null}
@@ -396,7 +403,7 @@ export default function CommunityGallerySection() {
                         href={post.image_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block overflow-hidden rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-muted/40"
+                        className="block overflow-hidden rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-pallas-muted/40"
                         title="查看原图"
                       >
                         <img
@@ -412,7 +419,7 @@ export default function CommunityGallerySection() {
               })}
             </ul>
           )}
-        </CardContent>
+        </Card.Content>
       </Card>
       {confirmDialog}
     </section>

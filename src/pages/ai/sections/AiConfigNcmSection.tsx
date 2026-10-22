@@ -74,7 +74,7 @@ export default function AiConfigNcmSection() {
           <h3 className="text-sm font-medium">登录状态</h3>
           <StateBlock loading={statusQ.isLoading} error={statusQ.error}>
             <Badge variant={loggedIn ? "success" : "secondary"}>{loggedIn ? "已登录" : "未登录"}</Badge>
-            <pre className="mt-3 max-h-48 overflow-auto rounded-[var(--radius-control,8px)] border bg-muted/30 p-2 text-xs">
+            <pre className="mt-3 max-h-48 overflow-auto rounded-[var(--radius-control,8px)] border bg-pallas-muted/30 p-2 text-xs">
               {JSON.stringify(statusQ.data, null, 2)}
             </pre>
           </StateBlock>

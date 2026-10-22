@@ -18,16 +18,8 @@ import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import PendingValue from "@/components/PendingValue";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import StatusTone from "@/components/StatusTone";
+import { Card, Dropdown as HeroDropdown, Input, Separator } from "@heroui/react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -43,12 +35,16 @@ const INST_STATUS_FILTER_OPTIONS: readonly ChromeStatusFilterOption<InstStatusFi
   { value: "disconnected", label: "未连接" },
 ];
 
-const INST_PANEL = "instances-page__panel flex flex-col overflow-hidden shadow-none";
+const INST_PANEL = "instances-page__panel flex flex-col overflow-hidden";
 const INST_PANEL_HD =
   "panel__hd panel__hd--split inst-db-panel__hd flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const INST_PANEL_HD_SIMPLE =
   "panel__hd panel__hd--split flex-row items-center justify-between space-y-0 border-b px-4 py-3";
 const INST_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
+const PALLAS_CARD = "pallas-card-frame block static gap-0 p-0";
+const PALLAS_CARD_HEADER = "flex flex-col space-y-1.5 p-5 gap-0";
+const PALLAS_CARD_CONTENT = "pallas-card-content block gap-0 p-5 pt-0";
+const PALLAS_INPUT_BASE = "flex h-9 min-h-[var(--ui-ctrl-height,36px)] w-full";
 
 function parseSelfId(raw: string | undefined | null): number | null {
   const n = parseInt(String(raw ?? "").trim(), 10);
@@ -56,7 +52,7 @@ function parseSelfId(raw: string | undefined | null): number | null {
 }
 
 function boolPillClass(on: boolean): string {
-  return on ? "badge badge--compact badge--success" : "badge badge--compact badge--neutral";
+  return on ? "chip chip--sm chip--success chip--soft" : "chip chip--sm chip--default chip--soft";
 }
 
 function sortedAdminsList(admins: number[] | undefined | null): number[] {
@@ -351,7 +347,8 @@ export default function InstancesPage() {
               />
               <Input
                 type="search"
-                className={CHROME_SEARCH_INPUT}
+                className={cn(PALLAS_INPUT_BASE, CHROME_SEARCH_INPUT)}
+                data-heroui-skin="true"
                 placeholder="搜索账号…"
                 aria-label="搜索账号"
                 autoComplete="off"
@@ -369,23 +366,23 @@ export default function InstancesPage() {
               <RefreshIconButton busy label="刷新" showLabel disabled />
             </div>
           </ChromeTools>
-          <Card className={cn(INST_PANEL, "inst-db-panel")}>
-            <CardHeader className={INST_PANEL_HD}>
-              <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
+          <Card className={cn(PALLAS_CARD, INST_PANEL, "inst-db-panel")}>
+            <Card.Header className={cn(PALLAS_CARD_HEADER, INST_PANEL_HD)}>
+              <Card.Title className="flex flex-wrap items-center gap-1.5">
                 <PanelTitleIcon icon={Database} />
                 数据库中的实例
-              </CardTitle>
+              </Card.Title>
               <div className="inst-db-panel__hd-side">
                 <span className="inst-db-stat muted">
                   当前已连接 <PendingValue pending /> / <PendingValue pending /> 账号
                 </span>
               </div>
-            </CardHeader>
-            <CardContent className={INST_PANEL_BD}>
+            </Card.Header>
+            <Card.Content className={cn(PALLAS_CARD_CONTENT, INST_PANEL_BD)}>
               <p className="muted" role="status" aria-busy="true">
                 实例列表加载中
               </p>
-            </CardContent>
+            </Card.Content>
           </Card>
         </>
       ) : data ? (
@@ -399,7 +396,8 @@ export default function InstancesPage() {
               />
               <Input
                 type="search"
-                className={CHROME_SEARCH_INPUT}
+                className={cn(PALLAS_INPUT_BASE, CHROME_SEARCH_INPUT)}
+                data-heroui-skin="true"
                 placeholder="搜索账号…"
                 aria-label="搜索账号"
                 autoComplete="off"
@@ -418,13 +416,12 @@ export default function InstancesPage() {
               }}
               options={INST_STATUS_FILTER_OPTIONS}
             />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
+              <HeroDropdown.Root>
+              <HeroDropdown.Trigger render={(triggerProps) => (
+                <button
+                  {...triggerProps}
                   type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="shrink-0 gap-1"
+                  className="shrink-0 gap-1 button button--secondary button--sm"
                   disabled={deleteBusy || filteredDbBotConfigs.length === 0}
                   aria-label="选项"
                 >
@@ -432,31 +429,45 @@ export default function InstancesPage() {
                     ? "处理中…"
                     : `选项${selectedAccounts.size > 0 ? `（${selectedAccounts.size}）` : ""}`}
                   <ChevronDown className="size-3.5 opacity-70" aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-0 w-max">
-                <DropdownMenuItem
-                  disabled={pagedDbAccountIds.length === 0}
-                  onSelect={() => toggleSelectAllDbOnPage()}
+                </button>
+              )} />
+              <HeroDropdown.Popover
+                placement="bottom end"
+                offset={4}
+                className="ui-surface-popover z-[500] min-w-[8rem] overflow-hidden rounded-[var(--radius-control,8px)] border bg-popover p-1 text-popover-foreground shadow-md data-[entering]:animate-in data-[exiting]:animate-out data-[exiting]:fade-out-0 data-[entering]:fade-in-0 data-[exiting]:zoom-out-95 data-[entering]:zoom-in-95 data-[placement=bottom]:slide-in-from-top-2 data-[placement=left]:slide-in-from-right-2 data-[placement=right]:slide-in-from-left-2 data-[placement=top]:slide-in-from-bottom-2 min-w-0 w-max"
+              >
+                <HeroDropdown.Menu className="w-full">
+                <HeroDropdown.Item
+                  id="db-select-page"
+                  textValue={dbCardsPageAllSelected ? "取消全选" : "全选本页"}
+                  isDisabled={pagedDbAccountIds.length === 0}
+                  onAction={() => toggleSelectAllDbOnPage()}
+                  className="relative flex cursor-default select-none items-center rounded-pallas-sm px-2 py-1.5 text-sm outline-hidden transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[focus-visible=true]:bg-pallas-accent data-[focus-visible=true]:text-pallas-accent-foreground data-[focused=true]:bg-pallas-accent data-[focused=true]:text-pallas-accent-foreground"
                 >
                   {dbCardsPageAllSelected ? "取消全选" : "全选本页"}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={selectedAccounts.size === 0}
-                  onSelect={() => setSelectedAccounts(new Set())}
+                </HeroDropdown.Item>
+                <HeroDropdown.Item
+                  id="db-clear-selection"
+                  textValue="清除选择"
+                  isDisabled={selectedAccounts.size === 0}
+                  onAction={() => setSelectedAccounts(new Set())}
+                  className="relative flex cursor-default select-none items-center rounded-pallas-sm px-2 py-1.5 text-sm outline-hidden transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[focus-visible=true]:bg-pallas-accent data-[focus-visible=true]:text-pallas-accent-foreground data-[focused=true]:bg-pallas-accent data-[focused=true]:text-pallas-accent-foreground"
                 >
                   清除选择
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  disabled={selectedAccounts.size === 0 || deleteBusy}
-                  onSelect={() => openDeleteModal()}
+                </HeroDropdown.Item>
+                <Separator className="-mx-1 my-1 h-px bg-pallas-muted" />
+                <HeroDropdown.Item
+                  id="db-delete-selected"
+                  textValue="删除选中"
+                   className="relative flex cursor-default select-none items-center rounded-pallas-sm px-2 py-1.5 text-sm outline-hidden transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[focus-visible=true]:bg-pallas-accent data-[focus-visible=true]:text-pallas-accent-foreground data-[focused=true]:bg-pallas-accent data-[focused=true]:text-pallas-accent-foreground text-destructive focus:text-destructive"
+                  isDisabled={selectedAccounts.size === 0 || deleteBusy}
+                  onAction={() => openDeleteModal()}
                 >
                   删除选中
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </HeroDropdown.Item>
+                </HeroDropdown.Menu>
+              </HeroDropdown.Popover>
+            </HeroDropdown.Root>
             <div className={CHROME_TOOLS_TRAILING}>
               <RefreshIconButton
                 busy={reloadBusy}
@@ -467,9 +478,9 @@ export default function InstancesPage() {
             </div>
           </ChromeTools>
 
-          <Card className={cn(INST_PANEL, "inst-db-panel")}>
-            <CardHeader className={INST_PANEL_HD}>
-              <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
+          <Card className={cn(PALLAS_CARD, INST_PANEL, "inst-db-panel")}>
+            <Card.Header className={cn(PALLAS_CARD_HEADER, INST_PANEL_HD)}>
+              <Card.Title className="flex flex-wrap items-center gap-1.5">
                 <PanelTitleIcon icon={Database} />
                 数据库中的实例
                 <PanelHdCollapseCaret
@@ -477,16 +488,16 @@ export default function InstancesPage() {
                   label="数据库中的实例"
                   onToggle={() => setExpDbBots((v) => !v)}
                 />
-              </CardTitle>
+              </Card.Title>
               <div className="inst-db-panel__hd-side">
                 <span className="inst-db-stat muted">
                   当前已连接 <strong className="inst-db-stat__num">{dbBotsConnectedCount}</strong> /{" "}
                   {dbBotsTotalCount} 账号
                 </span>
               </div>
-            </CardHeader>
+            </Card.Header>
             {expDbBots ? (
-              <CardContent className={INST_PANEL_BD}>
+              <Card.Content className={cn(PALLAS_CARD_CONTENT, INST_PANEL_BD)}>
                 {pluginLoadErr ? (
                   <p className="muted" style={{ margin: "0 0 10px" }}>
                     插件列表加载失败，禁用插件勾选不可用：{pluginLoadErr}
@@ -634,13 +645,13 @@ export default function InstancesPage() {
                     onPageSizeChange={prefs.setTablePageSize}
                   />
                 ) : null}
-              </CardContent>
+              </Card.Content>
             ) : null}
           </Card>
 
-          <Card className={INST_PANEL}>
-            <CardHeader className={INST_PANEL_HD_SIMPLE}>
-              <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
+          <Card className={cn(PALLAS_CARD, INST_PANEL)}>
+            <Card.Header className={cn(PALLAS_CARD_HEADER, INST_PANEL_HD_SIMPLE)}>
+              <Card.Title className="flex flex-wrap items-center gap-1.5">
                 <PanelTitleIcon icon={Cable} />
                 消息框架
                 <PanelHdCollapseCaret
@@ -648,10 +659,10 @@ export default function InstancesPage() {
                   label="消息框架"
                   onToggle={() => setExpNonebot((v) => !v)}
                 />
-              </CardTitle>
-            </CardHeader>
+              </Card.Title>
+            </Card.Header>
             {expNonebot ? (
-              <CardContent className={INST_PANEL_BD}>
+              <Card.Content className={cn(PALLAS_CARD_CONTENT, INST_PANEL_BD)}>
                 {nonebotBotsNeedingInit.length ? (
                   <p className="muted" style={{ margin: "0 0 10px" }}>
                     {nonebotBotsNeedingInit.length} 个已连接牛牛尚未写入数据库配置，可在下表点{" "}
@@ -721,18 +732,18 @@ export default function InstancesPage() {
                     onPageSizeChange={prefs.setTablePageSize}
                   />
                 ) : null}
-              </CardContent>
+              </Card.Content>
             ) : null}
           </Card>
         </>
       ) : (
-        <Card className={INST_PANEL}>
-          <CardContent className={INST_PANEL_BD}>
+        <Card className={cn(PALLAS_CARD, INST_PANEL)}>
+          <Card.Content className={cn(PALLAS_CARD_CONTENT, INST_PANEL_BD)}>
             <p className="muted mb-3">实例数据未加载，可尝试重新拉取。</p>
             <Button type="button" icon={RefreshCw} iconMotion="spin" iconBusy={reloadBusy} disabled={reloadBusy} onClick={() => void reloadFromUser()}>
               重新加载
             </Button>
-          </CardContent>
+          </Card.Content>
         </Card>
       )}
 

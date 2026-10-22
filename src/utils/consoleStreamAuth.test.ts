@@ -11,6 +11,8 @@ async function loadProbe() {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  // Vitest 4 的 restoreAllMocks 不再重置 vi.fn 调用记录，手动清理以便跨用例断言次数。
+  probe.get.mockClear();
 });
 
 it("identifies only an explicit protected-request 401 as expired authentication", async () => {

@@ -241,7 +241,7 @@ export default function GovernancePeopleTab() {
               {facts.map((item) => (
                 <li
                   key={String(item.fact_id)}
-                  className="rounded-md border px-2.5 py-1.5 text-sm leading-snug"
+                  className="rounded-pallas-md border px-2.5 py-1.5 text-sm leading-snug"
                 >
                   <div className="font-medium">{truncateText(String(item.content || ""), 96)}</div>
                   <div className="mt-0.5 text-[11px] text-muted-foreground">
@@ -292,7 +292,7 @@ export default function GovernancePeopleTab() {
                 return (
                   <li
                     key={String(note.id)}
-                    className="rounded-md border px-2.5 py-2 text-sm leading-snug"
+                    className="rounded-pallas-md border px-2.5 py-2 text-sm leading-snug"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-medium">QQ {String(note.user_id)}</span>

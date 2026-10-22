@@ -22,8 +22,7 @@ import PendingValue from "@/components/PendingValue";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import BotAccountCombobox from "@/components/BotAccountCombobox";
 import StatsSectionLabel from "@/components/StatsSectionLabel";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, Chip } from "@heroui/react";
 import { useAccountPluginCharts } from "@/hooks/useAccountPluginCharts";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { cn } from "@/lib/utils";
@@ -55,13 +54,31 @@ import {
 } from "@/utils/ingressDispatchHistory";
 import type { ReactNode } from "react";
 
-const CHART_PANEL = "charts-page__panel flex flex-col overflow-hidden shadow-none";
-const CHART_PANEL_HD =
-  "panel__hd panel__hd--split home-page__panel-hd-nowrap flex-row items-center justify-between space-y-0 border-b px-4 py-3";
-const CHART_PANEL_BD = "panel__bd space-y-3 px-4 pb-4 pt-3";
+const CHART_PANEL = cn(
+  "pallas-card-frame block static gap-0 overflow-visible p-0",
+  "charts-page__panel flex flex-col overflow-hidden",
+);
+const CHART_PANEL_HD = cn(
+  "flex flex-col space-y-1.5 p-5",
+  "panel__hd panel__hd--split home-page__panel-hd-nowrap flex-row items-center justify-between space-y-0 border-b px-4 py-3",
+);
+const CHART_PANEL_BD = cn(
+  "block gap-0 p-5 pt-0",
+  "panel__bd space-y-3 px-4 pb-4 pt-3",
+);
 /** 与区间趋势 Matcher 序列同色，柱图不跟主题走 */
 const PLUGIN_TODAY_BAR_ACCENT = "#7c3aed";
 const INGRESS_POLL_MS = 15_000;
+
+function badgeClass(variant: string) {
+  const variantClass = {
+    destructive: "chip--danger chip--soft",
+    warn: "chip--warning chip--soft",
+    success: "chip--success chip--soft",
+    outline: "chip--tertiary chip--default",
+  }[variant] ?? "chip--accent chip--soft";
+  return `chip chip--md ${variantClass}`;
+}
 
 function MetricTile({
   label,
@@ -589,11 +606,11 @@ export default function ChartsPage() {
                 <h2 className="panel__title">入站调度</h2>
               </div>
               <div className="charts-page__ingress-actions">
-                <Badge variant={ingressStatusVariant} role="status">
+                <Chip className={badgeClass(ingressStatusVariant)} role="status">
                   {ingressAlerts.length ? <CircleAlert className="size-3" aria-hidden /> : null}
-                  {ingressStatusLabel}
-                </Badge>
-                <Badge variant="outline">每 15 秒刷新</Badge>
+                  <Chip.Label>{ingressStatusLabel}</Chip.Label>
+                </Chip>
+                <Chip className={badgeClass("outline")}><Chip.Label>每 15 秒刷新</Chip.Label></Chip>
                 <select
                   className="charts-page__ingress-window"
                   aria-label="入站历史时间范围"
@@ -625,16 +642,16 @@ export default function ChartsPage() {
             </div>
             <div className="charts-page__ingress-board">
               <Card className={CHART_PANEL}>
-                <CardHeader className={CHART_PANEL_HD}><CardTitle className="panel__title">延迟趋势</CardTitle></CardHeader>
-                <CardContent className={CHART_PANEL_BD}><ChartsNamedSeriesTrend series={ingressHistory.latency} busy={ingressHistoryQ.isFetching} chartUid="ingress-latency" showSummary={false} axisUnit=" ms" compact /></CardContent>
+                 <Card.Header className={CHART_PANEL_HD}><Card.Title>延迟趋势</Card.Title></Card.Header>
+                <Card.Content className={CHART_PANEL_BD}><ChartsNamedSeriesTrend series={ingressHistory.latency} busy={ingressHistoryQ.isFetching} chartUid="ingress-latency" showSummary={false} axisUnit=" ms" compact /></Card.Content>
               </Card>
               <Card className={CHART_PANEL}>
-                <CardHeader className={CHART_PANEL_HD}><CardTitle className="panel__title">学习流水线</CardTitle></CardHeader>
-                <CardContent className={CHART_PANEL_BD}><ChartsNamedSeriesTrend series={ingressHistory.learning} busy={ingressHistoryQ.isFetching} chartUid="ingress-learning" showSummary={false} axisUnit=" 条" compact stacked /></CardContent>
+                 <Card.Header className={CHART_PANEL_HD}><Card.Title>学习流水线</Card.Title></Card.Header>
+                <Card.Content className={CHART_PANEL_BD}><ChartsNamedSeriesTrend series={ingressHistory.learning} busy={ingressHistoryQ.isFetching} chartUid="ingress-learning" showSummary={false} axisUnit=" 条" compact stacked /></Card.Content>
               </Card>
               <Card className={cn(CHART_PANEL, "charts-page__ingress-pressure-panel")}>
-                <CardHeader className={CHART_PANEL_HD}><CardTitle className="panel__title">近期压力</CardTitle></CardHeader>
-                <CardContent className={CHART_PANEL_BD}><IngressPressureStrips points={ingressHistory.pressure} /></CardContent>
+                 <Card.Header className={CHART_PANEL_HD}><Card.Title>近期压力</Card.Title></Card.Header>
+                <Card.Content className={CHART_PANEL_BD}><IngressPressureStrips points={ingressHistory.pressure} /></Card.Content>
               </Card>
             </div>
             {ingressAlerts.length || ingressUnavailable ? (
@@ -651,29 +668,29 @@ export default function ChartsPage() {
           <section id="charts-trend" className="charts-page__section charts-page__section--hero">
             <div className="charts-page__board charts-page__board--cards">
               <Card className={cn(CHART_PANEL, "charts-page__panel--hero")}>
-                <CardHeader className={CHART_PANEL_HD}>
-                  <CardTitle className="panel__title flex items-center gap-1.5">
+                <Card.Header className={CHART_PANEL_HD}>
+                   <Card.Title className="flex items-center gap-1.5">
                     <PanelTitleIcon icon={LineChart} />
                     区间趋势
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className={CHART_PANEL_BD}>
+                  </Card.Title>
+                </Card.Header>
+                <Card.Content className={CHART_PANEL_BD}>
                   <p className="muted charts-page__section-lead">消息 · Matcher · API（按日）</p>
                   <ChartsMonthlyCommandChart
                     rows={monthlyDailyRows}
                     busy={rangeBusy || chartsBusy}
                     emptyText="所选区间暂无数据"
                   />
-                </CardContent>
+                </Card.Content>
               </Card>
               <Card className={cn(CHART_PANEL, "charts-page__panel--hero")}>
-                <CardHeader className={CHART_PANEL_HD}>
-                  <CardTitle className="panel__title flex items-center gap-1.5">
+                <Card.Header className={CHART_PANEL_HD}>
+                   <Card.Title className="flex items-center gap-1.5">
                     <PanelTitleIcon icon={UsersRound} />
                     活跃群趋势
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className={CHART_PANEL_BD}>
+                  </Card.Title>
+                </Card.Header>
+                <Card.Content className={CHART_PANEL_BD}>
                   <p className="muted charts-page__section-lead">区间内每日 DAG</p>
                   <ChartsNamedSeriesTrend
                     series={dagTrendSeries}
@@ -683,7 +700,7 @@ export default function ChartsPage() {
                     emptyText="暂无活跃群数据"
                     compact
                   />
-                </CardContent>
+                </Card.Content>
               </Card>
             </div>
           </section>
@@ -692,13 +709,13 @@ export default function ChartsPage() {
           <section id="charts-detail" className="charts-page__section charts-page__section--secondary">
             <div className="charts-page__board flex flex-col gap-[var(--console-panel-gap,18px)]">
               <Card className={cn(CHART_PANEL, "charts-page__panel--secondary")}>
-                <CardHeader className={CHART_PANEL_HD}>
-                  <CardTitle className="panel__title flex items-center gap-1.5">
+                <Card.Header className={CHART_PANEL_HD}>
+                   <Card.Title className="flex items-center gap-1.5">
                     <PanelTitleIcon icon={Activity} />
                     Matcher 实时
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className={CHART_PANEL_BD}>
+                  </Card.Title>
+                </Card.Header>
+                <Card.Content className={CHART_PANEL_BD}>
                   <p className="muted charts-page__section-lead mb-0">时间桶趋势</p>
                   <ChartsNamedSeriesTrend
                     series={matcherTrendSeries}
@@ -718,17 +735,17 @@ export default function ChartsPage() {
                     onSelectTop={(n) => onSelectTop("matcher", n)}
                     onResetAuto={() => onResetAuto("matcher")}
                   />
-                </CardContent>
+                </Card.Content>
               </Card>
 
               <Card className={cn(CHART_PANEL, "charts-page__panel--secondary")}>
-                <CardHeader className={CHART_PANEL_HD}>
-                  <CardTitle className="panel__title flex items-center gap-1.5">
+                <Card.Header className={CHART_PANEL_HD}>
+                   <Card.Title className="flex items-center gap-1.5">
                     <PanelTitleIcon icon={BarChart3} />
                     插件排行
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className={CHART_PANEL_BD}>
+                  </Card.Title>
+                </Card.Header>
+                <Card.Content className={CHART_PANEL_BD}>
                   <p className="muted charts-page__section-lead mb-0">今日 Matcher 次数</p>
                   <ChartsHorizontalRankBars
                     points={topPluginBars}
@@ -748,7 +765,7 @@ export default function ChartsPage() {
                     onSelectTop={(n) => onSelectTop("rank", n)}
                     onResetAuto={() => onResetAuto("rank")}
                   />
-                </CardContent>
+                </Card.Content>
               </Card>
             </div>
             {!chartsBusy && !scopedPluginPlugins.length ? (

@@ -570,14 +570,14 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
           {detailTab === "config" && hasConfigFields ? (
             <div className={CHROME_TOOLS_TRAILING}>
               <SegTabs
-                className="plugin-config-page__mode-toggle"
                 size="toolbar"
+                className="plugin-config-workspace__mode-tabs"
                 ariaLabel="配置编辑模式"
                 value={mode}
                 onValueChange={(v) => setMode(v === "raw" ? "raw" : "form")}
                 options={[
                   { value: "form", label: "表单" },
-                  { value: "raw", label: "Raw TOML", className: "plugin-config-page__mode-tab--raw" },
+                  { value: "raw", label: "TOML" },
                 ]}
               />
             </div>
@@ -632,6 +632,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
               {pluginResolvedId && !compact ? (
                 <PluginHelpTagField
                   className="mb-4"
+                  selectClassName={isDialog ? "plugin-config-dialog__help-tag-select" : undefined}
                   pluginId={pluginResolvedId}
                   aliasIds={[
                     name,

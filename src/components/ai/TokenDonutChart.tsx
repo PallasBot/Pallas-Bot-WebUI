@@ -175,8 +175,8 @@ export default function TokenDonutChart({
               <button
                 type="button"
                 className={cn(
-                  "flex w-full min-w-0 items-center gap-1.5 rounded-md px-1 py-1 text-left text-xs transition-colors",
-                  isActive ? "bg-accent/60" : "hover:bg-accent/30",
+                  "flex w-full min-w-0 items-center gap-1.5 rounded-pallas-md px-1 py-1 text-left text-xs transition-colors",
+                  isActive ? "bg-pallas-accent/60" : "hover:bg-pallas-accent/30",
                 )}
                 onMouseEnter={() => setActive(s.key)}
                 onMouseLeave={() => setActive(null)}
@@ -184,7 +184,7 @@ export default function TokenDonutChart({
                 onBlur={() => setActive(null)}
               >
                 <span
-                  className="size-2.5 shrink-0 rounded-sm"
+                  className="size-2.5 shrink-0 rounded-pallas-sm"
                   style={{ backgroundColor: s.color }}
                   aria-hidden
                 />

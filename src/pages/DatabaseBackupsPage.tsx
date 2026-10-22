@@ -16,8 +16,8 @@ import BackupTargetTree from "@/components/BackupTargetTree";
 import ConsolePageSkeleton, { SkelValue } from "@/components/ConsolePageSkeleton";
 import PageMasthead from "@/components/PageMasthead";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
-import UiInput from "@/components/ui/UiInput";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -521,11 +521,11 @@ export default function DatabaseBackupsPage() {
                 <div className="prefs-form-field">
                   <label className="prefs-form-field__label">备份父目录</label>
                   <div className="database-backups-page__dir-row">
-                    <UiInput
+                    <Input
                       placeholder="留空使用默认"
                       value={backup.outputParent}
                       disabled={listBusy || deleting || backup.busy}
-                      onValueChange={backup.setOutputParent}
+                      onChange={(e) => backup.setOutputParent(e.target.value)}
                     />
                     <Button
                       type="button"
@@ -554,11 +554,11 @@ export default function DatabaseBackupsPage() {
                 </div>
                 <div className="prefs-form-field">
                   <label className="prefs-form-field__label">目录后缀（可选）</label>
-                  <UiInput
+                  <Input
                     placeholder="例如 before_upgrade"
                     value={backup.label}
                     disabled={backup.busy}
-                    onValueChange={backup.setLabel}
+                    onChange={(e) => backup.setLabel(e.target.value)}
                   />
                 </div>
                 <div className="prefs-form-field">

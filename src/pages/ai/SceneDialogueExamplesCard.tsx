@@ -119,7 +119,7 @@ export default function SceneDialogueExamplesCard({
           {!botId ? <AiScopeHint>请在顶栏指定 Bot QQ。</AiScopeHint> : null}
           {botId ? (
             <>
-              <div className="space-y-2 rounded-md border p-3">
+              <div className="space-y-2 rounded-pallas-md border p-3">
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Combobox
                     value={draft.scene}
@@ -145,7 +145,7 @@ export default function SceneDialogueExamplesCard({
               <StateBlock loading={query.isLoading} error={query.error} empty={!query.data?.items.length} emptyText="暂无场景对话示例。">
                 <div className="space-y-2">
                   {(query.data?.items ?? []).map((item) => (
-                    <article key={item.example_id} className="space-y-2 rounded-md border p-3 text-sm">
+                    <article key={item.example_id} className="space-y-2 rounded-pallas-md border p-3 text-sm">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-medium">{item.scene} · {item.enabled ? "启用" : "停用"}</span>
                         <div className="flex flex-wrap gap-1.5">

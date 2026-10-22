@@ -223,7 +223,7 @@ export default function AiConfigLogsSection({
         empty={empty}
         emptyText="暂无日志记录。"
       >
-        <pre className="max-h-[28rem] overflow-auto rounded-[var(--radius-control,8px)] border bg-muted/30 p-3 font-mono text-[11px] leading-relaxed">
+        <pre className="max-h-[28rem] overflow-auto rounded-[var(--radius-control,8px)] border bg-pallas-muted/30 p-3 font-mono text-[11px] leading-relaxed">
           {displayLines.join("\n") || "（空）"}
         </pre>
       </StateBlock>

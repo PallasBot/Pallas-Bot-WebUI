@@ -871,6 +871,8 @@ export default function ProtocolAccountsTab() {
               {protoActionsEnabled ? (
                 <>
                   <DropdownMenuItem
+                    id="protocol-restart-all"
+                    textValue={restartAllBusy ? "重启全部中…" : "重启全部"}
                     disabled={
                       restartAllBusy ||
                       batchBusy ||
@@ -885,12 +887,16 @@ export default function ProtocolAccountsTab() {
                 </>
               ) : null}
               <DropdownMenuItem
+                id="protocol-select-page"
+                textValue={protoCardsPageAllSelected ? "取消全选" : "全选本页"}
                 disabled={pagedProtocolIds.length === 0}
                 onSelect={() => toggleSelectAllOnPage()}
               >
                 {protoCardsPageAllSelected ? "取消全选" : "全选本页"}
               </DropdownMenuItem>
               <DropdownMenuItem
+                id="protocol-clear-selection"
+                textValue="清除选择"
                 disabled={selected.size === 0}
                 onSelect={() => setSelected(new Set())}
               >
@@ -900,12 +906,16 @@ export default function ProtocolAccountsTab() {
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
+                    id="protocol-restart-selected"
+                    textValue="重启所选"
                     disabled={selectedManagedIds.length === 0 || restartSelectedBusy || batchBusy}
                     onSelect={() => openSelectedBatchConfirm("restart")}
                   >
                     重启所选
                   </DropdownMenuItem>
                   <DropdownMenuItem
+                    id="protocol-stop-selected"
+                    textValue="停止所选"
                     disabled={selectedManagedIds.length === 0 || stopSelectedBusy || batchBusy}
                     onSelect={() => openSelectedBatchConfirm("stop")}
                   >
@@ -915,6 +925,14 @@ export default function ProtocolAccountsTab() {
               ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                id="protocol-delete-selected"
+                textValue={
+                  selectedExternalIds.length && !selectedManagedIds.length
+                    ? "断开选中"
+                    : selectedExternalIds.length
+                      ? "删除/断开选中"
+                      : "删除选中"
+                }
                 className="text-destructive focus:text-destructive"
                 disabled={selected.size === 0 || deleteBusy}
                 onSelect={() => openDeleteModal()}

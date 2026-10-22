@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * 否则多 ChromeField 会变成簇距而非行距。需要簇距时由插槽自己包 CHROME_TOOLS_CLUSTER。
  */
 export const CHROME_TOOLS_SURFACE =
-  "rounded-lg border bg-card text-card-foreground shadow-none";
+  "rounded-pallas-lg border bg-card text-card-foreground shadow-none";
 
 /** 行内控件簇（并列按钮 / Bot+群 等）：用 CSS 簇距，勿再写 gap-1.5 / gap-2。 */
 export const CHROME_TOOLS_CLUSTER =
@@ -59,7 +59,7 @@ export default function ChromeTools({
     >
       <div className="console-hub-page__chrome-row">{children}</div>
       {advanced ? (
-        <div className="console-hub-page__chrome-row console-hub-page__chrome-row--advanced border-t border-border pt-3">
+        <div className="console-hub-page__chrome-row console-hub-page__chrome-row--advanced border-t border-pallas-border pt-3">
           {advanced}
         </div>
       ) : null}

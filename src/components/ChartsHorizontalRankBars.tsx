@@ -58,13 +58,13 @@ export default function ChartsHorizontalRankBars({
             className="charts-rank-bars__row grid min-w-0 grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)_auto]"
           >
             <span
-              className="min-w-0 truncate text-xs font-medium text-foreground"
+              className="min-w-0 truncate text-xs font-medium text-pallas-foreground"
               title={title}
             >
               {row.label}
             </span>
             <div
-              className="h-2 min-w-0 overflow-hidden rounded-full bg-muted/70"
+              className="h-2 min-w-0 overflow-hidden rounded-full bg-pallas-muted/70"
               title={`${title}: ${row.value}${unit}`}
             >
               <div

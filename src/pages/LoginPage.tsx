@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { postConsoleAuthLogin, sanitizeConsoleNext } from "@/api/consoleAuth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input } from "@heroui/react";
+import { cn } from "@/lib/utils";
 import { applyShellTheme, readPrefs, writePrefs, type ThemeMode } from "@/theme/applyShellTheme";
 import { PALLAS_BOT_DOC } from "@/utils/pallasExternalLinks";
 
@@ -134,12 +135,16 @@ export default function LoginPage() {
                 aria-label="控制台密钥"
                 value={password}
                 disabled={busy}
-                className="h-10 pr-16"
+                className={cn(
+                  "flex h-9 min-h-[var(--ui-ctrl-height,36px)] w-full",
+                  "h-10 pr-16",
+                )}
+                data-heroui-skin="true"
                 onChange={(e) => setPassword(e.target.value)}
               />
               <button
                 type="button"
-                className="absolute right-1.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--text-muted)] hover:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] hover:text-[var(--text)]"
+                className="absolute right-1.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-pallas-md px-2 py-1 text-xs font-medium text-[var(--text-muted)] hover:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] hover:text-[var(--text)]"
                 onClick={() => setShowPwd((v) => !v)}
                 tabIndex={-1}
               >
