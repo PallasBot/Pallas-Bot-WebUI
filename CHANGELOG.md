@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.32] - 2026-10-23
 
 ### 更新公告
 
@@ -14,6 +14,15 @@
 
 * fix(protocol): 关闭公开托管入口并保留通用 OneBot 连接状态
 * feat(protocol): 协议连接页只读展示外置连接，托管操作仅在本机装插件时可用
+
+### 提交明细
+
+### Added
+
+* feat(protocol): 协议连接页收敛为外置连接与本地托管 ([ea5c802](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ea5c802311598e7e1bbef5e7002f8e8f1acb6959))
+
+**完整变更**: [`v0.9.31...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.31...HEAD)
+
 
 ## [0.9.31] - 2026-10-23
 
@@ -53,7 +62,6 @@
 * fix(plugin-store): 社区插件版本来源区分 ([ef99b58](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ef99b5808eb010f1c514c5b0cdab3530cb5ae557))
 
 **完整变更**: [`v0.9.30...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.30...HEAD)
-
 
 ## [0.9.30] - 2026-10-19
 
