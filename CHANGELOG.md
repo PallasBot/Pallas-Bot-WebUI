@@ -14,6 +14,10 @@
 
 * chore(webui): 升级 Vite 与 Vitest 工具链，清除开发依赖安全告警
 
+### Fixed
+
+* fix(deps): DOMPurify 安全下限升至 3.4.17
+
 ## [0.9.30] - 2026-10-19
 
 ### 更新公告
