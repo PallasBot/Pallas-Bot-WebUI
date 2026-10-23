@@ -23,7 +23,7 @@ function commonConfigSectionRedirectTarget(sectionId: string): string | null {
   if (!id || !REMOVED_COMMON_CONFIG_SECTIONS.has(id)) return null;
   if (id === "cmd_perm" || id === "command_limits") return "/plugins";
   if (id === "pb_webui" || id === "pallas_webui") return "/plugins/pb_webui";
-  if (id === "pb_protocol" || id === "pallas_protocol") return "/plugins/pb_protocol";
+  if (id === "pb_protocol" || id === "pallas_protocol") return "/protocol";
   if (id === "community_stats") return "/plugins/pb_stats";
   if (id === "repeater_learn") return "/plugins/repeater";
   if (

@@ -16,13 +16,10 @@ describe("状态标签第三批迁移", () => {
     expect(catalogCard).toContain('<Badge variant="warn" size="compact" title={loadWhere}>');
   });
 
-  it("将数据库健康与协议运行状态交给共享 Badge", () => {
+  it("将数据库健康交给共享 Badge", () => {
     const database = source("src/pages/DatabasePage.tsx");
-    const protocolRuntime = source("src/pages/protocol/ProtocolRuntimeTab.tsx");
 
     expect(database).toContain('import { Badge, type BadgeProps } from "@/components/ui/badge";');
     expect(database).toContain('<Badge variant={healthBadgeVariant(health.status)}');
-    expect(protocolRuntime).toContain('<Badge variant="neutral" size="compact">空闲</Badge>');
-    expect(protocolRuntime).toContain('className="badge badge--compact badge--success protocol-runtime-webui-link"');
   });
 });

@@ -25,10 +25,6 @@ const PreferencesPage = lazy(() => import("@/pages/PreferencesPage"));
 const SetupWizardPage = lazy(() => import("@/pages/SetupWizardPage"));
 const ProtocolPage = lazy(() => import("@/pages/ProtocolPage"));
 const ProtocolAccountsTab = lazy(() => import("@/pages/protocol/ProtocolAccountsTab"));
-const ProtocolAssetsTab = lazy(() => import("@/pages/protocol/ProtocolAssetsTab"));
-const ProtocolCreateTab = lazy(() => import("@/pages/protocol/ProtocolCreateTab"));
-const ProtocolImportTab = lazy(() => import("@/pages/protocol/ProtocolImportTab"));
-const ProtocolRuntimeTab = lazy(() => import("@/pages/protocol/ProtocolRuntimeTab"));
 const UpdatePage = lazy(() => import("@/pages/UpdatePage"));
 const AiConfigPage = lazy(() => import("@/pages/ai/AiConfigPage"));
 const MediaPage = lazy(() => import("@/pages/media/MediaPage"));
@@ -90,13 +86,10 @@ export default function App() {
         <Route path="instances" element={<InstancesPage />} />
         <Route path="protocol" element={<ProtocolPage />}>
           <Route index element={<ProtocolAccountsTab />} />
-          <Route path="create" element={<ProtocolCreateTab />} />
-          <Route path="import" element={<ProtocolImportTab />} />
-          <Route path="assets" element={<ProtocolAssetsTab />} />
-          <Route path="runtime" element={<ProtocolRuntimeTab />} />
           <Route path="*" element={<Navigate to="/protocol" replace />} />
         </Route>
         <Route path="plugins" element={<PluginsPage />} />
+        <Route path="plugins/pb_protocol" element={<Navigate to="/instances" replace />} />
         <Route path="plugins/:name" element={<PluginsPage />} />
         <Route path="plugin-store" element={<PluginStorePage />} />
         <Route path="friends-groups" element={<FriendsGroupsPage />} />

@@ -1,21 +1,15 @@
 import { useCallback, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { RefreshCw } from "lucide-react";
 import "@/styles/protocol-page-entry.css";
 import { useProtocolMount } from "@/hooks/useProtocolMount";
-import {
-  protocolSectionFromPath,
-  protocolSectionPath,
-  type ProtocolSectionId,
-} from "@/config/protocolSections";
 import { ProtocolChromeProvider } from "@/components/protocol/ProtocolChromeContext";
-import ProtocolChromeTools from "@/components/protocol/ProtocolChromeTools";
+import { Button } from "@/components/ui/button";
 import PageMasthead from "@/components/PageMasthead";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 
 export default function ProtocolPage() {
-  const location = useLocation();
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const {
@@ -29,16 +23,6 @@ export default function ProtocolPage() {
     protocolExtensionInstalled,
     protoActionsEnabled,
   } = useProtocolMount();
-
-  const section = protocolSectionFromPath(location.pathname);
-  const onAccountsIndex = section === "accounts";
-
-  const onSectionChange = useCallback(
-    (id: ProtocolSectionId) => {
-      navigate(protocolSectionPath(id));
-    },
-    [navigate],
-  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -58,7 +42,21 @@ export default function ProtocolPage() {
       <div className="protocol-page console-hub-page">
         <PageMasthead
           title="协议连接"
-          description="点击卡片选中；点击昵称打开详情。外置连接可查看与断开；使用全部功能需安装协议插件。"
+          description="消息框架已接入的账号，以及本机协议插件托管的账号；外置连接可查看与断开。"
+          actions={
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              icon={RefreshCw}
+              iconMotion="spin"
+              iconBusy={refreshing}
+              disabled={refreshing}
+              onClick={() => void onRefresh()}
+            >
+              {refreshing ? "刷新中…" : "刷新"}
+            </Button>
+          }
         />
 
         {err ? <p className="alert alert--err">{err}</p> : null}
@@ -66,27 +64,18 @@ export default function ProtocolPage() {
         {!pageReady ? (
           <ConsolePageSkeleton panels={protocolExtensionInstalled ? 2 : 1} />
         ) : (
-          <>
-            <ProtocolChromeTools
-              section={section}
-              onSectionChange={onSectionChange}
-              onRefresh={() => void onRefresh()}
-              refreshing={refreshing}
-              extensionInstalled={protocolExtensionInstalled}
-            />
-            <Outlet
-              context={{
-                mountUrl,
-                snap,
-                system,
-                instances,
-                protocolExtensionInstalled,
-                protoActionsEnabled,
-                reload,
-                onAccountsIndex,
-              }}
-            />
-          </>
+          <Outlet
+            context={{
+              mountUrl,
+              snap,
+              system,
+              instances,
+              protocolExtensionInstalled,
+              protoActionsEnabled,
+              reload,
+              onAccountsIndex: true,
+            }}
+          />
         )}
       </div>
     </ProtocolChromeProvider>

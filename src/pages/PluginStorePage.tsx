@@ -318,7 +318,8 @@ export default function PluginStorePage() {
   });
   const officialNavQ = useQuery({
     queryKey: ["plugins-official-extensions", "nav-notice"],
-    queryFn: () => fetchOfficialExtensions({ skipAssets: true }),
+    queryFn: async () => (await fetchOfficialExtensions({ skipAssets: true }))
+      .filter((row) => row.package !== "pallas-plugin-protocol"),
     staleTime: 120_000,
     retry: 1,
   });
@@ -490,7 +491,8 @@ export default function PluginStorePage() {
   );
 
   const refreshOfficialStore = useCallback(async () => {
-    const data = await fetchOfficialExtensions({ skipAssets: true });
+    const data = (await fetchOfficialExtensions({ skipAssets: true }))
+      .filter((row) => row.package !== "pallas-plugin-protocol");
     setRows(data);
     qc.setQueryData(["plugins-official-extensions", "nav-notice"], data);
   }, [qc]);

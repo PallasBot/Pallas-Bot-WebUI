@@ -68,7 +68,7 @@ export default function SetupWizardPage() {
     <div className="console-hub-page setup-wizard-page">
       <PageMasthead
         title="首次 Setup Wizard"
-        description="改密必做；协议与扩展可选。"
+        description="改密必做；连接与扩展可按需配置。"
         actions={
           <Button
             type="button"
@@ -128,30 +128,20 @@ export default function SetupWizardPage() {
         <div className="panel setup-wizard-page__card">
           <div className="setup-wizard-page__card-head">
             <div>
-              <h3 className="setup-wizard-page__title">步骤 2 · 连接协议端</h3>
-              <p className="muted setup-wizard-page__lead">在 NapCat / SnowLuma 等协议端创建账号并连上 Bot。</p>
+              <h3 className="setup-wizard-page__title">步骤 2 · 接入 OneBot</h3>
+              <p className="muted setup-wizard-page__lead">请自行准备并配置 OneBot 协议端，按其说明连接到 Bot，并自行遵守上游许可及适用规则。</p>
             </div>
             <span className="setup-wizard-page__pill">推荐</span>
           </div>
           <div className="setup-wizard-page__action-stack">
             {canEnter ? (
-              <>
-                <Link to="/protocol" className="btn btn--primary btn--block">
-                  打开协议端管理
-                </Link>
-                <Link to="/instances" className="btn btn--block">
-                  查看实例与连接
-                </Link>
-              </>
+              <Link to="/instances" className="btn btn--primary btn--block">
+                查看实例与连接
+              </Link>
             ) : (
-              <>
-                <button type="button" className="btn" disabled>
-                  完成改密后可配置协议端
-                </button>
-                <button type="button" className="btn" disabled>
-                  完成改密后可查看实例
-                </button>
-              </>
+              <button type="button" className="btn btn--primary btn--block" disabled>
+                完成改密后可查看实例
+              </button>
             )}
           </div>
         </div>

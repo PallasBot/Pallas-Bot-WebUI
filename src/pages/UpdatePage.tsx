@@ -1534,9 +1534,7 @@ export default function UpdatePage() {
         </summary>
         <div className="update-page__gh-fold-body muted update-page__bd">
           <p>
-            可选。用于 Release 检查与下载、协议端在线拉包等。也可在{" "}
-            <Link to={`/plugins/${PB_PROTOCOL_PLUGIN}`}>插件配置 → 协议端</Link> 填写{" "}
-            <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
+            可选。用于 Release 检查与下载。
           </p>
           <div className="update-page__gh-row">
             <UiInput

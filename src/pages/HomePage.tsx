@@ -908,9 +908,9 @@ export default function HomePage() {
               {selectedAccount != null ? (
                 <Card.Content className={cn(HOME_CARD_CONTENT, HOME_PANEL_BD, "home-acct__bd flex flex-1 flex-col")}>
                   <div className="home-acct-meta">
-                    <Link className="home-acct-meta__tag" to="/protocol">
+                    <span className="home-acct-meta__tag">
                       协议 · {accountAdapterDisplay}
-                    </Link>
+                    </span>
                     <span className="home-acct-meta__tag home-acct-meta__tag--muted" title={selectedAdminsTitle}>
                       {selectedAdminsLabel == null ? (
                         <PendingValue pending narrow />

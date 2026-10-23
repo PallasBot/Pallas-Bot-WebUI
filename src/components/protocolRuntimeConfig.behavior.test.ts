@@ -11,10 +11,6 @@ const protocolPageSource = readFileSync(
   fileURLToPath(new URL("../pages/ProtocolPage.tsx", import.meta.url)),
   "utf8",
 );
-const runtimeTabSource = readFileSync(
-  fileURLToPath(new URL("../pages/protocol/ProtocolRuntimeTab.tsx", import.meta.url)),
-  "utf8",
-);
 const accountWorkspaceSource = readFileSync(
   fileURLToPath(new URL("./ProtocolAccountWorkspace.tsx", import.meta.url)),
   "utf8",
@@ -44,7 +40,6 @@ describe("SnowLuma Runtime 配置即时回显", () => {
     expect(protocolMountSource).toContain("refreshInstancesCatalogGlobal()");
     expect(protocolMountSource).toContain('queryClient.setQueryData(["instances"]');
     expect(protocolMountSource).toContain("setReloadError(error)");
-    expect(runtimeTabSource).toContain("invalidateInstanceCatalogQueries(qc)");
     expect(catalogInvalidationSource).toContain('queryClient.invalidateQueries({ queryKey: ["instances"] })');
     expect(catalogInvalidationSource).toContain("invalidateInstancesCache()");
     expect(accountWorkspaceSource).toContain(

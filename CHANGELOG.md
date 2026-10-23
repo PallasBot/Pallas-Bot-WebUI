@@ -4,6 +4,17 @@
 
 <!-- entries -->
 
+## [Unreleased]
+
+### 更新公告
+
+- 需要 Bot commit `5c5ee63c577b6af43674559a80b3f04f2adf575a` 及以上；最低要求与当前 WebUI 版本一致
+
+### Changed
+
+* fix(protocol): 关闭公开托管入口并保留通用 OneBot 连接状态
+* feat(protocol): 协议连接页只读展示外置连接，托管操作仅在本机装插件时可用
+
 ## [0.9.31] - 2026-10-23
 
 ### 更新公告
