@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.31] - 2026-10-23
 
 ### 更新公告
 
@@ -28,6 +28,22 @@
 
 * fix(deps): DOMPurify 安全下限升至 3.4.17
 
+### 提交明细
+
+### Added
+
+* feat(social): 群追加屏蔽词配置 ([df94344](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/df943444eb7e1ea40e42f65363dc736a03bf3ee6))
+
+### Fixed
+
+* fix(deps): DOMPurify 安全下限升至 3.4.17 ([ee96477](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ee96477c97f363b8f529eb4bf6a9d7b98537200a))
+* fix(deps): 前端工具链安全下限 ([76881d0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/76881d0568c136ba2928ed0fa31b567040f3b755))
+* fix(plugin-store): 保证商店刷新结果一致 ([017b3d4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/017b3d4c58ea3fefa42e5a8a733f9db2c52a61e3))
+* fix(plugin-store): 社区插件版本来源区分 ([ef99b58](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ef99b5808eb010f1c514c5b0cdab3530cb5ae557))
+
+**完整变更**: [`v0.9.30...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.30...HEAD)
+
+
 ## [0.9.30] - 2026-10-19
 
 ### 更新公告
@@ -50,7 +66,6 @@
 * docs(webui): 整理 v0.9.30 更新公告 ([9555b95](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9555b95a73b3a5f6d7f30b280c77a59c41b03327))
 
 **完整变更**: [`v0.9.29...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.29...HEAD)
-
 
 ## [0.9.29] - 2026-10-13
 
