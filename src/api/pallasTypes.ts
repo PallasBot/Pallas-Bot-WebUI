@@ -2157,6 +2157,8 @@ export interface GroupConfigPublic {
   disabled_plugins: string[];
   /** 本群拉黑 QQ（牛牛黑名单·群聊维度） */
   blocked_user_ids: number[];
+  /** 本群追加屏蔽词；旧版 Bot 可能不返回。 */
+  message_scrub_extra?: string[];
   /** 群风格画像快照（只读，供 LLM / repeater 驱动） */
   style_profile_snapshot?: GroupStyleProfileSnapshot | null;
 }

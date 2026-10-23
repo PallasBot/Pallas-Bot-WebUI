@@ -7476,6 +7476,8 @@ export interface components {
             banned?: boolean | null;
             /** Blocked User Ids */
             blocked_user_ids?: number[] | null;
+            /** Message Scrub Extra */
+            message_scrub_extra?: string[] | null;
         };
         /** _GroupFleetWhitelistBody */
         _GroupFleetWhitelistBody: {

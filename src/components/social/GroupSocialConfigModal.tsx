@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
 import { deleteGroupConfig, fetchGroupConfigById, fetchPlugins, putGroupConfig } from "@/api/fullConsole";
 import ConfigFieldHelp from "@/components/config/ConfigFieldHelp";
@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { Save, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
@@ -46,6 +47,7 @@ type Draft = {
   banned: boolean;
   disabled_plugins: string[];
   blocked_user_ids: number[];
+  message_scrub_extra: string[];
 };
 
 function normalizeBlocked(ids: number[]): number[] {
@@ -107,6 +109,9 @@ export default function GroupSocialConfigModal({
   const [loadErr, setLoadErr] = useState("");
   const [saveErr, setSaveErr] = useState("");
   const [deleteErr, setDeleteErr] = useState("");
+  const [scrubPending, setScrubPending] = useState("");
+  const [scrubErr, setScrubErr] = useState("");
+  const scrubPendingRef = useRef("");
 
   const rouletteOpts = useMemo(
     () => rouletteModeSelectOptions(draft?.roulette_mode),
@@ -123,8 +128,16 @@ export default function GroupSocialConfigModal({
       setSaveErr("");
       setDeleteErr("");
       setConfirmDelete(false);
+      setScrubPending("");
+      scrubPendingRef.current = "";
+      setScrubErr("");
       return;
     }
+    setDraft(null);
+    setLoadedId(null);
+    setScrubPending("");
+    scrubPendingRef.current = "";
+    setScrubErr("");
     const gid = groupId;
     if (gid == null || !Number.isFinite(gid) || gid < 1) {
       setLoadErr("无效群号。");
@@ -146,6 +159,7 @@ export default function GroupSocialConfigModal({
           banned: Boolean(g.banned),
           disabled_plugins: [...(g.disabled_plugins ?? [])].sort((a, b) => a.localeCompare(b)),
           blocked_user_ids: normalizeBlocked(g.blocked_user_ids ?? []),
+          message_scrub_extra: [...(g.message_scrub_extra ?? [])],
         });
       } catch (e) {
         if (!cancelled) setLoadErr(axiosErrorDetail(e));
@@ -169,7 +183,29 @@ export default function GroupSocialConfigModal({
   }
 
   async function save() {
-    if (loadedId == null || !draft || saveBusy || deleteBusy) return;
+    if (loadedId == null || loadedId !== groupId || !draft || saveBusy || deleteBusy) return;
+    const pending = scrubPendingRef.current.trim();
+    const terms: string[] = [];
+    const seenTerms = new Set<string>();
+    for (const term of [...draft.message_scrub_extra, pending].map((item) => item.trim()).filter(Boolean)) {
+      const key = term.toLowerCase();
+      if (seenTerms.has(key)) continue;
+      seenTerms.add(key);
+      terms.push(term);
+    }
+    const invalid = terms.length > 200
+      ? "本群最多添加 200 个屏蔽词。"
+      : terms.some((term) => Array.from(term.trim()).length > 64)
+        ? "每个屏蔽词最多 64 个字符。"
+        : "";
+    if (invalid) {
+      setScrubErr(invalid);
+      return;
+    }
+    setDraft({ ...draft, message_scrub_extra: terms });
+    setScrubPending("");
+    scrubPendingRef.current = "";
+    setScrubErr("");
     setSaveBusy(true);
     setSaveErr("");
     try {
@@ -178,6 +214,7 @@ export default function GroupSocialConfigModal({
         banned: draft.banned,
         disabled_plugins: draft.disabled_plugins,
         blocked_user_ids: normalizeBlocked(draft.blocked_user_ids),
+        message_scrub_extra: terms,
       });
       onSaved?.();
       onOpenChange(false);
@@ -205,7 +242,7 @@ export default function GroupSocialConfigModal({
   }
 
   const busy = loadBusy || saveBusy || deleteBusy;
-  const ready = !loadBusy && !loadErr && draft != null && loadedId != null;
+  const ready = !loadBusy && !loadErr && draft != null && loadedId != null && loadedId === groupId;
 
   return (
     <>
@@ -229,7 +266,7 @@ export default function GroupSocialConfigModal({
               {displayName}
             </DialogTitle>
             <p className="muted text-sm">群号 · {gidLabel}</p>
-            <DialogDescription className="sr-only">编辑本群封禁、轮盘、禁用插件与屏蔽用户。</DialogDescription>
+            <DialogDescription className="sr-only">编辑本群封禁、轮盘、禁用插件、屏蔽用户与追加屏蔽词。</DialogDescription>
           </DialogHeader>
 
           <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
@@ -305,6 +342,74 @@ export default function GroupSocialConfigModal({
                           ))}
                         </div>
                       )}
+                    </SettingsFormField>
+                  </div>
+                </div>
+
+                <div className="bot-config-dialog__block">
+                  <FormSectionDivider title="本群追加屏蔽词" />
+                  <div className="bot-config-dialog__section-body">
+                    <SettingsFormField
+                      label="屏蔽词"
+                      hint="仅本群追加；全局屏蔽功能关闭时不生效。命中按忽略大小写的子串匹配，Bot 不处理该消息，也不会撤回。"
+                    >
+                      <div className="space-y-2">
+                        <Input
+                          aria-label="添加本群屏蔽词"
+                          aria-describedby={scrubErr ? "group-scrub-extra-help group-scrub-extra-error" : "group-scrub-extra-help"}
+                          placeholder="输入屏蔽词，按回车添加"
+                          value={scrubPending}
+                          maxLength={256}
+                          aria-invalid={Boolean(scrubErr)}
+                          onChange={(event) => {
+                            scrubPendingRef.current = event.target.value;
+                            setScrubPending(event.target.value);
+                            setScrubErr("");
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Enter" || event.nativeEvent.isComposing || event.keyCode === 229) return;
+                            event.preventDefault();
+                            const term = scrubPendingRef.current.trim();
+                            if (!term) return;
+                            const next = draft.message_scrub_extra.some((item) => item.toLowerCase() === term.toLowerCase())
+                              ? draft.message_scrub_extra
+                              : [...draft.message_scrub_extra, term];
+                            setDraft({ ...draft, message_scrub_extra: next });
+                            scrubPendingRef.current = "";
+                            setScrubPending("");
+                            setScrubErr("");
+                          }}
+                        />
+                        <p id="group-scrub-extra-help" className="muted text-xs">
+                          {draft.message_scrub_extra.length}/200；每词最多 64 个字符。可逐项移除。
+                        </p>
+                        {draft.message_scrub_extra.length ? (
+                          <ul className="flex flex-wrap gap-2" aria-label="已添加的本群屏蔽词">
+                            {draft.message_scrub_extra.map((term, index) => (
+                              <li key={`${term}-${index}`} className="max-w-full">
+                                <span className="inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-1 text-sm">
+                                  <span className="break-all" title={term}>{term}</span>
+                                  <button
+                                    type="button"
+                                    className="shrink-0 rounded px-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    aria-label={`移除屏蔽词 ${term}`}
+                                    onClick={() => {
+                                      setDraft({
+                                        ...draft,
+                                        message_scrub_extra: draft.message_scrub_extra.filter((_, i) => i !== index),
+                                      });
+                                      setScrubErr("");
+                                    }}
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : <p className="muted text-sm">尚未添加本群屏蔽词。</p>}
+                        {scrubErr ? <p id="group-scrub-extra-error" className="alert alert--err" role="alert" aria-live="polite">{scrubErr}</p> : null}
+                      </div>
                     </SettingsFormField>
                   </div>
                 </div>

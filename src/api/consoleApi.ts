@@ -3636,6 +3636,7 @@ export async function putGroupConfig(
     roulette_mode: number;
     banned: boolean;
     blocked_user_ids: number[];
+    message_scrub_extra: string[];
   }>,
 ): Promise<GroupConfigPublic> {
   return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/group-configs/{group_id}"]["put"]>(

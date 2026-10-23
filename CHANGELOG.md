@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Added
+
+* feat(groups): 支持为单个群追加屏蔽词
+
 ### Changed
 
 * chore(webui): 升级 Vite 与 Vitest 工具链，清除开发依赖安全告警
