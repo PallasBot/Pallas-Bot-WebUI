@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.9.33] - 2026-10-26
 
 ### 更新公告
 
@@ -14,6 +14,15 @@
 ### Changed
 
 * refactor(webui): 恢复 Radix 控件体系
+
+### 提交明细
+
+### Changed
+
+* refactor(webui): 恢复 Radix 控件体系 (#133) ([52ce04f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/52ce04f12ba58dbfe75da7534c81438b55260d77))
+
+**完整变更**: [`v0.9.32...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.32...HEAD)
+
 
 ## [0.9.32] - 2026-10-23
 
@@ -33,7 +42,6 @@
 * feat(protocol): 协议连接页收敛为外置连接与本地托管 ([ea5c802](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ea5c802311598e7e1bbef5e7002f8e8f1acb6959))
 
 **完整变更**: [`v0.9.31...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.9.31...HEAD)
-
 
 ## [0.9.31] - 2026-10-23
 
