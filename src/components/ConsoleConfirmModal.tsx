@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
-  AlertDialogBody,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -62,16 +61,12 @@ export default function ConsoleConfirmModal({
           <AlertDialogDescription>{subtitle}</AlertDialogDescription>
         </AlertDialogHeader>
 
-        {error || warnings?.length ? (
-          <AlertDialogBody className="space-y-2">
-            {error ? <p className="alert alert--err m-0">{error}</p> : null}
-            {(warnings ?? []).map((w, wi) => (
-              <p key={`warn-${wi}`} className="alert alert--err m-0">
-                {w}
-              </p>
-            ))}
-          </AlertDialogBody>
-        ) : null}
+        {error ? <p className="alert alert--err m-0">{error}</p> : null}
+        {(warnings ?? []).map((w, wi) => (
+          <p key={`warn-${wi}`} className="alert alert--err m-0">
+            {w}
+          </p>
+        ))}
 
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>取消</AlertDialogCancel>

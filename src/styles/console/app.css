@@ -8699,12 +8699,8 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .protocol-runtime-image-switch-progress__head > :last-child {
     flex: 0 0 auto;
   }
-  .protocol-runtime-image-switch-dialog .plugin-config-dialog__foot,
-  .protocol-runtime-image-switch-dialog [data-slot="dialog-footer"] {
+  .protocol-runtime-image-switch-dialog .plugin-config-dialog__foot {
     flex-wrap: wrap;
-  }
-  .protocol-runtime-image-switch-dialog [data-slot="dialog-footer"] > button {
-    flex: 1 1 100%;
   }
   .protocol-runtime-row__actions {
     width: 100%;
@@ -9985,7 +9981,7 @@ html[data-theme="light"] .btn:active:not(:disabled):not(.btn--primary):not(.btn-
 
 .inp,
 .sel,
-.textarea:not([data-heroui-skin]) {
+.textarea {
   box-sizing: border-box;
   font-family: var(--font-sans);
   font-size: var(--ui-ctrl-font);
@@ -10010,10 +10006,10 @@ html[data-theme="light"] .btn:active:not(:disabled):not(.btn--primary):not(.btn-
 }
 
 .inp::placeholder,
-.textarea:not([data-heroui-skin])::placeholder,
+.textarea::placeholder,
 .sel::placeholder,
-input:not([data-heroui-skin])::placeholder,
-textarea:not([data-heroui-skin])::placeholder {
+input::placeholder,
+textarea::placeholder {
   color: var(--console-placeholder-color, color-mix(in srgb, var(--text-muted) 60%, transparent));
   font-weight: 400;
   opacity: 1;
@@ -10021,14 +10017,14 @@ textarea:not([data-heroui-skin])::placeholder {
 
 .inp:disabled,
 .sel:disabled,
-.textarea:not([data-heroui-skin]):disabled {
+.textarea:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
 html[data-theme="light"] .inp,
 html[data-theme="light"] .sel,
-html[data-theme="light"] .textarea:not([data-heroui-skin]) {
+html[data-theme="light"] .textarea {
   box-shadow: none;
 }
 
@@ -10056,7 +10052,7 @@ html[data-theme="light"] .sel {
 }
 .inp:focus,
 .sel:focus,
-.textarea:not([data-heroui-skin]):focus {
+.textarea:focus {
   border-color: color-mix(in srgb, var(--accent) 16%, var(--control-border));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent);
 }
@@ -10078,9 +10074,9 @@ html[data-theme="light"] .sel {
   opacity: 0.65;
   cursor: pointer;
 }
-.textarea:not([data-heroui-skin]),
+.textarea,
 textarea.inp,
-textarea.textarea:not([data-heroui-skin]) {
+textarea.textarea {
   border-radius: var(--radius-textarea);
   font-family: var(--font-mono);
   font-size: var(--ui-ctrl-font);
@@ -20062,49 +20058,13 @@ html[data-layout="hub"][data-theme="light"] .home-acct-tile--sub {
 }
 
 @layer components {
-  html[data-layout="hub"] .list-box-item__indicator {
-    opacity: 0;
-  }
-
-  html[data-layout="hub"] .list-box-item__indicator[data-visible="true"] {
-    opacity: 1;
-  }
-
-  html[data-density="compact"] .textarea[data-heroui-skin] {
+  html[data-density="compact"] .textarea {
     min-height: var(--ui-textarea-min-height);
-  }
-
-  html[data-density="compact"] .button.button--sm {
-    height: var(--ui-button-min-height);
-  }
-
-  html[data-density="compact"] .button.button--md {
-    height: var(--ui-ctrl-height);
-  }
-
-  html[data-density="compact"] .button.button--lg {
-    height: calc(var(--ui-ctrl-height) + 4px);
-  }
-
-  html[data-density="compact"] .button.button--icon-only.button--sm {
-    width: var(--ui-button-min-height);
-  }
-
-  html[data-density="compact"] .button.button--icon-only.button--md {
-    width: var(--ui-ctrl-height);
-  }
-
-  html[data-density="compact"] .button.button--icon-only.button--lg {
-    width: calc(var(--ui-ctrl-height) + 4px);
   }
 }
 
 @layer utilities {
-  html[data-layout="hub"][data-density="compact"] .input[data-heroui-skin] {
+  html[data-layout="hub"][data-density="compact"] .inp {
     padding-block: 4px;
-  }
-
-  html[data-layout="hub"][data-density="compact"] .select__trigger.h-9:not(.h-8):not(.h-10):not(.h-11):not(.h-12) {
-    height: var(--ui-ctrl-height);
   }
 }

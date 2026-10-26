@@ -126,15 +126,13 @@ it("keeps the selected source when an older HTTP response arrives late", async (
   render(<MemoryRouter><LogsPage /></MemoryRouter>);
   await screen.findByText("hub response");
   await user.click(screen.getByRole("button", { name: /筛选/ }));
-  // 值变化（全部/消息等）不应再压过可见字段名
-  expect(screen.getByRole("button", { name: "日志范围" })).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "日志来源" }));
+  await user.click(screen.getByRole("combobox", { name: "日志来源" }));
   await user.click(screen.getByRole("option", { name: "work aux" }));
   await screen.findByText("work response");
 
   oldHub.resolve({ ...logs("hub"), log_sources: ["hub", "stale-source"] });
   await waitFor(() => expect(screen.queryByRole("option", { name: "stale-source" })).toBeNull());
-    await user.click(screen.getByRole("button", { name: "日志来源" }));
+  await user.click(screen.getByRole("combobox", { name: "日志来源" }));
   expect(screen.getByRole("option", { name: "work aux" })).toBeTruthy();
 });
 
@@ -188,12 +186,12 @@ it("ignores an old stream callback after a source switch and closes both streams
   const view = render(<MemoryRouter><LogsPage /></MemoryRouter>);
   await screen.findByText(/(?:hub|work) response/);
   await user.click(screen.getByRole("button", { name: /筛选/ }));
-    const sourceTrigger = screen.getByRole("button", { name: "日志来源" });
+  const sourceTrigger = screen.getByRole("combobox", { name: "日志来源" });
   const initialSource = sourceTrigger.textContent?.includes("work aux") ? "work" : "hub";
   const oldStream = StubEventSource.instances.at(-1)!;
   const nextSource = initialSource === "hub" ? "work" : "hub";
 
-    await user.click(screen.getByRole("button", { name: "日志来源" }));
+  await user.click(screen.getByRole("combobox", { name: "日志来源" }));
   await user.click(screen.getByRole("option", { name: nextSource === "work" ? "work aux" : "主进程" }));
   await screen.findByText(`${nextSource} response`);
   const currentStream = StubEventSource.instances.at(-1)!;

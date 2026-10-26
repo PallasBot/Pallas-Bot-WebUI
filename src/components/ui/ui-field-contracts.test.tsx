@@ -53,8 +53,7 @@ it("associates the label with its control and renders prefix, suffix and meta", 
 
   const label = screen.getByText("Display name", { selector: "label" });
   expect(label.getAttribute("for")).toBe("display-name");
-  // Rendered through the HeroUI v3 Label primitive.
-  expect(label.getAttribute("data-slot")).toBe("label");
+  // Rendered through the Radix Label primitive.
   expect(label.className).toContain("label");
   expect(screen.getByTestId("prefix")).toBeTruthy();
   expect(screen.getByTestId("suffix")).toBeTruthy();

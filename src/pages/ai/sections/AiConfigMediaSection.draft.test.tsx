@@ -146,7 +146,7 @@ it("confirms switching away from a dirty sing audio mapping and preserves it on 
   expect(screen.queryByRole("alertdialog")).toBeNull();
   expect(field.value).toBe('{"speaker-a":"draft.wav"}');
 
-  const panelSelect = within(await screen.findByTestId("media-chrome")).getByRole("button", { name: "唱歌" });
+  const panelSelect = within(await screen.findByTestId("media-chrome")).getByRole("combobox");
   await user.click(panelSelect);
   await user.click(await screen.findByRole("option", { name: "画画" }));
 

@@ -4,13 +4,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-class ResizeObserverMock {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const fetchGroupStyleGovernance = vi
   .fn()
@@ -159,15 +153,9 @@ const fullScope = "/ai/governance?bot=10001&group=20002&scene=group_chat&tab=sty
 const botOnlyScope = "/ai/governance?bot=10001&scene=group_chat&tab=style";
 
 describe("GovernanceStyleTab", () => {
-  beforeEach(() => {
-    vi.stubGlobal("ResizeObserver", ResizeObserverMock);
-    vi.stubGlobal("CSS", { ...window.CSS, escape: (value: string) => value });
-  });
-
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
-    vi.unstubAllGlobals();
   });
 
   it("keeps group cards hidden and global cards available when only a Bot is set", async () => {
@@ -202,7 +190,7 @@ describe("GovernanceStyleTab", () => {
     const user = userEvent.setup();
     renderRoute(fullScope);
 
-    await user.click(await screen.findByRole("switch", { name: "直给倾向" }));
+    await user.click(await screen.findByRole("checkbox", { name: "直给倾向" }));
 
     await waitFor(() => expect(postLlmRepeaterSemanticStyleManage).toHaveBeenCalledWith({
       action: "direct_enabled",

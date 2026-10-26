@@ -368,9 +368,9 @@ html[data-layout="hub"] .sel {
   box-shadow: none;
 }
 
-html[data-layout="hub"] .textarea:not([data-heroui-skin]),
-html[data-layout="hub"] textarea.inp:not([data-heroui-skin]),
-html[data-layout="hub"] textarea.textarea:not([data-heroui-skin]) {
+html[data-layout="hub"] .textarea,
+html[data-layout="hub"] textarea.inp,
+html[data-layout="hub"] textarea.textarea {
   min-height: var(--ui-ctrl-height);
   border-radius: var(--radius-textarea);
   font-size: 14px;
@@ -380,14 +380,14 @@ html[data-layout="hub"] textarea.textarea:not([data-heroui-skin]) {
 
 html[data-layout="hub"][data-theme="light"] .inp,
 html[data-layout="hub"][data-theme="light"] .sel,
-html[data-layout="hub"][data-theme="light"] .textarea:not([data-heroui-skin]) {
+html[data-layout="hub"][data-theme="light"] .textarea {
   background: var(--surface-control);
   border-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 html[data-layout="hub"] .inp:focus,
 html[data-layout="hub"] .sel:focus,
-html[data-layout="hub"] .textarea:not([data-heroui-skin]):focus {
+html[data-layout="hub"] .textarea:focus {
   border-color: color-mix(in srgb, var(--accent) 16%, var(--control-border));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent);
 }
@@ -405,9 +405,9 @@ html[data-layout="hub"] .friends-groups-list-hd-actions > .friends-groups-list-s
 }
 
 html[data-layout="hub"] .inp::placeholder,
-html[data-layout="hub"] .textarea:not([data-heroui-skin])::placeholder,
-html[data-layout="hub"] input:not([data-heroui-skin])::placeholder,
-html[data-layout="hub"] textarea:not([data-heroui-skin])::placeholder {
+html[data-layout="hub"] .textarea::placeholder,
+html[data-layout="hub"] input::placeholder,
+html[data-layout="hub"] textarea::placeholder {
   color: var(--console-placeholder-color, color-mix(in srgb, var(--text-muted) 60%, transparent));
   font-weight: 400;
 }
@@ -1287,8 +1287,6 @@ html[data-layout="hub"] .console-hub-page__chrome-tools .console-view-toggle--to
 .console-hub-page__chrome-tools .inp,
 .chrome-tools button[role="combobox"],
 .console-hub-page__chrome-tools button[role="combobox"],
-.chrome-tools button[data-slot="trigger"],
-.console-hub-page__chrome-tools button[data-slot="trigger"],
 .chrome-tools [role="tablist"],
 .console-hub-page__chrome-tools [role="tablist"] {
   border-color: color-mix(in srgb, var(--foreground, var(--text)) 10%, transparent) !important;
@@ -3822,8 +3820,6 @@ html[data-layout="hub"][data-surface="glass"] .chrome-tools .inp,
 html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-tools .inp,
 html[data-layout="hub"][data-surface="glass"] .chrome-tools button[role="combobox"],
 html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-tools button[role="combobox"],
-html[data-layout="hub"][data-surface="glass"] .chrome-tools button[data-slot="trigger"],
-html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-tools button[data-slot="trigger"],
 html[data-layout="hub"][data-surface="glass"] .chrome-tools .charts-page__date-inp,
 html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-tools .charts-page__date-inp,
 html[data-layout="hub"][data-surface="glass"] .charts-page__date-inp {
@@ -3894,7 +3890,7 @@ html[data-theme="light"][data-ui-preset="shadcn"][data-surface="solid"] .seg-tab
   border-color: transparent !important;
 }
 
-/* AI 观测统计的内容分段：保留 HeroUI 交互，只补齐连续轨道与圆润选中态。 */
+/* AI 观测统计的内容分段：保留现有交互，只补齐连续轨道与圆润选中态。 */
 .ai-observation-statistics-tabs .tabs__list {
   gap: 2px;
   border: 1px solid var(--surface-edge, var(--border));

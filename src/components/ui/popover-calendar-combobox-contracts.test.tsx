@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { createRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Combobox } from "./combobox";
-import { toCalendarDate, toLocalDate } from "./calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 class ResizeObserverMock {
@@ -18,16 +17,6 @@ vi.stubGlobal("CSS", { escape: (value: string) => value });
 HTMLElement.prototype.scrollIntoView = vi.fn();
 
 afterEach(cleanup);
-
-describe("calendar local-date bridge", () => {
-  it("round-trips leap days using local calendar fields", () => {
-    const date = new Date(2024, 1, 29, 23, 30);
-    const value = toCalendarDate(date);
-    expect(value?.toString()).toBe("2024-02-29");
-    const local = value && toLocalDate(value);
-    expect(local && [local.getFullYear(), local.getMonth() + 1, local.getDate()]).toEqual([2024, 2, 29]);
-  });
-});
 
 describe("Popover and ComboBox contracts", () => {
   it("preserves a child combobox role and accessibility props while activating the popover", async () => {
@@ -116,7 +105,7 @@ describe("Popover and ComboBox contracts", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Open" }));
-    const dialog = await screen.findByRole("dialog", { name: "Open" });
+    const dialog = await screen.findByRole("dialog", { name: "Options" });
     expect(dialog.id).toBe("options-dialog");
     await waitFor(() => expect(document.activeElement).toBe(inputRef.current));
   });
@@ -256,7 +245,7 @@ describe("Popover and ComboBox contracts", () => {
     expect(refCleanup).toHaveBeenCalledOnce();
   });
 
-  it("uses HeroUI ComboBox collection IDs and text values without losing JSX trigger labels", async () => {
+  it("keeps trigger labels while filtering by value and keywords", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
     render(
@@ -285,9 +274,6 @@ describe("Popover and ComboBox contracts", () => {
     await user.type(search, "secondary");
     expect(screen.getByRole("option", { name: "Two option" })).toBeTruthy();
     expect(screen.queryByRole("option", { name: "One option" })).toBeNull();
-    await user.clear(search);
-    await user.type(search, "Two option");
-    expect(screen.getByRole("option", { name: "Two option" })).toBeTruthy();
     await user.clear(search);
     await user.type(search, "gateway-id");
     expect(screen.getByRole("option", { name: "Two option" })).toBeTruthy();

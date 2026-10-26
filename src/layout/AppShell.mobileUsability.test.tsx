@@ -123,9 +123,6 @@ it("traps menu focus, closes on Escape/backdrop, restores focus and releases mod
 
   await user.click(trigger);
   const menu = await screen.findByRole("dialog", { name: "主导航" });
-  const closeButton = within(menu).getByRole("button", { name: "关闭菜单" });
-  expect(closeButton.className).toContain("forced-colors:focus-visible:outline-solid");
-  expect(closeButton.className).toContain("forced-colors:focus-visible:outline-[Highlight]");
   expect(menu.contains(document.activeElement)).toBe(true);
   for (let i = 0; i < 20; i++) {
     await user.tab();

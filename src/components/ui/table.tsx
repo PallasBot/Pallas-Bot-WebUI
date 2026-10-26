@@ -1,29 +1,81 @@
-import type { ComponentProps } from "react";
-import { Table as HeroUITable } from "@heroui/react";
+import * as React from "react";
 import { cn } from "@/lib/utils";
 
-function Table({ className, children, ...props }: ComponentProps<typeof HeroUITable>) {
-  return (
-    <HeroUITable
+/** shadcn Table：caption-bottom / 细边框 / 悬停行 */
+const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
+  ({ className, ...props }, ref) => (
+    <div className="relative w-full overflow-auto rounded-[var(--radius-shell,12px)] border border-[var(--border)]">
+      <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
+    </div>
+  ),
+);
+Table.displayName = "Table";
+
+const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
+  ({ className, ...props }, ref) => (
+    <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  ),
+);
+TableHeader.displayName = "TableHeader";
+
+const TableBody = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
+  ({ className, ...props }, ref) => (
+    <tbody ref={ref} className={cn("[&_tr:last-child]:border-0", className)} {...props} />
+  ),
+);
+TableBody.displayName = "TableBody";
+
+const TableFooter = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
+  ({ className, ...props }, ref) => (
+    <tfoot
+      ref={ref}
+      className={cn("border-t bg-muted/50 font-medium [&>tr]:last:border-b-0", className)}
       {...props}
-      variant="secondary"
+    />
+  ),
+);
+TableFooter.displayName = "TableFooter";
+
+const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableRowElement>>(
+  ({ className, ...props }, ref) => (
+    <tr
+      ref={ref}
       className={cn(
-        "relative w-full overflow-hidden rounded-[var(--radius-shell,12px)] border border-[var(--border)] [&_thead_tr]:border-b [&_thead_th]:h-10 [&_thead_th]:bg-[color-mix(in_srgb,var(--text)_3%,var(--bg-card,transparent))] [&_thead_th]:px-3 [&_thead_th]:text-left [&_thead_th]:align-middle [&_thead_th]:text-xs [&_thead_th]:font-medium [&_thead_th]:uppercase [&_thead_th]:tracking-wide [&_thead_th]:text-muted-foreground [&_tbody_tr]:border-b [&_tbody_tr]:border-[var(--border)] [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-[color-mix(in_srgb,var(--text)_4%,transparent)] [&_tbody_tr[data-selected=true]]:bg-pallas-muted [&_tbody_tr:last-child]:border-0 [&_tbody_td]:p-3 [&_tbody_td]:align-middle [&_tbody_td]:text-[0.8125rem] forced-colors:[&_tbody_tr:focus-visible]:outline-solid forced-colors:[&_tbody_tr:focus-visible]:outline-2 forced-colors:[&_tbody_tr:focus-visible]:outline-offset-[-2px] forced-colors:[&_tbody_tr:focus-visible]:outline-[Highlight] forced-colors:[&_tbody_td:focus-visible]:outline-solid forced-colors:[&_tbody_td:focus-visible]:outline-2 forced-colors:[&_tbody_td:focus-visible]:outline-offset-[-2px] forced-colors:[&_tbody_td:focus-visible]:outline-[Highlight]",
+        "border-b border-[var(--border)] transition-colors hover:bg-[color-mix(in_srgb,var(--text)_4%,transparent)] data-[state=selected]:bg-muted",
         className,
       )}
-    >
-      <HeroUITable.ScrollContainer className="w-full overflow-auto">
-        {children}
-      </HeroUITable.ScrollContainer>
-    </HeroUITable>
-  );
-}
+      {...props}
+    />
+  ),
+);
+TableRow.displayName = "TableRow";
 
-const TableContent = HeroUITable.Content;
-const TableHeader = HeroUITable.Header;
-const TableBody = HeroUITable.Body;
-const TableRow = HeroUITable.Row;
-const TableHead = HeroUITable.Column;
-const TableCell = HeroUITable.Cell;
+const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTableCellElement>>(
+  ({ className, ...props }, ref) => (
+    <th
+      ref={ref}
+      className={cn(
+        "h-10 px-3 text-left align-middle text-xs font-medium uppercase tracking-wide text-muted-foreground bg-[color-mix(in_srgb,var(--text)_3%,var(--bg-card,transparent))]",
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
+TableHead.displayName = "TableHead";
 
-export { Table, TableContent, TableHeader, TableBody, TableHead, TableRow, TableCell };
+const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTableCellElement>>(
+  ({ className, ...props }, ref) => (
+    <td ref={ref} className={cn("p-3 align-middle text-[0.8125rem]", className)} {...props} />
+  ),
+);
+TableCell.displayName = "TableCell";
+
+const TableCaption = React.forwardRef<HTMLTableCaptionElement, React.HTMLAttributes<HTMLTableCaptionElement>>(
+  ({ className, ...props }, ref) => (
+    <caption ref={ref} className={cn("mt-4 text-sm text-muted-foreground", className)} {...props} />
+  ),
+);
+TableCaption.displayName = "TableCaption";
+
+export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption };

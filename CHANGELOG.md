@@ -4,6 +4,17 @@
 
 <!-- entries -->
 
+## [Unreleased]
+
+### 更新公告
+
+- 需要 Bot commit `5c5ee63c577b6af43674559a80b3f04f2adf575a` 及以上；请勿只升控制台
+- 控件恢复为 Radix/shadcn 实现，移除 HeroUI 运行时与样式依赖
+
+### Changed
+
+* refactor(webui): 恢复 Radix 控件体系
+
 ## [0.9.32] - 2026-10-23
 
 ### 更新公告

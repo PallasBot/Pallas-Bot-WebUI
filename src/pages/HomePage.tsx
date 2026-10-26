@@ -50,7 +50,7 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import PendingValue from "@/components/PendingValue";
 import StatusTone from "@/components/StatusTone";
 import { querySettled } from "@/utils/querySettled";
-import { Card } from "@heroui/react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 /** 首屏后资源轮询；overview 已带一份快照 */
@@ -63,13 +63,11 @@ const RESOURCE_WARN_PCT = 90;
 const HOME_SOCIAL_LIST_LIMIT = 300;
 
 /** shadcn Card + hub home 旧度量（圆角/描边/阴影/内边距由 home-page.css 扣） */
-const HOME_PANEL = "home-panel flex h-full flex-col";
-const HOME_CARD_ROOT = "pallas-card-frame block static gap-0 overflow-visible p-0";
-const HOME_CARD_HEADER = "flex flex-col space-y-1.5 p-5";
-const HOME_CARD_CONTENT = "block gap-0 p-5 pt-0";
+const HOME_PANEL = "home-panel flex h-full flex-col shadow-none";
 const HOME_PANEL_HD =
   "home-panel__hd flex-row items-center justify-between space-y-0 border-b p-0";
 const HOME_PANEL_BD = "home-panel__bd p-0";
+const HOME_PANEL_TITLE = "home-panel__title leading-tight tracking-[-0.015em]";
 const HOME_PANEL_TAG = "home-panel__tag";
 
 function MetricTile({
@@ -791,10 +789,10 @@ export default function HomePage() {
 
           <div className="home-grid">
             <Card
-              className={cn(HOME_CARD_ROOT, HOME_PANEL, "home-card--acct overflow-visible")}
+              className={cn(HOME_PANEL, "home-card--acct overflow-visible")}
               style={{ gridArea: "acct" }}
             >
-              <Card.Header className={cn(HOME_CARD_HEADER, HOME_PANEL_HD, "home-acct__hd items-start")}>
+              <CardHeader className={cn(HOME_PANEL_HD, "home-acct__hd items-start")}>
                 <div className="home-acct__hd-left">
                   <div className="home-acct__avatar">
                     {selectedAccount != null ? (
@@ -812,7 +810,7 @@ export default function HomePage() {
                     ) : null}
                   </div>
                   <div ref={accountPickerRoot} className="home-acct__title-wrap">
-                    <Card.Title className="home-acct__title">
+                    <CardTitle className="home-acct__title">
                       <span className="home-acct__name">
                         {selectedAccount != null ? dbNick(selectedAccount) || "BOT" : "BOT"}
                       </span>
@@ -845,7 +843,7 @@ export default function HomePage() {
                           ★
                         </button>
                       ) : null}
-                    </Card.Title>
+                    </CardTitle>
                     <p className="home-acct__qq muted">QQ {selectedAccount ?? "—"}</p>
                     {accountPickerOpen && sortedDbBots.length > 1 ? (
                       <div className="home-acct-picker" role="listbox" aria-label="选择 Bot 账号">
@@ -904,9 +902,9 @@ export default function HomePage() {
                     onClick={() => void refreshAll(true)}
                   />
                 </div>
-              </Card.Header>
+              </CardHeader>
               {selectedAccount != null ? (
-                <Card.Content className={cn(HOME_CARD_CONTENT, HOME_PANEL_BD, "home-acct__bd flex flex-1 flex-col")}>
+                <CardContent className={cn(HOME_PANEL_BD, "home-acct__bd flex flex-1 flex-col")}>
                   <div className="home-acct-meta">
                     <span className="home-acct-meta__tag">
                       协议 · {accountAdapterDisplay}
@@ -1033,35 +1031,34 @@ export default function HomePage() {
                       已连接 {selectedConnDurationDisplay} · {selectedConnDateDisplay}
                     </div>
                   </div>
-                </Card.Content>
+                </CardContent>
               ) : sortedDbBots.length ? (
-                <Card.Content className={cn(HOME_CARD_CONTENT, HOME_PANEL_BD, "flex min-h-[120px] flex-1 items-center justify-center")}>
+                <CardContent className={cn(HOME_PANEL_BD, "flex min-h-[120px] flex-1 items-center justify-center")}>
                   <p className="muted">请选择一个 Bot 账号</p>
-                </Card.Content>
+                </CardContent>
               ) : (
-                <Card.Content className={cn(HOME_CARD_CONTENT, HOME_PANEL_BD, "flex min-h-[120px] flex-1 items-center justify-center")}>
+                <CardContent className={cn(HOME_PANEL_BD, "flex min-h-[120px] flex-1 items-center justify-center")}>
                   <p className="muted">数据库中暂无牛牛账号记录，请先添加账号配置后刷新。</p>
-                </Card.Content>
+                </CardContent>
               )}
             </Card>
 
             <Card
               className={cn(
-                HOME_CARD_ROOT,
                 HOME_PANEL,
                 "home-card--sys overflow-hidden",
                 sysResourceWarn && "home-card--resource-warn",
               )}
               style={{ gridArea: "sys" }}
             >
-              <Card.Header className={cn(HOME_CARD_HEADER, HOME_PANEL_HD)}>
-                <Card.Title className="flex items-center gap-1.5">
+              <CardHeader className={HOME_PANEL_HD}>
+                <CardTitle className={cn(HOME_PANEL_TITLE, "flex items-center gap-1.5")}>
                   <PanelTitleIcon icon={Activity} />
                   系统性能
-                </Card.Title>
+                </CardTitle>
                 <span className={HOME_PANEL_TAG}>节点采样</span>
-              </Card.Header>
-              <Card.Content className={cn(HOME_CARD_CONTENT, HOME_PANEL_BD)}>
+              </CardHeader>
+              <CardContent className={HOME_PANEL_BD}>
                 {!perfSampled ? (
                   <p className="muted" style={{ margin: 0 }}>
                     当前未上报 CPU/内存/磁盘/GPU 等指标。
@@ -1227,20 +1224,20 @@ export default function HomePage() {
                     })}
                   </div>
                 )}
-              </Card.Content>
+              </CardContent>
             </Card>
 
-            <Card className={cn(HOME_CARD_ROOT, HOME_PANEL, "home-card--ver overflow-hidden")} style={{ gridArea: "verL" }}>
-              <Card.Header className={cn(HOME_CARD_HEADER, HOME_PANEL_HD)}>
-                <Card.Title className="flex items-center gap-1.5">
+            <Card className={cn(HOME_PANEL, "home-card--ver overflow-hidden")} style={{ gridArea: "verL" }}>
+              <CardHeader className={HOME_PANEL_HD}>
+                <CardTitle className={cn(HOME_PANEL_TITLE, "flex items-center gap-1.5")}>
                   <PanelTitleIcon icon={Package} />
                   版本
-                </Card.Title>
+                </CardTitle>
                 {botUpdate?.has_update || webUpdate?.has_update ? (
                   <span className="badge badge--warn">有更新</span>
                 ) : null}
-              </Card.Header>
-              <Card.Content className={cn(HOME_CARD_CONTENT, HOME_PANEL_BD)}>
+              </CardHeader>
+              <CardContent className={HOME_PANEL_BD}>
                   <dl className="home-ver-dl">
                     <div className="home-ver-dl__row">
                       <dt>消息框架</dt>
@@ -1338,20 +1335,20 @@ export default function HomePage() {
                       </dd>
                     </div>
                   </dl>
-              </Card.Content>
+              </CardContent>
             </Card>
 
-            <Card className={cn(HOME_CARD_ROOT, HOME_PANEL, "home-card--ver overflow-hidden")} style={{ gridArea: "verR" }}>
-              <Card.Header className={cn(HOME_CARD_HEADER, HOME_PANEL_HD)}>
-                <Card.Title className="flex items-center gap-1.5">
+            <Card className={cn(HOME_PANEL, "home-card--ver overflow-hidden")} style={{ gridArea: "verR" }}>
+              <CardHeader className={HOME_PANEL_HD}>
+                <CardTitle className={cn(HOME_PANEL_TITLE, "flex items-center gap-1.5")}>
                   <PanelTitleIcon icon={Server} />
                   环境
-                </Card.Title>
+                </CardTitle>
                 {health?.ok ? (
                   <span className={cn(HOME_PANEL_TAG, "home-card__tag--ok")}>API 已连接</span>
                 ) : null}
-              </Card.Header>
-              <Card.Content className={cn(HOME_CARD_CONTENT, HOME_PANEL_BD)}>
+              </CardHeader>
+              <CardContent className={HOME_PANEL_BD}>
                   <dl className="home-ver-dl">
                     <div className="home-ver-dl__row">
                       <dt>服务时间</dt>
@@ -1415,7 +1412,7 @@ export default function HomePage() {
                       </dd>
                     </div>
                   </dl>
-              </Card.Content>
+              </CardContent>
             </Card>
           </div>
         </div>

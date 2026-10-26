@@ -35,8 +35,8 @@ describe("Select", () => {
     function ControlledSelect() {
       const [value, setValue] = React.useState("apple");
       return (
-        <Select aria-label="Fruit" value={value} onValueChange={(next) => { onValueChange(next); setValue(next); }}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
+        <Select value={value} onValueChange={(next) => { onValueChange(next); setValue(next); }}>
+          <SelectTrigger aria-label="Fruit"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="apple">Apple</SelectItem>
             <SelectItem value="pear">Pear</SelectItem>
@@ -46,11 +46,11 @@ describe("Select", () => {
     }
     render(<ControlledSelect />);
 
-    await user.click(screen.getByRole("button", { name: "Fruit" }));
+    await user.click(screen.getByRole("combobox", { name: "Fruit" }));
     await user.click(await screen.findByRole("option", { name: "Pear" }));
 
     expect(onValueChange).toHaveBeenCalledWith("pear");
-    const trigger = screen.getByRole("button", { name: "Fruit" });
+    const trigger = screen.getByRole("combobox", { name: "Fruit" });
     expect(trigger.textContent).toContain("Pear");
   });
 });
@@ -191,9 +191,9 @@ describe("Calendar", () => {
   it("reports the selected date from a day button", async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
-    render(<Calendar defaultMonth={new Date(2025, 0, 1)} onSelect={onSelect} />);
+    render(<Calendar mode="single" defaultMonth={new Date(2025, 0, 1)} showOutsideDays={false} onSelect={onSelect} />);
 
-    await user.click(screen.getByRole("button", { name: /January 15, 2025/ }));
+    await user.click(screen.getByRole("gridcell", { name: "15" }));
 
     const selected = onSelect.mock.calls[0][0] as Date;
     expect([selected.getFullYear(), selected.getMonth(), selected.getDate()]).toEqual([2025, 0, 15]);
