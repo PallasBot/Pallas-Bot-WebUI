@@ -45,7 +45,7 @@ it("disables spatial and looping motion without hiding pending or command select
   expect(blocks.length, "index.css must define at least one prefers-reduced-motion block").toBeGreaterThan(0);
   const reducedMotion = blocks.join("\n");
 
-  expect(reducedMotion).toContain(".seg-tabs__selection-indicator");
+  expect(reducedMotion).toContain(".seg-tabs__indicator");
   expect(reducedMotion).toContain(".command-list::before");
   expect(reducedMotion).toContain(".status-tone--pending");
   expect(reducedMotion).toContain(".shell-mobile-nav__panel");

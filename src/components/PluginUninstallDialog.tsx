@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
-  AlertDialogBody,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -169,57 +168,55 @@ export default function PluginUninstallDialog({ open, pluginRow, onClose, onUnin
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <AlertDialogBody>
-            {finished ? (
-              <div className="space-y-3">
-                <p className="plugin-store-page__hint plugin-store-page__hint--ok m-0">{resultMsg}</p>
-                {needsRestart && restartAvailable ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    icon={RotateCw}
-                    iconMotion="spin"
-                    iconBusy={restartBusy}
-                    disabled={restartBusy}
-                    onClick={() => void handleRestart()}
-                  >
-                    {restartBusy ? "重启中…" : "重启 Bot 生效"}
-                  </Button>
-                ) : null}
+          {finished ? (
+            <div className="space-y-3">
+              <p className="plugin-store-page__hint plugin-store-page__hint--ok m-0">{resultMsg}</p>
+              {needsRestart && restartAvailable ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  icon={RotateCw}
+                  iconMotion="spin"
+                  iconBusy={restartBusy}
+                  disabled={restartBusy}
+                  onClick={() => void handleRestart()}
+                >
+                  {restartBusy ? "重启中…" : "重启 Bot 生效"}
+                </Button>
+              ) : null}
+            </div>
+          ) : busy ? (
+            <div className="plugin-store-page__detail-skeleton space-y-2" aria-live="polite">
+              <p className="muted m-0 text-sm">{progressMsg || "正在卸载…"}</p>
+              <div className="plugin-store-card__progress-track" aria-hidden="true">
+                <div className="plugin-store-card__progress-fill" style={{ width: `${percent || 6}%` }} />
               </div>
-            ) : busy ? (
-              <div className="plugin-store-page__detail-skeleton space-y-2" aria-live="polite">
-                <p className="muted m-0 text-sm">{progressMsg || "正在卸载…"}</p>
-                <div className="plugin-store-card__progress-track" aria-hidden="true">
-                  <div className="plugin-store-card__progress-fill" style={{ width: `${percent || 6}%` }} />
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="alert alert--err m-0">
-                  {requireName
-                    ? `删除会${targetText}。请确认后输入插件名以继续。`
-                    : `卸载会${targetText}。此操作不可撤销，确认后执行。`}
-                </p>
-                {requireName ? (
-                  <label className="block space-y-1.5">
-                    <span className="text-[13px] text-muted-foreground">
-                      输入插件名 <code>{pluginId}</code> 以确认删除
-                    </span>
-                    <Input
-                      className="h-9"
-                      value={confirmText}
-                      autoComplete="off"
-                      autoFocus
-                      placeholder={pluginId}
-                      onChange={(e) => setConfirmText(e.target.value)}
-                    />
-                  </label>
-                ) : null}
-                {error ? <p className="alert alert--err m-0">{error}</p> : null}
-              </div>
-            )}
-          </AlertDialogBody>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="alert alert--err m-0">
+                {requireName
+                  ? `删除会${targetText}。请确认后输入插件名以继续。`
+                  : `卸载会${targetText}。此操作不可撤销，确认后执行。`}
+              </p>
+              {requireName ? (
+                <label className="block space-y-1.5">
+                  <span className="text-[13px] text-muted-foreground">
+                    输入插件名 <code>{pluginId}</code> 以确认删除
+                  </span>
+                  <Input
+                    className="h-9"
+                    value={confirmText}
+                    autoComplete="off"
+                    autoFocus
+                    placeholder={pluginId}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                  />
+                </label>
+              ) : null}
+              {error ? <p className="alert alert--err m-0">{error}</p> : null}
+            </div>
+          )}
 
           <AlertDialogFooter>
             {finished ? (

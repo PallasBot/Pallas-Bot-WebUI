@@ -3,8 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { postConsoleAuthLogin, sanitizeConsoleNext } from "@/api/consoleAuth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@heroui/react";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { applyShellTheme, readPrefs, writePrefs, type ThemeMode } from "@/theme/applyShellTheme";
 import { PALLAS_BOT_DOC } from "@/utils/pallasExternalLinks";
 
@@ -135,11 +134,7 @@ export default function LoginPage() {
                 aria-label="控制台密钥"
                 value={password}
                 disabled={busy}
-                className={cn(
-                  "flex h-9 min-h-[var(--ui-ctrl-height,36px)] w-full",
-                  "h-10 pr-16",
-                )}
-                data-heroui-skin="true"
+                className="h-10 pr-16"
                 onChange={(e) => setPassword(e.target.value)}
               />
               <button

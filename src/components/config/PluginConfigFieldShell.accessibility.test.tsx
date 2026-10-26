@@ -69,7 +69,7 @@ it("labels text, numeric, secret, raw JSON, multiline and switch controls with u
     expect(document.activeElement).toBe(control);
   }
 
-  const switchControl = screen.getByRole("switch", { name: "Enabled field" });
+  const switchControl = screen.getByRole("checkbox", { name: "Enabled field" });
   expect(switchControl.getAttribute("id")).toBeTruthy();
   expect(switchControl.getAttribute("aria-describedby")).toBeTruthy();
 });

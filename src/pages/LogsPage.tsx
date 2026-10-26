@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, MessageSquare, Ellipsis, Radio, Hash, Download, Layers, Filter, Check, ChevronDown } from "lucide-react";
+import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, MessageSquare, Ellipsis, Radio, Hash, Download, Layers, Filter } from "lucide-react";
 import { fetchLogs, openLogsEventSource } from "@/api/fullConsole";
 import { fetchCommonConfig, putCommonConfig } from "@/api/consoleApi";
 import { axiosErrorDetail } from "@/api/http";
@@ -21,9 +21,17 @@ import { cn } from "@/lib/utils";
 import LogVirtualFeed, { type LogVirtualFeedHandle } from "@/components/LogVirtualFeed";
 import PageFill from "@/components/layout/PageFill";
 import PagePinned from "@/components/layout/PagePinned";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { renderSelectTrigger } from "@/components/ui/select";
-import { Card, Chip, Input, ListBox, Select } from "@heroui/react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   LOG_ENTRY_LEVELS,
   loadLogsEnabledLevels,
@@ -40,14 +48,6 @@ import {
 } from "@/utils/logStreamResume";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { probeConsoleStreamUnauthorized } from "@/utils/consoleStreamAuth";
-
-const PALLAS_SELECT_TRIGGER = "min-h-[var(--ui-ctrl-height,36px)] w-full min-w-0 overflow-hidden [&>span]:min-w-0 [&>span]:overflow-hidden [&>span]:text-ellipsis [&>span>*]:min-w-0 [&>span>*]:overflow-hidden [&>span>*]:text-ellipsis";
-const PALLAS_SELECT_POPOVER = "relative z-[500] flex min-h-0 min-w-[8rem] flex-col overflow-hidden data-[entering]:animate-in data-[exiting]:animate-out data-[exiting]:fade-out-0 data-[entering]:fade-in-0 data-[exiting]:zoom-out-95 data-[entering]:zoom-in-95 data-[placement=bottom]:slide-in-from-top-2 data-[placement=left]:slide-in-from-right-2 data-[placement=right]:slide-in-from-left-2 data-[placement=top]:slide-in-from-bottom-2";
-const PALLAS_SELECT_ITEM = "relative flex w-full cursor-default select-none items-center py-1.5 pl-8 pr-2";
-const PALLAS_SELECT_INDICATOR = "absolute left-2 flex h-3.5 w-3.5 items-center justify-center";
-const PALLAS_INPUT_BASE = "flex h-9 min-h-[var(--ui-ctrl-height,36px)] w-full";
-const PALLAS_CARD = "pallas-card-frame block static gap-0 p-0";
-const PALLAS_CARD_CONTENT = "pallas-card-content block gap-0 p-5 pt-0";
 
 type LogsSnapshot = {
   scope: LogScope;
@@ -631,18 +631,6 @@ export default function LogsPage() {
       ? "warn"
       : "secondary";
 
-  function badgeClass(variant: string) {
-    const variantClass = {
-      success: "chip--success chip--soft",
-      warn: "chip--warning chip--soft",
-      secondary: "chip--secondary chip--default chip--soft",
-      outline: "chip--tertiary chip--default",
-      default: "chip--accent chip--soft",
-      muted: "chip--default chip--soft",
-    }[variant] ?? "chip--accent chip--soft";
-    return `chip chip--md ${variantClass}`;
-  }
-
   const levelCounts = useMemo(() => {
     void liveTick;
     const counts: Record<LogEntryLevel, number> = {
@@ -695,65 +683,47 @@ export default function LogsPage() {
             advancedOpen ? (
               <>
                 <ChromeField label="范围" icon={FolderOpen}>
-                  <Select value={scope} aria-label="日志范围" onChange={(v) => setScope(String(v ?? "") as LogScope)}>
-                    <Select.Trigger
-                      className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER)}
-                      render={renderSelectTrigger()}
-                    >
-                      <Select.Value>{({ selectedText }) => selectedText}</Select.Value>
-                      <Select.Indicator><ChevronDown className="h-4 w-4 opacity-50" /></Select.Indicator>
-                    </Select.Trigger>
-                    <Select.Popover placement="bottom start" offset={4} className={PALLAS_SELECT_POPOVER}>
-                      <ListBox className="min-h-0 flex-1 overflow-auto p-1">
-                      <ListBox.Item id="all" textValue="全部" className={PALLAS_SELECT_ITEM}>
+                  <Select value={scope} onValueChange={(v) => setScope(v as LogScope)}>
+                    <SelectTrigger className={CHROME_SELECT_TRIGGER} aria-label="日志范围">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
                         <ChromeOptionLabel icon={Globe}>全部</ChromeOptionLabel>
-                        <span className={PALLAS_SELECT_INDICATOR}><ListBox.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></ListBox.ItemIndicator></span>
-                      </ListBox.Item>
-                      <ListBox.Item id="message" textValue="消息" className={PALLAS_SELECT_ITEM}>
+                      </SelectItem>
+                      <SelectItem value="message">
                         <ChromeOptionLabel icon={MessageSquare}>消息</ChromeOptionLabel>
-                        <span className={PALLAS_SELECT_INDICATOR}><ListBox.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></ListBox.ItemIndicator></span>
-                      </ListBox.Item>
-                      <ListBox.Item id="console" textValue="控制台" className={PALLAS_SELECT_ITEM}>
+                      </SelectItem>
+                      <SelectItem value="console">
                         <ChromeOptionLabel icon={Monitor}>控制台</ChromeOptionLabel>
-                        <span className={PALLAS_SELECT_INDICATOR}><ListBox.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></ListBox.ItemIndicator></span>
-                      </ListBox.Item>
-                      <ListBox.Item id="other" textValue="其它" className={PALLAS_SELECT_ITEM}>
+                      </SelectItem>
+                      <SelectItem value="other">
                         <ChromeOptionLabel icon={Ellipsis}>其它</ChromeOptionLabel>
-                        <span className={PALLAS_SELECT_INDICATOR}><ListBox.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></ListBox.ItemIndicator></span>
-                      </ListBox.Item>
-                      </ListBox>
-                    </Select.Popover>
+                      </SelectItem>
+                    </SelectContent>
                   </Select>
                 </ChromeField>
                 {payload?.sharded_logs || logSources.length > 1 ? (
                   <ChromeField label="来源" icon={Radio}>
-                    <Select value={logSource} aria-label="日志来源" onChange={(v) => setLogSource(String(v ?? ""))}>
-                    <Select.Trigger
-                      className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER)}
-                      render={renderSelectTrigger()}
-                    >
-                      <Select.Value>{({ selectedText }) => selectedText}</Select.Value>
-                      <Select.Indicator><ChevronDown className="h-4 w-4 opacity-50" /></Select.Indicator>
-                    </Select.Trigger>
-                      <Select.Popover placement="bottom start" offset={4} className={PALLAS_SELECT_POPOVER}>
-                        <ListBox className="min-h-0 flex-1 overflow-auto p-1">
+                    <Select value={logSource} onValueChange={setLogSource}>
+                      <SelectTrigger className={CHROME_SELECT_TRIGGER} aria-label="日志来源">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
                         {sourceOptions.map((s) => (
-                          <ListBox.Item key={`src-${s}`} id={s} textValue={formatLogSource(s)} className={PALLAS_SELECT_ITEM}>
+                          <SelectItem key={`src-${s}`} value={s}>
                             <ChromeOptionLabel icon={s === "all" ? Radio : FileText}>
                               {formatLogSource(s)}
                             </ChromeOptionLabel>
-                            <span className={PALLAS_SELECT_INDICATOR}><ListBox.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></ListBox.ItemIndicator></span>
-                          </ListBox.Item>
+                          </SelectItem>
                         ))}
-                        </ListBox>
-                      </Select.Popover>
+                      </SelectContent>
                     </Select>
                   </ChromeField>
                 ) : null}
                 <ChromeField label="条数" icon={Hash}>
                   <Input
-                    className={cn(PALLAS_INPUT_BASE, "h-9 min-h-9 w-[4.5rem]")}
-                    data-heroui-skin="true"
+                    className="h-9 min-h-9 w-[4.5rem]"
                     type="number"
                     min={20}
                     max={2000}
@@ -796,8 +766,7 @@ export default function LogsPage() {
             />
             <Input
               type="search"
-              className={cn(PALLAS_INPUT_BASE, CHROME_SEARCH_INPUT)}
-              data-heroui-skin="true"
+              className={CHROME_SEARCH_INPUT}
               placeholder="搜索日志…"
               aria-label="搜索日志"
               autoComplete="off"
@@ -806,52 +775,43 @@ export default function LogsPage() {
             />
           </div>
           <ChromeField label="视图" icon={Eye}>
-            <Select value={view} aria-label="日志视图" onChange={(v) => setView(v === "raw" ? "raw" : "feed")}>
-              <Select.Trigger
-                className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER, "min-w-[6.5rem] max-w-[9rem]")}
-                render={renderSelectTrigger()}
+            <Select value={view} onValueChange={(v) => setView(v === "raw" ? "raw" : "feed")}>
+              <SelectTrigger
+                className={cn(CHROME_SELECT_TRIGGER, "min-w-[6.5rem] max-w-[9rem]")}
+                aria-label="日志视图"
               >
-                <Select.Value>{({ selectedText }) => selectedText}</Select.Value>
-                <Select.Indicator><ChevronDown className="h-4 w-4 opacity-50" /></Select.Indicator>
-              </Select.Trigger>
-              <Select.Popover placement="bottom end" offset={4} className={cn(PALLAS_SELECT_POPOVER, "min-w-[10rem]")}>
-                <ListBox className="min-h-0 flex-1 overflow-auto p-1">
-                <ListBox.Item id="feed" textValue="结构化" className={PALLAS_SELECT_ITEM}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end" className="min-w-[10rem]">
+                <SelectItem value="feed">
                   <ChromeOptionLabel icon={LayoutList}>结构化</ChromeOptionLabel>
-                  <span className={PALLAS_SELECT_INDICATOR}><ListBox.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></ListBox.ItemIndicator></span>
-                </ListBox.Item>
-                <ListBox.Item id="raw" textValue="原始行" className={PALLAS_SELECT_ITEM}>
+                </SelectItem>
+                <SelectItem value="raw">
                   <ChromeOptionLabel icon={FileText}>原始行</ChromeOptionLabel>
-                  <span className={PALLAS_SELECT_INDICATOR}><ListBox.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></ListBox.ItemIndicator></span>
-                </ListBox.Item>
-                </ListBox>
-              </Select.Popover>
+                </SelectItem>
+              </SelectContent>
             </Select>
           </ChromeField>
           <ChromeField label="运行级别" icon={Layers}>
             <Select
               value={runLevel}
-              aria-label="运行级别"
-              isDisabled={runLevelSaving}
-              onChange={(v) => void changeRunLevel(String(v ?? ""))}
+              disabled={runLevelSaving}
+              onValueChange={(v) => void changeRunLevel(v)}
             >
-              <Select.Trigger
-                className={cn(PALLAS_SELECT_TRIGGER, CHROME_SELECT_TRIGGER, "min-w-[6.5rem] max-w-[9rem]")}
-                render={renderSelectTrigger({ title: "修改日志输出级别，保存后即时生效" })}
+              <SelectTrigger
+                className={cn(CHROME_SELECT_TRIGGER, "min-w-[6.5rem] max-w-[9rem]")}
+                aria-label="运行级别"
+                title="修改日志输出级别，保存后即时生效"
               >
-                <Select.Value>{({ selectedText }) => selectedText}</Select.Value>
-                <Select.Indicator><ChevronDown className="h-4 w-4 opacity-50" /></Select.Indicator>
-              </Select.Trigger>
-              <Select.Popover placement="bottom end" offset={4} className={cn(PALLAS_SELECT_POPOVER, "min-w-[10rem]")}>
-                <ListBox className="min-h-0 flex-1 overflow-auto p-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end" className="min-w-[10rem]">
                 {runLevelOptions.map((lv) => (
-                  <ListBox.Item key={`rlevel-${lv}`} id={lv} textValue={lv} className={cn(PALLAS_SELECT_ITEM, "py-2 pl-7 pr-3 [&>span]:gap-2")}>
+                  <SelectItem key={`rlevel-${lv}`} value={lv}>
                     <ChromeOptionLabel icon={Layers}>{lv}</ChromeOptionLabel>
-                    <span className={PALLAS_SELECT_INDICATOR}><ListBox.ItemIndicator><Check className="h-4 w-4 text-[var(--accent)]" /></ListBox.ItemIndicator></span>
-                  </ListBox.Item>
+                  </SelectItem>
                 ))}
-                </ListBox>
-              </Select.Popover>
+              </SelectContent>
             </Select>
           </ChromeField>
           <Button
@@ -880,15 +840,15 @@ export default function LogsPage() {
         </ChromeTools>
       </PagePinned>
 
-      <Card className={cn(PALLAS_CARD, "logs-page__panel flex min-h-0 flex-1 flex-col overflow-hidden")}>
-        <Card.Content className={cn(PALLAS_CARD_CONTENT, "logs-page__panel-bd flex min-h-0 flex-1 flex-col gap-2 px-4 pb-4 pt-3")}>
+      <Card className="logs-page__panel flex min-h-0 flex-1 flex-col overflow-hidden shadow-none">
+        <CardContent className="logs-page__panel-bd flex min-h-0 flex-1 flex-col gap-2 px-4 pb-4 pt-3">
           {payload?.max != null ? (
             <div className="logs-page__status flex flex-wrap items-center gap-2">
-              <Chip className={badgeClass(streamBadgeVariant)}><Chip.Label>{streamBadgeLabel}</Chip.Label></Chip>
-              <Chip className={badgeClass("outline")}><Chip.Label>历史 {historyEntryCount}</Chip.Label></Chip>
-              {liveExtraCount ? <Chip className={badgeClass("default")}><Chip.Label>+{liveExtraCount} 实时</Chip.Label></Chip> : null}
-              <Chip className={badgeClass("outline")}><Chip.Label>显示 {visibleCount}</Chip.Label></Chip>
-              {activeFilterCount ? <Chip className={badgeClass("muted")}><Chip.Label>筛选中</Chip.Label></Chip> : null}
+              <Badge variant={streamBadgeVariant}>{streamBadgeLabel}</Badge>
+              <Badge variant="outline">历史 {historyEntryCount}</Badge>
+              {liveExtraCount ? <Badge variant="default">+{liveExtraCount} 实时</Badge> : null}
+              <Badge variant="outline">显示 {visibleCount}</Badge>
+              {activeFilterCount ? <Badge variant="muted">筛选中</Badge> : null}
             </div>
           ) : null}
 
@@ -918,7 +878,7 @@ export default function LogsPage() {
               </pre>
             )}
           </div>
-        </Card.Content>
+        </CardContent>
       </Card>
     </PageFill>
   );

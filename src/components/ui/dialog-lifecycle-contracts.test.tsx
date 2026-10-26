@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogBody, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -25,6 +25,11 @@ async function flushAnimationFrames() {
   });
   await nextFrame();
   await nextFrame();
+}
+
+/** Radix 在 setTimeout(0) 后才挂载 document 级 outside 监听，先放行一个宏任务。 */
+function nextTick() {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, 0));
 }
 
 it("bridges controlled triggers and close requests to the owner", async () => {
@@ -90,10 +95,8 @@ it("honors Escape and outside callback preventDefault semantics", async () => {
   await user.keyboard("{Escape}");
   expect(onEscapeKeyDown).toHaveBeenCalledOnce();
   expect(screen.getByRole("dialog")).toBeTruthy();
-  const backdrop = document.querySelector<HTMLElement>('[data-slot="modal-backdrop"]');
-  if (!backdrop) throw new Error("Dialog backdrop was not rendered");
-  fireEvent.pointerDown(backdrop, { button: 0 });
-  fireEvent.click(backdrop);
+  fireEvent.pointerDown(document.body, { button: 0 });
+  fireEvent.click(document.body);
   expect(onPointerDownOutside).toHaveBeenCalledOnce();
   expect(onInteractOutside).toHaveBeenCalledOnce();
   expect(onPointerDownOutside.mock.calls[0][0]).toBe(onInteractOutside.mock.calls[0][0]);
@@ -139,7 +142,52 @@ it("keeps the trigger focused when Dialog onOpenAutoFocus vetoes without choosin
   expect(document.activeElement).toBe(trigger);
 });
 
-it("keeps pointerdown veto until React Aria's document-capture check", () => {
+it("keeps pointerdown veto for outside interactions", async () => {
+  const onOpenChange = vi.fn();
+  const onPointerDownOutside = vi.fn((event: CustomEvent<{ originalEvent: PointerEvent }>) => event.preventDefault());
+  render(<Dialog open onOpenChange={onOpenChange}>
+    <DialogContent onPointerDownOutside={onPointerDownOutside}><DialogTitle>Settings</DialogTitle></DialogContent>
+  </Dialog>);
+
+  await nextTick();
+  fireEvent.pointerDown(document.body, { button: 0 });
+  fireEvent.click(document.body, { button: 0 });
+
+  expect(onPointerDownOutside).toHaveBeenCalledOnce();
+  expect(onPointerDownOutside.mock.calls[0][0].detail.originalEvent).toBeInstanceOf(Event);
+  expect(onOpenChange).not.toHaveBeenCalled();
+  expect(screen.getByRole("dialog")).toBeTruthy();
+});
+
+it("keeps pointer veto across rerender from an inline outside callback", async () => {
+  const onOpenChange = vi.fn();
+  const onPointerDownOutside = vi.fn((event: CustomEvent) => event.preventDefault());
+  function InlineVetoDialog() {
+    const [count, setCount] = React.useState(0);
+    return <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent onPointerDownOutside={(event) => {
+        onPointerDownOutside(event);
+        setCount(count + 1);
+      }}>
+        <DialogTitle>Settings</DialogTitle>
+        <output>{count}</output>
+      </DialogContent>
+    </Dialog>;
+  }
+
+  render(<InlineVetoDialog />);
+  await nextTick();
+  fireEvent.pointerDown(document.body, { button: 0 });
+  expect(screen.getByText("1")).toBeTruthy();
+  fireEvent.click(document.body, { button: 0 });
+
+  expect(onPointerDownOutside).toHaveBeenCalledOnce();
+  expect(onOpenChange).not.toHaveBeenCalled();
+  expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
+});
+
+it("does not close on focus outside, right-click, or Ctrl-click", async () => {
+  // jsdom 无 PointerEvent；用 MouseEvent 派生 shim 才能带上 button / ctrlKey。
   const originalPointerEvent = globalThis.PointerEvent;
   class PointerEventShim extends MouseEvent {
     readonly pointerId = 1;
@@ -149,93 +197,25 @@ it("keeps pointerdown veto until React Aria's document-capture check", () => {
   Object.defineProperty(globalThis, "PointerEvent", { configurable: true, value: PointerEventShim });
   try {
     const onOpenChange = vi.fn();
-    const onPointerDownOutside = vi.fn((event: CustomEvent<{ originalEvent: PointerEvent }>) => event.preventDefault());
-    render(<Dialog open onOpenChange={onOpenChange}>
-      <DialogContent onPointerDownOutside={onPointerDownOutside}><DialogTitle>Settings</DialogTitle></DialogContent>
-    </Dialog>);
-
-    const backdrop = document.querySelector<HTMLElement>('[data-slot="modal-backdrop"]');
-    if (!backdrop) throw new Error("Dialog backdrop was not rendered");
-    vi.useFakeTimers();
-    const queueMicrotaskSpy = vi.spyOn(globalThis, "queueMicrotask").mockImplementation((callback) => callback());
-    try {
-      fireEvent.pointerDown(backdrop, { button: 0 });
-      vi.advanceTimersByTime(1500);
-    } finally {
-      queueMicrotaskSpy.mockRestore();
-      vi.useRealTimers();
-    }
-    fireEvent.click(backdrop, { button: 0 });
-
-    expect(onPointerDownOutside).toHaveBeenCalledOnce();
-    expect(onPointerDownOutside.mock.calls[0][0].detail.originalEvent).toBeInstanceOf(PointerEventShim);
+    const { container } = render(<>
+      <button type="button">Outside</button>
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent><DialogTitle>Settings</DialogTitle></DialogContent>
+      </Dialog>
+    </>);
+    const outside = container.querySelector("button");
+    if (!outside) throw new Error("Outside button was not rendered");
+    fireEvent.focus(outside);
+    await nextTick();
+    fireEvent.pointerDown(document.body, { button: 2 });
+    fireEvent.pointerDown(document.body, { button: 0, ctrlKey: true });
+    await nextTick();
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeTruthy();
   } finally {
     if (typeof originalPointerEvent === "undefined") Reflect.deleteProperty(globalThis, "PointerEvent");
     else Object.defineProperty(globalThis, "PointerEvent", { configurable: true, value: originalPointerEvent });
   }
-});
-
-it("keeps pointer veto across rerender from an inline outside callback", () => {
-  const originalPointerEvent = globalThis.PointerEvent;
-  class PointerEventShim extends MouseEvent {
-    readonly pointerId = 1;
-    readonly pointerType = "mouse";
-    readonly isPrimary = true;
-  }
-  Object.defineProperty(globalThis, "PointerEvent", { configurable: true, value: PointerEventShim });
-  try {
-    const onOpenChange = vi.fn();
-    const onPointerDownOutside = vi.fn((event: CustomEvent<{ originalEvent: PointerEvent }>) => event.preventDefault());
-    function InlineVetoDialog() {
-      const [count, setCount] = React.useState(0);
-      return <Dialog open onOpenChange={onOpenChange}>
-        <DialogContent onPointerDownOutside={(event) => {
-          onPointerDownOutside(event);
-          setCount(count + 1);
-        }}>
-          <DialogTitle>Settings</DialogTitle>
-          <output>{count}</output>
-        </DialogContent>
-      </Dialog>;
-    }
-
-    render(<InlineVetoDialog />);
-    const backdrop = document.querySelector<HTMLElement>('[data-slot="modal-backdrop"]');
-    if (!backdrop) throw new Error("Dialog backdrop was not rendered");
-    fireEvent.pointerDown(backdrop, { button: 0 });
-    expect(screen.getByText("1")).toBeTruthy();
-    fireEvent.click(backdrop, { button: 0 });
-
-    expect(onPointerDownOutside).toHaveBeenCalledOnce();
-    expect(onOpenChange).not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
-  } finally {
-    if (typeof originalPointerEvent === "undefined") Reflect.deleteProperty(globalThis, "PointerEvent");
-    else Object.defineProperty(globalThis, "PointerEvent", { configurable: true, value: originalPointerEvent });
-  }
-});
-
-it("does not close on focus outside, right-click, or Ctrl-click", async () => {
-  const onOpenChange = vi.fn();
-  const { container } = render(<>
-    <button type="button">Outside</button>
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent><DialogTitle>Settings</DialogTitle></DialogContent>
-    </Dialog>
-  </>);
-  const outside = container.querySelector("button");
-  if (!outside) throw new Error("Outside button was not rendered");
-  fireEvent.focus(outside);
-  const backdrop = document.querySelector<HTMLElement>('[data-slot="modal-backdrop"]');
-  if (!backdrop) throw new Error("Dialog backdrop was not rendered");
-  fireEvent.pointerDown(backdrop, { button: 2 });
-  fireEvent.click(backdrop, { button: 2 });
-  fireEvent.pointerDown(backdrop, { button: 0, ctrlKey: true });
-  fireEvent.click(backdrop, { button: 0, ctrlKey: true });
-  expect(onOpenChange).not.toHaveBeenCalled();
-  expect(screen.getByRole("dialog")).toBeTruthy();
 });
 
 it("lets the top nested dialog handle Escape without requesting parent close", async () => {
@@ -280,28 +260,24 @@ it("does not request parent close when a child Popover opens", async () => {
   expect(onOpenChange).not.toHaveBeenCalled();
 });
 
-it("renders a described dialog through HeroUI Text without an asChild wrapper", () => {
+it("renders a described dialog and links it through aria-describedby", () => {
   render(<Dialog open>
     <DialogContent>
       <DialogTitle>Settings</DialogTitle>
-      <DialogDescription asChild><p id="settings-description">Description text</p></DialogDescription>
+      <DialogDescription asChild><p>Description text</p></DialogDescription>
     </DialogContent>
   </Dialog>);
   const dialog = screen.getByRole("dialog", { name: "Settings" });
   const description = screen.getByText("Description text");
-  expect(dialog.getAttribute("aria-describedby")).toBe("settings-description");
   expect(description.tagName).toBe("P");
-  expect(description.getAttribute("data-slot")).toBe("description");
+  expect(dialog.getAttribute("aria-describedby")).toBe(description.getAttribute("id"));
 });
 
-it("keeps the built-in close button focus-visible in forced-colors mode", () => {
+it("keeps the built-in close button focus-visible and labelled", () => {
   render(<Dialog open><DialogContent><DialogTitle>Settings</DialogTitle></DialogContent></Dialog>);
   const closeButton = screen.getByRole("button", { name: "关闭" });
+  expect(closeButton.className).toContain("ui-surface-dialog__close");
   expect(closeButton.className).toContain("focus-visible:ring-1");
-  expect(closeButton.className).toContain("forced-colors:focus-visible:outline-solid");
-  expect(closeButton.className).toContain("forced-colors:focus-visible:outline-2");
-  expect(closeButton.className).toContain("forced-colors:focus-visible:outline-offset-2");
-  expect(closeButton.className).toContain("forced-colors:focus-visible:outline-[Highlight]");
 });
 
 it("uses only the direct asChild ID for dialog descriptions", () => {
@@ -365,7 +341,6 @@ it("lets preventDefault suppress default focus restoration without blurring", as
   expect(document.activeElement).not.toBe(returnFocus);
   await flushAnimationFrames();
   expect(document.activeElement).not.toBe(returnFocus);
-  expect(returnFocus.dispatchEvent(new Event("react-aria-focus-scope-restore", { cancelable: true }))).toBe(true);
   returnFocus.remove();
 });
 
@@ -438,7 +413,7 @@ function mockDialogViewport(matches: boolean) {
 
 it("resets root scroll for desktop dialogs before notifying onScroll", () => {
   mockDialogViewport(false);
-  const ref = React.createRef<HTMLElement>();
+  const ref = React.createRef<HTMLDivElement>();
   const onScroll = vi.fn();
   render(<Dialog open>
     <DialogContent ref={ref} onScroll={onScroll}><DialogTitle>Settings</DialogTitle></DialogContent>
@@ -455,7 +430,7 @@ it("resets root scroll for desktop dialogs before notifying onScroll", () => {
 
 it("keeps root scroll for scroll-enabled dialogs on narrow viewports so the mobile surface can reach its footer", () => {
   mockDialogViewport(true);
-  const ref = React.createRef<HTMLElement>();
+  const ref = React.createRef<HTMLDivElement>();
   const onScroll = vi.fn();
   render(<Dialog open>
     <DialogContent ref={ref} onScroll={onScroll}><DialogTitle>Settings</DialogTitle></DialogContent>
@@ -471,7 +446,7 @@ it("keeps root scroll for scroll-enabled dialogs on narrow viewports so the mobi
 
 it("still resets root scroll for pinned config dialogs on narrow viewports before notifying onScroll", () => {
   mockDialogViewport(true);
-  const ref = React.createRef<HTMLElement>();
+  const ref = React.createRef<HTMLDivElement>();
   const onScroll = vi.fn();
   render(<Dialog open>
     <DialogContent ref={ref} className="plugin-config-dialog" onScroll={onScroll}><DialogTitle>Settings</DialogTitle></DialogContent>
@@ -578,10 +553,8 @@ it("keeps AlertDialog outside dismissal disabled while honoring preventable Esca
       <AlertDialogCancel>Cancel</AlertDialogCancel>
     </AlertDialogContent>
   </AlertDialog>);
-  const backdrop = document.querySelector<HTMLElement>('[data-slot="alert-dialog-backdrop"]');
-  if (!backdrop) throw new Error("AlertDialog backdrop was not rendered");
-  fireEvent.pointerDown(backdrop);
-  fireEvent.click(backdrop);
+  fireEvent.pointerDown(document.body);
+  fireEvent.click(document.body);
   expect(screen.getByRole("alertdialog")).toBeTruthy();
   expect(onOpenChange).not.toHaveBeenCalled();
 
@@ -605,10 +578,8 @@ it("closes AlertDialog on plain Escape while keeping outside dismissal disabled"
     </AlertDialogContent>
   </AlertDialog>);
 
-  const backdrop = document.querySelector<HTMLElement>('[data-slot="alert-dialog-backdrop"]');
-  if (!backdrop) throw new Error("AlertDialog backdrop was not rendered");
-  fireEvent.pointerDown(backdrop);
-  fireEvent.click(backdrop);
+  fireEvent.pointerDown(document.body);
+  fireEvent.click(document.body);
   expect(onOpenChange).not.toHaveBeenCalled();
   expect(screen.getByRole("alertdialog")).toBeTruthy();
 
@@ -651,9 +622,9 @@ it("renders the AlertDialog title, description and body text", () => {
         <AlertDialogTitle>卸载插件「牛牛唱歌」</AlertDialogTitle>
         <AlertDialogDescription>将删除源码目录。此操作不可撤销。</AlertDialogDescription>
       </AlertDialogHeader>
-      <AlertDialogBody>
+      <div className="alert-dialog__body">
         <p>卸载会删除源码目录。确认后执行。</p>
-      </AlertDialogBody>
+      </div>
       <AlertDialogFooter>
         <AlertDialogCancel>取消</AlertDialogCancel>
       </AlertDialogFooter>
@@ -665,5 +636,5 @@ it("renders the AlertDialog title, description and body text", () => {
   expect(description.tagName).toBe("P");
   expect(screen.getByText("卸载会删除源码目录。确认后执行。")).toBeTruthy();
   expect(dialog.getAttribute("aria-describedby")).toBe(description.getAttribute("id"));
-  expect(document.querySelector('[data-slot="alert-dialog-body"]')).toBeTruthy();
+  expect(document.querySelector(".alert-dialog__body")).toBeTruthy();
 });

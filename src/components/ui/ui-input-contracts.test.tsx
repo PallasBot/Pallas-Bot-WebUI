@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 
 afterEach(cleanup);
 
-describe("Input (HeroUI v3 adapter)", () => {
+describe("Input adapter", () => {
   it("keeps controlled value, native props, and change events", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -54,8 +54,7 @@ describe("Input (HeroUI v3 adapter)", () => {
 
     const input = screen.getByRole("textbox", { name: "Merged" });
     expect(input.classList).toContain("form-field__control");
-    expect(input.classList).toContain("input");
-    expect(input.getAttribute("data-heroui-skin")).toBe("true");
+    expect(input.classList).toContain("min-h-[var(--ui-ctrl-height,36px)]");
   });
 });
 

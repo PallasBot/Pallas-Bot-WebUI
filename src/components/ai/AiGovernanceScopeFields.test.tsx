@@ -54,9 +54,7 @@ describe("AiGovernanceScopeFields", () => {
     expect((await screen.findByRole("textbox", { name: "Bot QQ" }) as HTMLInputElement).value).toBe(
       "10001",
     );
-    expect((screen.getByRole("combobox", { name: "治理范围群号" }) as HTMLInputElement).value).toBe(
-      "20002",
-    );
+    expect(screen.getByRole("combobox", { name: "治理范围群号" }).textContent).toContain("20002");
   });
 
   it("clears group and replaces the URL when the bot changes", async () => {

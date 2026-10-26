@@ -5,7 +5,7 @@ import { AiGovernanceScope } from "@/components/ai/AiGovernanceScope";
 import AiGovernanceScopeFields from "@/components/ai/AiGovernanceScopeFields";
 import ChromeTools from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
-import { Tabs } from "@heroui/react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GovernancePipelineTab from "./GovernancePipelineTab";
 import "./AiGovernancePage.css";
 
@@ -27,9 +27,6 @@ export const GOVERNANCE_TABS: readonly GovernanceTabMeta[] = [
   { id: "people", label: "人物", lead: "人物事实与关系笔记。" },
   { id: "memory", label: "记忆", lead: "知识图谱、条目、偏好、回收站与导入导出。" },
 ];
-
-const TAB_PANEL_FOCUS_RING =
-  "ring-offset-pallas-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 export function governanceTabMeta(id: string): GovernanceTabMeta {
   return GOVERNANCE_TABS.find((item) => item.id === id) ?? GOVERNANCE_TABS[0];
@@ -70,45 +67,41 @@ function GovernanceWorkspace() {
       <PageMasthead title="AI 治理" description={meta.lead} />
       <GovernanceChrome />
       <div className="ai-governance-page__tabs">
-        <Tabs selectedKey={active} onSelectionChange={(key) => onTabChange(String(key))} className="w-full">
-          <Tabs.ListContainer className="ai-memory-page__tabs-scroll">
-            <Tabs.List aria-label="AI 治理分类" className="ai-governance-page__tab-list whitespace-nowrap">
-              <Tabs.Tab id="pipeline" className="gap-1">
+        <Tabs value={active} onValueChange={onTabChange} className="w-full">
+          <div className="ai-memory-page__tabs-scroll">
+            <TabsList className="seg-tabs--accent h-auto min-w-max flex-nowrap justify-start">
+              <TabsTrigger value="pipeline" className="gap-1">
                 <GitBranch className="size-3.5" /> 回复流水线
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="style" className="gap-1">
+              </TabsTrigger>
+              <TabsTrigger value="style" className="gap-1">
                 <MessageSquare className="size-3.5" /> 群风格与语义
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="people" className="gap-1">
+              </TabsTrigger>
+              <TabsTrigger value="people" className="gap-1">
                 <ShieldCheck className="size-3.5" /> 人物
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="memory" className="gap-1">
+              </TabsTrigger>
+              <TabsTrigger value="memory" className="gap-1">
                 <Brain className="size-3.5" /> 记忆
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            </Tabs.List>
-          </Tabs.ListContainer>
-          <Tabs.Panel id="pipeline" className={`mt-3 ${TAB_PANEL_FOCUS_RING}`}>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent value="pipeline" className="mt-3">
             <GovernancePipelineTab />
-          </Tabs.Panel>
-          <Tabs.Panel id="style" className={`mt-3 ${TAB_PANEL_FOCUS_RING}`}>
+          </TabsContent>
+          <TabsContent value="style" className="mt-3">
             <Suspense fallback={<div className="text-sm text-muted-foreground">群风格与语义加载中…</div>}>
               <GovernanceStyleTab />
             </Suspense>
-          </Tabs.Panel>
-          <Tabs.Panel id="people" className={`mt-3 ${TAB_PANEL_FOCUS_RING}`}>
+          </TabsContent>
+          <TabsContent value="people" className="mt-3">
             <Suspense fallback={<div className="text-sm text-muted-foreground">人物加载中…</div>}>
               <GovernancePeopleTab />
             </Suspense>
-          </Tabs.Panel>
-          <Tabs.Panel id="memory" className={`mt-3 ${TAB_PANEL_FOCUS_RING}`}>
+          </TabsContent>
+          <TabsContent value="memory" className="mt-3">
             <Suspense fallback={<div className="text-sm text-muted-foreground">记忆加载中…</div>}>
               <GovernanceMemoryTab />
             </Suspense>
-          </Tabs.Panel>
+          </TabsContent>
         </Tabs>
       </div>
     </div>

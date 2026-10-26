@@ -8,9 +8,8 @@ import PageMasthead from "@/components/PageMasthead";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
-import { Input } from "@heroui/react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { useMemo, useState } from "react";
 
 export default function CommonConfigPage() {
@@ -44,11 +43,7 @@ export default function CommonConfigPage() {
             />
             <Input
               type="search"
-              className={cn(
-                "flex h-9 min-h-[var(--ui-ctrl-height,36px)] w-full",
-                CHROME_SEARCH_INPUT,
-              )}
-              data-heroui-skin="true"
+              className={CHROME_SEARCH_INPUT}
               placeholder="搜索配置…"
               aria-label="搜索配置"
               autoComplete="off"

@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableContent, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -37,7 +37,6 @@ describe("Button", () => {
     const button = screen.getByRole("button", { name: "Save changes" });
     expect(ref.current).toBe(button);
     expect(button.getAttribute("type")).toBe("button");
-    expect(button.getAttribute("data-heroui-skin")).toBe("true");
     await user.click(button);
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(clickTarget).toBe(button);
@@ -50,23 +49,21 @@ describe("Button", () => {
     expect(screen.getByRole("combobox", { name: "Docker 镜像" })).toBeTruthy();
   });
 
-  it("preserves variant, size, and block layout classes", () => {
-    render(<Button variant="outline" size="sm" block>Full width</Button>);
-    const button = screen.getByRole("button", { name: "Full width" });
-    expect(button.className).toContain("w-full");
-    expect(button.className).toContain("button--outline");
-    expect(button.className).toContain("button--sm");
-    expect(button.className).toContain("button--full-width");
+  it("preserves variant and size layout classes", () => {
+    render(<Button variant="outline" size="sm">Outline small</Button>);
+    const button = screen.getByRole("button", { name: "Outline small" });
+    expect(button.className).toContain("bg-[var(--control-bg,#fff)]");
+    expect(button.className).toContain("h-8");
+    expect(button.className).toContain("text-xs");
   });
 
   it("keeps link text accent-colored without a ghost hover fill", () => {
     render(<Button variant="link">Details</Button>);
     const button = screen.getByRole("button", { name: "Details" });
 
-    expect(button.className).toContain("button--ghost");
     expect(button.className).toContain("text-[var(--accent)]");
-    expect(button.className).toContain("hover:bg-transparent");
-    expect(button.className).not.toContain("hover:bg-pallas-accent");
+    expect(button.className).toContain("bg-transparent");
+    expect(button.className).toContain("hover:underline");
   });
 
   it("invokes the public click handler once when Enter activates a submit button", async () => {
@@ -189,7 +186,6 @@ describe("Input and Textarea", () => {
     render(<Textarea aria-label="Notes" placeholder="Add notes" defaultValue="Initial" rows={4} onChange={onChange} />);
 
     const textarea = screen.getByRole("textbox", { name: "Notes" }) as HTMLTextAreaElement;
-    expect(textarea.getAttribute("data-heroui-skin")).toBe("true");
     expect(textarea.placeholder).toBe("Add notes");
     expect(textarea.rows).toBe(4);
     expect(textarea.value).toBe("Initial");
@@ -214,25 +210,25 @@ describe("Checkbox and Switch", () => {
     }
     render(<ControlledCheckbox />);
 
-    const checkbox = screen.getByRole("checkbox", { name: "Accept terms" }) as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
+    const checkbox = screen.getByRole("checkbox", { name: "Accept terms" });
+    expect(checkbox.getAttribute("aria-checked")).toBe("false");
     await user.click(checkbox);
     expect(onCheckedChange).toHaveBeenCalledWith(true);
-    expect(checkbox.checked).toBe(true);
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
     checkbox.focus();
     await user.keyboard(" ");
     expect(onCheckedChange).toHaveBeenLastCalledWith(false);
-    expect(checkbox.checked).toBe(false);
+    expect(checkbox.getAttribute("aria-checked")).toBe("false");
   });
 
   it("supports uncontrolled checkbox state", async () => {
     const user = userEvent.setup();
     render(<Checkbox aria-label="Remember me" defaultChecked />);
-    const checkbox = screen.getByRole("checkbox", { name: "Remember me" }) as HTMLInputElement;
+    const checkbox = screen.getByRole("checkbox", { name: "Remember me" });
 
-    expect(checkbox.checked).toBe(true);
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
     await user.click(checkbox);
-    expect(checkbox.checked).toBe(false);
+    expect(checkbox.getAttribute("aria-checked")).toBe("false");
   });
 
   it("renders the Check glyph only while selected", () => {
@@ -245,16 +241,6 @@ describe("Checkbox and Switch", () => {
 
     expect(container.querySelector('[data-testid="checked"] svg')).toBeTruthy();
     expect(container.querySelector('[data-testid="unchecked"] svg')).toBeNull();
-  });
-
-  it("keeps the asChild checkbox compatibility path operable", async () => {
-    const user = userEvent.setup();
-    const onCheckedChange = vi.fn();
-    render(<Checkbox asChild aria-label="Custom checkbox" onCheckedChange={onCheckedChange}><button type="button">Toggle</button></Checkbox>);
-
-    const checkbox = screen.getByRole("checkbox", { name: "Custom checkbox" });
-    await user.click(checkbox);
-    expect(onCheckedChange).toHaveBeenCalledWith(true);
   });
 
   it("supports controlled Switch state and label association", async () => {
@@ -271,7 +257,7 @@ describe("Checkbox and Switch", () => {
     }
     render(<ControlledSwitch />);
 
-    const toggle = screen.getByRole("switch", { name: "Enable alerts" }) as HTMLInputElement;
+    const toggle = screen.getByRole("checkbox", { name: "Enable alerts" }) as HTMLInputElement;
     expect(toggle.checked).toBe(false);
     await user.click(toggle);
     expect(onCheckedChange).toHaveBeenCalledWith(true);
@@ -281,7 +267,7 @@ describe("Checkbox and Switch", () => {
   it("supports uncontrolled Switch state", async () => {
     const user = userEvent.setup();
     render(<Switch aria-label="Developer mode" defaultChecked />);
-    const toggle = screen.getByRole("switch", { name: "Developer mode" }) as HTMLInputElement;
+    const toggle = screen.getByRole("checkbox", { name: "Developer mode" }) as HTMLInputElement;
 
     expect(toggle.checked).toBe(true);
     await user.click(toggle);
@@ -296,7 +282,7 @@ describe("Checkbox and Switch", () => {
     });
     render(<Switch aria-label="Keyboard switch" onKeyDown={onKeyDown} />);
 
-    const toggle = screen.getByRole("switch", { name: "Keyboard switch" });
+    const toggle = screen.getByRole("checkbox", { name: "Keyboard switch" });
     toggle.focus();
     await user.keyboard("{Enter}");
     await user.keyboard(" ");
@@ -368,18 +354,14 @@ describe("Card", () => {
     const content = screen.getByText("Profile content") as HTMLElement;
     const footer = screen.getByText("Save controls") as HTMLElement;
     expect(card.tagName).toBe("DIV");
-    expect(card.classList).toContain("card");
-    expect(card.classList).toContain("card--default");
-    expect(card.classList).toContain("pallas-card-frame");
-    expect(card.classList).toContain("static");
-    expect(card.classList).toContain("p-0");
-    expect(card.getAttribute("data-heroui-skin")).toBe("true");
+    expect(card.classList).toContain("rounded-lg");
+    expect(card.classList).toContain("bg-card");
+    expect(card.classList).toContain("text-card-foreground");
+    expect(card.classList).toContain("shadow-none");
     expect(header.classList).toContain("space-y-1.5");
     expect(header.classList).toContain("p-5");
     expect(content.classList).toContain("p-5");
     expect(content.classList).toContain("pt-0");
-    expect(content.classList).toContain("card__content");
-    expect(content.classList).toContain("pallas-card-content");
     expect(footer.classList).toContain("items-center");
     expect(footer.classList).toContain("p-5");
     expect(footer.classList).toContain("pt-0");
@@ -401,67 +383,60 @@ describe("Card", () => {
 });
 
 describe("Table", () => {
-  it("uses HeroUI collection semantics and keeps the accessible label", async () => {
-    const user = userEvent.setup();
-    const onAction = vi.fn();
+  it("renders semantic table sections with an accessible label", () => {
     render(
-      <Table>
-        <TableContent aria-label="Installed plugins">
-          <TableHeader>
-            <TableHead id="name" isRowHeader>Name</TableHead>
-            <TableHead id="status">Status</TableHead>
-          </TableHeader>
-          <TableBody>
-            <TableRow id="core" textValue="Core" onAction={onAction}>
-              <TableCell>Core</TableCell>
-              <TableCell>Ready</TableCell>
-            </TableRow>
-          </TableBody>
-        </TableContent>
+      <Table aria-label="Installed plugins">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>Core</TableCell>
+            <TableCell>Ready</TableCell>
+          </TableRow>
+        </TableBody>
       </Table>,
     );
 
-    const table = screen.getByRole("grid", { name: "Installed plugins" });
+    const table = screen.getByRole("table", { name: "Installed plugins" });
     expect(table.querySelector("thead")).toBeTruthy();
     expect(table.querySelector("tbody")).toBeTruthy();
     expect(screen.getAllByRole("columnheader")).toHaveLength(2);
-    expect(screen.getByRole("rowheader", { name: "Core" })).toBeTruthy();
-    expect(screen.getByRole("gridcell", { name: "Ready" })).toBeTruthy();
-    const row = screen.getByRole("row", { name: "Core" });
-    row.focus();
-    await user.keyboard("{Enter}");
-    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("cell", { name: "Ready" })).toBeTruthy();
   });
 
   it("keeps the six-column span used by expandable tool rows", () => {
     render(
-      <Table>
-        <TableContent aria-label="Expandable tools">
-          <TableHeader>
-            <TableHead id="one" isRowHeader>One</TableHead>
-            <TableHead id="two">Two</TableHead>
-            <TableHead id="three">Three</TableHead>
-            <TableHead id="four">Four</TableHead>
-            <TableHead id="five">Five</TableHead>
-            <TableHead id="six">Six</TableHead>
-          </TableHeader>
-          <TableBody>
-            <TableRow id="tool" textValue="Tool">
-              <TableCell>Tool</TableCell>
-              <TableCell>Source</TableCell>
-              <TableCell>Domain</TableCell>
-              <TableCell>Hints</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-            <TableRow id="tool-details" textValue="Tool details">
-              <TableCell colSpan={6}>Expanded editor</TableCell>
-            </TableRow>
-          </TableBody>
-        </TableContent>
+      <Table aria-label="Expandable tools">
+        <TableHeader>
+          <TableRow>
+            <TableHead>One</TableHead>
+            <TableHead>Two</TableHead>
+            <TableHead>Three</TableHead>
+            <TableHead>Four</TableHead>
+            <TableHead>Five</TableHead>
+            <TableHead>Six</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>Tool</TableCell>
+            <TableCell>Source</TableCell>
+            <TableCell>Domain</TableCell>
+            <TableCell>Hints</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell>Actions</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell colSpan={6}>Expanded editor</TableCell>
+          </TableRow>
+        </TableBody>
       </Table>,
     );
 
-    expect(screen.getByRole("rowheader", { name: "Expanded editor" }).getAttribute("colspan")).toBe("6");
+    expect(screen.getByRole("cell", { name: "Expanded editor" }).getAttribute("colspan")).toBe("6");
   });
 });

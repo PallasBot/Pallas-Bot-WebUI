@@ -71,19 +71,19 @@ it("allows same-panel query changes but confirms leaving a dirty query subpanel"
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
-  await screen.findByRole("switch", { name: "启用会话" });
+  await screen.findByRole("checkbox", { name: "启用会话" });
   await user.click(screen.getByRole("link", { name: "keep this panel" }));
   expect(screen.getByLabelText("location").textContent).toBe("/ai/config/dialogue?panel=session&focus=field");
 
-  await user.click(screen.getByRole("switch", { name: "启用会话" }));
+  await user.click(screen.getByRole("checkbox", { name: "启用会话" }));
   await user.click(screen.getByRole("link", { name: "leave session panel" }));
   expect(await screen.findByRole("alertdialog")).not.toBeNull();
   await user.click(screen.getByRole("button", { name: "取消" }));
   expect(router.state.location.search).toBe("?panel=session&focus=field");
 
   // Return to baseline, make a new draft, and accept leaving it.
-  await user.click(screen.getByRole("switch", { name: "启用会话" }));
-  await user.click(screen.getByRole("switch", { name: "启用会话" }));
+  await user.click(screen.getByRole("checkbox", { name: "启用会话" }));
+  await user.click(screen.getByRole("checkbox", { name: "启用会话" }));
   await user.click(screen.getByRole("link", { name: "leave session panel" }));
   await user.click(await screen.findByRole("button", { name: "离开页面" }));
   await waitFor(() => expect(router.state.location.search).toBe("?panel=memory"));

@@ -44,7 +44,6 @@ export default function PluginConfigDialog({
   closeHandledByNavigation = false,
 }: Props) {
   const workspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
-  const dialogRef = useRef<HTMLElement | null>(null);
   const { confirm, confirmDialog } = useConsoleConfirm();
   const [status, setStatus] = useState<PluginConfigWorkspaceStatus>({
     dirty: false,
@@ -92,17 +91,17 @@ export default function PluginConfigDialog({
 
   async function requestClose() {
     if (busy) return;
-    if (!closeHandledByNavigation && status.dirty) {
-      const dialog = dialogRef.current;
-      if (dialog && !dialog.contains(document.activeElement)) {
-        dialog.focus({ preventScroll: true });
-      }
-      if (!(await confirm({
+    if (
+      !closeHandledByNavigation &&
+      status.dirty &&
+      !(await confirm({
         title: "放弃插件配置草稿？",
         subtitle: "关闭将丢弃尚未保存的表单或 TOML 更改。",
         confirmLabel: "放弃草稿",
         confirmVariant: "default",
-      }))) return;
+      }))
+    ) {
+      return;
     }
     onClose();
   }
@@ -145,7 +144,6 @@ export default function PluginConfigDialog({
       }}
     >
       <DialogContent
-        ref={dialogRef}
         className="plugin-config-dialog flex max-h-[min(960px,calc(100dvh-32px))] w-[min(960px,calc(100vw-32px))] max-w-[min(960px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
         onEscapeKeyDown={(e) => {
           if (busy) e.preventDefault();

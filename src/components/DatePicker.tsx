@@ -1,16 +1,15 @@
-import { useRef, useState } from "react";
-import { Calendar, DatePicker as HeroDatePicker } from "@heroui/react";
-import { parseDate, type CalendarDate } from "@internationalized/date";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { format, parse, isValid } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-function parseIsoDate(value: string): CalendarDate | undefined {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
-  try {
-    return parseDate(value);
-  } catch {
-    return undefined;
-  }
+function parseIsoDate(value: string): Date | undefined {
+  if (!value || value.length < 10) return undefined;
+  const d = parse(value.slice(0, 10), "yyyy-MM-dd", new Date());
+  return isValid(d) ? d : undefined;
 }
 
 type Props = {
@@ -24,6 +23,7 @@ type Props = {
   isDayDisabled?: (iso: string) => boolean;
 };
 
+/** 日期选择：Popover + Calendar，对外出参仍为 yyyy-MM-dd。 */
 export default function DatePicker({
   value,
   onValueChange,
@@ -34,54 +34,54 @@ export default function DatePicker({
   isDayDisabled,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const selected = parseIsoDate(value);
-  const label = ariaLabel ?? placeholder;
+  const selected = useMemo(() => parseIsoDate(value), [value]);
 
   return (
-    <HeroDatePicker
-      value={selected ?? null}
-      isDisabled={disabled}
-      isOpen={open}
-      onOpenChange={setOpen}
-      onChange={(date) => date && onValueChange(date.toString())}
-    >
-      <HeroDatePicker.Trigger
-        ref={triggerRef}
-        aria-label={label}
-        className={cn(
-          "charts-page__date-inp inline-flex h-[var(--ui-ctrl-height,38px)] min-w-[9.5rem] items-center justify-start gap-2 rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-[var(--control-bg)] px-3 py-0 text-left text-[length:var(--console-control-font-size,14px)] font-normal leading-none text-[var(--text)] shadow-[var(--control-shadow)] hover:bg-[color-mix(in_srgb,var(--text)_4%,var(--control-bg))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:pointer-events-none disabled:opacity-45",
-          !selected && "text-muted-foreground",
-          className,
-        )}
-      >
-        <CalendarIcon className="size-4 shrink-0 opacity-70" aria-hidden="true" />
-        <span className="leading-[1.25]">{selected?.toString() ?? placeholder}</span>
-      </HeroDatePicker.Trigger>
-      <HeroDatePicker.Popover
-        triggerRef={triggerRef}
-        className="w-auto p-0"
-        placement="bottom start"
-      >
-        <Calendar
-          aria-label={label}
-          value={selected ?? null}
-          isDateUnavailable={
-            isDayDisabled ? (date) => isDayDisabled(date.toString()) : undefined
-          }
-          className="p-3"
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          aria-label={ariaLabel}
+          className={cn(
+            "charts-page__date-inp inline-flex items-center justify-start text-left font-normal leading-none",
+            "h-[var(--ui-ctrl-height,38px)] min-w-[9.5rem] px-3 py-0",
+            "border-[var(--control-edge)] bg-[var(--control-bg)] shadow-[var(--control-shadow)] hover:bg-[color-mix(in_srgb,var(--text)_4%,var(--control-bg))]",
+            !selected && "text-muted-foreground text-[length:var(--console-control-font-size,14px)]",
+            className,
+          )}
         >
-          <Calendar.Header className="flex items-center justify-between gap-2">
-            <Calendar.NavButton slot="previous" aria-label="上个月"><ChevronLeft className="size-4" /></Calendar.NavButton>
-            <Calendar.Heading />
-            <Calendar.NavButton slot="next" aria-label="下个月"><ChevronRight className="size-4" /></Calendar.NavButton>
-          </Calendar.Header>
-          <Calendar.Grid>
-            <Calendar.GridHeader>{(day) => <Calendar.HeaderCell>{day}</Calendar.HeaderCell>}</Calendar.GridHeader>
-            <Calendar.GridBody>{(date) => <Calendar.Cell date={date} />}</Calendar.GridBody>
-          </Calendar.Grid>
-        </Calendar>
-      </HeroDatePicker.Popover>
-    </HeroDatePicker>
+          <CalendarIcon className="mr-2 h-4 w-4 shrink-0 self-center opacity-70" />
+          {selected ? (
+            <span className="leading-[1.25] text-[length:var(--console-control-font-size,14px)] font-normal">
+              {format(selected, "yyyy-MM-dd")}
+            </span>
+          ) : (
+            <span className="leading-[1.25] text-[length:var(--console-control-font-size,14px)] font-normal">
+              {placeholder}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={8}>
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected}
+          disabled={
+            isDayDisabled
+              ? (date) => isDayDisabled(format(date, "yyyy-MM-dd"))
+              : undefined
+          }
+          onSelect={(date) => {
+            if (!date) return;
+            onValueChange(format(date, "yyyy-MM-dd"));
+            setOpen(false);
+          }}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

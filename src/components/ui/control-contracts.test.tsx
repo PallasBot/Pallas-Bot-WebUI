@@ -34,8 +34,8 @@ describe("Select", () => {
     function ControlledSelect() {
       const [value, setValue] = React.useState("apple");
       return (
-        <Select aria-label="Fruit" value={value} onValueChange={(next) => { onValueChange(next); setValue(next); }} onOpenChange={(open) => openChanges.push(open)}>
-          <SelectTrigger title="Fruit selection"><SelectValue /></SelectTrigger>
+        <Select value={value} onValueChange={(next) => { onValueChange(next); setValue(next); }} onOpenChange={(open) => openChanges.push(open)}>
+          <SelectTrigger aria-label="Fruit" title="Fruit selection"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="apple">Apple</SelectItem>
             <SelectItem value="pear">Pear</SelectItem>
@@ -45,7 +45,7 @@ describe("Select", () => {
     }
     render(<ControlledSelect />);
 
-    const trigger = screen.getByRole("button", { name: "Fruit" });
+    const trigger = screen.getByRole("combobox", { name: "Fruit" });
     expect(trigger.getAttribute("title")).toBe("Fruit selection");
     trigger.focus();
     await user.keyboard("{ArrowDown}");
@@ -54,9 +54,8 @@ describe("Select", () => {
 
     await waitFor(() => expect(onValueChange).toHaveBeenCalledWith("pear"));
     expect(openChanges).toEqual([true, false]);
-    expect(screen.getByRole("button", { name: "Fruit" }).textContent).toContain("Pear");
-    // react-aria restores focus to the trigger inside a requestAnimationFrame on close,
-    // so the saved node (still the same DOM element) may only regain focus a frame later.
+    expect(screen.getByRole("combobox", { name: "Fruit" }).textContent).toContain("Pear");
+    // Radix Select 在关闭后把焦点交回 trigger，可能在下一帧才恢复。
     await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 });
@@ -109,7 +108,7 @@ describe("Tooltip", () => {
 });
 
 describe("DropdownMenu", () => {
-  it("uses stable identity and visible typeahead text, and closes after selection", async () => {
+  it("keeps a stable identity and closes after keyboard selection", async () => {
     const user = userEvent.setup();
     const sequence: string[] = [];
     const onSelect = vi.fn((event: Event) => sequence.push(event.type));
@@ -117,21 +116,21 @@ describe("DropdownMenu", () => {
       <DropdownMenu onOpenChange={(open) => { if (!open) sequence.push("close"); }}>
         <DropdownMenuTrigger asChild><button type="button">Actions</button></DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuItem id="folder-open" textValue="Open directory" onSelect={onSelect}>
+          <DropdownMenuItem id="folder-open" onSelect={onSelect}>
             <span aria-hidden="true">▣</span><span>Open directory</span>
           </DropdownMenuItem>
-          <DropdownMenuItem id="folder-rename" textValue="Rename directory">Rename directory</DropdownMenuItem>
+          <DropdownMenuItem id="folder-rename">Rename directory</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>,
     );
 
     await user.click(screen.getByRole("button", { name: "Actions" }));
     const item = await screen.findByRole("menuitem", { name: "Open directory" });
-    expect(item.getAttribute("data-key")).toBe("folder-open");
-    await user.keyboard("o{Enter}");
+    expect(item.id).toBe("folder-open");
+    await user.keyboard("{ArrowDown}{Enter}");
 
     expect(onSelect).toHaveBeenCalledTimes(1);
-    expect(sequence).toEqual(["menu-item-select", "close"]);
+    expect(sequence).toEqual(["menu.itemSelect", "close"]);
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
@@ -142,7 +141,7 @@ describe("DropdownMenu", () => {
       <DropdownMenu>
         <DropdownMenuTrigger>Actions</DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuItem id="keep-open" textValue="Keep open" onSelect={onSelect}>Keep open</DropdownMenuItem>
+          <DropdownMenuItem id="keep-open" onSelect={onSelect}>Keep open</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>,
     );
@@ -162,7 +161,6 @@ describe("DropdownMenu", () => {
         <DropdownMenuContent>
           <DropdownMenuItem
             id="archive"
-            textValue="Archive"
             onClick={() => sequence.push("click")}
             onSelect={() => sequence.push("select")}
           >

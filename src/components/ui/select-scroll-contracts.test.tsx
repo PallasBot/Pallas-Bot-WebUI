@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
@@ -20,53 +20,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function SelectFixture() {
-  return (
-    <Select aria-label="Fruit">
-      <SelectTrigger aria-label="Fruit choices"><SelectValue placeholder="Choose fruit" /></SelectTrigger>
-      <SelectContent>
-        {Array.from({ length: 12 }, (_, index) => (
-          <SelectItem key={index} value={`fruit-${index}`}>Fruit {index}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-describe("Select scroll contracts", () => {
-  it("attaches scroll tracking when the list mounts after initially closed", async () => {
-    const user = userEvent.setup();
-    render(<SelectFixture />);
-
-    await user.click(screen.getByRole("button", { name: /Fruit choices/ }));
-    const list = await screen.findByRole("listbox");
-    Object.defineProperties(list, {
-      clientHeight: { configurable: true, value: 40 },
-      scrollHeight: { configurable: true, value: 400 },
-      scrollTop: { configurable: true, writable: true, value: 0 },
-    });
-
-    fireEvent.scroll(list);
-    expect((screen.getByRole("button", { name: "Scroll options down" }) as HTMLButtonElement).disabled).toBe(false);
-
-    list.scrollTop = 20;
-    fireEvent.scroll(list);
-    expect((screen.getByRole("button", { name: "Scroll options up" }) as HTMLButtonElement).disabled).toBe(false);
-  });
-
+describe("Select contracts", () => {
   it("keeps an uncontrolled default selection and keyboard updates", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
-    render(<Select aria-label="Fruit" defaultValue="fruit-0" onValueChange={onValueChange}>
-      <SelectTrigger aria-label="Fruit choices"><SelectValue placeholder="Choose fruit" /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="fruit-0">Fruit 0</SelectItem>
-        <SelectItem value="fruit-1">Fruit 1</SelectItem>
-      </SelectContent>
-    </Select>);
+    render(
+      <Select defaultValue="fruit-0" onValueChange={onValueChange}>
+        <SelectTrigger aria-label="Fruit choices"><SelectValue placeholder="Choose fruit" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="fruit-0">Fruit 0</SelectItem>
+          <SelectItem value="fruit-1">Fruit 1</SelectItem>
+        </SelectContent>
+      </Select>,
+    );
 
-    const trigger = screen.getByRole("button", { name: /Fruit choices/ });
-    expect(trigger.getAttribute("data-heroui-skin")).toBe("true");
+    const trigger = screen.getByRole("combobox", { name: /Fruit choices/ });
     expect(trigger.textContent).toContain("Fruit 0");
     await user.click(trigger);
     const options = await screen.findAllByRole("option");
@@ -75,57 +43,28 @@ describe("Select scroll contracts", () => {
 
     expect(onValueChange).toHaveBeenCalledWith("fruit-1");
     await waitFor(() => expect(trigger.textContent).toContain("Fruit 1"));
-    expect(document.activeElement).toBe(trigger);
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
-  it("keeps the selection mark in the option's own leading gutter", async () => {
+  it("marks the selected option and exposes its aria-selected state", async () => {
     const user = userEvent.setup();
-    render(<Select aria-label="Fruit" defaultValue="fruit-0">
-      <SelectTrigger aria-label="Fruit choices"><SelectValue placeholder="Choose fruit" /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="fruit-0">Fruit 0</SelectItem>
-        <SelectItem value="fruit-1">Fruit 1</SelectItem>
-      </SelectContent>
-    </Select>);
+    render(
+      <Select defaultValue="fruit-0">
+        <SelectTrigger aria-label="Fruit choices"><SelectValue placeholder="Choose fruit" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="fruit-0">Fruit 0</SelectItem>
+          <SelectItem value="fruit-1">Fruit 1</SelectItem>
+        </SelectContent>
+      </Select>,
+    );
 
-    await user.click(screen.getByRole("button", { name: /Fruit choices/ }));
+    await user.click(screen.getByRole("combobox", { name: /Fruit choices/ }));
     const [selected, unselected] = await screen.findAllByRole("option");
-    const indicator = selected.querySelector(".list-box-item__indicator");
-    const unselectedIndicator = unselected.querySelector(".list-box-item__indicator");
 
     expect(selected.getAttribute("aria-selected")).toBe("true");
     expect(unselected.getAttribute("aria-selected")).toBe("false");
-    expect(indicator?.parentElement).toBe(selected);
-    expect(indicator?.className).toContain("start-2");
-    expect(indicator?.className).toContain("end-auto");
-    expect(indicator?.getAttribute("data-visible")).toBe("true");
-    expect(unselectedIndicator?.getAttribute("data-visible")).not.toBe("true");
-  });
-
-  it("lets the list use HeroUI's available popover height in a short viewport", async () => {
-    const originalDocumentHeight = Object.getOwnPropertyDescriptor(document.documentElement, "clientHeight");
-    const originalWindowHeight = Object.getOwnPropertyDescriptor(window, "innerHeight");
-    Object.defineProperty(document.documentElement, "clientHeight", { configurable: true, value: 180 });
-    Object.defineProperty(window, "innerHeight", { configurable: true, value: 180 });
-    try {
-      const user = userEvent.setup();
-      render(<SelectFixture />);
-      const trigger = screen.getByRole("button", { name: /Fruit choices/ });
-      vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue(new DOMRect(10, 50, 120, 36));
-
-      await user.click(trigger);
-      const list = await screen.findByRole("listbox");
-      const popover = list.closest<HTMLElement>('[data-slot="select-popover"]');
-      await waitFor(() => expect(Number.parseFloat(popover?.style.maxHeight ?? "Infinity")).toBeLessThan(180));
-
-      expect(popover?.className).toContain("flex-col");
-      expect(list.className).toContain("flex-1");
-      expect(list.className).toContain("overflow-auto");
-    } finally {
-      if (originalDocumentHeight) Object.defineProperty(document.documentElement, "clientHeight", originalDocumentHeight);
-      else Reflect.deleteProperty(document.documentElement, "clientHeight");
-      if (originalWindowHeight) Object.defineProperty(window, "innerHeight", originalWindowHeight);
-    }
+    expect(selected.querySelector("svg")).toBeTruthy();
+    expect(unselected.querySelector("svg")).toBeNull();
   });
 
   it("forwards close-autofocus callbacks and honors a focus veto", async () => {
@@ -134,15 +73,17 @@ describe("Select scroll contracts", () => {
       event.preventDefault();
       document.getElementById("focus-after-select")?.focus();
     });
-    render(<>
-      <Select aria-label="Fruit" defaultOpen>
-        <SelectTrigger aria-label="Fruit choices"><SelectValue placeholder="Choose fruit" /></SelectTrigger>
-        <SelectContent onCloseAutoFocus={onCloseAutoFocus}>
-          <SelectItem value="apple">Apple</SelectItem>
-        </SelectContent>
-      </Select>
-      <button id="focus-after-select" type="button">After select</button>
-    </>);
+    render(
+      <>
+        <Select defaultOpen>
+          <SelectTrigger aria-label="Fruit choices"><SelectValue placeholder="Choose fruit" /></SelectTrigger>
+          <SelectContent onCloseAutoFocus={onCloseAutoFocus}>
+            <SelectItem value="apple">Apple</SelectItem>
+          </SelectContent>
+        </Select>
+        <button id="focus-after-select" type="button">After select</button>
+      </>,
+    );
 
     await screen.findByRole("option", { name: "Apple" });
     await user.keyboard("{Escape}");
