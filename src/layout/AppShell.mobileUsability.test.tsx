@@ -354,3 +354,39 @@ it("offers a visible desktop quick-navigation entry", async () => {
   await user.click(trigger);
   expect(await screen.findByRole("combobox", { name: "搜索页面" })).not.toBeNull();
 });
+
+it("opens MaiBot through a credential-free native link on desktop and mobile", async () => {
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+  renderShell();
+  const mobileMenuTrigger = screen.getByRole("button", { name: "打开菜单" });
+  await user.click(mobileMenuTrigger);
+  const menu = await screen.findByRole("dialog", { name: "主导航" });
+  const mobileLink = within(menu).getByRole("link", { name: "MaiBot（在新标签页打开）" });
+  expect(mobileLink.tagName).toBe("A");
+  expect(mobileLink.getAttribute("href")).toBe("/pallas/maibot/");
+  expect(mobileLink.getAttribute("target")).toBe("_blank");
+  expect(mobileLink.getAttribute("rel")).toContain("noopener");
+  expect(mobileLink.getAttribute("href")).not.toMatch(/[?&](token|api.?key)=/i);
+  expect(mobileLink.getAttribute("tabindex")).not.toBe("-1");
+  expect(mobileLink.getAttribute("title")).toBe("在新标签页打开 MaiBot");
+  for (let i = 0; i < 40 && document.activeElement !== mobileLink; i++) await user.tab();
+  expect(document.activeElement).toBe(mobileLink);
+
+  await user.click(within(menu).getByRole("button", { name: "关闭菜单" }));
+  act(() => setShellNarrow(false));
+  const desktopLink = await screen.findByRole("link", { name: "MaiBot（在新标签页打开）" });
+  expect(desktopLink.getAttribute("href")).toBe("/pallas/maibot/");
+  expect(desktopLink.getAttribute("target")).toBe("_blank");
+  expect(desktopLink.getAttribute("rel")).toContain("noopener");
+  expect(desktopLink.getAttribute("title")).toBe("在新标签页打开 MaiBot");
+  fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+  const quickNav = await screen.findByRole("dialog", { name: "快速导航" });
+  expect(within(quickNav).queryByRole("option", { name: /MaiBot/ })).toBeNull();
+  await user.keyboard("{Escape}");
+
+  const previousLink = desktopLink.closest(".shell__nav-item")?.previousElementSibling?.querySelector<HTMLAnchorElement>("a[href]");
+  expect(previousLink).not.toBeNull();
+  previousLink!.focus();
+  await user.tab();
+  expect(document.activeElement).toBe(desktopLink);
+});

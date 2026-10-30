@@ -19,6 +19,7 @@ import {
   Users,
   Globe2,
   Images,
+  Bot,
 } from "lucide-react";
 import { AI_OBSERVATION_DEFAULT_PATH } from "@/config/aiObservationSections";
 import { COMMUNITY_FEDERATION_NOTICE, DATABASE_LIFECYCLE_NOTICE } from "@/config/navigationNotices";
@@ -34,6 +35,8 @@ export type MainNavItem = {
   icon: LucideIcon;
   /** 有用户可见更新时递增 revision；按声明的页面或分区标记已阅。 */
   notice?: NavigationNotice;
+  /** External same-origin app; render as a native link instead of a router link. */
+  external?: boolean;
 };
 
 /**
@@ -53,6 +56,7 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/ai/governance", label: "AI 治理", section: "AI", icon: ShieldCheck },
   { to: "/ai/config/provider", label: "大模型配置", section: "AI", icon: Sparkles },
   { to: "/media", label: "媒体", section: "AI", icon: Layers },
+  { to: "/pallas/maibot/", label: "MaiBot", section: "AI", icon: Bot, external: true },
   { to: "/database", label: "数据库", section: "数据", icon: Database, notice: DATABASE_LIFECYCLE_NOTICE },
   { to: "/database/backups", label: "备份管理", section: "数据", icon: Archive },
   { to: "/files", label: "文件管理", section: "数据", icon: FolderOpen },

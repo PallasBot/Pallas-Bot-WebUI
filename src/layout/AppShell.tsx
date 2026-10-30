@@ -109,31 +109,51 @@ function NavItemLink({
   const exact = navExact(location.pathname, item.to);
   const notice = notices?.[item.to] || null;
   const showNotice = Boolean(notice);
+  const linkTitle = showNotice ? notice || item.label : item.external ? "在新标签页打开 MaiBot" : item.label;
+  const linkContent = (
+    <>
+      <Icon className="shell__nav-ico" width={18} height={18} aria-hidden />
+      <span className="shell__nav-text">
+        <span className="shell__nav-label">
+          <span className="shell__nav-label-text">{item.label}</span>
+          {showNotice ? <span className="shell__nav-notice-dot" aria-hidden /> : null}
+        </span>
+      </span>
+    </>
+  );
   return (
     <div className={cn("shell__nav-item", child && "shell__nav-item--child")}>
-      <NavLink
-        to={item.to}
-        end={item.to === "/"}
-        onClick={onNavigate}
-        title={showNotice ? notice || item.label : item.label}
-        className={cn(
-          linkClass,
-          child && "shell__nav-link--child",
-          item.to === "/" && "shell__nav-link--root",
-          active && "is-router-active",
-          exact && "is-router-exact",
-        )}
-        aria-current={exact ? "page" : undefined}
-        aria-label={showNotice ? `${item.label}（${notice}）` : item.label}
-      >
-        <Icon className="shell__nav-ico" width={18} height={18} aria-hidden />
-        <span className="shell__nav-text">
-          <span className="shell__nav-label">
-            <span className="shell__nav-label-text">{item.label}</span>
-            {showNotice ? <span className="shell__nav-notice-dot" aria-hidden /> : null}
-          </span>
-        </span>
-      </NavLink>
+      {item.external ? (
+        <a
+          href={item.to}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={onNavigate}
+          title={linkTitle}
+          aria-label="MaiBot（在新标签页打开）"
+          className={cn(linkClass, child && "shell__nav-link--child")}
+        >
+          {linkContent}
+        </a>
+      ) : (
+        <NavLink
+          to={item.to}
+          end={item.to === "/"}
+          onClick={onNavigate}
+          title={linkTitle}
+          className={cn(
+            linkClass,
+            child && "shell__nav-link--child",
+            item.to === "/" && "shell__nav-link--root",
+            active && "is-router-active",
+            exact && "is-router-exact",
+          )}
+          aria-current={exact ? "page" : undefined}
+          aria-label={showNotice ? `${item.label}（${notice}）` : item.label}
+        >
+          {linkContent}
+        </NavLink>
+      )}
     </div>
   );
 }
@@ -859,7 +879,7 @@ export default function AppShell() {
             <CommandInput placeholder="搜索页面或分组…" autoFocus />
             <CommandList className="shell-command-nav__list">
               <CommandEmpty>没有匹配的页面</CommandEmpty>
-              {MAIN_NAV_ITEMS.map((item) => {
+              {MAIN_NAV_ITEMS.filter((item) => !item.external).map((item) => {
                 const Icon = item.icon;
                 return (
                   <CommandItem
